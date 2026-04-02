@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cb586d22-1773712756000",
+  "query": "unimatrix-server infra module structure conventions",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5667651628362639,
+          "similarity": 0.5479847192764282,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.5617429873353303,
+          "similarity": 0.5414494276046753,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4790769258357693,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.479041487745815,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.47897844187305433,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4333752118624174,
+          "similarity": 0.5479847192764282,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.42935349391056943,
+          "similarity": 0.5414494276046753,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4159699219923753,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4159699219923753,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4159699219923753,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5479847192764282,
+          "similarity": 0.5479847192764282,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.5414494276046753,
+          "similarity": 0.5414494276046753,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5197011232376099,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5197011232376099,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5197011232376099,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5668879108333871,
+          "similarity": 0.5479847192764282,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.5618756249806288,
+          "similarity": 0.5414494276046753,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4788114082056919,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.47877573849423466,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.47871228055694615,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5021601006983555,
+          "similarity": 0.5479847192764282,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.49804148588622066,
+          "similarity": 0.5414494276046753,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.43596982049540484,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.43594383256277164,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4358975989227472,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5021601006983555,
+          "similarity": 0.5479847192764282,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.49804148588622066,
+          "similarity": 0.5414494276046753,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.43596982049540484,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.43594383256277164,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4358975989227472,
+          "similarity": 0.5197011232376099,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

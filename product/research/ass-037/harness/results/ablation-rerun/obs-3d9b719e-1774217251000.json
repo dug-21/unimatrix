@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-3d9b719e-1774217251000",
+  "query": "crt-026 session histogram scoring architectural decisions",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.5514848476809058,
+          "similarity": 0.5171893239021301,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.509594641377565,
+          "similarity": 0.4334920644760132,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4933913609099838,
+          "similarity": 0.3964492082595825,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.4907475428031476,
+          "similarity": 0.43799877166748047,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.48880102461586167,
+          "similarity": 0.4042704701423645,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.4144241993243878,
+          "similarity": 0.5171893239021301,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.3656915517953726,
+          "similarity": 0.43799877166748047,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.3629181935237004,
+          "similarity": 0.4334920644760132,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.3449356739337628,
+          "similarity": 0.4042704701423645,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.34012258969820464,
+          "similarity": 0.3964492082595825,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.4887381978748121,
+          "similarity": 0.5171893239021301,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.4522398147519412,
+          "similarity": 0.4334920644760132,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.43883026487568466,
+          "similarity": 0.43799877166748047,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4377886492529584,
+          "similarity": 0.3964492082595825,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.43500292294458237,
+          "similarity": 0.4042704701423645,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.5512621494745501,
+          "similarity": 0.5171893239021301,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5091004688002823,
+          "similarity": 0.4334920644760132,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.49276186641225395,
+          "similarity": 0.3964492082595825,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.49040501831525357,
+          "similarity": 0.43799877166748047,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4882521249114883,
+          "similarity": 0.4042704701423645,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.4887381978748121,
+          "similarity": 0.5171893239021301,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.4522398147519412,
+          "similarity": 0.4334920644760132,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.43883026487568466,
+          "similarity": 0.43799877166748047,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4377886492529584,
+          "similarity": 0.3964492082595825,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.43500292294458237,
+          "similarity": 0.4042704701423645,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.5171893239021301,
+          "similarity": 0.5171893239021301,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.43799877166748047,
+          "similarity": 0.43799877166748047,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.4334920644760132,
+          "similarity": 0.4334920644760132,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4042704701423645,
+          "similarity": 0.4042704701423645,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.3964492082595825,
+          "similarity": 0.3964492082595825,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 3822,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3209,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1040,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 703,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

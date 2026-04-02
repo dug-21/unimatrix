@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1638",
+  "query": "lets continue to iterate on this concept of learning category relationship edges on the graph.  So... I see 2 choices.  1 is to enhance context_cycle to allow agents to register more than just start/stop.  2 would be focus more on any relationships between categories (and recognizing what categories have bee used in this session) to drive these relationships and Unimatrix intelligence.  My though... categories are static, defined in config.  context_cycle entries can morph.  But within a session, Unimatrix can count in real time the most recent categories stored to help learn which categories might be promoted next",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.48338063462466285,
+          "similarity": 0.41497308015823364,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.46149533468493553,
+          "similarity": 0.40614986419677734,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.45419698368443917,
+          "similarity": 0.42922288179397583,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.44985259832054003,
+          "similarity": 0.4298743009567261,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.4477751286533286,
+          "similarity": 0.4061824679374695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.48338063462466285,
+          "similarity": 0.41497308015823364,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.46149533468493553,
+          "similarity": 0.40614986419677734,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.45419698368443917,
+          "similarity": 0.42922288179397583,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.44985259832054003,
+          "similarity": 0.4298743009567261,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.4477751286533286,
+          "similarity": 0.4061824679374695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

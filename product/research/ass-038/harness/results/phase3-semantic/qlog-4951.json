@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4951",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Now spawning the architect with the full retrospective briefing.\n[tool: mcp__unimatrix__context_deprecate(Raw machine-generated retrospective hotspot dump — no structured lesson, no actionable takeaway. Useful findings alrea) → Deprecated #3919 | Retrospective findings: bugfix-batch-337-345-346-378-379-380]\n[tool: ToolSearch(select:mcp__unimatrix__context_deprecate) → ]\n[Assistant] **Phase 1 summary:**\n- 1 session, 893 records, ~10h 51m (7.5h overnight gap — not actionable)\n- 2 baseline outliers: `sleep_workaround_count` (26 vs mean 3.4, **4.1σ**) and `edit_bloat_ratio` (0.9 vs mean 0.4, 2.0σ)\n- 0 gate failures on code (1 administrative rework — missing fix report, recovered immediately)\n- Main hotspot: tester agent ran 83–162 minutes polling background tasks with sleep\n\n**Phase 1b — Stewardship quality review:**\n\n| Entry | Assessment |\n|---|---|\n| #3901 (as-cast wraps) | ✅ High quality — clear root cause, fix pattern, codebase-specific |\n| #3902 (sanitize_session_id audit) | ✅ High quality — actionable rule, caused_by, line references |\n| #3903 (saturating_add omission) | ✅ High quality — root cause, takeaway, downstream sum pattern |\n| #3904 (partial pipe-escaping) | ✅ High quality — audit rule, test pattern, caused_by |\n| #3905 (merge_configs cross-level) | ✅ High quality — root cause, fix pattern, prevention, design-phase note |\n| #3918 (XPASS in batch fixes) | ✅ High quality — actionable rule, batch-specific context |\n| **#3919** (raw retrospective dump) | ❌ Low quality — machine-generated hotspot blob, no structured lesson |\n\nDeprecating #3919, then spawning the architect with the full briefing.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5715788202063641,
+          "similarity": 0.5892948508262634,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.55865409959962,
+          "similarity": 0.5869537591934204,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5531108162374824,
+          "similarity": 0.5988215208053589,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3853,
+          "title": "Retrospective findings: bugfix-437",
+          "category": "lesson-learned",
+          "final_score": 0.5114032250454551,
+          "similarity": 0.5702661275863647,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3860,
+          "title": "Retrospective findings: col-025",
+          "category": "lesson-learned",
+          "final_score": 0.5103591712650499,
+          "similarity": 0.568282425403595,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 40,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5715788202063641,
+          "similarity": 0.5892948508262634,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.55865409959962,
+          "similarity": 0.5869537591934204,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5531108162374824,
+          "similarity": 0.5988215208053589,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3853,
+          "title": "Retrospective findings: bugfix-437",
+          "category": "lesson-learned",
+          "final_score": 0.5114032250454551,
+          "similarity": 0.5702661275863647,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3860,
+          "title": "Retrospective findings: col-025",
+          "category": "lesson-learned",
+          "final_score": 0.5103591712650499,
+          "similarity": 0.568282425403595,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

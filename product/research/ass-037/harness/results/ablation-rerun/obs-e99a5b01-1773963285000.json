@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-e99a5b01-1773963285000",
+  "query": "vision alignment patterns scope variance recurring misalignment",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.35392701625823975,
+          "similarity": 0.35392701625823975,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.3337531089782715,
+          "similarity": 0.3337531089782715,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.32067739963531494,
+          "similarity": 0.32067739963531494,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.2964874505996704,
+          "similarity": 0.2964874505996704,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.26429295539855957,
+          "similarity": 0.26429295539855957,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.41596350812911986,
+          "similarity": 0.35392701625823975,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.38511237160420886,
+          "similarity": 0.32067739963531494,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.38310433387607434,
+          "similarity": 0.3337531089782715,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.3774820230292231,
+          "similarity": 0.26429295539855957,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.37463645467326084,
+          "similarity": 0.2964874505996704,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.41596350812911986,
+          "similarity": 0.35392701625823975,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.38511237160420886,
+          "similarity": 0.32067739963531494,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.38310433387607434,
+          "similarity": 0.3337531089782715,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.3774820230292231,
+          "similarity": 0.26429295539855957,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.37463645467326084,
+          "similarity": 0.2964874505996704,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.46760412721072925,
+          "similarity": 0.35392701625823975,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.4285191963552558,
+          "similarity": 0.32067739963531494,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4244811338516441,
+          "similarity": 0.3337531089782715,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.42357405558927097,
+          "similarity": 0.26429295539855957,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.41651205047313544,
+          "similarity": 0.2964874505996704,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4668659641525962,
+          "similarity": 0.35392701625823975,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.42781892494798346,
+          "similarity": 0.32067739963531494,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.42389199083298573,
+          "similarity": 0.3337531089782715,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.42253976273088967,
+          "similarity": 0.26429295539855957,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4157326699544765,
+          "similarity": 0.2964874505996704,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.31395508692814755,
+          "similarity": 0.35392701625823975,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.3015403747558594,
+          "similarity": 0.3337531089782715,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.2934937843909631,
+          "similarity": 0.32067739963531494,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.2786076619074895,
+          "similarity": 0.2964874505996704,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.25879566486065203,
+          "similarity": 0.26429295539855957,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 605,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2969,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3426,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3208,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

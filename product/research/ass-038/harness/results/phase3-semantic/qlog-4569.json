@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4569",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(uni-pseudocode) → ]\n[Assistant] Stage 3a — spawning pseudocode and test plan agents in parallel.\n[tool: mcp__unimatrix__context_cycle(start) → Acknowledged: cycle_started for topic 'crt-033'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[Assistant] Brief absorbed. Declaring the delivery cycle, then Stage 3a.\n\n**Wave plan** (determined from dependency order):\n- **Wave 1** (parallel): `cycle_review_index` store module + `migration v17→v18` + `status.rs response`\n- **Wave 2** (depends on Wave 1 compiled): `tools.rs handler` + `services/status.rs Phase 7b`\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5773599060739949,
+          "similarity": 0.600278913974762,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5270523954574201,
+          "similarity": 0.5349870324134827,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5076725566420752,
+          "similarity": 0.5460885763168335,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.506280270592247,
+          "similarity": 0.5642973780632019,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4929763907964878,
+          "similarity": 0.5390201807022095,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5773599060739949,
+          "similarity": 0.600278913974762,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5270523954574201,
+          "similarity": 0.5349870324134827,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5076725566420752,
+          "similarity": 0.5460885763168335,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.506280270592247,
+          "similarity": 0.5642973780632019,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4929763907964878,
+          "similarity": 0.5390201807022095,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

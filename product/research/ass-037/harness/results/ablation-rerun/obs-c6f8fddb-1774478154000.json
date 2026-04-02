@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-c6f8fddb-1774478154000",
+  "query": "bugfix-389 hook payload goal context_cycle",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5246597792313146,
+          "similarity": 0.5997722148895264,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.5175889815777894,
+          "similarity": 0.6048817038536072,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5168732791108157,
+          "similarity": 0.5505609512329102,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5146708227507898,
+          "similarity": 0.5502498149871826,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4894592455132512,
+          "similarity": 0.5143910050392151,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.46838874083298904,
+          "similarity": 0.6048817038536072,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.46524443993201625,
+          "similarity": 0.5997722148895264,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.43496058537409854,
+          "similarity": 0.5505609512329102,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4347691169151893,
+          "similarity": 0.5502498149871826,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4127021569472093,
+          "similarity": 0.5143910050392151,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5926926170930272,
+          "similarity": 0.5997722148895264,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5868298976782852,
+          "similarity": 0.5505609512329102,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5838374219141051,
+          "similarity": 0.5502498149871826,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.5824866704152396,
+          "similarity": 0.6048817038536072,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5527488658966963,
+          "similarity": 0.5143910050392151,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5246597792313146,
+          "similarity": 0.5997722148895264,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.5175889815777894,
+          "similarity": 0.6048817038536072,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5168732791108157,
+          "similarity": 0.5505609512329102,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5146708227507898,
+          "similarity": 0.5502498149871826,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4894592455132512,
+          "similarity": 0.5143910050392151,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.6048817038536072,
+          "similarity": 0.6048817038536072,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5997722148895264,
+          "similarity": 0.5997722148895264,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5505609512329102,
+          "similarity": 0.5505609512329102,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5502498149871826,
+          "similarity": 0.5502498149871826,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5143910050392151,
+          "similarity": 0.5143910050392151,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5927385885072902,
+          "similarity": 0.5997722148895264,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5865943850390295,
+          "similarity": 0.5505609512329102,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5836193205704239,
+          "similarity": 0.5502498149871826,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.5826320927102939,
+          "similarity": 0.6048817038536072,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5524997888781411,
+          "similarity": 0.5143910050392151,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3499,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1372,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 1469,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

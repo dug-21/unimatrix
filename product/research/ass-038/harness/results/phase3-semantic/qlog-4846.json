@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4846",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Architect design review for #346) → ]\n[tool: Agent(Architect design review for #345) → ]\n[tool: Agent(Architect design review for #337) → ]\n[Assistant] All 6 investigations complete. Clean findings — all low-blast-radius, well-scoped. Now spawning all 6 architect design reviewers in parallel.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.5119130706208291,
+          "similarity": 0.5623403191566467,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3334,
+          "title": "ADR-002 crt-028: Tool-Use/Tool-Result Pairing via Adjacent-Record Scan",
+          "category": "decision",
+          "final_score": 0.4696395554167627,
+          "similarity": 0.4477248787879944,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.4488415174141378,
+          "similarity": 0.43430960178375244,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.4439195760724225,
+          "similarity": 0.40810155868530273,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.4240223619465112,
+          "similarity": 0.40932023525238037,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.5119130706208291,
+          "similarity": 0.5623403191566467,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3334,
+          "title": "ADR-002 crt-028: Tool-Use/Tool-Result Pairing via Adjacent-Record Scan",
+          "category": "decision",
+          "final_score": 0.4696395554167627,
+          "similarity": 0.4477248787879944,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.4488415174141378,
+          "similarity": 0.43430960178375244,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.4439195760724225,
+          "similarity": 0.40810155868530273,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.4240223619465112,
+          "similarity": 0.40932023525238037,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

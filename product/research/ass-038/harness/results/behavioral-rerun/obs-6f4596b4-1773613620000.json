@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-6f4596b4-1773613620000",
+  "query": "hnsw_rs PointIndexation layer point retrieval",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.565741606828634,
+          "similarity": 0.6504197716712952,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5240477168397502,
+          "similarity": 0.504791259765625,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1724,
+          "title": "get_embedding: use IntoIterator for &PointIndexation (all layers), not get_layer_iterator(0)",
+          "category": "pattern",
+          "final_score": 0.5126780610016966,
+          "similarity": 0.6007448434829712,
+          "confidence": 0.4619192463146461,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.47517431185844794,
+          "similarity": 0.42978131771087646,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 482,
+          "title": "ADR-002: Successor Similarity via Stored Embedding Cosine",
+          "category": "decision",
+          "final_score": 0.4593270771705814,
+          "similarity": 0.4130159616470337,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.565741606828634,
+          "similarity": 0.6504197716712952,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5240477168397502,
+          "similarity": 0.504791259765625,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1724,
+          "title": "get_embedding: use IntoIterator for &PointIndexation (all layers), not get_layer_iterator(0)",
+          "category": "pattern",
+          "final_score": 0.5126780610016966,
+          "similarity": 0.6007448434829712,
+          "confidence": 0.4619192463146461,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.47517431185844794,
+          "similarity": 0.42978131771087646,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 482,
+          "title": "ADR-002: Successor Similarity via Stored Embedding Cosine",
+          "category": "decision",
+          "final_score": 0.4593270771705814,
+          "similarity": 0.4130159616470337,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

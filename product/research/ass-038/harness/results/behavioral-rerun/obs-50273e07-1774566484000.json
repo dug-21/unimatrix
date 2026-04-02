@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774566484000",
+  "query": "graph cohesion connectivity GRAPH_EDGES maintenance tick cache",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.553334234355652,
+          "similarity": 0.5761039853096008,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.5357701691608561,
+          "similarity": 0.5391669273376465,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5228615727914178,
+          "similarity": 0.5447030663490295,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.5228592147317022,
+          "similarity": 0.5422022938728333,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5005048670942821,
+          "similarity": 0.5406647324562073,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.553334234355652,
+          "similarity": 0.5761039853096008,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.5357701691608561,
+          "similarity": 0.5391669273376465,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5228615727914178,
+          "similarity": 0.5447030663490295,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.5228592147317022,
+          "similarity": 0.5422022938728333,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5005048670942821,
+          "similarity": 0.5406647324562073,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

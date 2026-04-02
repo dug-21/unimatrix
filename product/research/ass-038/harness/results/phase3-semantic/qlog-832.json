@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-832",
+  "query": "The vision is where we are going.  The shorter the better.\\\n\\\nThe story is where we came from.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.3664577338570042,
+          "similarity": 0.2052696943283081,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.31936831361414153,
+          "similarity": 0.11182409524917603,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.310805442902108,
+          "similarity": 0.1767134666442871,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 89,
+          "title": "ADR-006: Near-Duplicate Detection at 0.92 Cosine Similarity",
+          "category": "decision",
+          "final_score": 0.3045072137749214,
+          "similarity": 0.12058514356613159,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.29756601280784345,
+          "similarity": 0.11963820457458496,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.3664577338570042,
+          "similarity": 0.2052696943283081,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.31936831361414153,
+          "similarity": 0.11182409524917603,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.310805442902108,
+          "similarity": 0.1767134666442871,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 89,
+          "title": "ADR-006: Near-Duplicate Detection at 0.92 Cosine Similarity",
+          "category": "decision",
+          "final_score": 0.3045072137749214,
+          "similarity": 0.12058514356613159,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.29756601280784345,
+          "similarity": 0.11963820457458496,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

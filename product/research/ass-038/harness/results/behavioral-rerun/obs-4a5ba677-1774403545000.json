@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-4a5ba677-1774403545000",
+  "query": "scope review feature alignment variance gap addition",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.4597174687902943,
+          "similarity": 0.36768025159835815,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4456454918122348,
+          "similarity": 0.3851433992385864,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.4448433706502386,
+          "similarity": 0.3873971700668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.44158958763295186,
+          "similarity": 0.3614703416824341,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.4317943102872288,
+          "similarity": 0.37226247787475586,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.4597174687902943,
+          "similarity": 0.36768025159835815,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4456454918122348,
+          "similarity": 0.3851433992385864,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.4448433706502386,
+          "similarity": 0.3873971700668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.44158958763295186,
+          "similarity": 0.3614703416824341,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.4317943102872288,
+          "similarity": 0.37226247787475586,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

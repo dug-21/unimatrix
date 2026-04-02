@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-af1f3351-1774269428000",
+  "query": "crt-027 proactive knowledge delivery SubagentStart IndexBriefingService",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.4013065925011268,
+          "similarity": 0.49587321281433105,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.39678309513972354,
+          "similarity": 0.4885225296020508,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.3851767319899339,
+          "similarity": 0.4696621894836426,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.3767017951378456,
+          "similarity": 0.455890417098999,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.3749206616328313,
+          "similarity": 0.45299607515335083,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.49587321281433105,
+          "similarity": 0.49587321281433105,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.4885225296020508,
+          "similarity": 0.4885225296020508,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4696621894836426,
+          "similarity": 0.4696621894836426,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.455890417098999,
+          "similarity": 0.455890417098999,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.45299607515335083,
+          "similarity": 0.45299607515335083,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5555321029435333,
+          "similarity": 0.4885225296020508,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.5353732482407196,
+          "similarity": 0.49587321281433105,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5343931120947093,
+          "similarity": 0.455890417098999,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5260691251407573,
+          "similarity": 0.4696621894836426,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.5080693065046886,
+          "similarity": 0.45299607515335083,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5559700740111246,
+          "similarity": 0.4885225296020508,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.5356314184069053,
+          "similarity": 0.49587321281433105,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5349062016044852,
+          "similarity": 0.455890417098999,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5264377979228301,
+          "similarity": 0.4696621894836426,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.508429262265155,
+          "similarity": 0.45299607515335083,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.48995837746539445,
+          "similarity": 0.4885225296020508,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.4756652628974832,
+          "similarity": 0.49587321281433105,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.47228097667605345,
+          "similarity": 0.455890417098999,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.46709483773546495,
+          "similarity": 0.4696621894836426,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.45278389644699507,
+          "similarity": 0.45299607515335083,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.48995837746539445,
+          "similarity": 0.4885225296020508,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.4756652628974832,
+          "similarity": 0.49587321281433105,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.47228097667605345,
+          "similarity": 0.455890417098999,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.46709483773546495,
+          "similarity": 0.4696621894836426,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.45278389644699507,
+          "similarity": 0.45299607515335083,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3243,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3402,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3404,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 4,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": -0.5,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4391",
+  "query": "so... my plan is to push boosted category to the config, and have no 'default' boosted category... so its a config change to eliminate the boost",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5209815641212218,
+          "similarity": 0.5188672542572021,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4933813643582525,
+          "similarity": 0.48233431577682495,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.4883533392911965,
+          "similarity": 0.45303642749786377,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4796352108360087,
+          "similarity": 0.477555513381958,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.47893154910407754,
+          "similarity": 0.4379913806915283,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5209815641212218,
+          "similarity": 0.5188672542572021,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4933813643582525,
+          "similarity": 0.48233431577682495,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.4883533392911965,
+          "similarity": 0.45303642749786377,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4796352108360087,
+          "similarity": 0.477555513381958,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.47893154910407754,
+          "similarity": 0.4379913806915283,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

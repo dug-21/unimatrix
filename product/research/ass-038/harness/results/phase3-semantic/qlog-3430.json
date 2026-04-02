@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3430",
+  "query": "write this roadmap down in a document",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.46918672042536946,
+          "similarity": 0.390178918838501,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.43702993314199035,
+          "similarity": 0.344906747341156,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4326324557912534,
+          "similarity": 0.31855154037475586,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.4232351119309423,
+          "similarity": 0.39032983779907227,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.4228650780925949,
+          "similarity": 0.3363937735557556,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.6094379124341005
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.46918672042536946,
+          "similarity": 0.390178918838501,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.43702993314199035,
+          "similarity": 0.344906747341156,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4326324557912534,
+          "similarity": 0.31855154037475586,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.4232351119309423,
+          "similarity": 0.39032983779907227,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.4228650780925949,
+          "similarity": 0.3363937735557556,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.6094379124341005
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-30b7b9c9-1774911058000",
+  "query": "personalized_pagerank PPR direction test patterns",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5637408154756619,
+          "similarity": 0.5998023152351379,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.5231770329522893,
+          "similarity": 0.5586907267570496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5082710607499636,
+          "similarity": 0.5010401606559753,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.507977263794882,
+          "similarity": 0.49629294872283936,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.49743544952967866,
+          "similarity": 0.5097817182540894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5637408154756619,
+          "similarity": 0.5998023152351379,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.5231770329522893,
+          "similarity": 0.5586907267570496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5082710607499636,
+          "similarity": 0.5010401606559753,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.507977263794882,
+          "similarity": 0.49629294872283936,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.49743544952967866,
+          "similarity": 0.5097817182540894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

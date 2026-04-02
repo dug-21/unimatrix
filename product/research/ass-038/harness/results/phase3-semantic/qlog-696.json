@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-696",
+  "query": "run a unimatrix search",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.5086402806939483,
+          "similarity": 0.4836089611053467,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 972,
+          "title": "Retrospective findings: crt-004",
+          "category": "lesson-learned",
+          "final_score": 0.5079812928101077,
+          "similarity": 0.4998352527618408,
+          "confidence": 0.5933274336819485,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 973,
+          "title": "Retrospective findings: crt-003",
+          "category": "lesson-learned",
+          "final_score": 0.4822006061834848,
+          "similarity": 0.4652106761932373,
+          "confidence": 0.57281496507912,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.47820171145622614,
+          "similarity": 0.4632154107093811,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.4548277196884154,
+          "similarity": 0.4627726674079895,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.5086402806939483,
+          "similarity": 0.4836089611053467,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 972,
+          "title": "Retrospective findings: crt-004",
+          "category": "lesson-learned",
+          "final_score": 0.5079812928101077,
+          "similarity": 0.4998352527618408,
+          "confidence": 0.5933274336819485,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 973,
+          "title": "Retrospective findings: crt-003",
+          "category": "lesson-learned",
+          "final_score": 0.4822006061834848,
+          "similarity": 0.4652106761932373,
+          "confidence": 0.57281496507912,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.47820171145622614,
+          "similarity": 0.4632154107093811,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.4548277196884154,
+          "similarity": 0.4627726674079895,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

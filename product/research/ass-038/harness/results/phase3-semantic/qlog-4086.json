@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4086",
+  "query": "revert that change.  this needs to be done through an issue/bugfix.  create the issue.  I authorize you to quarantine.  You will need to use \"human\" as the agent_id",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.5140295314292178,
+          "similarity": 0.48507779836654663,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.4935840419816294,
+          "similarity": 0.4822206497192383,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.45602428885386315,
+          "similarity": 0.4142122268676758,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.4528579731728072,
+          "similarity": 0.41619622707366943,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.41992881292400586,
+          "similarity": 0.42084550857543945,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.5140295314292178,
+          "similarity": 0.48507779836654663,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.4935840419816294,
+          "similarity": 0.4822206497192383,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.45602428885386315,
+          "similarity": 0.4142122268676758,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.4528579731728072,
+          "similarity": 0.41619622707366943,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.41992881292400586,
+          "similarity": 0.42084550857543945,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4594",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(uni-rust-dev) → ]\n[Assistant] Reworkable fail — missing integration tests for the handler and a serde round-trip test. Spawning both fixes in parallel.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.5195141829448262,
+          "similarity": 0.49845850467681885,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.4984656147696964,
+          "similarity": 0.49474644660949707,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4828544887164681,
+          "similarity": 0.5071290135383606,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.479740909366009,
+          "similarity": 0.5151854753494263,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.46588803165837334,
+          "similarity": 0.5061872601509094,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.5195141829448262,
+          "similarity": 0.49845850467681885,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.4984656147696964,
+          "similarity": 0.49474644660949707,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4828544887164681,
+          "similarity": 0.5071290135383606,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.479740909366009,
+          "similarity": 0.5151854753494263,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.46588803165837334,
+          "similarity": 0.5061872601509094,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

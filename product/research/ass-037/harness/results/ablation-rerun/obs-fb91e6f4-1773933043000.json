@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773933043000",
+  "query": "sqlx runtime query offline false positive",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.5261699438833851,
+          "similarity": 0.519999623298645,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.524698668871084,
+          "similarity": 0.5056147575378418,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2159,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.5059186489214401,
+          "similarity": 0.47471606731414795,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.505743667223086,
+          "similarity": 0.4414590001106262,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.4937752975909634,
+          "similarity": 0.46457237005233765,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.47049521792208376,
+          "similarity": 0.519999623298645,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.4683957985730641,
+          "similarity": 0.5056147575378418,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2159,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.45250616330805976,
+          "similarity": 0.47471606731414795,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.4500031718418645,
+          "similarity": 0.4414590001106262,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.4429343146771546,
+          "similarity": 0.46457237005233765,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.47049521792208376,
+          "similarity": 0.519999623298645,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.4683957985730641,
+          "similarity": 0.5056147575378418,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2159,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.45250616330805976,
+          "similarity": 0.47471606731414795,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.4500031718418645,
+          "similarity": 0.4414590001106262,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.4429343146771546,
+          "similarity": 0.46457237005233765,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.526129876866601,
+          "similarity": 0.519999623298645,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.52457474736892,
+          "similarity": 0.5056147575378418,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2159,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.5057160347551589,
+          "similarity": 0.47471606731414795,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5053262343197582,
+          "similarity": 0.4414590001106262,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.49358566819136196,
+          "similarity": 0.46457237005233765,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.519999623298645,
+          "similarity": 0.519999623298645,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.5056147575378418,
+          "similarity": 0.5056147575378418,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2159,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.47471606731414795,
+          "similarity": 0.47471606731414795,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.46457237005233765,
+          "similarity": 0.46457237005233765,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.4414590001106262,
+          "similarity": 0.4414590001106262,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.4161536143376277,
+          "similarity": 0.519999623298645,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.4073013892540565,
+          "similarity": 0.5056147575378418,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2159,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.38828681065486026,
+          "similarity": 0.47471606731414795,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.38204453541682315,
+          "similarity": 0.46457237005233765,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.36782092314500076,
+          "similarity": 0.4414590001106262,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 40,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 20,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

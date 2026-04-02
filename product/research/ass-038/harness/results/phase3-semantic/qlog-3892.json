@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3892",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Clean slate committed. Resuming at Phase 1b — scope risk assessment against the corrected SCOPE.md.\n[tool: Bash(git push 2>&1) → To https://github.com/dug-21/unimatrix\n   0160eeb..bd465bb  feature/col-031 -> feature/col-031]\n[tool: Bash(cd /workspaces/unimatrix && \\\n  git add -A product/features/col-031/ && \\\n  git commit -m \"$(cat <<'EOF'\nrefactor(col-03) → [feature/col-031 bd465bb] refactor(col-031): fix rank formula + ts type; wipe stale design artifacts (#414)\n 19 files changed, 17 insertions(+), 2390 deletions(-)\n delete mode 100644 product/features/col-031/ACCEPTANCE-MAP.md\n delete mode 100644 product/features/col-031/ALIGNMENT-REPORT.md\n delete m]\n[tool: Bash(cd /workspaces/unimatrix/product/features/col-031 && \\\n  rm -rf architecture/ specification/ agents/ && \\\n  rm -f SCOPE-) → SCOPE.md]\n[Assistant] Now wipe all stale artifacts, keeping only SCOPE.md:\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5410276797876188,
+          "similarity": 0.5653887391090393,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.532775998007334,
+          "similarity": 0.5827102661132812,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.5273010480782997,
+          "similarity": 0.5718328356742859,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5071197298749931,
+          "similarity": 0.5281818509101868,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 758,
+          "title": "ADR-017-001: Extraction Facade over Individual Functions",
+          "category": "decision",
+          "final_score": 0.5068405191216557,
+          "similarity": 0.52669757604599,
+          "confidence": 0.5518563004073657,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5410276797876188,
+          "similarity": 0.5653887391090393,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.532775998007334,
+          "similarity": 0.5827102661132812,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.5273010480782997,
+          "similarity": 0.5718328356742859,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5071197298749931,
+          "similarity": 0.5281818509101868,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 758,
+          "title": "ADR-017-001: Extraction Facade over Individual Functions",
+          "category": "decision",
+          "final_score": 0.5068405191216557,
+          "similarity": 0.52669757604599,
+          "confidence": 0.5518563004073657,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

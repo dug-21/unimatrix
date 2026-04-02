@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-edf4842f-1774827470000",
+  "query": "serde JSON round-trip deserialization failure backward compat",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.5448528720561517,
+          "similarity": 0.5073923468589783,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.5408953371177616,
+          "similarity": 0.5127509832382202,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5359043983740911,
+          "similarity": 0.4745810031890869,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.5054836520339051,
+          "similarity": 0.5105215907096863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.5051478257916291,
+          "similarity": 0.462436318397522,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.5450977120901203,
+          "similarity": 0.5073923468589783,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.5410792871431181,
+          "similarity": 0.5127509832382202,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5363052048785683,
+          "similarity": 0.4745810031890869,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.5054507243301418,
+          "similarity": 0.5105215907096863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.5054269859706756,
+          "similarity": 0.462436318397522,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.4833849292984432,
+          "similarity": 0.5073923468589783,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.4808399794355732,
+          "similarity": 0.5127509832382202,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.47463529235360596,
+          "similarity": 0.4745810031890869,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.45472278420550943,
+          "similarity": 0.5105215907096863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4512708268070295,
+          "similarity": 0.462436318397522,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.41169291276198167,
+          "similarity": 0.5127509832382202,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.41032097889826846,
+          "similarity": 0.5105215907096863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.40839529037475586,
+          "similarity": 0.5073923468589783,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.38820369427020734,
+          "similarity": 0.4745810031890869,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.38073004209078276,
+          "similarity": 0.462436318397522,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.5127509832382202,
+          "similarity": 0.5127509832382202,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.5105215907096863,
+          "similarity": 0.5105215907096863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.5073923468589783,
+          "similarity": 0.5073923468589783,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.4745810031890869,
+          "similarity": 0.4745810031890869,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.462436318397522,
+          "similarity": 0.462436318397522,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.4833849292984432,
+          "similarity": 0.5073923468589783,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.4808399794355732,
+          "similarity": 0.5127509832382202,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.47463529235360596,
+          "similarity": 0.4745810031890869,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.45472278420550943,
+          "similarity": 0.5105215907096863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4512708268070295,
+          "similarity": 0.462436318397522,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

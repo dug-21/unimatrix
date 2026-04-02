@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-edf4842f-1774826984000",
+  "query": "tools.rs file size handler complexity extraction",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4816453039697395,
+          "similarity": 0.4369924068450928,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4803814783916367,
+          "similarity": 0.4547462463378906,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3580,
+          "title": "Gate 3b: file size violations discovered at gate — 500-line limit not self-checked by implementation agent",
+          "category": "lesson-learned",
+          "final_score": 0.4731740660498629,
+          "similarity": 0.43874692916870117,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 867,
+          "title": "ADR-004 col-020: Explicit Tool-to-Field Mapping for File Path Extraction",
+          "category": "decision",
+          "final_score": 0.4699652836231064,
+          "similarity": 0.4492805004119873,
+          "confidence": 0.5623621978170213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.467604617054041,
+          "similarity": 0.42329561710357666,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4816453039697395,
+          "similarity": 0.4369924068450928,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4803814783916367,
+          "similarity": 0.4547462463378906,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3580,
+          "title": "Gate 3b: file size violations discovered at gate — 500-line limit not self-checked by implementation agent",
+          "category": "lesson-learned",
+          "final_score": 0.4731740660498629,
+          "similarity": 0.43874692916870117,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 867,
+          "title": "ADR-004 col-020: Explicit Tool-to-Field Mapping for File Path Extraction",
+          "category": "decision",
+          "final_score": 0.4699652836231064,
+          "similarity": 0.4492805004119873,
+          "confidence": 0.5623621978170213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.467604617054041,
+          "similarity": 0.42329561710357666,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

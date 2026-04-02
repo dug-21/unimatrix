@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3208",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Spawning architect and specification writer in parallel.\n[tool: mcp__unimatrix__context_cycle(phase-end) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5265585222524071,
+          "similarity": 0.5037562847137451,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.4856389489144496,
+          "similarity": 0.46057385206222534,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.48403003681050605,
+          "similarity": 0.467568039894104,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.4784685533626414,
+          "similarity": 0.4542381763458252,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.46049099994651677,
+          "similarity": 0.457993745803833,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5265585222524071,
+          "similarity": 0.5037562847137451,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.4856389489144496,
+          "similarity": 0.46057385206222534,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.48403003681050605,
+          "similarity": 0.467568039894104,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.4784685533626414,
+          "similarity": 0.4542381763458252,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.46049099994651677,
+          "similarity": 0.457993745803833,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

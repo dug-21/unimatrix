@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774747702000",
+  "query": "phase_affinity_score PhaseFreqTable cold-start 1.0 fallback ADR contract",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.6338346532924697,
+          "similarity": 0.6825886964797974,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.632862377424499,
+          "similarity": 0.6905204057693481,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.6150649643631896,
+          "similarity": 0.6561811566352844,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.6102923613544718,
+          "similarity": 0.6354079842567444,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5751021682594595,
+          "similarity": 0.5629988312721252,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.5605501542902134,
+          "similarity": 0.6825886964797974,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.5604083325356599,
+          "similarity": 0.6905204057693481,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.5449888423671299,
+          "similarity": 0.6561811566352844,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.5400278621480256,
+          "similarity": 0.6354079842567444,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5092172105370437,
+          "similarity": 0.5629988312721252,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.5605501542902134,
+          "similarity": 0.6825886964797974,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.5604083325356599,
+          "similarity": 0.6905204057693481,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.5449888423671299,
+          "similarity": 0.6561811566352844,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.5400278621480256,
+          "similarity": 0.6354079842567444,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5092172105370437,
+          "similarity": 0.5629988312721252,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.6341512379884912,
+          "similarity": 0.6825886964797974,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.6332367802059591,
+          "similarity": 0.6905204057693481,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.6153319526246966,
+          "similarity": 0.6561811566352844,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.6104554498148761,
+          "similarity": 0.6354079842567444,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5750235751621391,
+          "similarity": 0.5629988312721252,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.6905204057693481,
+          "similarity": 0.6905204057693481,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.6825886964797974,
+          "similarity": 0.6825886964797974,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.6561811566352844,
+          "similarity": 0.6561811566352844,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.6354079842567444,
+          "similarity": 0.6354079842567444,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5629988312721252,
+          "similarity": 0.5629988312721252,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.521089480473445,
+          "similarity": 0.6905204057693481,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.5162084286029522,
+          "similarity": 0.6825886964797974,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.49995763485248274,
+          "similarity": 0.6561811566352844,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.48717414415799654,
+          "similarity": 0.6354079842567444,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.4426146653982309,
+          "similarity": 0.5629988312721252,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

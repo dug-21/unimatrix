@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774575636000",
+  "query": "col-029 graph cohesion metrics architectural decisions patterns",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5598728325166467,
+          "similarity": 0.5885273218154907,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5115264642414237,
+          "similarity": 0.4820154905319214,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.4992342786820192,
+          "similarity": 0.46974873542785645,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.49216521621086184,
+          "similarity": 0.5166246294975281,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.48908613410031565,
+          "similarity": 0.4603898525238037,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5598728325166467,
+          "similarity": 0.5885273218154907,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5115264642414237,
+          "similarity": 0.4820154905319214,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.4992342786820192,
+          "similarity": 0.46974873542785645,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.49216521621086184,
+          "similarity": 0.5166246294975281,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.48908613410031565,
+          "similarity": 0.4603898525238037,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

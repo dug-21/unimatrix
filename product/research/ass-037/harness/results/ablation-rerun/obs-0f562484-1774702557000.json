@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-0f562484-1774702557000",
+  "query": "supports_edge_threshold config infra graph cohesion",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.4003650958721454,
+          "similarity": 0.49434328079223633,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.37615079146165115,
+          "similarity": 0.4549950361251831,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.3728799819946289,
+          "similarity": 0.449679970741272,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.3704207493708684,
+          "similarity": 0.44568371772766113,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.3688366963313176,
+          "similarity": 0.4431096315383911,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5409260827990439,
+          "similarity": 0.49434328079223633,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5263998986188041,
+          "similarity": 0.4549950361251831,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5178737974813783,
+          "similarity": 0.449679970741272,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5057582069978124,
+          "similarity": 0.44568371772766113,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.505049068449272,
+          "similarity": 0.4431096315383911,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.49434328079223633,
+          "similarity": 0.49434328079223633,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.4549950361251831,
+          "similarity": 0.4549950361251831,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.449679970741272,
+          "similarity": 0.449679970741272,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.44568371772766113,
+          "similarity": 0.44568371772766113,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.4431096315383911,
+          "similarity": 0.4431096315383911,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.4794135232387488,
+          "similarity": 0.49434328079223633,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.4660195715740703,
+          "similarity": 0.4549950361251831,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.4594280503608093,
+          "similarity": 0.449679970741272,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.45031553065038193,
+          "similarity": 0.44568371772766113,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.44961500926578324,
+          "similarity": 0.4431096315383911,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.4794135232387488,
+          "similarity": 0.49434328079223633,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.4660195715740703,
+          "similarity": 0.4549950361251831,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.4594280503608093,
+          "similarity": 0.449679970741272,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.45031553065038193,
+          "similarity": 0.44568371772766113,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.44961500926578324,
+          "similarity": 0.4431096315383911,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5406235970717268,
+          "similarity": 0.49434328079223633,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5259362306805337,
+          "similarity": 0.4549950361251831,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5174309804246242,
+          "similarity": 0.449679970741272,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5053681129116425,
+          "similarity": 0.44568371772766113,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.504646864313487,
+          "similarity": 0.4431096315383911,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

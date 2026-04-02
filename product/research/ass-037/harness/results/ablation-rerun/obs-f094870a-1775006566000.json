@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-f094870a-1775006566000",
+  "query": "use context_correct not context_deprecate then store to supersede ADR broken correction chain",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.6678532490783364,
+          "similarity": 0.7500048875808716,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.5612731557258815,
+          "similarity": 0.5276588797569275,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.5475158961490182,
+          "similarity": 0.5215314030647278,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.5147323539400255,
+          "similarity": 0.49500584602355957,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.5901505734414216,
+          "similarity": 0.7500048875808716,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.49661750486863704,
+          "similarity": 0.5276588797569275,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.4861566816989081,
+          "similarity": 0.5215314030647278,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4603768468722728,
+          "similarity": 0.49500584602355957,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.5576953154343826,
+          "similarity": 0.7500048875808716,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.42086700292734003,
+          "similarity": 0.5276588797569275,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.4170962480398325,
+          "similarity": 0.5215314030647278,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4007728283221905,
+          "similarity": 0.49500584602355957,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.7500048875808716,
+          "similarity": 0.7500048875808716,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.5276588797569275,
+          "similarity": 0.5276588797569275,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.5215314030647278,
+          "similarity": 0.5215314030647278,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.49500584602355957,
+          "similarity": 0.49500584602355957,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.5901505734414216,
+          "similarity": 0.7500048875808716,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.49661750486863704,
+          "similarity": 0.5276588797569275,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.4861566816989081,
+          "similarity": 0.5215314030647278,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4603768468722728,
+          "similarity": 0.49500584602355957,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.6683867012764046,
+          "similarity": 0.7500048875808716,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.5610548812066025,
+          "similarity": 0.5276588797569275,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.5473471656744447,
+          "similarity": 0.5215314030647278,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.5146042597327756,
+          "similarity": 0.49500584602355957,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

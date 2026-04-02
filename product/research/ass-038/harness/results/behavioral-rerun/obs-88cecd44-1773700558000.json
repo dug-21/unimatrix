@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-88cecd44-1773700558000",
+  "query": "embedding model ONNX pipeline inference",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.5316270547561763,
+          "similarity": 0.5263682007789612,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.5189403860965768,
+          "similarity": 0.4991031885147095,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.5148885522032436,
+          "similarity": 0.5839077234268188,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.47034567470565647,
+          "similarity": 0.49793124198913574,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.4690302422839959,
+          "similarity": 0.49542438983917236,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.5316270547561763,
+          "similarity": 0.5263682007789612,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.5189403860965768,
+          "similarity": 0.4991031885147095,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.5148885522032436,
+          "similarity": 0.5839077234268188,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.47034567470565647,
+          "similarity": 0.49793124198913574,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.4690302422839959,
+          "similarity": 0.49542438983917236,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

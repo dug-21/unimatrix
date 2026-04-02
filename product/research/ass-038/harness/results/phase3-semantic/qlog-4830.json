@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4830",
+  "query": "OK.. batch them all, as a bugfix in a worktree per your plan.  Ensure you keep all work in a worktree to ensure no conflicts with an active development going on.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.503607547163286,
+          "similarity": 0.460599422454834,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.4968212059345659,
+          "similarity": 0.5336657762527466,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.4751127399220302,
+          "similarity": 0.4430087208747864,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4683727297029997,
+          "similarity": 0.5109081864356995,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.4663269239718626,
+          "similarity": 0.4410909414291382,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.503607547163286,
+          "similarity": 0.460599422454834,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.4968212059345659,
+          "similarity": 0.5336657762527466,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.4751127399220302,
+          "similarity": 0.4430087208747864,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4683727297029997,
+          "similarity": 0.5109081864356995,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.4663269239718626,
+          "similarity": 0.4410909414291382,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

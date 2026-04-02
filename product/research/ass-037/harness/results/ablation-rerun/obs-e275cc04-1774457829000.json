@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-e275cc04-1774457829000",
+  "query": "PostToolUse observation hook extraction detection rules",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5504873309486398,
+          "similarity": 0.5100676417350769,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.5427539842890533,
+          "similarity": 0.5449814796447754,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.5234435630320886,
+          "similarity": 0.49026215076446533,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5199856830314902,
+          "similarity": 0.5114688873291016,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5070362038659055,
+          "similarity": 0.4840540885925293,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.5449814796447754,
+          "similarity": 0.5449814796447754,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5114688873291016,
+          "similarity": 0.5114688873291016,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5100676417350769,
+          "similarity": 0.5100676417350769,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.49026215076446533,
+          "similarity": 0.49026215076446533,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4840540885925293,
+          "similarity": 0.4840540885925293,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5502248654342659,
+          "similarity": 0.5100676417350769,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.5427684485446099,
+          "similarity": 0.5449814796447754,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.523228099316065,
+          "similarity": 0.49026215076446533,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5199303791632928,
+          "similarity": 0.5114688873291016,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5068869693511433,
+          "similarity": 0.4840540885925293,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.48750274410080013,
+          "similarity": 0.5100676417350769,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.4843622942423656,
+          "similarity": 0.5449814796447754,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.46638474954941206,
+          "similarity": 0.49026215076446533,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.4653802038750215,
+          "similarity": 0.5114688873291016,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4539873834303404,
+          "similarity": 0.4840540885925293,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.43152706439678484,
+          "similarity": 0.5449814796447754,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.4109039306640625,
+          "similarity": 0.5114688873291016,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.41004162568312424,
+          "similarity": 0.5100676417350769,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.397853631239671,
+          "similarity": 0.49026215076446533,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.39403328528771037,
+          "similarity": 0.4840540885925293,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.48750274410080013,
+          "similarity": 0.5100676417350769,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.4843622942423656,
+          "similarity": 0.5449814796447754,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.46638474954941206,
+          "similarity": 0.49026215076446533,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.4653802038750215,
+          "similarity": 0.5114688873291016,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4539873834303404,
+          "similarity": 0.4840540885925293,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 3473,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 2903,
+        "from_rank": 1,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3471,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3475,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

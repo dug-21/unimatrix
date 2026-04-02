@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-abcc3cc8-1773157712000",
+  "query": "observe server boundary computation split trait extension",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.4765899255588138,
+          "similarity": 0.4910092353820801,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4609026676973155,
+          "similarity": 0.4805079698562622,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.4436390288589277,
+          "similarity": 0.42699098587036133,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.44127063345985823,
+          "similarity": 0.42996954917907715,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.4362995122693724,
+          "similarity": 0.44753557443618774,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.4765899255588138,
+          "similarity": 0.4910092353820801,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4609026676973155,
+          "similarity": 0.4805079698562622,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.4436390288589277,
+          "similarity": 0.42699098587036133,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.44127063345985823,
+          "similarity": 0.42996954917907715,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.4362995122693724,
+          "similarity": 0.44753557443618774,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.3983133756197416,
+          "similarity": 0.4910092353820801,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.3918510583730844,
+          "similarity": 0.4805079698562622,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.3715603534991925,
+          "similarity": 0.44753557443618774,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.360750491802509,
+          "similarity": 0.42996954917907715,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.3589175297663762,
+          "similarity": 0.42699098587036133,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5373774237687562,
+          "similarity": 0.4910092353820801,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.5168754292064859,
+          "similarity": 0.4805079698562622,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.4984270017798653,
+          "similarity": 0.42699098587036133,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.4948842469861704,
+          "similarity": 0.42996954917907715,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.4863389801308849,
+          "similarity": 0.44753557443618774,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.4910092353820801,
+          "similarity": 0.4910092353820801,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4805079698562622,
+          "similarity": 0.4805079698562622,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.44753557443618774,
+          "similarity": 0.44753557443618774,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.42996954917907715,
+          "similarity": 0.42996954917907715,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.42699098587036133,
+          "similarity": 0.42699098587036133,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5370763316363751,
+          "similarity": 0.4910092353820801,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.5166392768730428,
+          "similarity": 0.4805079698562622,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.4979631315466867,
+          "similarity": 0.42699098587036133,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.49446272297443605,
+          "similarity": 0.42996954917907715,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.48608700996403614,
+          "similarity": 0.44753557443618774,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

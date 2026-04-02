@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9bb67ef4-1773970959000",
+  "query": "clap CLI subcommand patterns",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2588,
+          "title": "ADR-005: Nested eval Subcommand via Clap 4.x Inner Enum",
+          "category": "decision",
+          "final_score": 0.49168482056540896,
+          "similarity": 0.47046202421188354,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1952,
+          "title": "clap top-level Cli flags must precede the subcommand in spawned child process args",
+          "category": "pattern",
+          "final_score": 0.47948790963900545,
+          "similarity": 0.5048980712890625,
+          "confidence": 0.5087556528929258,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.4531847103066402,
+          "similarity": 0.48621630668640137,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.40150373258502725,
+          "similarity": 0.30182701349258423,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3427,
+          "title": "col-026: pattern",
+          "category": "pattern",
+          "final_score": 0.3846857288271923,
+          "similarity": 0.2924540638923645,
+          "confidence": 0.55492688697043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2588,
+          "title": "ADR-005: Nested eval Subcommand via Clap 4.x Inner Enum",
+          "category": "decision",
+          "final_score": 0.49168482056540896,
+          "similarity": 0.47046202421188354,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1952,
+          "title": "clap top-level Cli flags must precede the subcommand in spawned child process args",
+          "category": "pattern",
+          "final_score": 0.47948790963900545,
+          "similarity": 0.5048980712890625,
+          "confidence": 0.5087556528929258,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.4531847103066402,
+          "similarity": 0.48621630668640137,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.40150373258502725,
+          "similarity": 0.30182701349258423,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3427,
+          "title": "col-026: pattern",
+          "category": "pattern",
+          "final_score": 0.3846857288271923,
+          "similarity": 0.2924540638923645,
+          "confidence": 0.55492688697043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

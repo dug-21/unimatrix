@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-bd98afa6-1773804619000",
+  "query": "integration test setup SqlxStore PoolConfig test_default async tokio test",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.5149330359238844,
+          "similarity": 0.6805161833763123,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.49198513764601487,
+          "similarity": 0.6432258486747742,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.39065793844369745,
+          "similarity": 0.4785691499710083,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.3895876957820012,
+          "similarity": 0.47683000564575195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.3887881865868202,
+          "similarity": 0.47553080320358276,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.6805161833763123,
+          "similarity": 0.6805161833763123,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.6432258486747742,
+          "similarity": 0.6432258486747742,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.4785691499710083,
+          "similarity": 0.4785691499710083,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.47683000564575195,
+          "similarity": 0.47683000564575195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.47553080320358276,
+          "similarity": 0.47553080320358276,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.5611440582401552,
+          "similarity": 0.6805161833763123,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.5500724442778345,
+          "similarity": 0.6432258486747742,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.45803907338834277,
+          "similarity": 0.47553080320358276,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.45317080887319067,
+          "similarity": 0.47683000564575195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.44993270463648993,
+          "similarity": 0.4785691499710083,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.635149517293274,
+          "similarity": 0.6805161833763123,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.623441892317522,
+          "similarity": 0.6432258486747742,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5131868452383235,
+          "similarity": 0.47553080320358276,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.506430193404737,
+          "similarity": 0.47683000564575195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5018564926887582,
+          "similarity": 0.4785691499710083,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.5611440582401552,
+          "similarity": 0.6805161833763123,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.5500724442778345,
+          "similarity": 0.6432258486747742,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.45803907338834277,
+          "similarity": 0.47553080320358276,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.45317080887319067,
+          "similarity": 0.47683000564575195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.44993270463648993,
+          "similarity": 0.4785691499710083,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.6348530031358687,
+          "similarity": 0.6805161833763123,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.6233125854132264,
+          "similarity": 0.6432258486747742,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5134329631601192,
+          "similarity": 0.47553080320358276,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.5066236586842076,
+          "similarity": 0.47683000564575195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5020086975431226,
+          "similarity": 0.4785691499710083,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 2262,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2744,
+        "from_rank": 3,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

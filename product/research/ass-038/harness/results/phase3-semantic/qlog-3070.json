@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3070",
+  "query": "you are working in a worktree correct?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.4819876601032933,
+          "similarity": 0.4470110535621643,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.4644705675855084,
+          "similarity": 0.43207937479019165,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.42424683340741065,
+          "similarity": 0.3295634984970093,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.40022897300303073,
+          "similarity": 0.3419457674026489,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.3799811320053903,
+          "similarity": 0.3205641508102417,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.4819876601032933,
+          "similarity": 0.4470110535621643,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.4644705675855084,
+          "similarity": 0.43207937479019165,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.42424683340741065,
+          "similarity": 0.3295634984970093,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.40022897300303073,
+          "similarity": 0.3419457674026489,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.3799811320053903,
+          "similarity": 0.3205641508102417,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

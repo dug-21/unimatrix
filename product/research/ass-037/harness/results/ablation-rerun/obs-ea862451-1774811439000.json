@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-ea862451-1774811439000",
+  "query": "UnimatrixServer::new move categories Arc spawn_background_tick use-after-move",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.6119412520008287,
+          "similarity": 0.6925538182258606,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5053902926630416,
+          "similarity": 0.4434387683868408,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4861393534106497,
+          "similarity": 0.45894598960876465,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4854529149114538,
+          "similarity": 0.4392307996749878,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.4827855184328849,
+          "similarity": 0.42106127738952637,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.6925538182258606,
+          "similarity": 0.6925538182258606,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.45894598960876465,
+          "similarity": 0.45894598960876465,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4434387683868408,
+          "similarity": 0.4434387683868408,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4392307996749878,
+          "similarity": 0.4392307996749878,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.42106127738952637,
+          "similarity": 0.42106127738952637,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.5453110420453081,
+          "similarity": 0.6925538182258606,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4498871252535617,
+          "similarity": 0.4434387683868408,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4369690995998136,
+          "similarity": 0.45894598960876465,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4350607522694155,
+          "similarity": 0.4392307996749878,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.431819540386068,
+          "similarity": 0.42106127738952637,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.5223408112159142,
+          "similarity": 0.6925538182258606,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.3785821474515475,
+          "similarity": 0.45894598960876465,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.36903924208420974,
+          "similarity": 0.4434387683868408,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.3664497228769156,
+          "similarity": 0.4392307996749878,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.3552684783935547,
+          "similarity": 0.42106127738952637,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.6124647102230691,
+          "similarity": 0.6925538182258606,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5049880100378714,
+          "similarity": 0.4434387683868408,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.48596277312622177,
+          "similarity": 0.45894598960876465,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4851527713060222,
+          "similarity": 0.4392307996749878,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.48238471167286306,
+          "similarity": 0.42106127738952637,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.5453110420453081,
+          "similarity": 0.6925538182258606,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4498871252535617,
+          "similarity": 0.4434387683868408,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4369690995998136,
+          "similarity": 0.45894598960876465,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4350607522694155,
+          "similarity": 0.4392307996749878,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.431819540386068,
+          "similarity": 0.42106127738952637,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2285,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2524,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

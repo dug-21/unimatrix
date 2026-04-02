@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-50273e07-1774575755000",
+  "query": "ADR correction cascade revalidate architecture specification implementation brief acceptance map",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.5165229577284594,
+          "similarity": 0.6830998063087463,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.3960820711576022,
+          "similarity": 0.4873833656311035,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.3826422324547401,
+          "similarity": 0.46554362773895264,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.38061094284057617,
+          "similarity": 0.4622427821159363,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.37857913970947266,
+          "similarity": 0.45894110202789307,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.5490261582082324,
+          "similarity": 0.6830998063087463,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.45387573243334245,
+          "similarity": 0.4622427821159363,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.45161566051688445,
+          "similarity": 0.4873833656311035,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4492082310801409,
+          "similarity": 0.45894110202789307,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4377847450610621,
+          "similarity": 0.46554362773895264,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.6183902333467944,
+          "similarity": 0.6830998063087463,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.5087175640349273,
+          "similarity": 0.4622427821159363,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.5033501401929239,
+          "similarity": 0.4873833656311035,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.5026529421976563,
+          "similarity": 0.45894110202789307,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4864752316524526,
+          "similarity": 0.46554362773895264,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.5490261582082324,
+          "similarity": 0.6830998063087463,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.45387573243334245,
+          "similarity": 0.4622427821159363,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.45161566051688445,
+          "similarity": 0.4873833656311035,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4492082310801409,
+          "similarity": 0.45894110202789307,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4377847450610621,
+          "similarity": 0.46554362773895264,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.6179672949614222,
+          "similarity": 0.6830998063087463,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.5090213207794959,
+          "similarity": 0.4622427821159363,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.5034544981965959,
+          "similarity": 0.4873833656311035,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.5029386404994196,
+          "similarity": 0.45894110202789307,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4866120395211683,
+          "similarity": 0.46554362773895264,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.6830998063087463,
+          "similarity": 0.6830998063087463,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.4873833656311035,
+          "similarity": 0.4873833656311035,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.46554362773895264,
+          "similarity": 0.46554362773895264,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.4622427821159363,
+          "similarity": 0.4622427821159363,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.45894110202789307,
+          "similarity": 0.45894110202789307,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 276,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 408,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3620,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3690,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

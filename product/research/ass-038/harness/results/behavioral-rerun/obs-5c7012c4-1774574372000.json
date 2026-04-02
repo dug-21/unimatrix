@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5c7012c4-1774574372000",
+  "query": "interface signature sync pseudocode architecture spec multi-file consistency",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.5508289672875065,
+          "similarity": 0.6257805228233337,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.5436239166769493,
+          "similarity": 0.5442669987678528,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.5433136325746778,
+          "similarity": 0.5841006636619568,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.5027656147032618,
+          "similarity": 0.503190815448761,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.4822541872484756,
+          "similarity": 0.49779367446899414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.5508289672875065,
+          "similarity": 0.6257805228233337,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.5436239166769493,
+          "similarity": 0.5442669987678528,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.5433136325746778,
+          "similarity": 0.5841006636619568,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.5027656147032618,
+          "similarity": 0.503190815448761,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.4822541872484756,
+          "similarity": 0.49779367446899414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

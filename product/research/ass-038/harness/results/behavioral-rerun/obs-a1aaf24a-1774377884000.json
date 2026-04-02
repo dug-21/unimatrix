@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774377884000",
+  "query": "format_index_table CONTEXT_GET_INSTRUCTION briefing header injection CompactPayload",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3245,
+          "title": "ADR-004 crt-027: CompactPayload Migrated to Flat Index Format",
+          "category": "decision",
+          "final_score": 0.5724704363085725,
+          "similarity": 0.5990744829177856,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.5579796780127707,
+          "similarity": 0.5954611897468567,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.5504649023292986,
+          "similarity": 0.5657469630241394,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.5088054857224842,
+          "similarity": 0.5147849321365356,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3407,
+          "title": "Cross-module constant import in briefing.rs: CONTEXT_GET_INSTRUCTION from index_briefing.rs",
+          "category": "pattern",
+          "final_score": 0.500222023230218,
+          "similarity": 0.5274869203567505,
+          "confidence": 0.5327641768295197,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3245,
+          "title": "ADR-004 crt-027: CompactPayload Migrated to Flat Index Format",
+          "category": "decision",
+          "final_score": 0.5724704363085725,
+          "similarity": 0.5990744829177856,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.5579796780127707,
+          "similarity": 0.5954611897468567,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.5504649023292986,
+          "similarity": 0.5657469630241394,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.5088054857224842,
+          "similarity": 0.5147849321365356,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3407,
+          "title": "Cross-module constant import in briefing.rs: CONTEXT_GET_INSTRUCTION from index_briefing.rs",
+          "category": "pattern",
+          "final_score": 0.500222023230218,
+          "similarity": 0.5274869203567505,
+          "confidence": 0.5327641768295197,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3257",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Spawning Stage 3a pseudocode and test plan agents in parallel.\n[tool: mcp__unimatrix__context_briefing(implement col-028: phase capture for read-side MCP tools, access weight corrections, confirmed_entries SessionState fiel) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5494637402262166,
+          "similarity": 0.5472761988639832,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.5177301873376975,
+          "similarity": 0.5667482018470764,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.5166532799167312,
+          "similarity": 0.47511565685272217,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5074653671425617,
+          "similarity": 0.5302800536155701,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.48795671522535333,
+          "similarity": 0.47505390644073486,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5494637402262166,
+          "similarity": 0.5472761988639832,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.5177301873376975,
+          "similarity": 0.5667482018470764,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.5166532799167312,
+          "similarity": 0.47511565685272217,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5074653671425617,
+          "similarity": 0.5302800536155701,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.48795671522535333,
+          "similarity": 0.47505390644073486,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

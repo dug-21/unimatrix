@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-9b17b3db-1773879909000",
+  "query": "block_on async fn tokio runtime nesting panic sync closure bridge",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6889902406640603,
+          "similarity": 0.7416086196899414,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.5869487713075345,
+          "similarity": 0.6133826971054077,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2367,
+          "title": "Handle::current().block_on() inside async fn panics — pre-fetch instead of bridging",
+          "category": "pattern",
+          "final_score": 0.5791253016581083,
+          "similarity": 0.6192218661308289,
+          "confidence": 0.5218444952685074,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.5456755256460737,
+          "similarity": 0.6043540239334106,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5409330052966403,
+          "similarity": 0.5962880849838257,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6049506481759541,
+          "similarity": 0.7416086196899414,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.5214471546030186,
+          "similarity": 0.6133826971054077,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2367,
+          "title": "Handle::current().block_on() inside async fn panics — pre-fetch instead of bridging",
+          "category": "pattern",
+          "final_score": 0.5161642816459667,
+          "similarity": 0.6192218661308289,
+          "confidence": 0.5218444952685074,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.4907317418230973,
+          "similarity": 0.6043540239334106,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.4867003385006826,
+          "similarity": 0.5962880849838257,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6893319184499426,
+          "similarity": 0.7416086196899414,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.5871204201763518,
+          "similarity": 0.6133826971054077,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2367,
+          "title": "Handle::current().block_on() inside async fn panics — pre-fetch instead of bridging",
+          "category": "pattern",
+          "final_score": 0.5793856689598791,
+          "similarity": 0.6192218661308289,
+          "confidence": 0.5218444952685074,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.5460565548557317,
+          "similarity": 0.6043540239334106,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5412924538660375,
+          "similarity": 0.5962880849838257,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6049506481759541,
+          "similarity": 0.7416086196899414,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.5214471546030186,
+          "similarity": 0.6133826971054077,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2367,
+          "title": "Handle::current().block_on() inside async fn panics — pre-fetch instead of bridging",
+          "category": "pattern",
+          "final_score": 0.5161642816459667,
+          "similarity": 0.6192218661308289,
+          "confidence": 0.5218444952685074,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.4907317418230973,
+          "similarity": 0.6043540239334106,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.4867003385006826,
+          "similarity": 0.5962880849838257,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5525283813476562,
+          "similarity": 0.7416086196899414,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2367,
+          "title": "Handle::current().block_on() inside async fn panics — pre-fetch instead of bridging",
+          "category": "pattern",
+          "final_score": 0.4772134560805101,
+          "similarity": 0.6192218661308289,
+          "confidence": 0.5218444952685074,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.4736201212956355,
+          "similarity": 0.6133826971054077,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.4680640147282527,
+          "similarity": 0.6043540239334106,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.46310035999004656,
+          "similarity": 0.5962880849838257,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.7416086196899414,
+          "similarity": 0.7416086196899414,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2367,
+          "title": "Handle::current().block_on() inside async fn panics — pre-fetch instead of bridging",
+          "category": "pattern",
+          "final_score": 0.6192218661308289,
+          "similarity": 0.6192218661308289,
+          "confidence": 0.5218444952685074,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.6133826971054077,
+          "similarity": 0.6133826971054077,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.6043540239334106,
+          "similarity": 0.6043540239334106,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5962880849838257,
+          "similarity": 0.5962880849838257,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

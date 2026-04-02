@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1957",
+  "query": "the stop at the end of design feels weird... what happens if we don't STOP there, but then have a START in delivery anyway?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3375,
+          "title": "ADR-005 col-024: Open-Ended Window Capped at unix_now_secs(), No Additional Max-Age Limit",
+          "category": "decision",
+          "final_score": 0.4008707551759757,
+          "similarity": 0.3127633333206177,
+          "confidence": 0.569844430733909,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.38463874590145664,
+          "similarity": 0.32579749822616577,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.3824750278473973,
+          "similarity": 0.2521008253097534,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.3768251734476513,
+          "similarity": 0.29791462421417236,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.35392465409965645,
+          "similarity": 0.26216232776641846,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3375,
+          "title": "ADR-005 col-024: Open-Ended Window Capped at unix_now_secs(), No Additional Max-Age Limit",
+          "category": "decision",
+          "final_score": 0.4008707551759757,
+          "similarity": 0.3127633333206177,
+          "confidence": 0.569844430733909,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.38463874590145664,
+          "similarity": 0.32579749822616577,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.3824750278473973,
+          "similarity": 0.2521008253097534,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.3768251734476513,
+          "similarity": 0.29791462421417236,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.35392465409965645,
+          "similarity": 0.26216232776641846,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

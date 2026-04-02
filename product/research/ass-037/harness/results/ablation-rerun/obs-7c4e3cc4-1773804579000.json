@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-7c4e3cc4-1773804579000",
+  "query": "PERMISSIVE_AUTO_ENROLL registry enrollment trust level",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.524491298938101,
+          "similarity": 0.4604618549346924,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.5151086248118841,
+          "similarity": 0.43499648571014404,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5030730830156014,
+          "similarity": 0.44494199752807617,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1041,
+          "title": "ADR-004: Configurable Noisy Trust Sources (crt-018)",
+          "category": "decision",
+          "final_score": 0.444492000025424,
+          "similarity": 0.35682666301727295,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.4426246138167198,
+          "similarity": 0.3846170902252197,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.4604618549346924,
+          "similarity": 0.4604618549346924,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.44494199752807617,
+          "similarity": 0.44494199752807617,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.43499648571014404,
+          "similarity": 0.43499648571014404,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.3846170902252197,
+          "similarity": 0.3846170902252197,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1041,
+          "title": "ADR-004: Configurable Noisy Trust Sources (crt-018)",
+          "category": "decision",
+          "final_score": 0.35682666301727295,
+          "similarity": 0.35682666301727295,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.3795149876521184,
+          "similarity": 0.4604618549346924,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.3699643061711238,
+          "similarity": 0.44494199752807617,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.3638439912062425,
+          "similarity": 0.43499648571014404,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.3328412862924429,
+          "similarity": 0.3846170902252197,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1041,
+          "title": "ADR-004: Configurable Noisy Trust Sources (crt-018)",
+          "category": "decision",
+          "final_score": 0.3157394849337064,
+          "similarity": 0.35682666301727295,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.5249097920361625,
+          "similarity": 0.4604618549346924,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.5156322335641832,
+          "similarity": 0.43499648571014404,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5034530247508141,
+          "similarity": 0.44494199752807617,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1041,
+          "title": "ADR-004: Configurable Noisy Trust Sources (crt-018)",
+          "category": "decision",
+          "final_score": 0.44506497608430085,
+          "similarity": 0.35682666301727295,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.44300374795784075,
+          "similarity": 0.3846170902252197,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.46532440955025356,
+          "similarity": 0.4604618549346924,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.45674609057605803,
+          "similarity": 0.43499648571014404,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.44858306071331283,
+          "similarity": 0.44494199752807617,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.40023252281394256,
+          "similarity": 0.3846170902252197,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1041,
+          "title": "ADR-004: Configurable Noisy Trust Sources (crt-018)",
+          "category": "decision",
+          "final_score": 0.3997492442197958,
+          "similarity": 0.35682666301727295,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.46532440955025356,
+          "similarity": 0.4604618549346924,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.45674609057605803,
+          "similarity": 0.43499648571014404,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.44858306071331283,
+          "similarity": 0.44494199752807617,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.40023252281394256,
+          "similarity": 0.3846170902252197,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1041,
+          "title": "ADR-004: Configurable Noisy Trust Sources (crt-018)",
+          "category": "decision",
+          "final_score": 0.3997492442197958,
+          "similarity": 0.35682666301727295,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

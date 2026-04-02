@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774264981000",
+  "query": "write_pool read_pool visibility pub crate cross-crate pool access pattern",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.41142801138070917,
+          "similarity": 0.5123205184936523,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.3943880521334135,
+          "similarity": 0.4846305847167969,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.36412253746619594,
+          "similarity": 0.43544912338256836,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.35985660552978516,
+          "similarity": 0.4285169839859009,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.35972081697904146,
+          "similarity": 0.4282963275909424,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5123205184936523,
+          "similarity": 0.5123205184936523,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.4846305847167969,
+          "similarity": 0.4846305847167969,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.43544912338256836,
+          "similarity": 0.43544912338256836,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.4285169839859009,
+          "similarity": 0.4285169839859009,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.4282963275909424,
+          "similarity": 0.4282963275909424,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5350739721542779,
+          "similarity": 0.5123205184936523,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5296094527610988,
+          "similarity": 0.4846305847167969,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.49964295812848664,
+          "similarity": 0.4282963275909424,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.48418074146456225,
+          "similarity": 0.4285169839859009,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.47290494393275173,
+          "similarity": 0.43544912338256836,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.47643393103337756,
+          "similarity": 0.5123205184936523,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.4704747859200003,
+          "similarity": 0.4846305847167969,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.44461817860725045,
+          "similarity": 0.4282963275909424,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.43336861049460257,
+          "similarity": 0.4285169839859009,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4256485393926169,
+          "similarity": 0.43544912338256836,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5349262224551827,
+          "similarity": 0.5123205184936523,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5293173821893825,
+          "similarity": 0.4846305847167969,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.49917966831980126,
+          "similarity": 0.4282963275909424,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.4838192884939216,
+          "similarity": 0.4285169839859009,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.47266172431878944,
+          "similarity": 0.43544912338256836,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.47643393103337756,
+          "similarity": 0.5123205184936523,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.4704747859200003,
+          "similarity": 0.4846305847167969,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.44461817860725045,
+          "similarity": 0.4282963275909424,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.43336861049460257,
+          "similarity": 0.4285169839859009,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4256485393926169,
+          "similarity": 0.43544912338256836,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 1498,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 747,
+        "from_rank": 3,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

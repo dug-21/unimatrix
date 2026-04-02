@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2947",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Gate 3 re-validation after rework) → ]\n[Assistant] LP-4b added, tests pass. Running Gate 3 again.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.5009935017432471,
+          "similarity": 0.5165420174598694,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.49646642149512343,
+          "similarity": 0.44445908069610596,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.4903574753471257,
+          "similarity": 0.4453507661819458,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.487640575542558,
+          "similarity": 0.4628359079360962,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.43542569762782046,
+          "similarity": 0.4483088254928589,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.5009935017432471,
+          "similarity": 0.5165420174598694,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.49646642149512343,
+          "similarity": 0.44445908069610596,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.4903574753471257,
+          "similarity": 0.4453507661819458,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.487640575542558,
+          "similarity": 0.4628359079360962,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.43542569762782046,
+          "similarity": 0.4483088254928589,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

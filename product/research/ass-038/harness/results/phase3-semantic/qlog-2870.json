@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2870",
+  "query": "knowledge entries stored: the retro architect did not store 26 items.  We really need to better understand the permissions issue.   we ran this session --skipping-permissions altogether, so the symptom is likely real, but the analysis is completely wrong",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.48403713602324583,
+          "similarity": 0.4224356412887573,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.4802810567992082,
+          "similarity": 0.535514771938324,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.4782616132432379,
+          "similarity": 0.49938392639160156,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4710620858948359,
+          "similarity": 0.4440251588821411,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.4518271026534445,
+          "similarity": 0.4481769800186157,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.48403713602324583,
+          "similarity": 0.4224356412887573,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.4802810567992082,
+          "similarity": 0.535514771938324,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.4782616132432379,
+          "similarity": 0.49938392639160156,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4710620858948359,
+          "similarity": 0.4440251588821411,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.4518271026534445,
+          "similarity": 0.4481769800186157,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

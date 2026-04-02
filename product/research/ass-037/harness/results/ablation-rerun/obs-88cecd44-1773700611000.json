@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-88cecd44-1773700611000",
+  "query": "knowledge synthesis clustering distillation maintenance tick automated",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4616064334515459,
+          "similarity": 0.4364570379257202,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.42006638988335726,
+          "similarity": 0.37366145849227905,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.40837577165968336,
+          "similarity": 0.3381590247154236,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4083144607848424,
+          "similarity": 0.32982105016708374,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.3957939906939891,
+          "similarity": 0.3568401336669922,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.6094379124341005
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5221601010192081,
+          "similarity": 0.4364570379257202,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.4713007843014434,
+          "similarity": 0.37366145849227905,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.459468764786344,
+          "similarity": 0.32982105016708374,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.458735468482367,
+          "similarity": 0.3381590247154236,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.4396348760832211,
+          "similarity": 0.3568401336669922,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.6094379124341005
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.36474279256967396,
+          "similarity": 0.4364570379257202,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.3260993590721717,
+          "similarity": 0.37366145849227905,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.3157477745643029,
+          "similarity": 0.3568401336669922,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.3042517075171838,
+          "similarity": 0.3381590247154236,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.2991206462566669,
+          "similarity": 0.32982105016708374,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.6094379124341005
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4364570379257202,
+          "similarity": 0.4364570379257202,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.37366145849227905,
+          "similarity": 0.37366145849227905,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.3568401336669922,
+          "similarity": 0.3568401336669922,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.3381590247154236,
+          "similarity": 0.3381590247154236,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.32982105016708374,
+          "similarity": 0.32982105016708374,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.6094379124341005
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.521603587622497,
+          "similarity": 0.4364570379257202,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.47066676270527996,
+          "similarity": 0.37366145849227905,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4586268965095956,
+          "similarity": 0.32982105016708374,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.45795250456180236,
+          "similarity": 0.3381590247154236,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.4390972478857131,
+          "similarity": 0.3568401336669922,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.6094379124341005
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4616064334515459,
+          "similarity": 0.4364570379257202,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.42006638988335726,
+          "similarity": 0.37366145849227905,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.40837577165968336,
+          "similarity": 0.3381590247154236,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4083144607848424,
+          "similarity": 0.32982105016708374,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.3957939906939891,
+          "similarity": 0.3568401336669922,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.6094379124341005
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 241,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3234",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] SCOPE.md approved. Proceeding to Phase 1b — scope risk assessment.\n[Assistant] **Phase 1 complete.** SCOPE.md is at `product/features/nan-008/SCOPE.md`.\n\nHere's what the researcher found and what needs your approval before proceeding.\n\n---\n\n### Scope summary\n\n**Problem**: P@K and MRR measure consistency with the current system. Features that deliberately change result distribution (PPR #398, Contradicts suppression #395) produce false regression signals for correct behavior. CC@k and ICD provide ground-truth-free quality signals.\n\n**Two change surfaces, 9 files:**\n- `runner/` — metrics.rs (new functions), output.rs (new fields on `ProfileResult`, `ComparisonMetrics`, `ScoredEntry`), replay.rs (pass `configured_categories` to computation)\n- `report/` — mod.rs (deserialize new fields with `#[serde(default)]`), aggregate.rs (accumulate new stats), render.rs (new table columns + Distribution Analysis section 6)\n- `docs/testing/eval-harness.md` — document CC@k and ICD\n- `product/test/eval-baselines/log.jsonl` + `README.md` — append baseline entry\n\n**Key constraint discovered**: `runner/output.rs` and `report/mod.rs` maintain independent copies of `ProfileResult`, `ComparisonMetrics`, and `ScoredEntry` — both must be updated in sync, with `#[serde(default)]` on report's copies for backward compat.\n\n**`configured_categories`** is sourced from `profile.config_overrides.knowledge.categories` (from `KnowledgeConfig`) — no hardcoding.\n\n---\n\n### Three open questions for you\n\n1. **`category` in result JSON** — The researcher recommends adding `category: String` to `ScoredEntry` (persisted to output JSON). The alternative is computing CC@k/ICD inline and discarding it. The SCOPE recommends persisting it (useful for future metrics). Any objection?\n\n2. **ICD denominator** — ICD entropy is computed over the *actual result distribution* (not normalized by `|configured_categories|`). So a result with 2 categories present produces entropy over `p(cat_A)` and `p(cat_B)`, independent of how many categories are configured. CC@k uses `configured_categories` as denominator; ICD does not. Does this match your expectation, or do you want ICD normalized to [0, 1]?\n\n3. **Baseline recording** — Appending to `log.jsonl` requires running `eval run` against the current snapshot. Is a current snapshot available, or should the delivery agent produce one as part of the feature work?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5371715696825153,
+          "similarity": 0.5202873945236206,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5191072163026906,
+          "similarity": 0.5087538361549377,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5125898951049667,
+          "similarity": 0.519745945930481,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.508647421985673,
+          "similarity": 0.5059609413146973,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.4763877863131071,
+          "similarity": 0.5037367939949036,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5371715696825153,
+          "similarity": 0.5202873945236206,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5191072163026906,
+          "similarity": 0.5087538361549377,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5125898951049667,
+          "similarity": 0.519745945930481,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.508647421985673,
+          "similarity": 0.5059609413146973,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.4763877863131071,
+          "similarity": 0.5037367939949036,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 43,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -14,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

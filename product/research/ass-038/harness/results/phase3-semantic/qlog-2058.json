@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2058",
+  "query": "then go to the official claude code docs.. there's no reason you cannot provie me a definitive answer",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.45958585058673873,
+          "similarity": 0.36470097303390503,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.4488159987455478,
+          "similarity": 0.36730027198791504,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.43139740237849755,
+          "similarity": 0.37745529413223267,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.42461478009417364,
+          "similarity": 0.36456620693206787,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.40942917494209563,
+          "similarity": 0.38934433460235596,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.45958585058673873,
+          "similarity": 0.36470097303390503,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.4488159987455478,
+          "similarity": 0.36730027198791504,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.43139740237849755,
+          "similarity": 0.37745529413223267,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.42461478009417364,
+          "similarity": 0.36456620693206787,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.40942917494209563,
+          "similarity": 0.38934433460235596,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

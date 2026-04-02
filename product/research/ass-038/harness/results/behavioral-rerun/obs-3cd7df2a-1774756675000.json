@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774756675000",
+  "query": "graph traversal edge filter boundary SR-01 PPR injection pipeline step",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.58042162895916,
+          "similarity": 0.6276262402534485,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5348675002977522,
+          "similarity": 0.5444145798683167,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.4928945427858281,
+          "similarity": 0.46254003047943115,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.48554671838954433,
+          "similarity": 0.45367491245269775,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.48135918679866496,
+          "similarity": 0.4595485329627991,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.58042162895916,
+          "similarity": 0.6276262402534485,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5348675002977522,
+          "similarity": 0.5444145798683167,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.4928945427858281,
+          "similarity": 0.46254003047943115,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.48554671838954433,
+          "similarity": 0.45367491245269775,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.48135918679866496,
+          "similarity": 0.4595485329627991,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

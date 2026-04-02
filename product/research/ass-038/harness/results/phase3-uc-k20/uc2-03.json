@@ -1,0 +1,434 @@
+{
+  "scenario_id": "uc2-03",
+  "query": "What serialization format should be used when migrating knowledge entries between storage backends?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.5891082540415407,
+          "similarity": 0.631446897983551,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.5462642238261576,
+          "similarity": 0.5744670033454895,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 59,
+          "title": "ADR-002: bincode v2 Serialization with serde default for Schema Evolution",
+          "category": "decision",
+          "final_score": 0.5323908746373561,
+          "similarity": 0.5287238359451294,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.5263714532060942,
+          "similarity": 0.5230967402458191,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5221923643251872,
+          "similarity": 0.5496980547904968,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.504722988239008,
+          "similarity": 0.4703003168106079,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.5045762450289195,
+          "similarity": 0.502554714679718,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5028630790715742,
+          "similarity": 0.4743615388870239,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.5004658722414866,
+          "similarity": 0.47060930728912354,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.49999792500546103,
+          "similarity": 0.458996057510376,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.49716870562316207,
+          "similarity": 0.4574826955795288,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 379,
+          "title": "ADR-005: Scan-and-Rewrite Migration — Historical (Superseded by ALTER TABLE for post-v6)",
+          "category": "decision",
+          "final_score": 0.49122968644484977,
+          "similarity": 0.4650202989578247,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.48763902580472873,
+          "similarity": 0.4569857120513916,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.48631789574480044,
+          "similarity": 0.4669201970100403,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 838,
+          "title": "Shared Constructor for Dual-Transport Record Construction",
+          "category": "pattern",
+          "final_score": 0.4820458384862154,
+          "similarity": 0.46267926692962646,
+          "confidence": 0.5760111802774043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4801460881988763,
+          "similarity": 0.48223841190338135,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 359,
+          "title": "ADR-005: Migration Compatibility Module for Bincode Deserializers",
+          "category": "decision",
+          "final_score": 0.47680641924276757,
+          "similarity": 0.5162464380264282,
+          "confidence": 0.48526536933547193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.4662013727350446,
+          "similarity": 0.46809279918670654,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.4661128708987293,
+          "similarity": 0.46076881885528564,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 184,
+          "title": "ADR-002: Bincode v2 for Adaptation State Persistence",
+          "category": "decision",
+          "final_score": 0.45846892101916237,
+          "similarity": 0.46880853176116943,
+          "confidence": 0.5032605973931988,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.05,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.8451132568429528
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.5891082540415407,
+          "similarity": 0.631446897983551,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.5462642238261576,
+          "similarity": 0.5744670033454895,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 59,
+          "title": "ADR-002: bincode v2 Serialization with serde default for Schema Evolution",
+          "category": "decision",
+          "final_score": 0.5323908746373561,
+          "similarity": 0.5287238359451294,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.5263714532060942,
+          "similarity": 0.5230967402458191,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5221923643251872,
+          "similarity": 0.5496980547904968,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.504722988239008,
+          "similarity": 0.4703003168106079,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.5045762450289195,
+          "similarity": 0.502554714679718,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5028630790715742,
+          "similarity": 0.4743615388870239,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.5004658722414866,
+          "similarity": 0.47060930728912354,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.49999792500546103,
+          "similarity": 0.458996057510376,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.49716870562316207,
+          "similarity": 0.4574826955795288,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 379,
+          "title": "ADR-005: Scan-and-Rewrite Migration — Historical (Superseded by ALTER TABLE for post-v6)",
+          "category": "decision",
+          "final_score": 0.49122968644484977,
+          "similarity": 0.4650202989578247,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.48763902580472873,
+          "similarity": 0.4569857120513916,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.48631789574480044,
+          "similarity": 0.4669201970100403,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 838,
+          "title": "Shared Constructor for Dual-Transport Record Construction",
+          "category": "pattern",
+          "final_score": 0.4820458384862154,
+          "similarity": 0.46267926692962646,
+          "confidence": 0.5760111802774043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4801460881988763,
+          "similarity": 0.48223841190338135,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 359,
+          "title": "ADR-005: Migration Compatibility Module for Bincode Deserializers",
+          "category": "decision",
+          "final_score": 0.47680641924276757,
+          "similarity": 0.5162464380264282,
+          "confidence": 0.48526536933547193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.4662013727350446,
+          "similarity": 0.46809279918670654,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.4661128708987293,
+          "similarity": 0.46076881885528564,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 184,
+          "title": "ADR-002: Bincode v2 for Adaptation State Persistence",
+          "category": "decision",
+          "final_score": 0.45846892101916237,
+          "similarity": 0.46880853176116943,
+          "confidence": 0.5032605973931988,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.05,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.8451132568429528
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

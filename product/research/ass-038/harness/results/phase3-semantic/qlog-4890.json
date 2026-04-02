@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4890",
+  "query": "i'm honestly not sure you your're testing... you have changes strewn across the main worktree, as well as multiple different worktrees... how are you testing a combined product with code all over the place?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.5431051023097773,
+          "similarity": 0.5233875513076782,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.5061934950052147,
+          "similarity": 0.4852621555328369,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.47436990416320735,
+          "similarity": 0.432537317276001,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.4549484986748784,
+          "similarity": 0.42997193336486816,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.45225645573851403,
+          "similarity": 0.44079798460006714,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.5431051023097773,
+          "similarity": 0.5233875513076782,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.5061934950052147,
+          "similarity": 0.4852621555328369,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.47436990416320735,
+          "similarity": 0.432537317276001,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.4549484986748784,
+          "similarity": 0.42997193336486816,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.45225645573851403,
+          "similarity": 0.44079798460006714,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5187",
+  "query": "so... I'm reviewing bugfix protocol... it gets managed inconsistent, because it replays the process multple times, and some of the steps only are documented in one of them.  I like the parts of the protocol for rework methodology, however, items like context_cycle commands don't appear above, but are plainly shown in the the quick reference map is actually pretty good...  The unimatrix commands should probably be converted to full documented calls, vs pseudocode calls.. Take a look at it... you can also do some context_cycle_review commands for bugfixes to see variability (look at the most recent ones), and recommend some updates (don't make them yet)",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.6004205024691651,
+          "similarity": 0.6520028114318848,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5725142238212583,
+          "similarity": 0.5907271504402161,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.5345115367726446,
+          "similarity": 0.5713379979133606,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5171220522006409,
+          "similarity": 0.5553872585296631,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.4978893776441875,
+          "similarity": 0.5445898175239563,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.6004205024691651,
+          "similarity": 0.6520028114318848,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5725142238212583,
+          "similarity": 0.5907271504402161,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.5345115367726446,
+          "similarity": 0.5713379979133606,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5171220522006409,
+          "similarity": 0.5553872585296631,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.4978893776441875,
+          "similarity": 0.5445898175239563,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

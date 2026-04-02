@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774369794000",
+  "query": "analytics.db separate database two databases",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.38134828266262644,
+          "similarity": 0.27333152294158936,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3546,
+          "title": "How to add a nullable column to the query_log table (or any analytics table with positional binds)",
+          "category": "procedure",
+          "final_score": 0.37527756621357666,
+          "similarity": 0.3038142919540405,
+          "confidence": 0.5131615483596503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.36476931870487317,
+          "similarity": 0.24432778358459473,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.36363766504506945,
+          "similarity": 0.2564813494682312,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.3281350846189769,
+          "similarity": 0.24862194061279297,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.38134828266262644,
+          "similarity": 0.27333152294158936,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3546,
+          "title": "How to add a nullable column to the query_log table (or any analytics table with positional binds)",
+          "category": "procedure",
+          "final_score": 0.37527756621357666,
+          "similarity": 0.3038142919540405,
+          "confidence": 0.5131615483596503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.36476931870487317,
+          "similarity": 0.24432778358459473,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.36363766504506945,
+          "similarity": 0.2564813494682312,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.3281350846189769,
+          "similarity": 0.24862194061279297,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-edf4842f-1774827467000",
+  "query": "SQLite migration cascade schema version touchpoints",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.6175936760621912,
+          "similarity": 0.6089092493057251,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5932133317841108,
+          "similarity": 0.577384352684021,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5906745092126173,
+          "similarity": 0.5632472634315491,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5832441144833999,
+          "similarity": 0.5946758389472961,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5678721715871347,
+          "similarity": 0.5414631962776184,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.6089092493057251,
+          "similarity": 0.6089092493057251,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5946758389472961,
+          "similarity": 0.5946758389472961,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.577384352684021,
+          "similarity": 0.577384352684021,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5632472634315491,
+          "similarity": 0.5632472634315491,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5414631962776184,
+          "similarity": 0.5414631962776184,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5434546246528625,
+          "similarity": 0.6089092493057251,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5234400240629965,
+          "similarity": 0.577384352684021,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5205805183857319,
+          "similarity": 0.5632472634315491,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5174118433341411,
+          "similarity": 0.5946758389472961,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5024113818904566,
+          "similarity": 0.5414631962776184,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5434546246528625,
+          "similarity": 0.6089092493057251,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5234400240629965,
+          "similarity": 0.577384352684021,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5205805183857319,
+          "similarity": 0.5632472634315491,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5174118433341411,
+          "similarity": 0.5946758389472961,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5024113818904566,
+          "similarity": 0.5414631962776184,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.4708672303419847,
+          "similarity": 0.6089092493057251,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.4621082085829515,
+          "similarity": 0.5946758389472961,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.45146729395939755,
+          "similarity": 0.577384352684021,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.4427675467271071,
+          "similarity": 0.5632472634315491,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.4293619669400729,
+          "similarity": 0.5414631962776184,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.6175372836806556,
+          "similarity": 0.6089092493057251,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5931105462055387,
+          "similarity": 0.577384352684021,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5904964102140389,
+          "similarity": 0.5632472634315491,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5833183464604381,
+          "similarity": 0.5946758389472961,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5677006847344754,
+          "similarity": 0.5414631962776184,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3894,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 836,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 374,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

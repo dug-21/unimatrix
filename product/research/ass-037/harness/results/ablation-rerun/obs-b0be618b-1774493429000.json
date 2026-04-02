@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-b0be618b-1774493429000",
+  "query": "pure function metric computation eval harness",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.3655699949998122,
+          "similarity": 0.4378012418746948,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.3635116357069749,
+          "similarity": 0.43445640802383423,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.3604382001436674,
+          "similarity": 0.4294620752334595,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.35030236610999477,
+          "similarity": 0.41299134492874146,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.34652262467604417,
+          "similarity": 0.4068492650985718,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.44476521978040523,
+          "similarity": 0.4378012418746948,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.4445449760958001,
+          "similarity": 0.43445640802383423,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.44154411725420256,
+          "similarity": 0.4294620752334595,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.4335317355410479,
+          "similarity": 0.41299134492874146,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.42530435169378467,
+          "similarity": 0.4068492650985718,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.49851983940119704,
+          "similarity": 0.43445640802383423,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.4985160958937621,
+          "similarity": 0.4378012418746948,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.4948817894163253,
+          "similarity": 0.4294620752334595,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.4854531534715434,
+          "similarity": 0.41299134492874146,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.4747923645734725,
+          "similarity": 0.4068492650985718,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.49893855463895764,
+          "similarity": 0.43445640802383423,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.49891292500499795,
+          "similarity": 0.4378012418746948,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.4953093692475859,
+          "similarity": 0.4294620752334595,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.48592676006332647,
+          "similarity": 0.41299134492874146,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.47523643711906016,
+          "similarity": 0.4068492650985718,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.4378012418746948,
+          "similarity": 0.4378012418746948,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.43445640802383423,
+          "similarity": 0.43445640802383423,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.4294620752334595,
+          "similarity": 0.4294620752334595,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.41299134492874146,
+          "similarity": 0.41299134492874146,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.4068492650985718,
+          "similarity": 0.4068492650985718,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.44476521978040523,
+          "similarity": 0.4378012418746948,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.4445449760958001,
+          "similarity": 0.43445640802383423,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.44154411725420256,
+          "similarity": 0.4294620752334595,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.4335317355410479,
+          "similarity": 0.41299134492874146,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.42530435169378467,
+          "similarity": 0.4068492650985718,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 1042,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 2586,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

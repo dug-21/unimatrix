@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-2608d271-1774306622000",
+  "query": "workflow protocols agent definitions",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.5051732641415748,
+          "similarity": 0.5804072618484497,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.445099251046051,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.43115922006267576,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4152597224980473,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4152134792440748,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.45332754575289214,
+          "similarity": 0.5804072618484497,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4101074658907377,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4101074658907377,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.390501279097337,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.390501279097337,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.5804072618484497,
+          "similarity": 0.5804072618484497,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.5101746320724487,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.5101746320724487,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4783145785331726,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4783145785331726,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.5051732641415748,
+          "similarity": 0.5804072618484497,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.445099251046051,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.43115922006267576,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4152597224980473,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4152134792440748,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.5679265182068338,
+          "similarity": 0.5804072618484497,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.49239219396530143,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4733830608061534,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4545982962670488,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.454535237284359,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.5678449447189802,
+          "similarity": 0.5804072618484497,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4922759688796339,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4731425930200992,
+          "similarity": 0.5101746320724487,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4544432878862245,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.45437981675332106,
+          "similarity": 0.4783145785331726,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

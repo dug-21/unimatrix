@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2722",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Clean — 0 FAIL, 0 VARIANCE. Four stale `4096` references in ARCHITECTURE.md and RISK-TEST-STRATEGY.md noted for delivery to overwrite; no design conflict, ADR-005 and spec are authoritative. Spawning synthesizer with fresh context.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5652950233749742,
+          "similarity": 0.599744439125061,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.49756590698753556,
+          "similarity": 0.4971799850463867,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.4923548505759576,
+          "similarity": 0.46526873111724854,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4802509364633789,
+          "similarity": 0.4760318994522095,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4629806374924722,
+          "similarity": 0.46936869621276855,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5652950233749742,
+          "similarity": 0.599744439125061,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.49756590698753556,
+          "similarity": 0.4971799850463867,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.4923548505759576,
+          "similarity": 0.46526873111724854,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4802509364633789,
+          "similarity": 0.4760318994522095,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4629806374924722,
+          "similarity": 0.46936869621276855,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

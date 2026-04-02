@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-369",
+  "query": "add this comment as data... not as a solution",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.4068221609320082,
+          "similarity": 0.28510332107543945,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.3921377250560104,
+          "similarity": 0.25078582763671875,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.3893911919961759,
+          "similarity": 0.3160790205001831,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.3727170789324121,
+          "similarity": 0.25012242794036865,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 837,
+          "title": "Store CRUD Module Structure for New Tables",
+          "category": "pattern",
+          "final_score": 0.35116902261099736,
+          "similarity": 0.26401960849761963,
+          "confidence": 0.5045736206618222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.4068221609320082,
+          "similarity": 0.28510332107543945,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.3921377250560104,
+          "similarity": 0.25078582763671875,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.3893911919961759,
+          "similarity": 0.3160790205001831,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.3727170789324121,
+          "similarity": 0.25012242794036865,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 837,
+          "title": "Store CRUD Module Structure for New Tables",
+          "category": "pattern",
+          "final_score": 0.35116902261099736,
+          "similarity": 0.26401960849761963,
+          "confidence": 0.5045736206618222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

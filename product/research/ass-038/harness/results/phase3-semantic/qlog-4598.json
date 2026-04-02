@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4598",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(git push) → ]\n[Assistant] Documentation trigger: `context_cycle_review` has a new `force` param and `context_status` gains `pending_cycle_reviews` — both user-visible MCP tool changes → MANDATORY. Spawning uni-docs and pushing in parallel.\n[tool: Bash(git add product/features/crt-033/testing/ product/features/crt-033/reports/ product/features/crt-033/agents/crt-033-agen) → [feature/crt-033 fa964b7] test: crt-033 risk coverage + gate reports + integration tests (#453)\n 5 files changed, 581 insertions(+)\n create mode 100644 product/features/crt-033/agents/crt-033-agent-8-tester-report.md\n create mode 100644 product/features/crt-033/reports/gate-3c-report.md\n create mode]\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'crt-033'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[Assistant] Gate 3c PASS. Proceeding to Phase 4.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5645148125620504,
+          "similarity": 0.6430140137672424,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5114046051106007,
+          "similarity": 0.48642170429229736,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.488597149864464,
+          "similarity": 0.5113919973373413,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.47321259364340007,
+          "similarity": 0.4585452079772949,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.45389419681147525,
+          "similarity": 0.483398973941803,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 38,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5645148125620504,
+          "similarity": 0.6430140137672424,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5114046051106007,
+          "similarity": 0.48642170429229736,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.488597149864464,
+          "similarity": 0.5113919973373413,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.47321259364340007,
+          "similarity": 0.4585452079772949,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.45389419681147525,
+          "similarity": 0.483398973941803,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 13,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

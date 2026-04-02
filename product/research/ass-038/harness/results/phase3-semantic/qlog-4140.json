@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4140",
+  "query": "437 was already merged... so the scope we discussed earlier should have been implemented at this stage",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4549681873976772,
+          "similarity": 0.41838496923446655,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.453351358522036,
+          "similarity": 0.4626229405403137,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.4410365130229502,
+          "similarity": 0.3736344575881958,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 765,
+          "title": "Design agents do not read sibling feature artifacts unprompted",
+          "category": "lesson-learned",
+          "final_score": 0.43285694651797013,
+          "similarity": 0.35505956411361694,
+          "confidence": 0.596240906100752,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.43192186422704815,
+          "similarity": 0.3725048303604126,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4549681873976772,
+          "similarity": 0.41838496923446655,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.453351358522036,
+          "similarity": 0.4626229405403137,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.4410365130229502,
+          "similarity": 0.3736344575881958,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 765,
+          "title": "Design agents do not read sibling feature artifacts unprompted",
+          "category": "lesson-learned",
+          "final_score": 0.43285694651797013,
+          "similarity": 0.35505956411361694,
+          "confidence": 0.596240906100752,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.43192186422704815,
+          "similarity": 0.3725048303604126,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

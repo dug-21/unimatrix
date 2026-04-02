@@ -1,0 +1,396 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774371796000",
+  "query": "cycle_events start event handle_cycle_event write pool durability",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5698971116566509,
+          "similarity": 0.5243018865585327,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5681913459774811,
+          "similarity": 0.5910796523094177,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.5616715015143321,
+          "similarity": 0.5248131155967712,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5563994766076924,
+          "similarity": 0.5234401226043701,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.5132006089137988,
+          "similarity": 0.5246326923370361,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.4598951706519494,
+          "similarity": 0.5910796523094177,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.4191157634441669,
+          "similarity": 0.5248131155967712,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.4190047337458684,
+          "similarity": 0.5246326923370361,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.4188011609590971,
+          "similarity": 0.5243018865585327,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.4182708446796124,
+          "similarity": 0.5234401226043701,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5910796523094177,
+          "similarity": 0.5910796523094177,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.5248131155967712,
+          "similarity": 0.5248131155967712,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.5246326923370361,
+          "similarity": 0.5246326923370361,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5243018865585327,
+          "similarity": 0.5243018865585327,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5234401226043701,
+          "similarity": 0.5234401226043701,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5696010387664034,
+          "similarity": 0.5243018865585327,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5683399713432729,
+          "similarity": 0.5910796523094177,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.5614321613460362,
+          "similarity": 0.5248131155967712,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5561854548284499,
+          "similarity": 0.5234401226043701,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.5132748432217419,
+          "similarity": 0.5246326923370361,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5061879558056946,
+          "similarity": 0.5910796523094177,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5026608875325981,
+          "similarity": 0.5243018865585327,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.4967044593602113,
+          "similarity": 0.5248131155967712,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.492765341714488,
+          "similarity": 0.5234401226043701,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.46137706451841315,
+          "similarity": 0.5246326923370361,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5061879558056946,
+          "similarity": 0.5910796523094177,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5026608875325981,
+          "similarity": 0.5243018865585327,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.4967044593602113,
+          "similarity": 0.5248131155967712,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.492765341714488,
+          "similarity": 0.5234401226043701,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.46137706451841315,
+          "similarity": 0.5246326923370361,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 3396,
+        "from_rank": 1,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 2251,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3000,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 2266,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2249,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

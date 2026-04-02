@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-621",
+  "query": "now, I'd like to pick up the design protocol... event though we've finished, and re-validate nothing changed in our design after implementing col-018b",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.4941004608674274,
+          "similarity": 0.4809856414794922,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.49251574407379606,
+          "similarity": 0.46186041831970215,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 765,
+          "title": "Design agents do not read sibling feature artifacts unprompted",
+          "category": "lesson-learned",
+          "final_score": 0.46582694206682074,
+          "similarity": 0.4177025556564331,
+          "confidence": 0.596240906100752,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.4630267115751291,
+          "similarity": 0.4301713705062866,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.4424187142545276,
+          "similarity": 0.4520567059516907,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.4941004608674274,
+          "similarity": 0.4809856414794922,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.49251574407379606,
+          "similarity": 0.46186041831970215,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 765,
+          "title": "Design agents do not read sibling feature artifacts unprompted",
+          "category": "lesson-learned",
+          "final_score": 0.46582694206682074,
+          "similarity": 0.4177025556564331,
+          "confidence": 0.596240906100752,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.4630267115751291,
+          "similarity": 0.4301713705062866,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.4424187142545276,
+          "similarity": 0.4520567059516907,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

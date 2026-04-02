@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ea862451-1774815790000",
+  "query": "boosted categories default helper de-hardcode config serde",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.4901218714858265,
+          "similarity": 0.5193885564804077,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4691456710033306,
+          "similarity": 0.49107110500335693,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.44711578607888885,
+          "similarity": 0.4653018116950989,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4405823078281678,
+          "similarity": 0.43039268255233765,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.43833300713941364,
+          "similarity": 0.40066027641296387,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5531683965020748,
+          "similarity": 0.5193885564804077,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5271537538277717,
+          "similarity": 0.49107110500335693,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4994430581773868,
+          "similarity": 0.4653018116950989,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.49389800265117767,
+          "similarity": 0.43039268255233765,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.49372566897439485,
+          "similarity": 0.40066027641296387,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.4901218714858265,
+          "similarity": 0.5193885564804077,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4691456710033306,
+          "similarity": 0.49107110500335693,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.44711578607888885,
+          "similarity": 0.4653018116950989,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4405823078281678,
+          "similarity": 0.43039268255233765,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.43833300713941364,
+          "similarity": 0.40066027641296387,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.41577757321871245,
+          "similarity": 0.5193885564804077,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.39835144923283505,
+          "similarity": 0.49107110500335693,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.3824934225815993,
+          "similarity": 0.4653018116950989,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.36101088157066935,
+          "similarity": 0.43039268255233765,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.3427140162541316,
+          "similarity": 0.40066027641296387,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5529490468915444,
+          "similarity": 0.5193885564804077,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5269194509133275,
+          "similarity": 0.49107110500335693,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4992213617716576,
+          "similarity": 0.4653018116950989,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.49348563044274363,
+          "similarity": 0.43039268255233765,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.49312134824347637,
+          "similarity": 0.40066027641296387,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5193885564804077,
+          "similarity": 0.5193885564804077,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.49107110500335693,
+          "similarity": 0.49107110500335693,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4653018116950989,
+          "similarity": 0.4653018116950989,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.43039268255233765,
+          "similarity": 0.43039268255233765,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.40066027641296387,
+          "similarity": 0.40066027641296387,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

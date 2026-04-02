@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-773855b9-1773545538000",
+  "query": "outcome rework confidence signal double counting",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.4483917523967934,
+          "similarity": 0.39491498470306396,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.44770007704919645,
+          "similarity": 0.44033563137054443,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.4441025450933944,
+          "similarity": 0.3840893507003784,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.4420129176433172,
+          "similarity": 0.39980530738830566,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.432614438381965,
+          "similarity": 0.38373351097106934,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.4483917523967934,
+          "similarity": 0.39491498470306396,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.44770007704919645,
+          "similarity": 0.44033563137054443,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.4441025450933944,
+          "similarity": 0.3840893507003784,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.4420129176433172,
+          "similarity": 0.39980530738830566,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.432614438381965,
+          "similarity": 0.38373351097106934,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

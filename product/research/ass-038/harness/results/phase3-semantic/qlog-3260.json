@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3260",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] No variances. Phase 2c — synthesizer (fresh context window).\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.49716973061599035,
+          "similarity": 0.4479175806045532,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.45433481783199325,
+          "similarity": 0.3879859447479248,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4490458377967965,
+          "similarity": 0.38432323932647705,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.437846262413075,
+          "similarity": 0.3777387738227844,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.42106271604402745,
+          "similarity": 0.3762549161911011,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.49716973061599035,
+          "similarity": 0.4479175806045532,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.45433481783199325,
+          "similarity": 0.3879859447479248,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4490458377967965,
+          "similarity": 0.38432323932647705,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.437846262413075,
+          "similarity": 0.3777387738227844,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.42106271604402745,
+          "similarity": 0.3762549161911011,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5c7012c4-1774574377000",
+  "query": "design document partial correction cascading inconsistency dependent files",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.5304676657734683,
+          "similarity": 0.519270122051239,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.5267233071187611,
+          "similarity": 0.5525790452957153,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.5118549017578339,
+          "similarity": 0.5517297983169556,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.49394366746968577,
+          "similarity": 0.46478748321533203,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.4912198261353824,
+          "similarity": 0.5158730745315552,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.5304676657734683,
+          "similarity": 0.519270122051239,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.5267233071187611,
+          "similarity": 0.5525790452957153,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.5118549017578339,
+          "similarity": 0.5517297983169556,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.49394366746968577,
+          "similarity": 0.46478748321533203,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.4912198261353824,
+          "similarity": 0.5158730745315552,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

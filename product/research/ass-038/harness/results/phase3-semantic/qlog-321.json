@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-321",
+  "query": "merg",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 249,
+          "title": "Retrospective findings: col-010",
+          "category": "lesson-learned",
+          "final_score": 0.3557777293015614,
+          "similarity": 0.18404924869537354,
+          "confidence": 0.6313263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 74,
+          "title": "ADR-004: SHA-256 Content Hash",
+          "category": "decision",
+          "final_score": 0.34543776324892805,
+          "similarity": 0.2147427201271057,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.34510990946629805,
+          "similarity": 0.2015339732170105,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.34429224755306176,
+          "similarity": 0.1961767077445984,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.32397073090580086,
+          "similarity": 0.17731046676635742,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 249,
+          "title": "Retrospective findings: col-010",
+          "category": "lesson-learned",
+          "final_score": 0.3557777293015614,
+          "similarity": 0.18404924869537354,
+          "confidence": 0.6313263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 74,
+          "title": "ADR-004: SHA-256 Content Hash",
+          "category": "decision",
+          "final_score": 0.34543776324892805,
+          "similarity": 0.2147427201271057,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.34510990946629805,
+          "similarity": 0.2015339732170105,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.34429224755306176,
+          "similarity": 0.1961767077445984,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.32397073090580086,
+          "similarity": 0.17731046676635742,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

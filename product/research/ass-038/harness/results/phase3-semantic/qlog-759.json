@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-759",
+  "query": "well... context_briefing is a narrowly scoped tool, with virtually no flexibility.  We also changed the requirement for the LLM to decide standard role definitions... so... its got great potential, but the implementation isn't right.  So here's what I'm thinking.  We force keyword list on context_cycle... we could either do the same on context_briefing or use the context_cycle ones.  Also.. we do have metadata categories, we could make context_briefing to be more generic, and allow the agent to send categories (agent definitions can tailor based on what it wants (instead of hardcoding off of role). We should also likely set a floor, and recognize its better to send no data than bad data.  Think about these, and you should also think about what AGENTS would WANT from unimatrix, and how to construct a flexible, yet easy to use interface design.  \\\n\\\nThen, the question is, is there any way (or reason) for injection to use the exact same interface and backend service.. if so, then we should design it appropriately.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5565080263802271,
+          "similarity": 0.5837455987930298,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5280726675716507,
+          "similarity": 0.5180910229682922,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 281,
+          "title": "Caller-parameterized service pattern (BriefingParams model)",
+          "category": "pattern",
+          "final_score": 0.5189648913032411,
+          "similarity": 0.5117489695549011,
+          "confidence": 0.6061204627446529,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.5122609260416499,
+          "similarity": 0.5004565119743347,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.508919486772414,
+          "similarity": 0.5157757997512817,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5565080263802271,
+          "similarity": 0.5837455987930298,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5280726675716507,
+          "similarity": 0.5180910229682922,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 281,
+          "title": "Caller-parameterized service pattern (BriefingParams model)",
+          "category": "pattern",
+          "final_score": 0.5189648913032411,
+          "similarity": 0.5117489695549011,
+          "confidence": 0.6061204627446529,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.5122609260416499,
+          "similarity": 0.5004565119743347,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.508919486772414,
+          "similarity": 0.5157757997512817,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

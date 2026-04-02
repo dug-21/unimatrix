@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3933",
+  "query": "create an issue for this to save it.  Then... lets talk about the concept of a halflife for a knowledge platform like this.. that can sit for weeks with no activity.  Same conversation that lead us to #409.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.42002949810977874,
+          "similarity": 0.3063647747039795,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.4199977538256703,
+          "similarity": 0.3626500964164734,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.40426478769741003,
+          "similarity": 0.26688796281814575,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.37591957409946797,
+          "similarity": 0.2792462110519409,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.3758923204749308,
+          "similarity": 0.25286173820495605,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.42002949810977874,
+          "similarity": 0.3063647747039795,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.4199977538256703,
+          "similarity": 0.3626500964164734,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.40426478769741003,
+          "similarity": 0.26688796281814575,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.37591957409946797,
+          "similarity": 0.2792462110519409,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.3758923204749308,
+          "similarity": 0.25286173820495605,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

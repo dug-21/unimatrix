@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3785",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(uni-rust-dev) → ]\n[Assistant] Stage 3b — Wave 1: `config.rs`, `read.rs`, `nli_detection.rs` promotions, `mod.rs` (all parallel).\n[tool: Bash(git add product/features/crt-029/ && git commit -m \"$(cat <<'EOF'\npseudocode: crt-029 component design + test plans (#41) → [feature/crt-029 22be77b] pseudocode: crt-029 component design + test plans (#412)\n 16 files changed, 3060 insertions(+), 9 deletions(-)\n create mode 100644 product/features/crt-029/agents/crt-029-agent-1-pseudocode-report.md\n create mode 100644 product/features/crt-029/agents/crt-029-agent-2-testpl]\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'crt-029'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5334481124692811,
+          "similarity": 0.5468032360076904,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.518458700743889,
+          "similarity": 0.5424532294273376,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5162686350267618,
+          "similarity": 0.5455647706985474,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3026,
+          "title": "Isolating hook.rs unit tests from in-progress swarm agent compilation failures",
+          "category": "pattern",
+          "final_score": 0.4973160396773183,
+          "similarity": 0.5167720317840576,
+          "confidence": 0.5401834908612104,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.47642139585394605,
+          "similarity": 0.5262006521224976,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5334481124692811,
+          "similarity": 0.5468032360076904,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.518458700743889,
+          "similarity": 0.5424532294273376,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5162686350267618,
+          "similarity": 0.5455647706985474,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3026,
+          "title": "Isolating hook.rs unit tests from in-progress swarm agent compilation failures",
+          "category": "pattern",
+          "final_score": 0.4973160396773183,
+          "similarity": 0.5167720317840576,
+          "confidence": 0.5401834908612104,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.47642139585394605,
+          "similarity": 0.5262006521224976,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

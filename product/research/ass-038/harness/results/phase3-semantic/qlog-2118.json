@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2118",
+  "query": "yes.  This long term should be exposed through config... however, thats a larger change and not someting I want this bugfix to do.  Create a new issue to expose this parameter to our configuration.  ANd continue to work this.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4534710994447949,
+          "similarity": 0.3693212866783142,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.4465269580739881,
+          "similarity": 0.3597278594970703,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1480,
+          "title": "Parameter-passing over shared state when promoting engine constants to runtime values",
+          "category": "pattern",
+          "final_score": 0.4275329840523726,
+          "similarity": 0.3591879606246948,
+          "confidence": 0.5758924415354475,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.42750518570923124,
+          "similarity": 0.38741421699523926,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.41475834665031563,
+          "similarity": 0.3777463436126709,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4534710994447949,
+          "similarity": 0.3693212866783142,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.4465269580739881,
+          "similarity": 0.3597278594970703,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1480,
+          "title": "Parameter-passing over shared state when promoting engine constants to runtime values",
+          "category": "pattern",
+          "final_score": 0.4275329840523726,
+          "similarity": 0.3591879606246948,
+          "confidence": 0.5758924415354475,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.42750518570923124,
+          "similarity": 0.38741421699523926,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.41475834665031563,
+          "similarity": 0.3777463436126709,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

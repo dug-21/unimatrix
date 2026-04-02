@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-7e5e18a0-1773360883000",
+  "query": "feature cycle attribution session observation pipeline domain model",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.6134811043739319,
+          "similarity": 0.6134811043739319,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5428887605667114,
+          "similarity": 0.5428887605667114,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5321432948112488,
+          "similarity": 0.5321432948112488,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5278303623199463,
+          "similarity": 0.5278303623199463,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.5105763077735901,
+          "similarity": 0.5105763077735901,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.624787305307246,
+          "similarity": 0.6134811043739319,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5805841915894181,
+          "similarity": 0.5428887605667114,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5645622943758586,
+          "similarity": 0.5278303623199463,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5578062761936952,
+          "similarity": 0.5321432948112488,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.5529558350340431,
+          "similarity": 0.5105763077735901,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.6248612020453723,
+          "similarity": 0.6134811043739319,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5808305669555796,
+          "similarity": 0.5428887605667114,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5648023723631522,
+          "similarity": 0.5278303623199463,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5579740080981557,
+          "similarity": 0.5321432948112488,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.5532328254082945,
+          "similarity": 0.5105763077735901,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5490760975169093,
+          "similarity": 0.6134811043739319,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5119543245366874,
+          "similarity": 0.5428887605667114,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.4992010400302928,
+          "similarity": 0.5278303623199463,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.49453415552945973,
+          "similarity": 0.5321432948112488,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.489539366209871,
+          "similarity": 0.5105763077735901,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4736806796147273,
+          "similarity": 0.6134811043739319,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.43023923727182245,
+          "similarity": 0.5428887605667114,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.42362664296076846,
+          "similarity": 0.5321432948112488,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.4209725306584285,
+          "similarity": 0.5278303623199463,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.41035465093759393,
+          "similarity": 0.5105763077735901,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5490760975169093,
+          "similarity": 0.6134811043739319,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5119543245366874,
+          "similarity": 0.5428887605667114,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.4992010400302928,
+          "similarity": 0.5278303623199463,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.49453415552945973,
+          "similarity": 0.5321432948112488,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.489539366209871,
+          "similarity": 0.5105763077735901,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3382,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3373,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

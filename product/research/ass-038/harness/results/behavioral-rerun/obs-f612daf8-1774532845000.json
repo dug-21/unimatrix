@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-f612daf8-1774532845000",
+  "query": "eval harness serde dual-type ScenarioResult",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5560979445757904,
+          "similarity": 0.5920389890670776,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5276649896411995,
+          "similarity": 0.5514329671859741,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5225508165545839,
+          "similarity": 0.5425814390182495,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5115880947104844,
+          "similarity": 0.5375871658325195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3555,
+          "title": "Eval harness phase gap: scenarios SQL omits query_log.phase despite column existing since col-028",
+          "category": "pattern",
+          "final_score": 0.5102332925878685,
+          "similarity": 0.5196594595909119,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5560979445757904,
+          "similarity": 0.5920389890670776,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5276649896411995,
+          "similarity": 0.5514329671859741,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5225508165545839,
+          "similarity": 0.5425814390182495,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5115880947104844,
+          "similarity": 0.5375871658325195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3555,
+          "title": "Eval harness phase gap: scenarios SQL omits query_log.phase despite column existing since col-028",
+          "category": "pattern",
+          "final_score": 0.5102332925878685,
+          "similarity": 0.5196594595909119,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

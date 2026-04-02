@@ -1,0 +1,8 @@
+[profile]
+name = "ablation-ppr-disabled"
+description = "Q2: PPR disabled (blend=0.0, max_expand=0). Pure HNSW + fused formula, no graph traversal. NLI active at baseline weight. Isolates PPR contribution."
+distribution_change = false
+
+[inference]
+ppr_blend_weight = 0.0
+ppr_max_expand   = 0

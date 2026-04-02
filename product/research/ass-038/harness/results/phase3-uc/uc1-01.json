@@ -1,0 +1,134 @@
+{
+  "scenario_id": "uc1-01",
+  "query": "What characters are allowed in Unimatrix feature_cycle identifiers, and what validation approach does the engine use?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.612299710439964,
+          "similarity": 0.6671193242073059,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.568497239962683,
+          "similarity": 0.6467999815940857,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.5201540777485377,
+          "similarity": 0.5430169701576233,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.5154082502950694,
+          "similarity": 0.5514416098594666,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.5136812521860811,
+          "similarity": 0.5102888941764832,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.612299710439964,
+          "similarity": 0.6671193242073059,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.568497239962683,
+          "similarity": 0.6467999815940857,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.5201540777485377,
+          "similarity": 0.5430169701576233,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.5154082502950694,
+          "similarity": 0.5514416098594666,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.5136812521860811,
+          "similarity": 0.5102888941764832,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

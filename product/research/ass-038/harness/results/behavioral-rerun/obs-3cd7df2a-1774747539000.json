@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774747539000",
+  "query": "dependency cold-start phase affinity feature flag graceful fallback",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.5583838025943663,
+          "similarity": 0.6255835890769958,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.5510454525542837,
+          "similarity": 0.5948973298072815,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.5435512664184409,
+          "similarity": 0.5878171920776367,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.5253733457377397,
+          "similarity": 0.5587800741195679,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.5037620730083681,
+          "similarity": 0.5481048226356506,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.5583838025943663,
+          "similarity": 0.6255835890769958,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.5510454525542837,
+          "similarity": 0.5948973298072815,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.5435512664184409,
+          "similarity": 0.5878171920776367,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.5253733457377397,
+          "similarity": 0.5587800741195679,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.5037620730083681,
+          "similarity": 0.5481048226356506,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

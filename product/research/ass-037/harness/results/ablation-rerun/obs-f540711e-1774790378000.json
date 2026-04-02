@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-f540711e-1774790378000",
+  "query": "bugfix-444 maintenance tick index invariant heal prune quarantine",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.494598021874061,
+          "similarity": 0.6474717855453491,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.4761852484482985,
+          "similarity": 0.6175510287284851,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.46901970643263596,
+          "similarity": 0.6059070229530334,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.44922384848961466,
+          "similarity": 0.5737387537956238,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.41370109411386347,
+          "similarity": 0.5160142779350281,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.6474717855453491,
+          "similarity": 0.6474717855453491,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.6175510287284851,
+          "similarity": 0.6175510287284851,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.6059070229530334,
+          "similarity": 0.6059070229530334,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.5737387537956238,
+          "similarity": 0.5737387537956238,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5160142779350281,
+          "similarity": 0.5160142779350281,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5341614809162416,
+          "similarity": 0.6175510287284851,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.5316598704740073,
+          "similarity": 0.6474717855453491,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.5073654464863434,
+          "similarity": 0.6059070229530334,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.5042433007583049,
+          "similarity": 0.5737387537956238,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.48159310551951307,
+          "similarity": 0.5160142779350281,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.6040791986377398,
+          "similarity": 0.6175510287284851,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.5979478428695235,
+          "similarity": 0.6474717855453491,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.5685976976674652,
+          "similarity": 0.6059070229530334,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.567264614325359,
+          "similarity": 0.5737387537956238,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5416256640779697,
+          "similarity": 0.5160142779350281,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.6039911474606762,
+          "similarity": 0.6175510287284851,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.5976241569696816,
+          "similarity": 0.6474717855453491,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.5683538458682131,
+          "similarity": 0.6059070229530334,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.5672222996882985,
+          "similarity": 0.5737387537956238,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5417930587586427,
+          "similarity": 0.5160142779350281,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5341614809162416,
+          "similarity": 0.6175510287284851,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.5316598704740073,
+          "similarity": 0.6474717855453491,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.5073654464863434,
+          "similarity": 0.6059070229530334,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.5042433007583049,
+          "similarity": 0.5737387537956238,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.48159310551951307,
+          "similarity": 0.5160142779350281,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3762,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3767,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": -0.5,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

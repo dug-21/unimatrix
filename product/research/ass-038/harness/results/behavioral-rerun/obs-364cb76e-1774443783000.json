@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-364cb76e-1774443783000",
+  "query": "uds logging tracing info level",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5302004458435908,
+          "similarity": 0.5888915657997131,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 290,
+          "title": "ADR-001: UsageService scope — access counting only, injection logs remain UDS-specific",
+          "category": "decision",
+          "final_score": 0.5210512914895897,
+          "similarity": 0.5337177515029907,
+          "confidence": 0.5803995747531855,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5185990511540169,
+          "similarity": 0.549992561340332,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.4940594853070631,
+          "similarity": 0.4765728712081909,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.4721015691553725,
+          "similarity": 0.4721473455429077,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5302004458435908,
+          "similarity": 0.5888915657997131,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 290,
+          "title": "ADR-001: UsageService scope — access counting only, injection logs remain UDS-specific",
+          "category": "decision",
+          "final_score": 0.5210512914895897,
+          "similarity": 0.5337177515029907,
+          "confidence": 0.5803995747531855,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5185990511540169,
+          "similarity": 0.549992561340332,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.4940594853070631,
+          "similarity": 0.4765728712081909,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.4721015691553725,
+          "similarity": 0.4721473455429077,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

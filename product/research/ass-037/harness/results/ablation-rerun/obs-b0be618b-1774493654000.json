@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-b0be618b-1774493654000",
+  "query": "eval report aggregate stats mean accumulation pattern",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4475197195334801,
+          "similarity": 0.4293040633201599,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.4418756678039521,
+          "similarity": 0.464138388633728,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.414371914058182,
+          "similarity": 0.3736393451690674,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.40934996209919133,
+          "similarity": 0.4115341901779175,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.3835101361401146,
+          "similarity": 0.35249805450439453,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.5030447026983674,
+          "similarity": 0.4293040633201599,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.4921815116750502,
+          "similarity": 0.464138388633728,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.46290357870033305,
+          "similarity": 0.3736393451690674,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.45261047648272296,
+          "similarity": 0.4115341901779175,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.4227412715997567,
+          "similarity": 0.35249805450439453,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4475197195334801,
+          "similarity": 0.4293040633201599,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.4418756678039521,
+          "similarity": 0.464138388633728,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.414371914058182,
+          "similarity": 0.3736393451690674,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.40934996209919133,
+          "similarity": 0.4115341901779175,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.3835101361401146,
+          "similarity": 0.35249805450439453,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.5035266676616237,
+          "similarity": 0.4293040633201599,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.4923648000609413,
+          "similarity": 0.464138388633728,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.4634870050632825,
+          "similarity": 0.3736393451690674,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.4528789489422316,
+          "similarity": 0.4115341901779175,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.4232003775938441,
+          "similarity": 0.35249805450439453,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.381777469928448,
+          "similarity": 0.464138388633728,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.36034096204317534,
+          "similarity": 0.4293040633201599,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.3494056554941031,
+          "similarity": 0.4115341901779175,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.32608575087327224,
+          "similarity": 0.3736393451690674,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.3130757258488582,
+          "similarity": 0.35249805450439453,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.464138388633728,
+          "similarity": 0.464138388633728,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4293040633201599,
+          "similarity": 0.4293040633201599,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.4115341901779175,
+          "similarity": 0.4115341901779175,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.3736393451690674,
+          "similarity": 0.3736393451690674,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.35249805450439453,
+          "similarity": 0.35249805450439453,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

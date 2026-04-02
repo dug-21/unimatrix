@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5c7012c4-1774570575000",
+  "query": "nan-010 mrr floor veto rendering baseline reference",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.4527478765452382,
+          "similarity": 0.393011212348938,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4494217294824031,
+          "similarity": 0.4166482090950012,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4412223111989889,
+          "similarity": 0.394284725189209,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.41699773505399196,
+          "similarity": 0.36392199993133545,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4127718921117729,
+          "similarity": 0.36577731370925903,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.4527478765452382,
+          "similarity": 0.393011212348938,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4494217294824031,
+          "similarity": 0.4166482090950012,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4412223111989889,
+          "similarity": 0.394284725189209,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.41699773505399196,
+          "similarity": 0.36392199993133545,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4127718921117729,
+          "similarity": 0.36577731370925903,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

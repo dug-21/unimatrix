@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2545",
+  "query": "remember this design... I'm almost convinced.. 1 last question.  Is it clear and obvious theres a way to do bettter topic_signals on observations.. what would need to happen to be able to attribute these observations when they're written?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5403230175219083,
+          "similarity": 0.529613733291626,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.5141314715116204,
+          "similarity": 0.519020140171051,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5125218182997471,
+          "similarity": 0.5073789358139038,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4758399067408535,
+          "similarity": 0.42093586921691895,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.46160440872220554,
+          "similarity": 0.4012875556945801,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5403230175219083,
+          "similarity": 0.529613733291626,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.5141314715116204,
+          "similarity": 0.519020140171051,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5125218182997471,
+          "similarity": 0.5073789358139038,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4758399067408535,
+          "similarity": 0.42093586921691895,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.46160440872220554,
+          "similarity": 0.4012875556945801,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

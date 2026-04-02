@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3574",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Spawning Wave 3 — Distribution Gate Renderer (C5), Section 5 Dispatch (C6), and Report Sidecar Load (C7) in parallel.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.48411564994819234,
+          "similarity": 0.44267958402633667,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4658043333137928,
+          "similarity": 0.4409905672073364,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.45562860737225086,
+          "similarity": 0.4274604320526123,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.4344121363288478,
+          "similarity": 0.4463830590248108,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.43216951793440694,
+          "similarity": 0.42348694801330566,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.48411564994819234,
+          "similarity": 0.44267958402633667,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4658043333137928,
+          "similarity": 0.4409905672073364,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.45562860737225086,
+          "similarity": 0.4274604320526123,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.4344121363288478,
+          "similarity": 0.4463830590248108,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.43216951793440694,
+          "similarity": 0.42348694801330566,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

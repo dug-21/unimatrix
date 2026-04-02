@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3620",
+  "query": "now update the @product/research/ass-032/ROADMAP.md that issue 402 is complete.  then its time to begin design for issue #395.  Select the appropriate prefix, and select the next number (if its col, col-029 is already taken), and begin design protocol",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.5000308720556533,
+          "similarity": 0.4922534227371216,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.4603799782880066,
+          "similarity": 0.4010164737701416,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.45989533450555553,
+          "similarity": 0.4242217540740967,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.44986035704471594,
+          "similarity": 0.4065394401550293,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.44673557443297274,
+          "similarity": 0.4014923572540283,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.5000308720556533,
+          "similarity": 0.4922534227371216,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.4603799782880066,
+          "similarity": 0.4010164737701416,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.45989533450555553,
+          "similarity": 0.4242217540740967,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.44986035704471594,
+          "similarity": 0.4065394401550293,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.44673557443297274,
+          "similarity": 0.4014923572540283,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

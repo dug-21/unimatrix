@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774264858000",
+  "query": "SQLite observation query session_id index GROUP BY",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 382,
+          "title": "ADR-001 col-012: AUTOINCREMENT Primary Key for Observations Table",
+          "category": "decision",
+          "final_score": 0.48251487804336757,
+          "similarity": 0.44731414318084717,
+          "confidence": 0.5992344644307877,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.4753517043798393,
+          "similarity": 0.47957324981689453,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.4599114931035062,
+          "similarity": 0.435221791267395,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.45817847855034477,
+          "similarity": 0.4102553129196167,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.45058321645871335,
+          "similarity": 0.4458135962486267,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 382,
+          "title": "ADR-001 col-012: AUTOINCREMENT Primary Key for Observations Table",
+          "category": "decision",
+          "final_score": 0.48251487804336757,
+          "similarity": 0.44731414318084717,
+          "confidence": 0.5992344644307877,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.4753517043798393,
+          "similarity": 0.47957324981689453,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.4599114931035062,
+          "similarity": 0.435221791267395,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.45817847855034477,
+          "similarity": 0.4102553129196167,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.45058321645871335,
+          "similarity": 0.4458135962486267,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

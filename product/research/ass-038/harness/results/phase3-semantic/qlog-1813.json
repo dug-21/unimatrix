@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1813",
+  "query": "this would only come up within context_cycle_review... the review does look across features for outliers... its kind of what it does.. how big of an addition is this?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.4817839945312361,
+          "similarity": 0.44441473484039307,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.4790429748159759,
+          "similarity": 0.4278479814529419,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.47549468301389974,
+          "similarity": 0.4585096836090088,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.47203620818614955,
+          "similarity": 0.442699670791626,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.47116018789398995,
+          "similarity": 0.42506420612335205,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.4817839945312361,
+          "similarity": 0.44441473484039307,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.4790429748159759,
+          "similarity": 0.4278479814529419,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.47549468301389974,
+          "similarity": 0.4585096836090088,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.47203620818614955,
+          "similarity": 0.442699670791626,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.47116018789398995,
+          "similarity": 0.42506420612335205,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

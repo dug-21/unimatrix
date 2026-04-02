@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4341",
+  "query": "so.. as the vision guardian.. your job to update the @product/research/ass-032/ROADMAP.md  We've successfully merged 412, 414, 398, with a number of along the way identified fixes that have contributed to the effectiveness.  Now we're decideing 415 or 409, or, one of the other issues we've identified that did not make it to the roadmap yet.  Please update completion status, and lets talk about whats next",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.4610094909986088,
+          "similarity": 0.4074394702911377,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.45811103431508116,
+          "similarity": 0.3858708143234253,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.4550726570448598,
+          "similarity": 0.40683281421661377,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.45252289658279166,
+          "similarity": 0.3612327575683594,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 6,
+          "title": "Roadmap milestones 7-9: Multi-Project, Thin-Shell, Build",
+          "category": "decision",
+          "final_score": 0.4516589807639413,
+          "similarity": 0.3847782611846924,
+          "confidence": 0.6048197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.4610094909986088,
+          "similarity": 0.4074394702911377,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.45811103431508116,
+          "similarity": 0.3858708143234253,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.4550726570448598,
+          "similarity": 0.40683281421661377,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.45252289658279166,
+          "similarity": 0.3612327575683594,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 6,
+          "title": "Roadmap milestones 7-9: Multi-Project, Thin-Shell, Build",
+          "category": "decision",
+          "final_score": 0.4516589807639413,
+          "similarity": 0.3847782611846924,
+          "confidence": 0.6048197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

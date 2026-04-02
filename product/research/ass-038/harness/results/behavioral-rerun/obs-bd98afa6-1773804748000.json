@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bd98afa6-1773804748000",
+  "query": "unimatrix-store test setup PoolConfig test_default features test-support async open close",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.6088259325266056,
+          "similarity": 0.7080353498458862,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5888234941379453,
+          "similarity": 0.6939190030097961,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5809472275902571,
+          "similarity": 0.6564944982528687,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.5749806792388918,
+          "similarity": 0.6260577440261841,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5549130161763829,
+          "similarity": 0.5886292457580566,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.6088259325266056,
+          "similarity": 0.7080353498458862,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5888234941379453,
+          "similarity": 0.6939190030097961,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5809472275902571,
+          "similarity": 0.6564944982528687,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.5749806792388918,
+          "similarity": 0.6260577440261841,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5549130161763829,
+          "similarity": 0.5886292457580566,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

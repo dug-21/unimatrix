@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4644",
+  "query": "this framing matches my intent.  And it does not change how we scope the design of the solution.. we literally just merged crt-033 this morning... so all I'll need to do is to run cycle_reviews for each of those cycles to allow the trimming to occur naturally.  So play back the scope updates for 409 to me as a summary",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4831982148911752,
+          "similarity": 0.41773802042007446,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.46543803049306753,
+          "similarity": 0.4394020438194275,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.4569229881735175,
+          "similarity": 0.4097646474838257,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.44630892431123936,
+          "similarity": 0.3865966796875,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.4318698163442558,
+          "similarity": 0.40206336975097656,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4831982148911752,
+          "similarity": 0.41773802042007446,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.46543803049306753,
+          "similarity": 0.4394020438194275,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.4569229881735175,
+          "similarity": 0.4097646474838257,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.44630892431123936,
+          "similarity": 0.3865966796875,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.4318698163442558,
+          "similarity": 0.40206336975097656,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

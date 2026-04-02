@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4083",
+  "query": "OK... so, I'm going to let this run for about 2 hours or so.  In your table, I believe I quarantined all 276 outcome entries.  The duties category is 'interesting' because that to my knowledge is not, nor has it ever been an active category... so, I'm wondering if the category actually RESTRICTS to only defined categories.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4661159990167113,
+          "similarity": 0.45186901092529297,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.45748984056719877,
+          "similarity": 0.3845394253730774,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.455590123670636,
+          "similarity": 0.3999621868133545,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.44332826025279126,
+          "similarity": 0.3783451318740845,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4431988440144047,
+          "similarity": 0.38629400730133057,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4661159990167113,
+          "similarity": 0.45186901092529297,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.45748984056719877,
+          "similarity": 0.3845394253730774,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.455590123670636,
+          "similarity": 0.3999621868133545,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.44332826025279126,
+          "similarity": 0.3783451318740845,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4431988440144047,
+          "similarity": 0.38629400730133057,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

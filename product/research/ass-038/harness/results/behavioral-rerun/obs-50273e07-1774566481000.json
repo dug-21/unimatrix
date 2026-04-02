@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774566481000",
+  "query": "EDGE_SOURCE constant named constant graph edge source string",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5755277985823725,
+          "similarity": 0.6036180257797241,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.4778695682947982,
+          "similarity": 0.4518120288848877,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4548195828818603,
+          "similarity": 0.39529335498809814,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3882,
+          "title": "ADR-002 crt-034: Constants Location — unimatrix-store/src/read.rs alongside EDGE_SOURCE_NLI",
+          "category": "decision",
+          "final_score": 0.4492959370787182,
+          "similarity": 0.43286776542663574,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.4304376045026277,
+          "similarity": 0.4388314485549927,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5755277985823725,
+          "similarity": 0.6036180257797241,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.4778695682947982,
+          "similarity": 0.4518120288848877,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4548195828818603,
+          "similarity": 0.39529335498809814,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3882,
+          "title": "ADR-002 crt-034: Constants Location — unimatrix-store/src/read.rs alongside EDGE_SOURCE_NLI",
+          "category": "decision",
+          "final_score": 0.4492959370787182,
+          "similarity": 0.43286776542663574,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.4304376045026277,
+          "similarity": 0.4388314485549927,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

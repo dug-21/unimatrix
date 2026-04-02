@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-f540711e-1774790487000",
+  "query": "ADR-002 maintain parameter context_status opt-in maintenance gate",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5954632648628454,
+          "similarity": 0.63121098279953,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5283483568727287,
+          "similarity": 0.5026467442512512,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.5070824047469312,
+          "similarity": 0.5647119283676147,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.5029034007884022,
+          "similarity": 0.5370271801948547,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.49018356158096,
+          "similarity": 0.5027893781661987,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5954632648628454,
+          "similarity": 0.63121098279953,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5283483568727287,
+          "similarity": 0.5026467442512512,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.5070824047469312,
+          "similarity": 0.5647119283676147,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.5029034007884022,
+          "similarity": 0.5370271801948547,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.49018356158096,
+          "similarity": 0.5027893781661987,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

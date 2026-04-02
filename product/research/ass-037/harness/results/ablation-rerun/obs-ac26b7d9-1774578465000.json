@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774578465000",
+  "query": "graph suppression integration test search pipeline patterns",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.6012192675726344,
+          "similarity": 0.5968979001045227,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.5517925972188905,
+          "similarity": 0.5382636189460754,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.5473448048743352,
+          "similarity": 0.5150123834609985,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5389590189797504,
+          "similarity": 0.4865565299987793,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5376254330753725,
+          "similarity": 0.4828283190727234,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5306667449532424,
+          "similarity": 0.5968979001045227,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.49046772218419704,
+          "similarity": 0.5382636189460754,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.48556638522708695,
+          "similarity": 0.5150123834609985,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.477424180256588,
+          "similarity": 0.4865565299987793,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4761862668886801,
+          "similarity": 0.4828283190727234,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4634756308335524,
+          "similarity": 0.5968979001045227,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.427392996274508,
+          "similarity": 0.5382636189460754,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.4130845436683068,
+          "similarity": 0.5150123834609985,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.395573249230018,
+          "similarity": 0.4865565299987793,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.3932789655832144,
+          "similarity": 0.4828283190727234,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.6011912067449193,
+          "similarity": 0.5968979001045227,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.5517047467106254,
+          "similarity": 0.5382636189460754,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.5471348540859369,
+          "similarity": 0.5150123834609985,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5386187430772764,
+          "similarity": 0.4865565299987793,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5372696076597707,
+          "similarity": 0.4828283190727234,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5306667449532424,
+          "similarity": 0.5968979001045227,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.49046772218419704,
+          "similarity": 0.5382636189460754,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.48556638522708695,
+          "similarity": 0.5150123834609985,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.477424180256588,
+          "similarity": 0.4865565299987793,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4761862668886801,
+          "similarity": 0.4828283190727234,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5968979001045227,
+          "similarity": 0.5968979001045227,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.5382636189460754,
+          "similarity": 0.5382636189460754,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.5150123834609985,
+          "similarity": 0.5150123834609985,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4865565299987793,
+          "similarity": 0.4865565299987793,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4828283190727234,
+          "similarity": 0.4828283190727234,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

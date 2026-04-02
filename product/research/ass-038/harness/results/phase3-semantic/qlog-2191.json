@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-2191",
+  "query": "<task-notification>\n<task-id>a167269bfe830b617</task-id>\n<tool-use-id>toolu_01MTT5c5cpZZx8FmBUKnDGHf</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/2c6f8a12-88b0-4fb8-9d36-928e7a7ebf88/tasks/a167269bfe830b617.output</output-file>\n<status>completed</status>\n<summary>Agent \"Implement listener.rs crt-028 GH#354\" completed</summary>\n<result>All three changes are correct. Here is a summary:\n\n**File modified:** `/workspaces/unimatrix/crates/unimatrix-server/src/uds/listener.rs`\n\n**Change 1 (lines 85-107):** `sanitize_observation_source` function added immediately after `sanitize_metadata_field` at line 84. Three-arm match: `\"UserPromptSubmit\"` and `\"SubagentStart\"` pass through; everything else (including `None`, empty string, unknown values, and strings with valid prefixes) falls back to `\"UserPromptSubmit\"`.\n\n**Change 2 (lines 836-837):** The inline `.unwrap_or(\"UserPromptSubmit\").to_string()` in `ObservationRow` construction replaced with `sanitize_observation_source(source.as_deref())`, with the updated ADR-004 crt-028 comment.\n\n**Change 3 (lines 3380-3428):** 6 unit tests added in the `#[cfg(test)] mod tests` block immediately after the `sanitize_session_id_rejects_empty` test, covering the two known values, `None`, an unknown value, empty string, and a string that shares a prefix with a known value but is not an exact match.</result>\n<usage><total_tokens>21700</total_tokens><tool_uses>10</tool_uses><duration_ms>62545</duration_ms></usage>\n</task-notification>\nFull transcript available at: /tmp/claude-1000/-workspaces-unimatrix/2c6f8a12-88b0-4fb8-9d36-928e7a7ebf88/tasks/a167269bfe830b617.output",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5353932820951786,
+          "similarity": 0.5961025953292847,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.518624296389128,
+          "similarity": 0.5839861631393433,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5184153664237574,
+          "similarity": 0.5835891962051392,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5164417938935129,
+          "similarity": 0.5798394083976746,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5353932820951786,
+          "similarity": 0.5961025953292847,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.518624296389128,
+          "similarity": 0.5839861631393433,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5184153664237574,
+          "similarity": 0.5835891962051392,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5164417938935129,
+          "similarity": 0.5798394083976746,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 13,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

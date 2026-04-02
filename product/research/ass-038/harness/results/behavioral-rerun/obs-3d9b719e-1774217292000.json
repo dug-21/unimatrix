@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3d9b719e-1774217292000",
+  "query": "crt-026 WA-2 session context enrichment patterns procedures",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5434106181778782,
+          "similarity": 0.5493202209472656,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.5401283031218432,
+          "similarity": 0.5559088587760925,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5350668994397733,
+          "similarity": 0.5221039056777954,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.5342531248483535,
+          "similarity": 0.5538787245750427,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5158801312958917,
+          "similarity": 0.546268105506897,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5434106181778782,
+          "similarity": 0.5493202209472656,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.5401283031218432,
+          "similarity": 0.5559088587760925,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5350668994397733,
+          "similarity": 0.5221039056777954,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.5342531248483535,
+          "similarity": 0.5538787245750427,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5158801312958917,
+          "similarity": 0.546268105506897,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

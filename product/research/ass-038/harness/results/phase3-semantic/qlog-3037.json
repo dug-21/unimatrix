@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3037",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Lesson stored (#3481). Re-running Gate 3b now.\n[tool: mcp__unimatrix__context_store(hook_type import must be at file top level, not only in test scope) → ]\n[tool: ToolSearch(select:mcp__unimatrix__context_store) → ]\n[Assistant] No matching prior lesson. Storing new.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.491401688309401,
+          "similarity": 0.4815741777420044,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.48068378041652193,
+          "similarity": 0.4577982425689697,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.47732850420904727,
+          "similarity": 0.4216771125793457,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.47145450618322005,
+          "similarity": 0.4316583275794983,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.44644285148536744,
+          "similarity": 0.4256591796875,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.491401688309401,
+          "similarity": 0.4815741777420044,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.48068378041652193,
+          "similarity": 0.4577982425689697,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.47732850420904727,
+          "similarity": 0.4216771125793457,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.47145450618322005,
+          "similarity": 0.4316583275794983,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.44644285148536744,
+          "similarity": 0.4256591796875,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

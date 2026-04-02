@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1168",
+  "query": "create a GH issue to review what Unimatrix responds with from a precompaction event.  We may want to update this from when it was originally built.  We have more to choose from now.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5529891742021634,
+          "similarity": 0.5865741968154907,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5374112859607354,
+          "similarity": 0.5572976469993591,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5359031770520714,
+          "similarity": 0.552491307258606,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.5272001521058721,
+          "similarity": 0.552006185054779,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5046364569369232,
+          "similarity": 0.5413183569908142,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5529891742021634,
+          "similarity": 0.5865741968154907,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5374112859607354,
+          "similarity": 0.5572976469993591,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5359031770520714,
+          "similarity": 0.552491307258606,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.5272001521058721,
+          "similarity": 0.552006185054779,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5046364569369232,
+          "similarity": 0.5413183569908142,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

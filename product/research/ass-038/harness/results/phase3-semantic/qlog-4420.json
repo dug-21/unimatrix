@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4420",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Stage 3a: Pseudocode for crt-031) → ]\n[Assistant] Brief is clear. The cycle is already running from Session 1. Stage 3a — spawning pseudocode and test plan agents in parallel.\n\n**Wave plan (identified from brief dependencies):**\n- **Wave 1**: `infra/categories/` module split + `infra/config.rs` (foundational — everything else depends on these)\n- **Wave 2**: `main.rs`, `services/status.rs`, `services/mod.rs`, `mcp/response/status.rs`, `background.rs` (all depend on Wave 1)\n- **Wave 3**: `eval/profile/layer.rs`, 6 literal-removal sites, `README.md`, test updates (depend on Wave 1 helper, otherwise independent)\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5526978882517293,
+          "similarity": 0.5534210801124573,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5464664884181368,
+          "similarity": 0.5715381503105164,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5371869415641677,
+          "similarity": 0.6230200529098511,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 340,
+          "title": "ADR-003: Wave execution order (7 waves with compilation gates)",
+          "category": "decision",
+          "final_score": 0.5136402797026377,
+          "similarity": 0.5611515045166016,
+          "confidence": 0.5210928955977289,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5077627165100145,
+          "similarity": 0.546259880065918,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5526978882517293,
+          "similarity": 0.5534210801124573,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5464664884181368,
+          "similarity": 0.5715381503105164,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5371869415641677,
+          "similarity": 0.6230200529098511,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 340,
+          "title": "ADR-003: Wave execution order (7 waves with compilation gates)",
+          "category": "decision",
+          "final_score": 0.5136402797026377,
+          "similarity": 0.5611515045166016,
+          "confidence": 0.5210928955977289,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5077627165100145,
+          "similarity": 0.546259880065918,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

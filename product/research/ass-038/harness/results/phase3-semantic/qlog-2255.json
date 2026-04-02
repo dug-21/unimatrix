@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2255",
+  "query": "ONNX NLI token_type_ids cross encoder inference bug fix",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2798,
+          "title": "ONNX cross-encoder token_type_ids bug: NLI models often omit it from exported inputs",
+          "category": "lesson-learned",
+          "final_score": 0.6653861478496188,
+          "similarity": 0.829803466796875,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.526260386490839,
+          "similarity": 0.5511608123779297,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.5187729114132434,
+          "similarity": 0.589942991733551,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2731,
+          "title": "NliProviderExt: add health check to wrapped type, not as trait in consuming crate",
+          "category": "pattern",
+          "final_score": 0.5166747550956162,
+          "similarity": 0.54725182056427,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.5137633106224812,
+          "similarity": 0.5817697644233704,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2798,
+          "title": "ONNX cross-encoder token_type_ids bug: NLI models often omit it from exported inputs",
+          "category": "lesson-learned",
+          "final_score": 0.6653861478496188,
+          "similarity": 0.829803466796875,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.526260386490839,
+          "similarity": 0.5511608123779297,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.5187729114132434,
+          "similarity": 0.589942991733551,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2731,
+          "title": "NliProviderExt: add health check to wrapped type, not as trait in consuming crate",
+          "category": "pattern",
+          "final_score": 0.5166747550956162,
+          "similarity": 0.54725182056427,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.5137633106224812,
+          "similarity": 0.5817697644233704,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

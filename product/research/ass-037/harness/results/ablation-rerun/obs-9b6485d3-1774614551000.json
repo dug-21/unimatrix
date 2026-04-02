@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-9b6485d3-1774614551000",
+  "query": "graph edge write tick batch size isolation priority ordering NLI pairs",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5954213610827004,
+          "similarity": 0.5694078207015991,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5770517310053953,
+          "similarity": 0.5663130879402161,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5453021116820658,
+          "similarity": 0.5301744341850281,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.520419484203476,
+          "similarity": 0.5359684824943542,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5952524419893165,
+          "similarity": 0.5694078207015991,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.57698199955692,
+          "similarity": 0.5663130879402161,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.545203880010007,
+          "similarity": 0.5301744341850281,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5205204517248452,
+          "similarity": 0.5359684824943542,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.44655865889329177,
+          "similarity": 0.5694078207015991,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.4446542079632099,
+          "similarity": 0.5663130879402161,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.42598060461191034,
+          "similarity": 0.5359684824943542,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.42241503642155576,
+          "similarity": 0.5301744341850281,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5244789788389388,
+          "similarity": 0.5694078207015991,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5108743388710891,
+          "similarity": 0.5663130879402161,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.48516114095300705,
+          "similarity": 0.5301744341850281,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.4674462300978434,
+          "similarity": 0.5359684824943542,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5694078207015991,
+          "similarity": 0.5694078207015991,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5663130879402161,
+          "similarity": 0.5663130879402161,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5359684824943542,
+          "similarity": 0.5359684824943542,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5301744341850281,
+          "similarity": 0.5301744341850281,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5244789788389388,
+          "similarity": 0.5694078207015991,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5108743388710891,
+          "similarity": 0.5663130879402161,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.48516114095300705,
+          "similarity": 0.5301744341850281,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.4674462300978434,
+          "similarity": 0.5359684824943542,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

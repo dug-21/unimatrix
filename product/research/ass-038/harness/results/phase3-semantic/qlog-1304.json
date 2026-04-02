@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1304",
+  "query": "these are approved, pls handle.  Then run context_cycle_review w/out format:json and tell me the results",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5153421528051703,
+          "similarity": 0.47881150245666504,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.5104971651285464,
+          "similarity": 0.5291916131973267,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.4945386606446649,
+          "similarity": 0.47705960273742676,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.48427968612388195,
+          "similarity": 0.47520118951797485,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.46721980983359046,
+          "similarity": 0.4471784830093384,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5153421528051703,
+          "similarity": 0.47881150245666504,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.5104971651285464,
+          "similarity": 0.5291916131973267,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.4945386606446649,
+          "similarity": 0.47705960273742676,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.48427968612388195,
+          "similarity": 0.47520118951797485,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.46721980983359046,
+          "similarity": 0.4471784830093384,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

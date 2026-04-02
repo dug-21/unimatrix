@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-5f33a80a-1774489783000",
+  "query": "UsageDedup filter_access dedup slot access_weight weight zero",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.6232815012435908,
+          "similarity": 0.6766899228096008,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.6107349855662554,
+          "similarity": 0.6598002910614014,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.5931892675725088,
+          "similarity": 0.6236530542373657,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.5598668825435852,
+          "similarity": 0.5873093008995056,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.5412294012964672,
+          "similarity": 0.5514867305755615,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.5521857624326068,
+          "similarity": 0.6766899228096008,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.5418590088193476,
+          "similarity": 0.6598002910614014,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.5265823331689976,
+          "similarity": 0.6236530542373657,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.4997230005919296,
+          "similarity": 0.5873093008995056,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.48366734298911346,
+          "similarity": 0.5514867305755615,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.6229324265928328,
+          "similarity": 0.6766899228096008,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.6104142972950455,
+          "similarity": 0.6598002910614014,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.5929901578557452,
+          "similarity": 0.6236530542373657,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.5596875203321087,
+          "similarity": 0.5873093008995056,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.54116235992863,
+          "similarity": 0.5514867305755615,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.6766899228096008,
+          "similarity": 0.6766899228096008,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.6598002910614014,
+          "similarity": 0.6598002910614014,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.6236530542373657,
+          "similarity": 0.6236530542373657,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.5873093008995056,
+          "similarity": 0.5873093008995056,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.5514867305755615,
+          "similarity": 0.5514867305755615,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.5125784140366774,
+          "similarity": 0.6766899228096008,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.5021847944993238,
+          "similarity": 0.6598002910614014,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.4799403410691481,
+          "similarity": 0.6236530542373657,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.45757495439969575,
+          "similarity": 0.5873093008995056,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4355302957388071,
+          "similarity": 0.5514867305755615,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.5521857624326068,
+          "similarity": 0.6766899228096008,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.5418590088193476,
+          "similarity": 0.6598002910614014,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.5265823331689976,
+          "similarity": 0.6236530542373657,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.4997230005919296,
+          "similarity": 0.5873093008995056,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.48366734298911346,
+          "similarity": 0.5514867305755615,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

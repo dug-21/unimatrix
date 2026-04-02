@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a92b01c4-1774484835000",
+  "query": "context_get tool schema pre-load discovery phase failures",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.6629018400805784,
+          "similarity": 0.7248440980911255,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.6109621512297267,
+          "similarity": 0.6330466270446777,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5999985432347283,
+          "similarity": 0.6294583678245544,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.5772246075415272,
+          "similarity": 0.6127925515174866,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5622636702959454,
+          "similarity": 0.5235145688056946,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5422117526714618,
+          "similarity": 0.7248440980911255,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.48572100125826323,
+          "similarity": 0.6330466270446777,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.48351284173818737,
+          "similarity": 0.6294583678245544,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.47325695477999175,
+          "similarity": 0.6127925515174866,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.4183166577265813,
+          "similarity": 0.5235145688056946,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.6633040625351923,
+          "similarity": 0.7248440980911255,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.6111055569168368,
+          "similarity": 0.6330466270446777,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.6001898407969999,
+          "similarity": 0.6294583678245544,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.5774555682166956,
+          "similarity": 0.6127925515174866,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5620120527538008,
+          "similarity": 0.5235145688056946,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.7248440980911255,
+          "similarity": 0.7248440980911255,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.6330466270446777,
+          "similarity": 0.6330466270446777,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.6294583678245544,
+          "similarity": 0.6294583678245544,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.6127925515174866,
+          "similarity": 0.6127925515174866,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5235145688056946,
+          "similarity": 0.5235145688056946,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5847459190652161,
+          "similarity": 0.7248440980911255,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5403471835419922,
+          "similarity": 0.6330466270446777,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5321031077727703,
+          "similarity": 0.6294583678245544,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.514320253460076,
+          "similarity": 0.6127925515174866,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.49704314327316695,
+          "similarity": 0.5235145688056946,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5847459190652161,
+          "similarity": 0.7248440980911255,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5403471835419922,
+          "similarity": 0.6330466270446777,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5321031077727703,
+          "similarity": 0.6294583678245544,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.514320253460076,
+          "similarity": 0.6127925515174866,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.49704314327316695,
+          "similarity": 0.5235145688056946,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

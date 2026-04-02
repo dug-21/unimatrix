@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-eb6484ed-1774441775000",
+  "query": "UDS handler error handling fire-and-forget hook connection",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.6267278310222749,
+          "similarity": 0.7058266997337341,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.626195805553714,
+          "similarity": 0.6672081351280212,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.5502565692161465,
+          "similarity": 0.5118967294692993,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.5269826299778069,
+          "similarity": 0.47064274549484253,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.5163166974891316,
+          "similarity": 0.5483821034431458,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.6262108449522654,
+          "similarity": 0.7058266997337341,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.625927751112052,
+          "similarity": 0.6672081351280212,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.5505072871229887,
+          "similarity": 0.5118967294692993,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.5273508645169112,
+          "similarity": 0.47064274549484253,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.5161071196724387,
+          "similarity": 0.5483821034431458,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.5566555227319173,
+          "similarity": 0.7058266997337341,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.5536907997479251,
+          "similarity": 0.6672081351280212,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.4876479327231274,
+          "similarity": 0.5118967294692993,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.46783011168338123,
+          "similarity": 0.47064274549484253,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.4651910517215729,
+          "similarity": 0.5483821034431458,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.5305087382976825,
+          "similarity": 0.7058266997337341,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.50674346777109,
+          "similarity": 0.6672081351280212,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.4336197559650128,
+          "similarity": 0.5483821034431458,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.41116721813495344,
+          "similarity": 0.5118967294692993,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.38578015107374924,
+          "similarity": 0.47064274549484253,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.5566555227319173,
+          "similarity": 0.7058266997337341,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.5536907997479251,
+          "similarity": 0.6672081351280212,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.4876479327231274,
+          "similarity": 0.5118967294692993,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.46783011168338123,
+          "similarity": 0.47064274549484253,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.4651910517215729,
+          "similarity": 0.5483821034431458,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.7058266997337341,
+          "similarity": 0.7058266997337341,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.6672081351280212,
+          "similarity": 0.6672081351280212,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.5483821034431458,
+          "similarity": 0.5483821034431458,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.5118967294692993,
+          "similarity": 0.5118967294692993,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.47064274549484253,
+          "similarity": 0.47064274549484253,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

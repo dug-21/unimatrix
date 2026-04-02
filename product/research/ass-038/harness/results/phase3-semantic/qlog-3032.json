@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3032",
+  "query": "OK.. now I'm seeing these errors in the log: 2026-03-25T19:44:23.485007Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PostToolUse\" session_id=\"e275cc04-ce4c-46c1-b692-6d56ec5c4e69\"\n2026-03-25T19:44:26.276359Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PreToolUse\" session_id=\"e275cc04-ce4c-46c1-b692-6d56ec5c4e69\"\n2026-03-25T19:44:26.304425Z  WARN serve_inner: rmcp::service: response error id=66 error=ErrorData { code: ErrorCode(-32602), message: \"failed to deserialize parameters: invalid type: string \\\"5\\\", expected i64\", data: None }\n2026-03-25T19:44:26.720482Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PreToolUse\" session_id=\"e275cc04-ce4c-46c1-b692-6d56ec5c4e69\"\n2026-03-25T19:44:27.439243Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PreToolUse\" session_id=\"e275cc04-ce4c-46c1-b692-6d56ec5c4e69\"\n2026-03-25T19:44:27.455221Z  WARN serve_inner: rmcp::service: response error id=67 error=ErrorData { code: ErrorCode(-32602), message: \"failed to deserialize parameters: invalid type: string \\\"5\\\", expected i64\", data: None }",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.5054608995989066,
+          "similarity": 0.4845219850540161,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4943324241311374,
+          "similarity": 0.4896396994590759,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3902,
+          "title": "UDS dispatch arms: adding a session registry call triggers sanitize_session_id audit",
+          "category": "lesson-learned",
+          "final_score": 0.48584145291563796,
+          "similarity": 0.4878094792366028,
+          "confidence": 0.5504132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.48056313136224316,
+          "similarity": 0.4777243137359619,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.4683351736995709,
+          "similarity": 0.4795423150062561,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.5054608995989066,
+          "similarity": 0.4845219850540161,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4943324241311374,
+          "similarity": 0.4896396994590759,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3902,
+          "title": "UDS dispatch arms: adding a session registry call triggers sanitize_session_id audit",
+          "category": "lesson-learned",
+          "final_score": 0.48584145291563796,
+          "similarity": 0.4878094792366028,
+          "confidence": 0.5504132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.48056313136224316,
+          "similarity": 0.4777243137359619,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.4683351736995709,
+          "similarity": 0.4795423150062561,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

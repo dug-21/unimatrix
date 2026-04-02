@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3048",
+  "query": "hmmm.. under .claude/worktrees, i see a worktree",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.5104375217301693,
+          "similarity": 0.5010657906532288,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.48008667993204035,
+          "similarity": 0.403652548789978,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 588,
+          "title": "Git worktrees use .git file not directory — check both in project root detection",
+          "category": "lesson-learned",
+          "final_score": 0.42952446559075874,
+          "similarity": 0.3912508487701416,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.4189972062943331,
+          "similarity": 0.3749500513076782,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3811,
+          "title": "Retrospective findings: vnc-012",
+          "category": "lesson-learned",
+          "final_score": 0.4177881103896315,
+          "similarity": 0.3726527690887451,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.5104375217301693,
+          "similarity": 0.5010657906532288,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.48008667993204035,
+          "similarity": 0.403652548789978,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 588,
+          "title": "Git worktrees use .git file not directory — check both in project root detection",
+          "category": "lesson-learned",
+          "final_score": 0.42952446559075874,
+          "similarity": 0.3912508487701416,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.4189972062943331,
+          "similarity": 0.3749500513076782,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3811,
+          "title": "Retrospective findings: vnc-012",
+          "category": "lesson-learned",
+          "final_score": 0.4177881103896315,
+          "similarity": 0.3726527690887451,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

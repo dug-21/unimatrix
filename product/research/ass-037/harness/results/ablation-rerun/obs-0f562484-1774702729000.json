@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-0f562484-1774702729000",
+  "query": "graph inference edge stall supports_edge_threshold too conservative",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.47369703879723185,
+          "similarity": 0.6135076880455017,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.42205073283268857,
+          "similarity": 0.5295824408531189,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.410184383392334,
+          "similarity": 0.5102996230125427,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.40237764211801386,
+          "similarity": 0.49761366844177246,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.391905271089994,
+          "similarity": 0.48059606552124023,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.6135076880455017,
+          "similarity": 0.6135076880455017,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.5295824408531189,
+          "similarity": 0.5295824408531189,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5102996230125427,
+          "similarity": 0.5102996230125427,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.49761366844177246,
+          "similarity": 0.49761366844177246,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.48059606552124023,
+          "similarity": 0.48059606552124023,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5342275158093023,
+          "similarity": 0.6135076880455017,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.48736760640725235,
+          "similarity": 0.5102996230125427,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.4871043000640322,
+          "similarity": 0.5295824408531189,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.4728668988816987,
+          "similarity": 0.49761366844177246,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.4509461624116059,
+          "similarity": 0.48059606552124023,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5342275158093023,
+          "similarity": 0.6135076880455017,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.48736760640725235,
+          "similarity": 0.5102996230125427,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.4871043000640322,
+          "similarity": 0.5295824408531189,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.4728668988816987,
+          "similarity": 0.49761366844177246,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.4509461624116059,
+          "similarity": 0.48059606552124023,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.6044781895377186,
+          "similarity": 0.6135076880455017,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5502791045773521,
+          "similarity": 0.5102996230125427,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.5480272313767973,
+          "similarity": 0.5295824408531189,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.5316198937158833,
+          "similarity": 0.49761366844177246,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5032010008079649,
+          "similarity": 0.48059606552124023,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.6045368226449119,
+          "similarity": 0.6135076880455017,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5500194975542039,
+          "similarity": 0.5102996230125427,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.5479074600097604,
+          "similarity": 0.5295824408531189,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.5313990740712461,
+          "similarity": 0.49761366844177246,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5030542155138953,
+          "similarity": 0.48059606552124023,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2403,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3730,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

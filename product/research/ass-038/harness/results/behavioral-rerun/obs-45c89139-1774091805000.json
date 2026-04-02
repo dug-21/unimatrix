@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-45c89139-1774091805000",
+  "query": "domain pack config TOML registration startup extensibility",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.52835169055298,
+          "similarity": 0.5409199595451355,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2936,
+          "title": "SqlObservationSource::new_default() vs new(store, registry) — wiring gap",
+          "category": "pattern",
+          "final_score": 0.4964467816752832,
+          "similarity": 0.4869425296783447,
+          "confidence": 0.5804376507209906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.42328048064763657,
+          "similarity": 0.34642767906188965,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2395,
+          "title": "Two-Level TOML Config Merge: Global + Per-Project with Replace Semantics",
+          "category": "pattern",
+          "final_score": 0.4165673831295662,
+          "similarity": 0.3624887466430664,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.4010918922488984,
+          "similarity": 0.3295789361000061,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.52835169055298,
+          "similarity": 0.5409199595451355,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2936,
+          "title": "SqlObservationSource::new_default() vs new(store, registry) — wiring gap",
+          "category": "pattern",
+          "final_score": 0.4964467816752832,
+          "similarity": 0.4869425296783447,
+          "confidence": 0.5804376507209906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.42328048064763657,
+          "similarity": 0.34642767906188965,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2395,
+          "title": "Two-Level TOML Config Merge: Global + Per-Project with Replace Semantics",
+          "category": "pattern",
+          "final_score": 0.4165673831295662,
+          "similarity": 0.3624887466430664,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.4010918922488984,
+          "similarity": 0.3295789361000061,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

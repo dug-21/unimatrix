@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-783",
+  "query": "trying to think of anything we can do on the hook side to give something more??",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.3341338600406075,
+          "similarity": 0.16547030210494995,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.32487227851384204,
+          "similarity": 0.18282711505889893,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.3197756636594339,
+          "similarity": 0.14140212535858154,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3345,
+          "title": "Fail-Open Closure Pattern: Inner Closure Returning Option for Infallible Public Functions",
+          "category": "pattern",
+          "final_score": 0.29881242072429726,
+          "similarity": 0.14289796352386475,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.2845858164519415,
+          "similarity": 0.1462867259979248,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.3341338600406075,
+          "similarity": 0.16547030210494995,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.32487227851384204,
+          "similarity": 0.18282711505889893,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.3197756636594339,
+          "similarity": 0.14140212535858154,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3345,
+          "title": "Fail-Open Closure Pattern: Inner Closure Returning Option for Infallible Public Functions",
+          "category": "pattern",
+          "final_score": 0.29881242072429726,
+          "similarity": 0.14289796352386475,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.2845858164519415,
+          "similarity": 0.1462867259979248,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

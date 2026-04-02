@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-bd98afa6-1773804850000",
+  "query": "dual pool read write separation",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5642454249380661,
+          "similarity": 0.5605246424674988,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5486500399796836,
+          "similarity": 0.5526217818260193,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.544653492517924,
+          "similarity": 0.541515588760376,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.5272136066780434,
+          "similarity": 0.4863186478614807,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.48963060737229647,
+          "similarity": 0.48369336128234863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.44109208767230695,
+          "similarity": 0.5605246424674988,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4362287888160119,
+          "similarity": 0.5526217818260193,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4293942084679237,
+          "similarity": 0.541515588760376,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.39542686022244966,
+          "similarity": 0.4863186478614807,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.3938112992506761,
+          "similarity": 0.48369336128234863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5011482877857485,
+          "similarity": 0.5605246424674988,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4891848147735027,
+          "similarity": 0.5526217818260193,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4855136004305027,
+          "similarity": 0.541515588760376,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.4690445547546639,
+          "similarity": 0.4863186478614807,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4413086694918406,
+          "similarity": 0.48369336128234863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5011482877857485,
+          "similarity": 0.5605246424674988,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4891848147735027,
+          "similarity": 0.5526217818260193,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4855136004305027,
+          "similarity": 0.541515588760376,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.4690445547546639,
+          "similarity": 0.4863186478614807,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4413086694918406,
+          "similarity": 0.48369336128234863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5605246424674988,
+          "similarity": 0.5605246424674988,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5526217818260193,
+          "similarity": 0.5526217818260193,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.541515588760376,
+          "similarity": 0.541515588760376,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.4863186478614807,
+          "similarity": 0.4863186478614807,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.48369336128234863,
+          "similarity": 0.48369336128234863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5642697437777431,
+          "similarity": 0.5605246424674988,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5486240808826488,
+          "similarity": 0.5526217818260193,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.54467400169281,
+          "similarity": 0.541515588760376,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.52748089399057,
+          "similarity": 0.4863186478614807,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.48966941290229615,
+          "similarity": 0.48369336128234863,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

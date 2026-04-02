@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774575747000",
+  "query": "unimatrix-store read.rs SQL aggregate status metrics",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.5278615959931984,
+          "similarity": 0.5365500450134277,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.5274455109147159,
+          "similarity": 0.5721073150634766,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5209364276610976,
+          "similarity": 0.5284455418586731,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.504079369058955,
+          "similarity": 0.539261519908905,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.5004585910872453,
+          "similarity": 0.5227612853050232,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.5278615959931984,
+          "similarity": 0.5365500450134277,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.5274455109147159,
+          "similarity": 0.5721073150634766,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5209364276610976,
+          "similarity": 0.5284455418586731,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.504079369058955,
+          "similarity": 0.539261519908905,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.5004585910872453,
+          "similarity": 0.5227612853050232,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

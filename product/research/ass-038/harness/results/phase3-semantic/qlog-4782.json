@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4782",
+  "query": "now back to 459:  the design is complete in product/features/crt-035.  Provide your thoughts",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.47110360678387553,
+          "similarity": 0.4213913679122925,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.4615252511095469,
+          "similarity": 0.39235782623291016,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 765,
+          "title": "Design agents do not read sibling feature artifacts unprompted",
+          "category": "lesson-learned",
+          "final_score": 0.43222780380693304,
+          "similarity": 0.3538641929626465,
+          "confidence": 0.596240906100752,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.41770449749976446,
+          "similarity": 0.3358333110809326,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1120,
+          "title": "Design-Only Features Naturally Produce High Session Counts and Mutation Spread",
+          "category": "lesson-learned",
+          "final_score": 0.4052201993863863,
+          "similarity": 0.3431612253189087,
+          "confidence": 0.5382245050217507,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.47110360678387553,
+          "similarity": 0.4213913679122925,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.4615252511095469,
+          "similarity": 0.39235782623291016,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 765,
+          "title": "Design agents do not read sibling feature artifacts unprompted",
+          "category": "lesson-learned",
+          "final_score": 0.43222780380693304,
+          "similarity": 0.3538641929626465,
+          "confidence": 0.596240906100752,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.41770449749976446,
+          "similarity": 0.3358333110809326,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1120,
+          "title": "Design-Only Features Naturally Produce High Session Counts and Mutation Spread",
+          "category": "lesson-learned",
+          "final_score": 0.4052201993863863,
+          "similarity": 0.3431612253189087,
+          "confidence": 0.5382245050217507,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

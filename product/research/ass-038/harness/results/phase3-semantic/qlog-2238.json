@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2238",
+  "query": "Now run context_status again and compare the statistics",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.4797003709394191,
+          "similarity": 0.4813915491104126,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.4649487157969049,
+          "similarity": 0.4278135299682617,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.4592911917025755,
+          "similarity": 0.4277230501174927,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.45579656381691847,
+          "similarity": 0.44752418994903564,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.4492049019966764,
+          "similarity": 0.41295015811920166,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.4797003709394191,
+          "similarity": 0.4813915491104126,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.4649487157969049,
+          "similarity": 0.4278135299682617,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.4592911917025755,
+          "similarity": 0.4277230501174927,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.45579656381691847,
+          "similarity": 0.44752418994903564,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.4492049019966764,
+          "similarity": 0.41295015811920166,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

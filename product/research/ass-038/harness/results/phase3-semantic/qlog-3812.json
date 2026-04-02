@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3812",
+  "query": "its time to pick up issue 421 and work as a bugfix",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.49298482428826973,
+          "similarity": 0.4478750228881836,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.48954863020530903,
+          "similarity": 0.437868595123291,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.47856434748772037,
+          "similarity": 0.41222238540649414,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.4589066245433041,
+          "similarity": 0.4313834309577942,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.44665589778532855,
+          "similarity": 0.43835169076919556,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.49298482428826973,
+          "similarity": 0.4478750228881836,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.48954863020530903,
+          "similarity": 0.437868595123291,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.47856434748772037,
+          "similarity": 0.41222238540649414,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.4589066245433041,
+          "similarity": 0.4313834309577942,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.44665589778532855,
+          "similarity": 0.43835169076919556,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

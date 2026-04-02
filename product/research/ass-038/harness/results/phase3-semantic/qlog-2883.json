@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2883",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(uni-bug-investigator) → ]\n[Assistant] Cycle started. Key briefing entries are relevant — entry #2987 notes keywords are stored but never read downstream, and entry #3397 hints `current_goal` is already surfaced in `synthesize_from_session`. Spawning the investigator now.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5772369950222949,
+          "similarity": 0.600045382976532,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5324697129373507,
+          "similarity": 0.5050658583641052,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5268063534030739,
+          "similarity": 0.5453430414199829,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5005151841396551,
+          "similarity": 0.484566330909729,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.4944351624251868,
+          "similarity": 0.4923939108848572,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5772369950222949,
+          "similarity": 0.600045382976532,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5324697129373507,
+          "similarity": 0.5050658583641052,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5268063534030739,
+          "similarity": 0.5453430414199829,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5005151841396551,
+          "similarity": 0.484566330909729,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.4944351624251868,
+          "similarity": 0.4923939108848572,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

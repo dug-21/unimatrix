@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3435",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: mcp__unimatrix__context_briefing(execute integration tests and risk coverage validation for phase-stratified eval scenarios feature) → ]\n[tool: Bash(git add product/features/nan-009/reports/gate-3b-r2-report.md && git commit -m \"$(cat <<'EOF'\nchore: add gate-3b-r2 repo) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.4994277105311651,
+          "similarity": 0.46366560459136963,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4884401182297269,
+          "similarity": 0.49847209453582764,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4865570558987339,
+          "similarity": 0.5211150646209717,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.4837079027159228,
+          "similarity": 0.469710111618042,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.4587680994992168,
+          "similarity": 0.4547168016433716,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.4994277105311651,
+          "similarity": 0.46366560459136963,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4884401182297269,
+          "similarity": 0.49847209453582764,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4865570558987339,
+          "similarity": 0.5211150646209717,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.4837079027159228,
+          "similarity": 0.469710111618042,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.4587680994992168,
+          "similarity": 0.4547168016433716,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -14,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

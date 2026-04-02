@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774783184000",
+  "query": "crt-030 pattern lesson procedure implementation",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.5136465873486613,
+          "similarity": 0.5297335982322693,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4893562826011868,
+          "similarity": 0.42632681131362915,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.4763781520048166,
+          "similarity": 0.45553910732269287,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.45642216377204237,
+          "similarity": 0.3965108394622803,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.431459976292359,
+          "similarity": 0.38602256774902344,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.5136465873486613,
+          "similarity": 0.5297335982322693,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4893562826011868,
+          "similarity": 0.42632681131362915,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.4763781520048166,
+          "similarity": 0.45553910732269287,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.45642216377204237,
+          "similarity": 0.3965108394622803,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.431459976292359,
+          "similarity": 0.38602256774902344,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

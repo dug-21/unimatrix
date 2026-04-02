@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-5c7012c4-1774574371000",
+  "query": "Rust struct field additions batch compile cycles reduce cascading errors",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5969773708943124,
+          "similarity": 0.6989113688468933,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.568443283789359,
+          "similarity": 0.5837873220443726,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5286782373286244,
+          "similarity": 0.5859993696212769,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5282962938689405,
+          "similarity": 0.6050183176994324,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5969773708943124,
+          "similarity": 0.6989113688468933,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.568443283789359,
+          "similarity": 0.5837873220443726,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5286782373286244,
+          "similarity": 0.5859993696212769,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5282962938689405,
+          "similarity": 0.6050183176994324,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3035",
+  "query": "so.. a larger request... the issue about deserialization... I think all of the skills related to Unimatrix should include the actual format, instead of pseudocode... watching the logs, this is causing a larger issue that I anticipated.  Review all of the skills and replace the pseudo calls with actual mcp correctly formatted calls.  Keep the same query recommendations, just make the formatting change",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5493619806006556,
+          "similarity": 0.5796825289726257,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5410737404152578,
+          "similarity": 0.5642563104629517,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.53347473715967,
+          "similarity": 0.6033074855804443,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5126497738401766,
+          "similarity": 0.5083098411560059,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.49820972006739794,
+          "similarity": 0.5478538274765015,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5493619806006556,
+          "similarity": 0.5796825289726257,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5410737404152578,
+          "similarity": 0.5642563104629517,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.53347473715967,
+          "similarity": 0.6033074855804443,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5126497738401766,
+          "similarity": 0.5083098411560059,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.49820972006739794,
+          "similarity": 0.5478538274765015,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

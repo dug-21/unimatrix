@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-e275cc04-1774457711000",
+  "query": "PostToolUseFailure hook event payload error field",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5251862411510781,
+          "similarity": 0.5105006694793701,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5077859923949517,
+          "similarity": 0.4909168481826782,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5072993833376125,
+          "similarity": 0.4551827907562256,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.4692308155086535,
+          "similarity": 0.4514937400817871,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.46608928654083265,
+          "similarity": 0.41521674394607544,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.410308104294997,
+          "similarity": 0.5105006694793701,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.3982565219585712,
+          "similarity": 0.4909168481826782,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.37626633277306193,
+          "similarity": 0.4551827907562256,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.37399614774263823,
+          "similarity": 0.4514937400817871,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.35167184242835414,
+          "similarity": 0.41521674394607544,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.46916995480941537,
+          "similarity": 0.5105006694793701,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.4551041843018098,
+          "similarity": 0.4909168481826782,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.4523650671646642,
+          "similarity": 0.4551827907562256,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.4242021807117984,
+          "similarity": 0.4514937400817871,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.4194799263930156,
+          "similarity": 0.41521674394607544,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5252822252796515,
+          "similarity": 0.5105006694793701,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5078962482394764,
+          "similarity": 0.4909168481826782,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5076400146616739,
+          "similarity": 0.4551827907562256,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.4693467441062148,
+          "similarity": 0.4514937400817871,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.4664217868192298,
+          "similarity": 0.41521674394607544,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5105006694793701,
+          "similarity": 0.5105006694793701,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.4909168481826782,
+          "similarity": 0.4909168481826782,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.4551827907562256,
+          "similarity": 0.4551827907562256,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.4514937400817871,
+          "similarity": 0.4514937400817871,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.41521674394607544,
+          "similarity": 0.41521674394607544,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.46916995480941537,
+          "similarity": 0.5105006694793701,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.4551041843018098,
+          "similarity": 0.4909168481826782,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.4523650671646642,
+          "similarity": 0.4551827907562256,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.4242021807117984,
+          "similarity": 0.4514937400817871,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.4194799263930156,
+          "similarity": 0.41521674394607544,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

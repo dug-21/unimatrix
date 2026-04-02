@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-94",
+  "query": "OK.. now, we have a fairly fully functional unimatrix... long term memory for this platform.  In some ways, I believe we are using this well, in others, I feel like our process could better take advantage of the capabilities we've built.  I have ideas, but I'd like you to trace through our Claude.md, protocols, agent definitions, and skills, and analyze a few different ways we could better take advantage of this platform.  Your goal is not to find ways to USE unimatrix... it is to find ways that using Unimatrix better, could improve delivery, improving long term memory of patterns, procedures, reducing token consumption, or any other way you can think of.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5580329051384804,
+          "similarity": 0.5716431736946106,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5504908583886613,
+          "similarity": 0.5542413592338562,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5455966216293947,
+          "similarity": 0.5331834554672241,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5171823939651219,
+          "similarity": 0.5320562720298767,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.48827200309038543,
+          "similarity": 0.5391457080841064,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5580329051384804,
+          "similarity": 0.5716431736946106,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5504908583886613,
+          "similarity": 0.5542413592338562,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5455966216293947,
+          "similarity": 0.5331834554672241,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5171823939651219,
+          "similarity": 0.5320562720298767,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.48827200309038543,
+          "similarity": 0.5391457080841064,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-836",
+  "query": "Unimatrix delivers the right knowledge at the right time to any system.  (This may be a little broad.. because it assumes we're watching 'the system' and its knowledge relevant or stored by the system.... Was considering this for the closing sentence",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4943877524615987,
+          "similarity": 0.4380608797073364,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4818219147658147,
+          "similarity": 0.4541279673576355,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.4774212020448916,
+          "similarity": 0.4565100073814392,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.46293028907956313,
+          "similarity": 0.41546231508255005,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.4589289300227891,
+          "similarity": 0.42521238327026367,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4943877524615987,
+          "similarity": 0.4380608797073364,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4818219147658147,
+          "similarity": 0.4541279673576355,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.4774212020448916,
+          "similarity": 0.4565100073814392,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.46293028907956313,
+          "similarity": 0.41546231508255005,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.4589289300227891,
+          "similarity": 0.42521238327026367,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

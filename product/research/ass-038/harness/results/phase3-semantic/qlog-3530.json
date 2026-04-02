@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-3530",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Revalidate SPECIFICATION.md for pool change) → ]\n[tool: Agent(Revalidate ARCHITECTURE.md for pool change) → ]\n[Assistant] Spawning a parallel review across all affected artifacts — architect, spec writer, and risk strategist simultaneously:\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5056307680319159,
+          "similarity": 0.4603598713874817,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.49073673242502835,
+          "similarity": 0.5221052765846252,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.47919550056679516,
+          "similarity": 0.4809073209762573,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.47430426721043906,
+          "similarity": 0.4658324718475342,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5056307680319159,
+          "similarity": 0.4603598713874817,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.49073673242502835,
+          "similarity": 0.5221052765846252,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.47919550056679516,
+          "similarity": 0.4809073209762573,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.47430426721043906,
+          "similarity": 0.4658324718475342,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

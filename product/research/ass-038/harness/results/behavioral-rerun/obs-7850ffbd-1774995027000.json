@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-7850ffbd-1774995027000",
+  "query": "how to fix query ordering bug unimatrix-store procedure",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5253457870560281,
+          "similarity": 0.5324515104293823,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.4970260922284012,
+          "similarity": 0.5143104195594788,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3964,
+          "title": "Use WHERE col IS NOT NULL + ORDER BY ASC for get_* functions resolving nullable columns across multiple rows",
+          "category": "pattern",
+          "final_score": 0.4969858453148289,
+          "similarity": 0.565273106098175,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.4908721237301047,
+          "similarity": 0.4853518009185791,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5253457870560281,
+          "similarity": 0.5324515104293823,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.4970260922284012,
+          "similarity": 0.5143104195594788,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3964,
+          "title": "Use WHERE col IS NOT NULL + ORDER BY ASC for get_* functions resolving nullable columns across multiple rows",
+          "category": "pattern",
+          "final_score": 0.4969858453148289,
+          "similarity": 0.565273106098175,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.4908721237301047,
+          "similarity": 0.4853518009185791,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

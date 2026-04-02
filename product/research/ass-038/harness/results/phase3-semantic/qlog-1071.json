@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1071",
+  "query": "run retro for nxs-011",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4499303644664021,
+          "similarity": 0.39108389616012573,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.4419360412252079,
+          "similarity": 0.37534356117248535,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3,
+          "title": "Roadmap milestones 1-2: Foundation and MCP Server",
+          "category": "decision",
+          "final_score": 0.43507724063830666,
+          "similarity": 0.36231184005737305,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.41685129927200626,
+          "similarity": 0.3743276596069336,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.40841033146521977,
+          "similarity": 0.3802540898323059,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4499303644664021,
+          "similarity": 0.39108389616012573,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.4419360412252079,
+          "similarity": 0.37534356117248535,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3,
+          "title": "Roadmap milestones 1-2: Foundation and MCP Server",
+          "category": "decision",
+          "final_score": 0.43507724063830666,
+          "similarity": 0.36231184005737305,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.41685129927200626,
+          "similarity": 0.3743276596069336,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.40841033146521977,
+          "similarity": 0.3802540898323059,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-67e04789-1774666947000",
+  "query": "freshness decay confidence half-life scoring input validation",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.5704804711389347,
+          "similarity": 0.648567259311676,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.544565118338197,
+          "similarity": 0.5941345691680908,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2284,
+          "title": "ADR-001 dsn-001: ConfidenceParams Struct for Engine API",
+          "category": "decision",
+          "final_score": 0.5359239820141589,
+          "similarity": 0.5227566361427307,
+          "confidence": 0.6364270424059589,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.4855292423107568,
+          "similarity": 0.4223363399505615,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.45242704091503483,
+          "similarity": 0.3955061435699463,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.5704804711389347,
+          "similarity": 0.648567259311676,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.544565118338197,
+          "similarity": 0.5941345691680908,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2284,
+          "title": "ADR-001 dsn-001: ConfidenceParams Struct for Engine API",
+          "category": "decision",
+          "final_score": 0.5359239820141589,
+          "similarity": 0.5227566361427307,
+          "confidence": 0.6364270424059589,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.4855292423107568,
+          "similarity": 0.4223363399505615,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.45242704091503483,
+          "similarity": 0.3955061435699463,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

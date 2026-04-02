@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1263",
+  "query": "add the metadata TEXT column.  CoAccess seems like it should be normalized.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.41980067988838865,
+          "similarity": 0.3033454418182373,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.4058087200855408,
+          "similarity": 0.31728482246398926,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.4021096114306397,
+          "similarity": 0.29695838689804077,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.40021169892942576,
+          "similarity": 0.311138391494751,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.39142836040412965,
+          "similarity": 0.3211316466331482,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.41980067988838865,
+          "similarity": 0.3033454418182373,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.4058087200855408,
+          "similarity": 0.31728482246398926,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.4021096114306397,
+          "similarity": 0.29695838689804077,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.40021169892942576,
+          "similarity": 0.311138391494751,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.39142836040412965,
+          "similarity": 0.3211316466331482,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

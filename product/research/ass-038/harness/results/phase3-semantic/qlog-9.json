@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-9",
+  "query": "OK... now commit, check git status for stray untracked changes, clean them up, commit them, and then create a PR to merge",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.4586275011681902,
+          "similarity": 0.4029136896133423,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.44212279250261266,
+          "similarity": 0.38032782077789307,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4377926451269122,
+          "similarity": 0.4284626841545105,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4348445627736658,
+          "similarity": 0.3966405391693115,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.4257757037316008,
+          "similarity": 0.37893468141555786,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.4586275011681902,
+          "similarity": 0.4029136896133423,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.44212279250261266,
+          "similarity": 0.38032782077789307,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4377926451269122,
+          "similarity": 0.4284626841545105,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4348445627736658,
+          "similarity": 0.3966405391693115,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.4257757037316008,
+          "similarity": 0.37893468141555786,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

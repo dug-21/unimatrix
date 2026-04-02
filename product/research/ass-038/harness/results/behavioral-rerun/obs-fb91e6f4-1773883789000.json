@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773883789000",
+  "query": "supersession graph penalty scoring",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.533350983340687,
+          "similarity": 0.5572267174720764,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5219344945461407,
+          "similarity": 0.5088567137718201,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5078709989423837,
+          "similarity": 0.48424941301345825,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.4961102761131918,
+          "similarity": 0.4686499238014221,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4960641790762512,
+          "similarity": 0.46734708547592163,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.533350983340687,
+          "similarity": 0.5572267174720764,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5219344945461407,
+          "similarity": 0.5088567137718201,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5078709989423837,
+          "similarity": 0.48424941301345825,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.4961102761131918,
+          "similarity": 0.4686499238014221,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4960641790762512,
+          "similarity": 0.46734708547592163,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

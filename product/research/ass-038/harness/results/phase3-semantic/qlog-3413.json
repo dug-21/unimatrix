@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3413",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Wave plan from IMPLEMENTATION-BRIEF:\n- **Wave 1** (independent): Scenario Extraction + Result Passthrough — separate modules, no shared files\n- **Wave 2** (depends on Wave 1 for compile): Report Entry Point + Report Aggregation + Report Rendering — each owns a distinct file (mod.rs, aggregate.rs, render.rs)\n- **Wave 3**: Documentation — after code is settled\n\nSpawning Wave 1.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5529442898414606,
+          "similarity": 0.5838459730148315,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5341526245597769,
+          "similarity": 0.5181850790977478,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5254457049276545,
+          "similarity": 0.6007117033004761,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3547,
+          "title": "Wave-Parallel Swarm: Type-Definition Waves Must Complete Before Downstream Waves Are Spawned",
+          "category": "lesson-learned",
+          "final_score": 0.5152211698529401,
+          "similarity": 0.5400745868682861,
+          "confidence": 0.555493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.48916505713211855,
+          "similarity": 0.5504136085510254,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5529442898414606,
+          "similarity": 0.5838459730148315,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5341526245597769,
+          "similarity": 0.5181850790977478,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5254457049276545,
+          "similarity": 0.6007117033004761,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3547,
+          "title": "Wave-Parallel Swarm: Type-Definition Waves Must Complete Before Downstream Waves Are Spawned",
+          "category": "lesson-learned",
+          "final_score": 0.5152211698529401,
+          "similarity": 0.5400745868682861,
+          "confidence": 0.555493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.48916505713211855,
+          "similarity": 0.5504136085510254,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4111",
+  "query": "does this make sense? Root Cause: RecurringFrictionRule implements ExtractionRule::evaluate() and writes ProposedEntry objects (category: lesson-learned, topic: process-improvement) directly to ENTRIES via            \n  store.insert(). These entries pollute the knowledge base with low-quality process noise.\n                                                                                                                                                                                                     \n  Fix Plan:                                                                              \n  1. recurring_friction.rs — Remove ExtractionRule impl, replace with compute_friction_recommendations() -> Vec<String> (pure signal extraction, no persistence)                                     \n  2. extraction/mod.rs — Remove RecurringFrictionRule from default_extraction_rules() (4→3 rules)                                                               \n  3. background.rs — Call compute_friction_recommendations inside extraction_tick()'s spawn_blocking closure, add friction_signals: Vec<String> to TickMetadata, add one-shot quarantine migration   \n  for existing junk entries (COUNTERS-gated)                                                                                                                                                      \n  4. mcp/tools.rs — Append friction_signals to maintenance_recommendations in context_status response (unconditional)                                                                                \n                                                                                         \n  New test: test_extraction_tick_does_not_write_recurring_friction_to_entries      ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5789956783730049,
+          "similarity": 0.5988766551017761,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.573899725612841,
+          "similarity": 0.5934094786643982,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5541297903353654,
+          "similarity": 0.6249391436576843,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5474809463282152,
+          "similarity": 0.5738012790679932,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.5366926372604096,
+          "similarity": 0.5735003352165222,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5789956783730049,
+          "similarity": 0.5988766551017761,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.573899725612841,
+          "similarity": 0.5934094786643982,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5541297903353654,
+          "similarity": 0.6249391436576843,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5474809463282152,
+          "similarity": 0.5738012790679932,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.5366926372604096,
+          "similarity": 0.5735003352165222,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774783276000",
+  "query": "grep bash search tool anti-pattern use Grep instead",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3545,
+          "title": "Use Grep/Glob tools for content search — Bash search commands are a CLAUDE.md rule violation",
+          "category": "lesson-learned",
+          "final_score": 0.482238219334529,
+          "similarity": 0.6273871064186096,
+          "confidence": 0.5281208324671399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.4434032440185547,
+          "similarity": 0.5642802715301514,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2578,
+          "title": "Agents default to Bash for search instead of Grep/Glob tools -- reinforcement needed in spawn prompts",
+          "category": "lesson-learned",
+          "final_score": 0.42150203998272234,
+          "similarity": 0.5286908149719238,
+          "confidence": 0.5008272995672723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.38249191871056193,
+          "similarity": 0.4652993679046631,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3874,
+          "title": "Retrospective findings: crt-033",
+          "category": "lesson-learned",
+          "final_score": 0.3766315900362455,
+          "similarity": 0.4557763338088989,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3545,
+          "title": "Use Grep/Glob tools for content search — Bash search commands are a CLAUDE.md rule violation",
+          "category": "lesson-learned",
+          "final_score": 0.5865127583209456,
+          "similarity": 0.6273871064186096,
+          "confidence": 0.5281208324671399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.5248064266769588,
+          "similarity": 0.5642802715301514,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2578,
+          "title": "Agents default to Bash for search instead of Grep/Glob tools -- reinforcement needed in spawn prompts",
+          "category": "lesson-learned",
+          "final_score": 0.5172176027464791,
+          "similarity": 0.5286908149719238,
+          "confidence": 0.5008272995672723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3874,
+          "title": "Retrospective findings: crt-033",
+          "category": "lesson-learned",
+          "final_score": 0.47480960812288175,
+          "similarity": 0.4557763338088989,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.46451108344124825,
+          "similarity": 0.4652993679046631,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3545,
+          "title": "Use Grep/Glob tools for content search — Bash search commands are a CLAUDE.md rule violation",
+          "category": "lesson-learned",
+          "final_score": 0.5221298029494468,
+          "similarity": 0.6273871064186096,
+          "confidence": 0.5281208324671399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.47266470168822355,
+          "similarity": 0.5642802715301514,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2578,
+          "title": "Agents default to Bash for search instead of Grep/Glob tools -- reinforcement needed in spawn prompts",
+          "category": "lesson-learned",
+          "final_score": 0.46459359735614364,
+          "similarity": 0.5286908149719238,
+          "confidence": 0.5008272995672723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3874,
+          "title": "Retrospective findings: crt-033",
+          "category": "lesson-learned",
+          "final_score": 0.4284881669044494,
+          "similarity": 0.4557763338088989,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.42166517278609966,
+          "similarity": 0.4652993679046631,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3545,
+          "title": "Use Grep/Glob tools for content search — Bash search commands are a CLAUDE.md rule violation",
+          "category": "lesson-learned",
+          "final_score": 0.5221298029494468,
+          "similarity": 0.6273871064186096,
+          "confidence": 0.5281208324671399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.47266470168822355,
+          "similarity": 0.5642802715301514,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2578,
+          "title": "Agents default to Bash for search instead of Grep/Glob tools -- reinforcement needed in spawn prompts",
+          "category": "lesson-learned",
+          "final_score": 0.46459359735614364,
+          "similarity": 0.5286908149719238,
+          "confidence": 0.5008272995672723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3874,
+          "title": "Retrospective findings: crt-033",
+          "category": "lesson-learned",
+          "final_score": 0.4284881669044494,
+          "similarity": 0.4557763338088989,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.42166517278609966,
+          "similarity": 0.4652993679046631,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3545,
+          "title": "Use Grep/Glob tools for content search — Bash search commands are a CLAUDE.md rule violation",
+          "category": "lesson-learned",
+          "final_score": 0.5867781761657356,
+          "similarity": 0.6273871064186096,
+          "confidence": 0.5281208324671399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.5250627503448365,
+          "similarity": 0.5642802715301514,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2578,
+          "title": "Agents default to Bash for search instead of Grep/Glob tools -- reinforcement needed in spawn prompts",
+          "category": "lesson-learned",
+          "final_score": 0.5172921041245664,
+          "similarity": 0.5286908149719238,
+          "confidence": 0.5008272995672723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3874,
+          "title": "Retrospective findings: crt-033",
+          "category": "lesson-learned",
+          "final_score": 0.47468601543253114,
+          "similarity": 0.4557763338088989,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.4645162021715301,
+          "similarity": 0.4652993679046631,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3545,
+          "title": "Use Grep/Glob tools for content search — Bash search commands are a CLAUDE.md rule violation",
+          "category": "lesson-learned",
+          "final_score": 0.6273871064186096,
+          "similarity": 0.6273871064186096,
+          "confidence": 0.5281208324671399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.5642802715301514,
+          "similarity": 0.5642802715301514,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2578,
+          "title": "Agents default to Bash for search instead of Grep/Glob tools -- reinforcement needed in spawn prompts",
+          "category": "lesson-learned",
+          "final_score": 0.5286908149719238,
+          "similarity": 0.5286908149719238,
+          "confidence": 0.5008272995672723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.4652993679046631,
+          "similarity": 0.4652993679046631,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3874,
+          "title": "Retrospective findings: crt-033",
+          "category": "lesson-learned",
+          "final_score": 0.4557763338088989,
+          "similarity": 0.4557763338088989,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2399,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3874,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

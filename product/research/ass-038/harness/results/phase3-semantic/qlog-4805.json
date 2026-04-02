@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4805",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(git add product/features/crt-035/agents/crt-035-agent-3-tick-report.md product/features/crt-035/agents/crt-035-agent-4-m) → [feature/crt-035 8ab271b] chore: crt-035 wave-1 agent reports (#460)\n 2 files changed, 159 insertions(+)\n create mode 100644 product/features/crt-035/agents/crt-035-agent-3-tick-report.md\n create mode 100644 product/features/crt-035/agents/crt-035-agent-4-migration-report.md]\n[Assistant] All three implementation commits are in. Staging the agent reports and running Gate 3b.\n[tool: Bash(git log --oneline -10) → 4fb9a9c impl(migration): v18→v19 bidirectional CoAccess back-fill + schema bump to 19 (#457)\n45e5f88 impl(typed_graph): add AC-12 PPR regression test for reverse CoAccess edge (crt-035)\n1513d65 impl(co_access_promotion_tick): bidirectional tick + blast-radius test updates (crt-035)\nccd6c76 pseudoc]\n[Assistant] The agents committed their changes. Let me verify the implementation commits landed.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5210666425341225,
+          "similarity": 0.5457926988601685,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5156261104204393,
+          "similarity": 0.5501254796981812,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.5146606200360587,
+          "similarity": 0.5434249639511108,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4964586892880891,
+          "similarity": 0.5642715096473694,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.48886039896891464,
+          "similarity": 0.5254914164543152,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5210666425341225,
+          "similarity": 0.5457926988601685,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5156261104204393,
+          "similarity": 0.5501254796981812,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.5146606200360587,
+          "similarity": 0.5434249639511108,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4964586892880891,
+          "similarity": 0.5642715096473694,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.48886039896891464,
+          "similarity": 0.5254914164543152,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

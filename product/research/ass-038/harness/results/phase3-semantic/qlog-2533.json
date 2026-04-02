@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2533",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Implement clippy fixes in unimatrix-store) → ]\n[tool: mcp__unimatrix__context_cycle(phase-end) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3257,
+          "title": "Bug fix clippy triage: scope to affected crates, not workspace, when pre-existing errors exist",
+          "category": "procedure",
+          "final_score": 0.4807613157634819,
+          "similarity": 0.42711806297302246,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.4711845598841189,
+          "similarity": 0.43114542961120605,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.4550500846960477,
+          "similarity": 0.42924952507019043,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.44080578173780227,
+          "similarity": 0.4205918312072754,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.44042083785408415,
+          "similarity": 0.43539959192276,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3257,
+          "title": "Bug fix clippy triage: scope to affected crates, not workspace, when pre-existing errors exist",
+          "category": "procedure",
+          "final_score": 0.4807613157634819,
+          "similarity": 0.42711806297302246,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.4711845598841189,
+          "similarity": 0.43114542961120605,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.4550500846960477,
+          "similarity": 0.42924952507019043,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.44080578173780227,
+          "similarity": 0.4205918312072754,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.44042083785408415,
+          "similarity": 0.43539959192276,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

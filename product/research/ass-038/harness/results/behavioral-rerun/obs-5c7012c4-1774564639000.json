@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5c7012c4-1774564639000",
+  "query": "eval harness profile TOML evaluation",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5921027576696786,
+          "similarity": 0.6604481339454651,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5601151221417716,
+          "similarity": 0.6297885179519653,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.5419579744536949,
+          "similarity": 0.5521702766418457,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5297298432942573,
+          "similarity": 0.5524947047233582,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5223010431153567,
+          "similarity": 0.5598763227462769,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5921027576696786,
+          "similarity": 0.6604481339454651,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5601151221417716,
+          "similarity": 0.6297885179519653,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.5419579744536949,
+          "similarity": 0.5521702766418457,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5297298432942573,
+          "similarity": 0.5524947047233582,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5223010431153567,
+          "similarity": 0.5598763227462769,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

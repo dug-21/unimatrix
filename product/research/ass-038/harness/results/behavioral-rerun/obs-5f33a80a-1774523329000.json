@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5f33a80a-1774523329000",
+  "query": "session state field addition HashSet in-memory lock-and-mutate SessionRegistry",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.5348651650534935,
+          "similarity": 0.541408896446228,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.5268479637426299,
+          "similarity": 0.6022664904594421,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5234647156479737,
+          "similarity": 0.5183582305908203,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5234138559021824,
+          "similarity": 0.5113263726234436,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.5107832285206529,
+          "similarity": 0.496817409992218,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.5348651650534935,
+          "similarity": 0.541408896446228,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.5268479637426299,
+          "similarity": 0.6022664904594421,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5234647156479737,
+          "similarity": 0.5183582305908203,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5234138559021824,
+          "similarity": 0.5113263726234436,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.5107832285206529,
+          "similarity": 0.496817409992218,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-briefing-a02f1841-1774916805000",
+  "query": "briefing:bugfix-379:",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.5564716450613443,
+          "similarity": 0.5684999823570251,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.55068606177854,
+          "similarity": 0.5492536425590515,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4888475788943052,
+          "similarity": 0.5185158848762512,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.4785257566933103,
+          "similarity": 0.5104542970657349,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4774644771375154,
+          "similarity": 0.5281825065612793,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.5564716450613443,
+          "similarity": 0.5684999823570251,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.55068606177854,
+          "similarity": 0.5492536425590515,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4888475788943052,
+          "similarity": 0.5185158848762512,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.4785257566933103,
+          "similarity": 0.5104542970657349,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4774644771375154,
+          "similarity": 0.5281825065612793,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002110000",
+  "query": "two-socket dual framing integration test pattern hook IPC MCP",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5412347351763593,
+          "similarity": 0.6117161512374878,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.5084489785078501,
+          "similarity": 0.5239079594612122,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.5002232647715358,
+          "similarity": 0.46704065799713135,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.48609486713952166,
+          "similarity": 0.4643746614456177,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4728400488136173,
+          "similarity": 0.4777160882949829,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5412347351763593,
+          "similarity": 0.6117161512374878,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.5084489785078501,
+          "similarity": 0.5239079594612122,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.5002232647715358,
+          "similarity": 0.46704065799713135,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.48609486713952166,
+          "similarity": 0.4643746614456177,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4728400488136173,
+          "similarity": 0.4777160882949829,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

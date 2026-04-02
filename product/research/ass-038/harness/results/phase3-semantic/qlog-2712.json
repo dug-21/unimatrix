@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2712",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Both complete. Spawning revised risk strategy.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4791494897319122,
+          "similarity": 0.4136791229248047,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.43489468312278856,
+          "similarity": 0.37120962142944336,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.4311525116056293,
+          "similarity": 0.34487366676330566,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.4255535477168294,
+          "similarity": 0.3527679443359375,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.41025101330958114,
+          "similarity": 0.35076630115509033,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4791494897319122,
+          "similarity": 0.4136791229248047,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.43489468312278856,
+          "similarity": 0.37120962142944336,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.4311525116056293,
+          "similarity": 0.34487366676330566,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.4255535477168294,
+          "similarity": 0.3527679443359375,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.41025101330958114,
+          "similarity": 0.35076630115509033,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

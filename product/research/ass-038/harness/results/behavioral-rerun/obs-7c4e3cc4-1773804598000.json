@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7c4e3cc4-1773804598000",
+  "query": "build_context capability check audit attribution tool call",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.5679162436543277,
+          "similarity": 0.5859224200248718,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 261,
+          "title": "AuditSource-Driven Behavior Differentiation for Caller-Specific Security",
+          "category": "pattern",
+          "final_score": 0.5243903102372821,
+          "similarity": 0.5053415894508362,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.5029029009689251,
+          "similarity": 0.49337536096572876,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 253,
+          "title": "ADR-002: AuditSource-Driven Content Scan Bypass",
+          "category": "decision",
+          "final_score": 0.4898544325374907,
+          "similarity": 0.4876832962036133,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.48473253758970447,
+          "similarity": 0.5469168424606323,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.5679162436543277,
+          "similarity": 0.5859224200248718,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 261,
+          "title": "AuditSource-Driven Behavior Differentiation for Caller-Specific Security",
+          "category": "pattern",
+          "final_score": 0.5243903102372821,
+          "similarity": 0.5053415894508362,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.5029029009689251,
+          "similarity": 0.49337536096572876,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 253,
+          "title": "ADR-002: AuditSource-Driven Content Scan Bypass",
+          "category": "decision",
+          "final_score": 0.4898544325374907,
+          "similarity": 0.4876832962036133,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.48473253758970447,
+          "similarity": 0.5469168424606323,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

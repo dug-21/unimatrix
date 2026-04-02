@@ -1,0 +1,434 @@
+{
+  "scenario_id": "uc1-05",
+  "query": "How should signal fusion weights be ordered in the Unimatrix ranking formula, and what are the default values?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.5576337224662875,
+          "similarity": 0.5671452879905701,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.44887475795706877,
+          "similarity": 0.36913883686065674,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.4474017390130024,
+          "similarity": 0.38749945163726807,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4468449257616639,
+          "similarity": 0.3770267963409424,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.44517061078815967,
+          "similarity": 0.3535080552101135,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.4450532106446543,
+          "similarity": 0.3935120701789856,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.4438332319676501,
+          "similarity": 0.36355841159820557,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2743,
+          "title": "Extract NLI sort logic as pub(crate) pure function to enable unit tests without ONNX model",
+          "category": "pattern",
+          "final_score": 0.44143419474624146,
+          "similarity": 0.38218772411346436,
+          "confidence": 0.5807674941491351,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.43549840006278584,
+          "similarity": 0.3545634150505066,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.43302702800727344,
+          "similarity": 0.3845174312591553,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.4325598375502998,
+          "similarity": 0.36157989501953125,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.4316261557986364,
+          "similarity": 0.3452547788619995,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4315572752313921,
+          "similarity": 0.35837578773498535,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2610,
+          "title": "HashMap profile iteration order is non-deterministic — always sort keys before selecting baseline",
+          "category": "pattern",
+          "final_score": 0.42853486073857516,
+          "similarity": 0.4020878076553345,
+          "confidence": 0.5173263253542263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.426857398513909,
+          "similarity": 0.3307532072067261,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.41914369591628886,
+          "similarity": 0.3796535134315491,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1099,
+          "title": "ADR-003: Deterministic Key Ordering via preserve_order",
+          "category": "decision",
+          "final_score": 0.4187639502211792,
+          "similarity": 0.35741758346557617,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.41809197361207073,
+          "similarity": 0.331290602684021,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4095572120246669,
+          "similarity": 0.34029388427734375,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.39730096362196043,
+          "similarity": 0.35712552070617676,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.05,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.926506603289533
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.5576337224662875,
+          "similarity": 0.5671452879905701,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.44887475795706877,
+          "similarity": 0.36913883686065674,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.4474017390130024,
+          "similarity": 0.38749945163726807,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4468449257616639,
+          "similarity": 0.3770267963409424,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.44517061078815967,
+          "similarity": 0.3535080552101135,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.4450532106446543,
+          "similarity": 0.3935120701789856,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.4438332319676501,
+          "similarity": 0.36355841159820557,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2743,
+          "title": "Extract NLI sort logic as pub(crate) pure function to enable unit tests without ONNX model",
+          "category": "pattern",
+          "final_score": 0.44143419474624146,
+          "similarity": 0.38218772411346436,
+          "confidence": 0.5807674941491351,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.43549840006278584,
+          "similarity": 0.3545634150505066,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.43302702800727344,
+          "similarity": 0.3845174312591553,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.4325598375502998,
+          "similarity": 0.36157989501953125,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.4316261557986364,
+          "similarity": 0.3452547788619995,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4315572752313921,
+          "similarity": 0.35837578773498535,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2610,
+          "title": "HashMap profile iteration order is non-deterministic — always sort keys before selecting baseline",
+          "category": "pattern",
+          "final_score": 0.42853486073857516,
+          "similarity": 0.4020878076553345,
+          "confidence": 0.5173263253542263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.426857398513909,
+          "similarity": 0.3307532072067261,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.41914369591628886,
+          "similarity": 0.3796535134315491,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1099,
+          "title": "ADR-003: Deterministic Key Ordering via preserve_order",
+          "category": "decision",
+          "final_score": 0.4187639502211792,
+          "similarity": 0.35741758346557617,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.41809197361207073,
+          "similarity": 0.331290602684021,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4095572120246669,
+          "similarity": 0.34029388427734375,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.39730096362196043,
+          "similarity": 0.35712552070617676,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.05,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.926506603289533
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

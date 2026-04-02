@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-2d7b967d-1774895962000",
+  "query": "background tick graph edges implementation patterns",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4778515696525574,
+          "similarity": 0.4778515696525574,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.3507884740829468,
+          "similarity": 0.3507884740829468,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.3489060401916504,
+          "similarity": 0.3489060401916504,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.3422154188156128,
+          "similarity": 0.3422154188156128,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.3417500853538513,
+          "similarity": 0.3417500853538513,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5412751029058513,
+          "similarity": 0.4778515696525574,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4668217454246695,
+          "similarity": 0.3507884740829468,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.45708218287591934,
+          "similarity": 0.3489060401916504,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.43585255339428075,
+          "similarity": 0.3422154188156128,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.4355788278285387,
+          "similarity": 0.3417500853538513,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.54086326178083,
+          "similarity": 0.4778515696525574,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4660682826237492,
+          "similarity": 0.3507884740829468,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4563797403909565,
+          "similarity": 0.3489060401916504,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.43524452005286074,
+          "similarity": 0.3422154188156128,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.43496955028000167,
+          "similarity": 0.3417500853538513,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.3902163505554199,
+          "similarity": 0.4778515696525574,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.3120236763587365,
+          "similarity": 0.3507884740829468,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.31086525550255406,
+          "similarity": 0.3489060401916504,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.30674795004037714,
+          "similarity": 0.3422154188156128,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.30646159098698544,
+          "similarity": 0.3417500853538513,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.47848982994944583,
+          "similarity": 0.4778515696525574,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.41516930552961256,
+          "similarity": 0.3507884740829468,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.40793887896614484,
+          "similarity": 0.3489060401916504,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.39199367595980544,
+          "similarity": 0.3422154188156128,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.3917610092289247,
+          "similarity": 0.3417500853538513,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.47848982994944583,
+          "similarity": 0.4778515696525574,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.41516930552961256,
+          "similarity": 0.3507884740829468,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.40793887896614484,
+          "similarity": 0.3489060401916504,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.39199367595980544,
+          "similarity": 0.3422154188156128,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.3917610092289247,
+          "similarity": 0.3417500853538513,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

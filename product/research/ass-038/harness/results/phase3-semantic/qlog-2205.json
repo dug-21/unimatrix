@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2205",
+  "query": "approve, as well as adding the check_entry_contradiction test referenced if its not already included in scope.  continue in a worktree",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.5443359382243891,
+          "similarity": 0.5257261395454407,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.48033585629479114,
+          "similarity": 0.4424326419830322,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.47279970898851065,
+          "similarity": 0.4207695722579956,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.46174125586132153,
+          "similarity": 0.4365553855895996,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.4495320339943404,
+          "similarity": 0.4098769426345825,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.5443359382243891,
+          "similarity": 0.5257261395454407,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.48033585629479114,
+          "similarity": 0.4424326419830322,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.47279970898851065,
+          "similarity": 0.4207695722579956,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.46174125586132153,
+          "similarity": 0.4365553855895996,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.4495320339943404,
+          "similarity": 0.4098769426345825,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

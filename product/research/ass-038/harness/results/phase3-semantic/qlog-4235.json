@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4235",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Update architect artifacts - defer Rayon offload) → ]\n[Assistant] Sending the correction back to all three agents in parallel.\n[Assistant] Vision alignment is clean — no FAIL, no variances — but there's one **WARN-01** that needs your decision before I can send artifacts to the synthesizer:\n\n---\n\n**WARN-01 — RayonPool offload branch: scoped vs. deferred**\n\nThe SCOPE.md says the Rayon offload path is explicitly out of scope. The architect and risk strategist both scoped it *in* for crt-030, with R-01 (Critical) requiring test coverage for both the inline and offload branches.\n\n**Option A** — Keep it in crt-030: Add an AC for the `PPR_RAYON_OFFLOAD_THRESHOLD` constant and the offload branch. R-01 is satisfied.\n\n**Option B** — Defer it: Remove the offload branch from crt-030. Reclassify R-01 from Critical to deferred in the risk strategy. Implementation only does the inline path now.\n\nWhich option?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.5787360350033194,
+          "similarity": 0.6293929815292358,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.520359063373131,
+          "similarity": 0.5504482984542847,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3741,
+          "title": "ADR-008: Step 6d Latency Budget and RayonPool Offload (DEFERRED) — crt-030",
+          "category": "decision",
+          "final_score": 0.5138490253752294,
+          "similarity": 0.5357739925384521,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.5022702155749644,
+          "similarity": 0.5366230010986328,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.5,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.5787360350033194,
+          "similarity": 0.6293929815292358,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.520359063373131,
+          "similarity": 0.5504482984542847,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3741,
+          "title": "ADR-008: Step 6d Latency Budget and RayonPool Offload (DEFERRED) — crt-030",
+          "category": "decision",
+          "final_score": 0.5138490253752294,
+          "similarity": 0.5357739925384521,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.5022702155749644,
+          "similarity": 0.5366230010986328,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.5,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

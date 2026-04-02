@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3846",
+  "query": "OK.. its now time to pick up issue 414 and begin to work it as a feature.  Read the issue and any comments, select the proper prefix and select the next number, then begin our design protocol",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4627313084279653,
+          "similarity": 0.3869156837463379,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.44968904004528376,
+          "similarity": 0.39660394191741943,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.4307359244307408,
+          "similarity": 0.37020301818847656,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.4048322910432728,
+          "similarity": 0.35888683795928955,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4000241180800611,
+          "similarity": 0.3613011837005615,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4627313084279653,
+          "similarity": 0.3869156837463379,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.44968904004528376,
+          "similarity": 0.39660394191741943,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.4307359244307408,
+          "similarity": 0.37020301818847656,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.4048322910432728,
+          "similarity": 0.35888683795928955,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4000241180800611,
+          "similarity": 0.3613011837005615,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

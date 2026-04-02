@@ -1,0 +1,396 @@
+{
+  "scenario_id": "obs-e99a5b01-1773963856000",
+  "query": "snapshot path guard canonicalize live database eval run",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.4610107862032377,
+          "similarity": 0.5928925275802612,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.4558865107022799,
+          "similarity": 0.5845655798912048,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.43256348830003005,
+          "similarity": 0.5466656684875488,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.4199397380535419,
+          "similarity": 0.5261520743370056,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.41699347129234904,
+          "similarity": 0.5213643908500671,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.5599844731255901,
+          "similarity": 0.5845655798912048,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.5398395574961908,
+          "similarity": 0.5928925275802612,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.5394041500287786,
+          "similarity": 0.5213643908500671,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.5377587341815986,
+          "similarity": 0.5466656684875488,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5253498010247919,
+          "similarity": 0.5261520743370056,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.4997433718408731,
+          "similarity": 0.5845655798912048,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.48566114386010056,
+          "similarity": 0.5928925275802612,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.480843196938561,
+          "similarity": 0.5466656684875488,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.480234765795972,
+          "similarity": 0.5213643908500671,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.47033714605642013,
+          "similarity": 0.5261520743370056,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.4997433718408731,
+          "similarity": 0.5845655798912048,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.48566114386010056,
+          "similarity": 0.5928925275802612,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.480843196938561,
+          "similarity": 0.5466656684875488,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.480234765795972,
+          "similarity": 0.5213643908500671,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.47033714605642013,
+          "similarity": 0.5261520743370056,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.5928925275802612,
+          "similarity": 0.5928925275802612,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.5845655798912048,
+          "similarity": 0.5845655798912048,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.5466656684875488,
+          "similarity": 0.5466656684875488,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5261520743370056,
+          "similarity": 0.5261520743370056,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.5213643908500671,
+          "similarity": 0.5213643908500671,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.56014409070199,
+          "similarity": 0.5845655798912048,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.5401840573019315,
+          "similarity": 0.5928925275802612,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.5392870087354102,
+          "similarity": 0.5213643908500671,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.5378165714173514,
+          "similarity": 0.5466656684875488,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5253550105917542,
+          "similarity": 0.5261520743370056,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 3524,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2676,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 2660,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2652,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 3549,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5123",
+  "query": "pick up issue 469 as bugfix",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5215135722609265,
+          "similarity": 0.49382591247558594,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3257,
+          "title": "Bug fix clippy triage: scope to affected crates, not workspace, when pre-existing errors exist",
+          "category": "procedure",
+          "final_score": 0.5094265697540568,
+          "similarity": 0.48158204555511475,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.4904165542574952,
+          "similarity": 0.4429953098297119,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.44618317021052833,
+          "similarity": 0.4374535083770752,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.4289627587553434,
+          "similarity": 0.4314371347427368,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5215135722609265,
+          "similarity": 0.49382591247558594,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3257,
+          "title": "Bug fix clippy triage: scope to affected crates, not workspace, when pre-existing errors exist",
+          "category": "procedure",
+          "final_score": 0.5094265697540568,
+          "similarity": 0.48158204555511475,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.4904165542574952,
+          "similarity": 0.4429953098297119,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.44618317021052833,
+          "similarity": 0.4374535083770752,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.4289627587553434,
+          "similarity": 0.4314371347427368,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-5f33a80a-1774490357000",
+  "query": "schema version cascade assertion migration test update missed",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5306042157686675,
+          "similarity": 0.7059818506240845,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.4808543278620793,
+          "similarity": 0.6251382827758789,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.4756431946387658,
+          "similarity": 0.6166701912879944,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.42455207384549654,
+          "similarity": 0.5336471199989319,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.3995347389808068,
+          "similarity": 0.49299395084381104,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.7059818506240845,
+          "similarity": 0.7059818506240845,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.6251382827758789,
+          "similarity": 0.6251382827758789,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.6166701912879944,
+          "similarity": 0.6166701912879944,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.5336471199989319,
+          "similarity": 0.5336471199989319,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.49299395084381104,
+          "similarity": 0.49299395084381104,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.6487182389991577,
+          "similarity": 0.7059818506240845,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.6170928107037585,
+          "similarity": 0.6251382827758789,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.6047081541090629,
+          "similarity": 0.6166701912879944,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.5610897676329429,
+          "similarity": 0.5336471199989319,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5493490312198303,
+          "similarity": 0.49299395084381104,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5730648491725353,
+          "similarity": 0.7059818506240845,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5442489251395869,
+          "similarity": 0.6251382827758789,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5346209545143169,
+          "similarity": 0.6166701912879944,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.4969116249896393,
+          "similarity": 0.5336471199989319,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.48545386209186286,
+          "similarity": 0.49299395084381104,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5730648491725353,
+          "similarity": 0.7059818506240845,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5442489251395869,
+          "similarity": 0.6251382827758789,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5346209545143169,
+          "similarity": 0.6166701912879944,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.4969116249896393,
+          "similarity": 0.5336471199989319,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.48545386209186286,
+          "similarity": 0.49299395084381104,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.6490900806330858,
+          "similarity": 0.7059818506240845,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.6171450540289021,
+          "similarity": 0.6251382827758789,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.6047858296751598,
+          "similarity": 0.6166701912879944,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.5609115686223325,
+          "similarity": 0.5336471199989319,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5489830891394665,
+          "similarity": 0.49299395084381104,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

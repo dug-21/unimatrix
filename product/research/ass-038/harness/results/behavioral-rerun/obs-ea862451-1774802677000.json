@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ea862451-1774802677000",
+  "query": "boosted_categories default empty categories validation test",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.627470720543084,
+          "similarity": 0.7211966514587402,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5073289630710781,
+          "similarity": 0.49826598167419434,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5068863162338684,
+          "similarity": 0.5109949707984924,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4952241517495136,
+          "similarity": 0.48583561182022095,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4679710834641376,
+          "similarity": 0.42991113662719727,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.627470720543084,
+          "similarity": 0.7211966514587402,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5073289630710781,
+          "similarity": 0.49826598167419434,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5068863162338684,
+          "similarity": 0.5109949707984924,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4952241517495136,
+          "similarity": 0.48583561182022095,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4679710834641376,
+          "similarity": 0.42991113662719727,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4015",
+  "query": "well... I also don't like the manually entered ones.. they offer no value to re-usable knowledge",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.4635077452743216,
+          "similarity": 0.4252792000770569,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4469794101001485,
+          "similarity": 0.34798502922058105,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.41844155081644707,
+          "similarity": 0.32434767484664917,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.4126567934815789,
+          "similarity": 0.339457631111145,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.40470766918158985,
+          "similarity": 0.33071064949035645,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.4635077452743216,
+          "similarity": 0.4252792000770569,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4469794101001485,
+          "similarity": 0.34798502922058105,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.41844155081644707,
+          "similarity": 0.32434767484664917,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.4126567934815789,
+          "similarity": 0.339457631111145,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.40470766918158985,
+          "similarity": 0.33071064949035645,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

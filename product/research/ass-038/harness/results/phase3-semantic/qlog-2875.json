@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2875",
+  "query": "yes... correct 3438, and create a gh issue to consider adding the PostToolUseFailure hook to capture these failures.  Also, create another GH issue to revisit the rule evaluating pre/post tool use because its logic is flawed based on these findings",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5320536837757844,
+          "similarity": 0.552838146686554,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.5260140573276447,
+          "similarity": 0.5532110333442688,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.5223808957211329,
+          "similarity": 0.5836042761802673,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.5172313266607551,
+          "similarity": 0.5550392270088196,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.5047809596761278,
+          "similarity": 0.5131519436836243,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5320536837757844,
+          "similarity": 0.552838146686554,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.5260140573276447,
+          "similarity": 0.5532110333442688,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.5223808957211329,
+          "similarity": 0.5836042761802673,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.5172313266607551,
+          "similarity": 0.5550392270088196,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.5047809596761278,
+          "similarity": 0.5131519436836243,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

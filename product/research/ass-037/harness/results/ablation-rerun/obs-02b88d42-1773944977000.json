@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-02b88d42-1773944977000",
+  "query": "rayon thread pool tokio bridge spawn_blocking inference",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5667634717606201,
+          "similarity": 0.7247030735015869,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.545717808327689,
+          "similarity": 0.6619240045547485,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5211798650712128,
+          "similarity": 0.6210634708404541,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.5116037733910892,
+          "similarity": 0.586471438407898,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.6387953639007012,
+          "similarity": 0.7247030735015869,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.6158039200327805,
+          "similarity": 0.6619240045547485,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5860576822934307,
+          "similarity": 0.6210634708404541,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.5761441056780399,
+          "similarity": 0.586471438407898,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5421249683086689,
+          "similarity": 0.7247030735015869,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5034916951106145,
+          "similarity": 0.6619240045547485,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.4783467512864333,
+          "similarity": 0.6210634708404541,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.4570593467125526,
+          "similarity": 0.586471438407898,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.6382338756026563,
+          "similarity": 0.7247030735015869,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.6155024815718526,
+          "similarity": 0.6619240045547485,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5858288862898554,
+          "similarity": 0.6210634708404541,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.5760766067713089,
+          "similarity": 0.586471438407898,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.7247030735015869,
+          "similarity": 0.7247030735015869,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.6619240045547485,
+          "similarity": 0.6619240045547485,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.6210634708404541,
+          "similarity": 0.6210634708404541,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.586471438407898,
+          "similarity": 0.586471438407898,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5667634717606201,
+          "similarity": 0.7247030735015869,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.545717808327689,
+          "similarity": 0.6619240045547485,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5211798650712128,
+          "similarity": 0.6210634708404541,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.5116037733910892,
+          "similarity": 0.586471438407898,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

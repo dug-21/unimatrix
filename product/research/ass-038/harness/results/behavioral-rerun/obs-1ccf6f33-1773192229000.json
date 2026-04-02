@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-1ccf6f33-1773192229000",
+  "query": "session observation hook data capture feature attribution col-017 col-010",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.566340758675023,
+          "similarity": 0.579047441482544,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.5191459540980573,
+          "similarity": 0.5000488758087158,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.5171089898641997,
+          "similarity": 0.5182185173034668,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.4967800433893724,
+          "similarity": 0.4774695634841919,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.4965988593635363,
+          "similarity": 0.48570817708969116,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.566340758675023,
+          "similarity": 0.579047441482544,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.5191459540980573,
+          "similarity": 0.5000488758087158,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.5171089898641997,
+          "similarity": 0.5182185173034668,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.4967800433893724,
+          "similarity": 0.4774695634841919,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.4965988593635363,
+          "similarity": 0.48570817708969116,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

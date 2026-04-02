@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-88cecd44-1773700571000",
+  "query": "silent event loss hook reliability availability degradation",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.6078724871052528,
+          "similarity": 0.680992066860199,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.47960970583474694,
+          "similarity": 0.4366567134857178,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.47691555355238524,
+          "similarity": 0.43593406677246094,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4697282191398081,
+          "similarity": 0.4278087615966797,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.4263570525594348,
+          "similarity": 0.4215395450592041,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.6078724871052528,
+          "similarity": 0.680992066860199,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.47960970583474694,
+          "similarity": 0.4366567134857178,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.47691555355238524,
+          "similarity": 0.43593406677246094,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4697282191398081,
+          "similarity": 0.4278087615966797,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.4263570525594348,
+          "similarity": 0.4215395450592041,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

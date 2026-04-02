@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-755",
+  "query": "OK... I want to do some research and potentially reworkd context_briefing.  First, I need to know what the tool expects, and then, what it does with the information to query the backend.... I also want to understand how the injection pipeline works in comparison to context_briefing.  You can store any research in product/research/ass-021",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5336553546064169,
+          "similarity": 0.5403255224227905,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.5262707271643309,
+          "similarity": 0.5237200260162354,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5239090949088956,
+          "similarity": 0.5101802349090576,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.5181557626682046,
+          "similarity": 0.5116567015647888,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5064087446970889,
+          "similarity": 0.48689454793930054,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5336553546064169,
+          "similarity": 0.5403255224227905,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.5262707271643309,
+          "similarity": 0.5237200260162354,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5239090949088956,
+          "similarity": 0.5101802349090576,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.5181557626682046,
+          "similarity": 0.5116567015647888,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5064087446970889,
+          "similarity": 0.48689454793930054,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

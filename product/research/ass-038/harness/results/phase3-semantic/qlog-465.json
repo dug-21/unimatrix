@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-465",
+  "query": "mcp server back up",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.48625143913008695,
+          "similarity": 0.46467214822769165,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4804459034851335,
+          "similarity": 0.44906342029571533,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.45835745210326084,
+          "similarity": 0.4067739248275757,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.4526896500075799,
+          "similarity": 0.3603372573852539,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.39011836772943564,
+          "similarity": 0.3526860475540161,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.48625143913008695,
+          "similarity": 0.46467214822769165,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4804459034851335,
+          "similarity": 0.44906342029571533,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.45835745210326084,
+          "similarity": 0.4067739248275757,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.4526896500075799,
+          "similarity": 0.3603372573852539,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.39011836772943564,
+          "similarity": 0.3526860475540161,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

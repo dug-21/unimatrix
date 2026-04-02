@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3238",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Spawning vision guardian and synthesizer.\n[tool: mcp__unimatrix__context_cycle(phase-end) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.517930781292035,
+          "similarity": 0.4873635768890381,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.47681450092094557,
+          "similarity": 0.44184231758117676,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.46945145656478593,
+          "similarity": 0.42309391498565674,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.46779578920959985,
+          "similarity": 0.4367481470108032,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.467558632822611,
+          "similarity": 0.42622125148773193,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.517930781292035,
+          "similarity": 0.4873635768890381,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.47681450092094557,
+          "similarity": 0.44184231758117676,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.46945145656478593,
+          "similarity": 0.42309391498565674,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.46779578920959985,
+          "similarity": 0.4367481470108032,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.467558632822611,
+          "similarity": 0.42622125148773193,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

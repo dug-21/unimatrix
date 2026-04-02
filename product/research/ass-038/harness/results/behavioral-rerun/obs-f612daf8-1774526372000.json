@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-f612daf8-1774526372000",
+  "query": "serde default backward compatibility optional field JSONL deserialization",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5799483163832821,
+          "similarity": 0.613228440284729,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5627892785665985,
+          "similarity": 0.5821617841720581,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.5565746793121068,
+          "similarity": 0.602401614189148,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.5560472050777986,
+          "similarity": 0.5994058847427368,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.528263511314314,
+          "similarity": 0.6049560308456421,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5799483163832821,
+          "similarity": 0.613228440284729,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5627892785665985,
+          "similarity": 0.5821617841720581,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.5565746793121068,
+          "similarity": 0.602401614189148,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.5560472050777986,
+          "similarity": 0.5994058847427368,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.528263511314314,
+          "similarity": 0.6049560308456421,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

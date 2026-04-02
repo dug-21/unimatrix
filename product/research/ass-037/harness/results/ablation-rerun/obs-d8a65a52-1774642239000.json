@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-d8a65a52-1774642239000",
+  "query": "background tick spawn_blocking hot path lock RwLock",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5499030743942048,
+          "similarity": 0.5053851008415222,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5181397957470327,
+          "similarity": 0.42074674367904663,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.47865594394734856,
+          "similarity": 0.435757040977478,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.47808180685258933,
+          "similarity": 0.42928969860076904,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.47483139355509296,
+          "similarity": 0.42930591106414795,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.4071600620563214,
+          "similarity": 0.5053851008415222,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.3643120252169096,
+          "similarity": 0.435757040977478,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.36034209911639875,
+          "similarity": 0.42930591106414795,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.36033212221585786,
+          "similarity": 0.42928969860076904,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.3550749191871056,
+          "similarity": 0.42074674367904663,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.48674260426160076,
+          "similarity": 0.5053851008415222,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.45755519002134143,
+          "similarity": 0.42074674367904663,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.42986054780288807,
+          "similarity": 0.435757040977478,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.4289802948926557,
+          "similarity": 0.42928969860076904,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4266132946661497,
+          "similarity": 0.42930591106414795,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.48674260426160076,
+          "similarity": 0.5053851008415222,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.45755519002134143,
+          "similarity": 0.42074674367904663,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.42986054780288807,
+          "similarity": 0.435757040977478,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.4289802948926557,
+          "similarity": 0.42928969860076904,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4266132946661497,
+          "similarity": 0.42930591106414795,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5053851008415222,
+          "similarity": 0.5053851008415222,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.435757040977478,
+          "similarity": 0.435757040977478,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.42930591106414795,
+          "similarity": 0.42930591106414795,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.42928969860076904,
+          "similarity": 0.42928969860076904,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.42074674367904663,
+          "similarity": 0.42074674367904663,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5496139966438626,
+          "similarity": 0.5053851008415222,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5175073733310067,
+          "similarity": 0.42074674367904663,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.4783773796423494,
+          "similarity": 0.435757040977478,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.4777649749808242,
+          "similarity": 0.42928969860076904,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.47453577353891796,
+          "similarity": 0.42930591106414795,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 1542,
+        "from_rank": 2,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3716,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3694,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

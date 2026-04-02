@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3311",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: mcp__unimatrix__context_briefing(Execute test suite and validate risk coverage for nan-008 eval harness CC@k and ICD metrics feature) → ]\n[tool: Bash(cd /workspaces/unimatrix-nan-008 && git add product/features/nan-008/reports/ && git commit -m \"$(cat <<'EOF'\ntest: gate) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.49400641712191795,
+          "similarity": 0.45336514711380005,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.47695450823767704,
+          "similarity": 0.456878662109375,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.47678954864679357,
+          "similarity": 0.5025568008422852,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.46831388839140575,
+          "similarity": 0.4602322578430176,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.4522686726921482,
+          "similarity": 0.4579104781150818,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.49400641712191795,
+          "similarity": 0.45336514711380005,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.47695450823767704,
+          "similarity": 0.456878662109375,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.47678954864679357,
+          "similarity": 0.5025568008422852,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.46831388839140575,
+          "similarity": 0.4602322578430176,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.4522686726921482,
+          "similarity": 0.4579104781150818,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

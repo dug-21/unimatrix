@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-18f5d7e9-1774714220000",
+  "query": "ExtractionRule store writes replication loop extraction pipeline",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.5095373328729158,
+          "similarity": 0.516206681728363,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.47935852675565116,
+          "similarity": 0.462047278881073,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.4765450807489068,
+          "similarity": 0.458130419254303,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.46211399061219205,
+          "similarity": 0.4501091241836548,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.44609445156100136,
+          "similarity": 0.44994449615478516,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.5095373328729158,
+          "similarity": 0.516206681728363,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.47935852675565116,
+          "similarity": 0.462047278881073,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.4765450807489068,
+          "similarity": 0.458130419254303,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.46211399061219205,
+          "similarity": 0.4501091241836548,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.44609445156100136,
+          "similarity": 0.44994449615478516,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

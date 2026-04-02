@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2549",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] The answer is yes — and it's obvious once you see it. The right data is already in scope at write time.\n\n**The problem:** `topic_signal` is currently set only from `extract_topic_signal(input)` — a text pattern extractor looking for file paths and feature ID strings in query content. Most observations (60-70%) don't have those patterns, so they get `NULL`.\n\n**What's already available:** At the exact point every observation is written, `session_registry` is in scope. `session_registry.get_state(session_id)` returns `SessionState`, which has a `feature: Option<String>` field — the in-memory attribution set **synchronously** by `set_feature_force` when `context_cycle(start)` is called. This is the most reliable signal in the system — not an async DB write, not text extraction, just a synchronous mutex update.\n\n**The fix:** two lines, two places in `listener.rs`:\n\n```rust\n// context_search path (line 824) — today:\nlet topic_signal = unimatrix_observe::extract_topic_signal(&query);\n\n// after fix:\nlet topic_signal = unimatrix_observe::extract_topic_signal(&query)\n    .or_else(|| session_registry.get_state(sid).and_then(|s| s.feature));\n```\n\n```rust\n// RecordEvent path (line 684) — today:\nlet obs = extract_observation_fields(&event);\n\n// after fix:\nlet mut obs = extract_observation_fields(&event);\nif obs.topic_signal.is_none() {\n    obs.topic_signal = session_registry.get_state(&event.session_id)\n        .and_then(|s| s.feature);\n}\n```\n\nText-extracted signal wins when present (higher precision — it can detect mid-session feature switches). Session registry feature is the fallback.\n\n**What this means for coverage:** every observation written after `context_cycle(start)` gets `topic_signal` set. The 1-11% becomes ~100% for any post-cycle session. This makes the col-024 redesign much more reliable — instead of identifying sessions from a handful of signal hits, you'd have dense, consistent attribution throughout.\n\n**One nuance:** this only improves future observations. Existing mis-attributed sessions in prod still need the cycle-window approach. Both changes are complementary — col-024 fixes the lookup for existing data, this improvement makes future data self-attributing.\n\nWorth scoping this as part of col-024 since it directly strengthens the new primary path. Ready to save this design and open the issue?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.6600949819345995,
+          "similarity": 0.7877679467201233,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.6160792559354485,
+          "similarity": 0.7127209305763245,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.6100312509816551,
+          "similarity": 0.6623544692993164,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.6018252491123851,
+          "similarity": 0.6611343026161194,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.5602309112123777,
+          "similarity": 0.5987332463264465,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.6600949819345995,
+          "similarity": 0.7877679467201233,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.6160792559354485,
+          "similarity": 0.7127209305763245,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.6100312509816551,
+          "similarity": 0.6623544692993164,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.6018252491123851,
+          "similarity": 0.6611343026161194,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.5602309112123777,
+          "similarity": 0.5987332463264465,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

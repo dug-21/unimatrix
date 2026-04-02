@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-67e04789-1774667645000",
+  "query": "unimatrix-engine unit tests lib flag filter cargo",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3701,
+          "title": "Use --lib flag when filtering unimatrix-engine unit tests by name",
+          "category": "lesson-learned",
+          "final_score": 0.6801853610540622,
+          "similarity": 0.7646694779396057,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.56177770732881,
+          "similarity": 0.5623552203178406,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5413535670312974,
+          "similarity": 0.5272778272628784,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5287731780533761,
+          "similarity": 0.5217697620391846,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5102923934038948,
+          "similarity": 0.5160970687866211,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3701,
+          "title": "Use --lib flag when filtering unimatrix-engine unit tests by name",
+          "category": "lesson-learned",
+          "final_score": 0.6001828686207887,
+          "similarity": 0.7646694779396057,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.4994634167908359,
+          "similarity": 0.5623552203178406,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.4820774436415794,
+          "similarity": 0.5272778272628784,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.4725182984416872,
+          "similarity": 0.5217697620391846,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.4586485343933105,
+          "similarity": 0.5160970687866211,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3701,
+          "title": "Use --lib flag when filtering unimatrix-engine unit tests by name",
+          "category": "lesson-learned",
+          "final_score": 0.7646694779396057,
+          "similarity": 0.7646694779396057,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5623552203178406,
+          "similarity": 0.5623552203178406,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5272778272628784,
+          "similarity": 0.5272778272628784,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5217697620391846,
+          "similarity": 0.5217697620391846,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5160970687866211,
+          "similarity": 0.5160970687866211,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3701,
+          "title": "Use --lib flag when filtering unimatrix-engine unit tests by name",
+          "category": "lesson-learned",
+          "final_score": 0.6807339592156567,
+          "similarity": 0.7646694779396057,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5617814574131543,
+          "similarity": 0.5623552203178406,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5412621661237101,
+          "similarity": 0.5272778272628784,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5287277013260111,
+          "similarity": 0.5217697620391846,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5103300861011851,
+          "similarity": 0.5160970687866211,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3701,
+          "title": "Use --lib flag when filtering unimatrix-engine unit tests by name",
+          "category": "lesson-learned",
+          "final_score": 0.6001828686207887,
+          "similarity": 0.7646694779396057,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.4994634167908359,
+          "similarity": 0.5623552203178406,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.4820774436415794,
+          "similarity": 0.5272778272628784,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.4725182984416872,
+          "similarity": 0.5217697620391846,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.4586485343933105,
+          "similarity": 0.5160970687866211,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3701,
+          "title": "Use --lib flag when filtering unimatrix-engine unit tests by name",
+          "category": "lesson-learned",
+          "final_score": 0.5667196787320651,
+          "similarity": 0.7646694779396057,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.4422185971186711,
+          "similarity": 0.5623552203178406,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.4206325090848483,
+          "similarity": 0.5272778272628784,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.41724293048565203,
+          "similarity": 0.5217697620391846,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.4137520423302284,
+          "similarity": 0.5160970687866211,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

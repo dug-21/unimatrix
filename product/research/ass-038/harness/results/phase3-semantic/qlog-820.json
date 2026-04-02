@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-820",
+  "query": "Your 2 quesitons: Security... 1st, I'm thinking of supporting an HTTPS connection model.. which means OAUTH.  I already have RBAC enabled on the backend, with course grained access controls built in read vs write vs. admin.  NDP is the aggregation point for sensors in my architecture, so this would not replace NDP... but augment... The ingestion process for any data platform has its own complete architecture... so not sure I'd want the database backend to have to address all of those concerns directly... but open to listen to alternative ideas on that option if yo uhave them.  DEPLOYMENT: I'm thinking this runs in a container.  I've already built this in a way that segregates 1 repo from another within a centralized platform... I had envisioned running a docker container either on my desktop alongside my development docker containers, or... could run it in a cloud environment.  I built in a way that I could just as easily expose API endpoints for the MCP tools (at least I hope I did), and the backend would not change either way.  One key point leading me down this path is backup/recovery becomes critical, and its kind of difficult to managed inside a project repository... no solution is elegant for this currently.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3,
+          "title": "Roadmap milestones 1-2: Foundation and MCP Server",
+          "category": "decision",
+          "final_score": 0.4849808216552487,
+          "similarity": 0.457128643989563,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.4781705354493486,
+          "similarity": 0.41616523265838623,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.4675284277773961,
+          "similarity": 0.4104955196380615,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.4476759195399096,
+          "similarity": 0.39640939235687256,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.41500085999563896,
+          "similarity": 0.39996278285980225,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3,
+          "title": "Roadmap milestones 1-2: Foundation and MCP Server",
+          "category": "decision",
+          "final_score": 0.4849808216552487,
+          "similarity": 0.457128643989563,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.4781705354493486,
+          "similarity": 0.41616523265838623,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.4675284277773961,
+          "similarity": 0.4104955196380615,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.4476759195399096,
+          "similarity": 0.39640939235687256,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.41500085999563896,
+          "similarity": 0.39996278285980225,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

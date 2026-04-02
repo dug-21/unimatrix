@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5253",
+  "query": "<task-notification>\n<task-id>bc9v8h4tl</task-id>\n<tool-use-id>toolu_01JgsmGeCx1jAVQGrNzXJucM</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/2dc89356-a3c4-4e36-9ed5-cd7087768e0a/tasks/bc9v8h4tl.output</output-file>\n<status>completed</status>\n<summary>Background command \"Run full integration suite with quiet output\" completed (exit code 0)</summary>\n</task-notification>",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5267156614583892,
+          "similarity": 0.5796151161193848,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5136377404363531,
+          "similarity": 0.574511706829071,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5127362672404239,
+          "similarity": 0.5727989077568054,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5267156614583892,
+          "similarity": 0.5796151161193848,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5136377404363531,
+          "similarity": 0.574511706829071,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5127362672404239,
+          "similarity": 0.5727989077568054,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 14,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

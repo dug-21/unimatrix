@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2486",
+  "query": "we changed code to 'fix' deprecation... its going haywire.  earlier today the count was 216.  we have a deprecation problem.  look at closed issues for deprecation changes made earlier today... we may need to either fix what we did there or back it out.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.487076602584702,
+          "similarity": 0.4954063892364502,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.4837969141384457,
+          "similarity": 0.4606238603591919,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.4603617057017999,
+          "similarity": 0.3901470899581909,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.4431949288361976,
+          "similarity": 0.4070693850517273,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.43691433025912674,
+          "similarity": 0.4020271897315979,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.487076602584702,
+          "similarity": 0.4954063892364502,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.4837969141384457,
+          "similarity": 0.4606238603591919,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.4603617057017999,
+          "similarity": 0.3901470899581909,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.4431949288361976,
+          "similarity": 0.4070693850517273,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.43691433025912674,
+          "similarity": 0.4020271897315979,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

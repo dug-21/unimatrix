@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-a18ee37f-1773275574000",
+  "query": "impl Write trait object testable I/O",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.5259518194652314,
+          "similarity": 0.503453254699707,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.521832418489574,
+          "similarity": 0.4757814407348633,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.5142485435205449,
+          "similarity": 0.4774329662322998,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5111353344458541,
+          "similarity": 0.5211662650108337,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.5034278070957682,
+          "similarity": 0.47658658027648926,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.4168715476989746,
+          "similarity": 0.5211662650108337,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.4059712336613582,
+          "similarity": 0.503453254699707,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.38995874845064604,
+          "similarity": 0.4774329662322998,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.3894378955547626,
+          "similarity": 0.47658658027648926,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.3889424250676082,
+          "similarity": 0.4757814407348633,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.4691544152317905,
+          "similarity": 0.503453254699707,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.4641765792377513,
+          "similarity": 0.4757814407348633,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.45962476259703894,
+          "similarity": 0.5211662650108337,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.45876915072441843,
+          "similarity": 0.4774329662322998,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.45082501518952317,
+          "similarity": 0.47658658027648926,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.4691544152317905,
+          "similarity": 0.503453254699707,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.4641765792377513,
+          "similarity": 0.4757814407348633,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.45962476259703894,
+          "similarity": 0.5211662650108337,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.45876915072441843,
+          "similarity": 0.4774329662322998,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.45082501518952317,
+          "similarity": 0.47658658027648926,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.5258057248888318,
+          "similarity": 0.503453254699707,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5215333861664915,
+          "similarity": 0.4757814407348633,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.5140094813303615,
+          "similarity": 0.4774329662322998,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5112004703586137,
+          "similarity": 0.5211662650108337,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.5032535134151235,
+          "similarity": 0.47658658027648926,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5211662650108337,
+          "similarity": 0.5211662650108337,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.503453254699707,
+          "similarity": 0.503453254699707,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4774329662322998,
+          "similarity": 0.4774329662322998,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.47658658027648926,
+          "similarity": 0.47658658027648926,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.4757814407348633,
+          "similarity": 0.4757814407348633,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.0,
+    "rank_changes": [
+      {
+        "entry_id": 76,
+        "from_rank": 2,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2133,
+        "from_rank": 4,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 3773,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 653,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

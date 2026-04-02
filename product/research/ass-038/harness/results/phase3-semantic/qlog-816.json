@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-816",
+  "query": "2 more questions on this... you looked at ruvector.. how does Unimatrix compare?  Also... Novel use cases for neural-data-platform, can you go into more detail about how this could be leveraged?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.5288164134172256,
+          "similarity": 0.5210279822349548,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4840925631829721,
+          "similarity": 0.4839303493499756,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.4832181579929674,
+          "similarity": 0.47002363204956055,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.4755172451497717,
+          "similarity": 0.4377772808074951,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 394,
+          "title": "ADR-002: ML-Framework-Agnostic NeuralModel Trait",
+          "category": "decision",
+          "final_score": 0.4405387644812212,
+          "similarity": 0.4412897825241089,
+          "confidence": 0.49390552855744513,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.5288164134172256,
+          "similarity": 0.5210279822349548,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4840925631829721,
+          "similarity": 0.4839303493499756,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.4832181579929674,
+          "similarity": 0.47002363204956055,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.4755172451497717,
+          "similarity": 0.4377772808074951,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 394,
+          "title": "ADR-002: ML-Framework-Agnostic NeuralModel Trait",
+          "category": "decision",
+          "final_score": 0.4405387644812212,
+          "similarity": 0.4412897825241089,
+          "confidence": 0.49390552855744513,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

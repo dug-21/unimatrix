@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2591",
+  "query": "This is a research request.  You are a data modeler.  Your specialty is understanding how an application's data model is designed to enable the systems goals, (or not).  You will need to understand the current data model, utilization of the model across the primary vision and mission of the system found in @product/PRODUCT-VISION.md .  You will review the data model for the system, review the different access paths, understand the business use of the tools in place, develop a list of questions for human to increase your understanding, and prepare a report with your findings, and any recommendations that you find related to optimizing or enhancing the systems data model for effectiveness and opportunities to enhance the mission.  You will store your analysis in product/research/ass-030.  You will make NO changes to any code.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4863216754802048,
+          "similarity": 0.422735333442688,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4817117412059798,
+          "similarity": 0.4235610365867615,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 425,
+          "title": "Three-Slot Model Registry (Production/Shadow/Previous)",
+          "category": "pattern",
+          "final_score": 0.4525570922692336,
+          "similarity": 0.3812587261199951,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.40547793795937614,
+          "similarity": 0.35871124267578125,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.4052662839089136,
+          "similarity": 0.3607417345046997,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4863216754802048,
+          "similarity": 0.422735333442688,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4817117412059798,
+          "similarity": 0.4235610365867615,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 425,
+          "title": "Three-Slot Model Registry (Production/Shadow/Previous)",
+          "category": "pattern",
+          "final_score": 0.4525570922692336,
+          "similarity": 0.3812587261199951,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.40547793795937614,
+          "similarity": 0.35871124267578125,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.4052662839089136,
+          "similarity": 0.3607417345046997,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

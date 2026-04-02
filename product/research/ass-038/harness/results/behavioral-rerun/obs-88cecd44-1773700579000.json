@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-88cecd44-1773700579000",
+  "query": "crt-018 effectiveness measurement utility ranking",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.5377754304481503,
+          "similarity": 0.540723443031311,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5079426178937745,
+          "similarity": 0.4822721481323242,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.5025128839307336,
+          "similarity": 0.48304975032806396,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.46958396402423463,
+          "similarity": 0.3994150161743164,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.45735808982550363,
+          "similarity": 0.3960968255996704,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.5377754304481503,
+          "similarity": 0.540723443031311,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5079426178937745,
+          "similarity": 0.4822721481323242,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.5025128839307336,
+          "similarity": 0.48304975032806396,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.46958396402423463,
+          "similarity": 0.3994150161743164,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.45735808982550363,
+          "similarity": 0.3960968255996704,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

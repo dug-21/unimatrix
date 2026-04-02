@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774752960000",
+  "query": "search pipeline step insertion phase snapshot scope ordering",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5470371629685518,
+          "similarity": 0.6637780666351318,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5087040077820046,
+          "similarity": 0.61943519115448,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4696103992520247,
+          "similarity": 0.4747852087020874,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.44718873901115547,
+          "similarity": 0.46570658683776855,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.44425325157447926,
+          "similarity": 0.4645424485206604,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.6637780666351318,
+          "similarity": 0.6637780666351318,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.61943519115448,
+          "similarity": 0.61943519115448,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4747852087020874,
+          "similarity": 0.4747852087020874,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.46570658683776855,
+          "similarity": 0.46570658683776855,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.4645424485206604,
+          "similarity": 0.4645424485206604,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.6171315896984895,
+          "similarity": 0.6637780666351318,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5688647958621161,
+          "similarity": 0.61943519115448,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5293882726300254,
+          "similarity": 0.4747852087020874,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.4995035058155302,
+          "similarity": 0.46570658683776855,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.49558853661980873,
+          "similarity": 0.4645424485206604,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.6174344888993766,
+          "similarity": 0.6637780666351318,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5691931750523263,
+          "similarity": 0.61943519115448,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5290337072798439,
+          "similarity": 0.4747852087020874,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.49928404530268755,
+          "similarity": 0.46570658683776855,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.49538693864513894,
+          "similarity": 0.4645424485206604,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5046326563908503,
+          "similarity": 0.6637780666351318,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.47734473301814156,
+          "similarity": 0.61943519115448,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.3883293592012846,
+          "similarity": 0.4747852087020874,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.38274251497708833,
+          "similarity": 0.46570658683776855,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.38202612216656023,
+          "similarity": 0.4645424485206604,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5470371629685518,
+          "similarity": 0.6637780666351318,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5087040077820046,
+          "similarity": 0.61943519115448,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4696103992520247,
+          "similarity": 0.4747852087020874,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.44718873901115547,
+          "similarity": 0.46570658683776855,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.44425325157447926,
+          "similarity": 0.4645424485206604,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

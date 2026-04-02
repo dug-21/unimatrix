@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4748",
+  "query": "pretend you were going to update the readme focusing on updates we've made for graph and PPR. . What I want you to do is pretend you are commissinging a research agent to go figure out what the current graph architecture supports.  I want you to submit a context_briefing request to unimatrix, and I want to see the result, based on your \"task\" statement.  (don't do anything but show me the result)",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5328304496301018,
+          "similarity": 0.5636439323425293,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.49847110204194156,
+          "similarity": 0.4572103023529053,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3884,
+          "title": "unimatrix-server graph edges: pattern",
+          "category": "pattern",
+          "final_score": 0.4831453708004647,
+          "similarity": 0.49948692321777344,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4804143981357424,
+          "similarity": 0.45145368576049805,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4781056423063309,
+          "similarity": 0.46381044387817383,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5328304496301018,
+          "similarity": 0.5636439323425293,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.49847110204194156,
+          "similarity": 0.4572103023529053,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3884,
+          "title": "unimatrix-server graph edges: pattern",
+          "category": "pattern",
+          "final_score": 0.4831453708004647,
+          "similarity": 0.49948692321777344,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4804143981357424,
+          "similarity": 0.45145368576049805,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4781056423063309,
+          "similarity": 0.46381044387817383,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

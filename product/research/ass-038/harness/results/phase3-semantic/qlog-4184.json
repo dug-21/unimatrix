@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4184",
+  "query": "now build for local install and kill all unimatrix server processes",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5540875164953506,
+          "similarity": 0.5949610471725464,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5054249784499049,
+          "similarity": 0.4977436065673828,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.48852135766594096,
+          "similarity": 0.5208470225334167,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.48455276599245223,
+          "similarity": 0.5031593441963196,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.4775840016327382,
+          "similarity": 0.5023934841156006,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5540875164953506,
+          "similarity": 0.5949610471725464,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5054249784499049,
+          "similarity": 0.4977436065673828,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.48852135766594096,
+          "similarity": 0.5208470225334167,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.48455276599245223,
+          "similarity": 0.5031593441963196,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.4775840016327382,
+          "similarity": 0.5023934841156006,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

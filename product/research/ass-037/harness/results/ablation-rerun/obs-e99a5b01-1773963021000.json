@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-e99a5b01-1773963021000",
+  "query": "outcome rework SQLite migration read-only enforcement integration test",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5243229526995457,
+          "similarity": 0.5779104232788086,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5154169816285066,
+          "similarity": 0.5712381601333618,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5096482112407684,
+          "similarity": 0.5412964224815369,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5071826187819296,
+          "similarity": 0.5448695421218872,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.49722982982248337,
+          "similarity": 0.5543118119239807,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5943736190700815,
+          "similarity": 0.5779104232788086,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.582803880653503,
+          "similarity": 0.5712381601333618,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5778214249891394,
+          "similarity": 0.5412964224815369,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5740869726299145,
+          "similarity": 0.5448695421218872,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5595005691755673,
+          "similarity": 0.5543118119239807,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5942667152013068,
+          "similarity": 0.5779104232788086,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5827287785722033,
+          "similarity": 0.5712381601333618,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5775842496481808,
+          "similarity": 0.5412964224815369,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5738972490551869,
+          "similarity": 0.5448695421218872,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5594668759466608,
+          "similarity": 0.5543118119239807,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.4517910297100361,
+          "similarity": 0.5779104232788086,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.44768502162053037,
+          "similarity": 0.5712381601333618,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.4372688073378343,
+          "similarity": 0.5543118119239807,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.4314581797673152,
+          "similarity": 0.5448695421218872,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.42925933691171503,
+          "similarity": 0.5412964224815369,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5243229526995457,
+          "similarity": 0.5779104232788086,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5154169816285066,
+          "similarity": 0.5712381601333618,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5096482112407684,
+          "similarity": 0.5412964224815369,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5071826187819296,
+          "similarity": 0.5448695421218872,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.49722982982248337,
+          "similarity": 0.5543118119239807,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5779104232788086,
+          "similarity": 0.5779104232788086,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5712381601333618,
+          "similarity": 0.5712381601333618,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5543118119239807,
+          "similarity": 0.5543118119239807,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5448695421218872,
+          "similarity": 0.5448695421218872,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5412964224815369,
+          "similarity": 0.5412964224815369,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

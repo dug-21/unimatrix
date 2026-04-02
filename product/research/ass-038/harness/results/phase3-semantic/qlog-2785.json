@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2785",
+  "query": "OK... I want to now transition this research into a proper feature.  Identify the proper prefix, select the next number, begin the design protocol.  We'll finalize scope through that process.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.45484655505015126,
+          "similarity": 0.3719346523284912,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.44894924786294266,
+          "similarity": 0.36438512802124023,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.44138774722327434,
+          "similarity": 0.38905733823776245,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.4394019361613317,
+          "similarity": 0.3768851161003113,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4281197770924532,
+          "similarity": 0.367372989654541,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.45484655505015126,
+          "similarity": 0.3719346523284912,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.44894924786294266,
+          "similarity": 0.36438512802124023,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.44138774722327434,
+          "similarity": 0.38905733823776245,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.4394019361613317,
+          "similarity": 0.3768851161003113,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4281197770924532,
+          "similarity": 0.367372989654541,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

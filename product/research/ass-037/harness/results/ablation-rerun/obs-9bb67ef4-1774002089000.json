@@ -1,0 +1,396 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002089000",
+  "query": "analytics suppression eval read-only database layer",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.4331696583674504,
+          "similarity": 0.5476506948471069,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.431998766385592,
+          "similarity": 0.5457479953765869,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.3907343791081355,
+          "similarity": 0.4786933660507202,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.38983843876765323,
+          "similarity": 0.4772374629974365,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.3878772075359638,
+          "similarity": 0.47405046224594116,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5644041942582239,
+          "similarity": 0.5457479953765869,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5433342860996397,
+          "similarity": 0.4786933660507202,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.5329030904545442,
+          "similarity": 0.47405046224594116,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.5132267147119824,
+          "similarity": 0.5476506948471069,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4921159784601624,
+          "similarity": 0.4772374629974365,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5001907697721765,
+          "similarity": 0.5457479953765869,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.48005022030478894,
+          "similarity": 0.4786933660507202,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.47211871320587795,
+          "similarity": 0.47405046224594116,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.4630402274935234,
+          "similarity": 0.5476506948471069,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4426300316636495,
+          "similarity": 0.4772374629974365,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5001907697721765,
+          "similarity": 0.5457479953765869,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.48005022030478894,
+          "similarity": 0.4786933660507202,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.47211871320587795,
+          "similarity": 0.47405046224594116,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.4630402274935234,
+          "similarity": 0.5476506948471069,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4426300316636495,
+          "similarity": 0.4772374629974365,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.5476506948471069,
+          "similarity": 0.5476506948471069,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5457479953765869,
+          "similarity": 0.5457479953765869,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.4786933660507202,
+          "similarity": 0.4786933660507202,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4772374629974365,
+          "similarity": 0.4772374629974365,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.47405046224594116,
+          "similarity": 0.47405046224594116,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5642830501096419,
+          "similarity": 0.5457479953765869,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5429145398655557,
+          "similarity": 0.4786933660507202,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.5325209305311116,
+          "similarity": 0.47405046224594116,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2652,
+          "title": "EvalServiceLayer: read-only ServiceLayer wrapper with analytics suppression for in-process A/B replay",
+          "category": "pattern",
+          "final_score": 0.5134502470505222,
+          "similarity": 0.5476506948471069,
+          "confidence": 0.46404960023323316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4920193647233914,
+          "similarity": 0.4772374629974365,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 2652,
+        "from_rank": 4,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 103,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2585,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 2148,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 2125,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": -0.5,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

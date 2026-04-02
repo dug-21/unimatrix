@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-773855b9-1773545548000",
+  "query": "SQLite join injection log session outcome attribution",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4609566977866471,
+          "similarity": 0.46444207429885864,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.4585690807093569,
+          "similarity": 0.48404383659362793,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.4395408699402066,
+          "similarity": 0.43019944429397583,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2745,
+          "title": "SQLite NOT NULL DEFAULT '' gotcha: INSERT OR IGNORE silently discards row when NULL is bound for a NOT NULL column",
+          "category": "pattern",
+          "final_score": 0.41805264624120214,
+          "similarity": 0.4065936803817749,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.4136842919757337,
+          "similarity": 0.40714430809020996,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.5185246759523726,
+          "similarity": 0.46444207429885864,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.5133258130722911,
+          "similarity": 0.48404383659362793,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.49248752302636434,
+          "similarity": 0.43019944429397583,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2745,
+          "title": "SQLite NOT NULL DEFAULT '' gotcha: INSERT OR IGNORE silently discards row when NULL is bound for a NOT NULL column",
+          "category": "pattern",
+          "final_score": 0.46530817323480933,
+          "similarity": 0.4065936803817749,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.4592584097617708,
+          "similarity": 0.40714430809020996,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.3940269763653095,
+          "similarity": 0.48404383659362793,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.38196435341468227,
+          "similarity": 0.46444207429885864,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.36089196571936977,
+          "similarity": 0.43019944429397583,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.34670418959397536,
+          "similarity": 0.40714430809020996,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2745,
+          "title": "SQLite NOT NULL DEFAULT '' gotcha: INSERT OR IGNORE silently discards row when NULL is bound for a NOT NULL column",
+          "category": "pattern",
+          "final_score": 0.34636534177339995,
+          "similarity": 0.4065936803817749,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.5181734902273497,
+          "similarity": 0.46444207429885864,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.5131356703678842,
+          "similarity": 0.48404383659362793,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.4920830549826475,
+          "similarity": 0.43019944429397583,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2745,
+          "title": "SQLite NOT NULL DEFAULT '' gotcha: INSERT OR IGNORE silently discards row when NULL is bound for a NOT NULL column",
+          "category": "pattern",
+          "final_score": 0.4649269102942052,
+          "similarity": 0.4065936803817749,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.4589200065041632,
+          "similarity": 0.40714430809020996,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4609566977866471,
+          "similarity": 0.46444207429885864,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.4585690807093569,
+          "similarity": 0.48404383659362793,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.4395408699402066,
+          "similarity": 0.43019944429397583,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2745,
+          "title": "SQLite NOT NULL DEFAULT '' gotcha: INSERT OR IGNORE silently discards row when NULL is bound for a NOT NULL column",
+          "category": "pattern",
+          "final_score": 0.41805264624120214,
+          "similarity": 0.4065936803817749,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.4136842919757337,
+          "similarity": 0.40714430809020996,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.48404383659362793,
+          "similarity": 0.48404383659362793,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.46444207429885864,
+          "similarity": 0.46444207429885864,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.43019944429397583,
+          "similarity": 0.43019944429397583,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.40714430809020996,
+          "similarity": 0.40714430809020996,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2745,
+          "title": "SQLite NOT NULL DEFAULT '' gotcha: INSERT OR IGNORE silently discards row when NULL is bound for a NOT NULL column",
+          "category": "pattern",
+          "final_score": 0.4065936803817749,
+          "similarity": 0.4065936803817749,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

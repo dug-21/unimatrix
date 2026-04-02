@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2706",
+  "query": "My last clarification on MAX_GOAL_BYTES, the MCP tool should provide a good error message to allow the agent to easily corret.  On the UDS path, 2nd one in wins (this in the event it truncates from the failure it may see??), that way, topic will always be the same.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5062558101967698,
+          "similarity": 0.5283875465393066,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.49974014825305735,
+          "similarity": 0.44298070669174194,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.47830261586397615,
+          "similarity": 0.433940052986145,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.47057574157838356,
+          "similarity": 0.43278127908706665,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.4667364702600516,
+          "similarity": 0.44434410333633423,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5062558101967698,
+          "similarity": 0.5283875465393066,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.49974014825305735,
+          "similarity": 0.44298070669174194,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.47830261586397615,
+          "similarity": 0.433940052986145,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.47057574157838356,
+          "similarity": 0.43278127908706665,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.4667364702600516,
+          "similarity": 0.44434410333633423,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

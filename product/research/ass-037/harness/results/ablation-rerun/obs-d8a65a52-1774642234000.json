@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-d8a65a52-1774642234000",
+  "query": "outcome rework scoring inference search",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.4786845214797228,
+          "similarity": 0.4778308868408203,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.4729124936993899,
+          "similarity": 0.47483742237091064,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.4627965717264099,
+          "similarity": 0.46312153339385986,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.44193014919919,
+          "similarity": 0.42978817224502563,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.435051975280692,
+          "similarity": 0.40129607915878296,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5411306304868202,
+          "similarity": 0.4778308868408203,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5335318166472671,
+          "similarity": 0.47483742237091064,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.520802458409299,
+          "similarity": 0.46312153339385986,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.4953785514311658,
+          "similarity": 0.42978817224502563,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.48858941364105424,
+          "similarity": 0.40129607915878296,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5415443543014999,
+          "similarity": 0.4778308868408203,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5339154401392694,
+          "similarity": 0.47483742237091064,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.5211794579192037,
+          "similarity": 0.46312153339385986,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.4958072467199642,
+          "similarity": 0.42978817224502563,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.489159958310873,
+          "similarity": 0.40129607915878296,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.39020362267127406,
+          "similarity": 0.4778308868408203,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.3883614906897912,
+          "similarity": 0.47483742237091064,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.38115171285775995,
+          "similarity": 0.46312153339385986,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.3606388752277081,
+          "similarity": 0.42978817224502563,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.34310527948232794,
+          "similarity": 0.40129607915878296,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.4778308868408203,
+          "similarity": 0.4778308868408203,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.47483742237091064,
+          "similarity": 0.47483742237091064,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.46312153339385986,
+          "similarity": 0.46312153339385986,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.42978817224502563,
+          "similarity": 0.42978817224502563,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.40129607915878296,
+          "similarity": 0.40129607915878296,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.4786845214797228,
+          "similarity": 0.4778308868408203,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.4729124936993899,
+          "similarity": 0.47483742237091064,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.4627965717264099,
+          "similarity": 0.46312153339385986,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.44193014919919,
+          "similarity": 0.42978817224502563,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.435051975280692,
+          "similarity": 0.40129607915878296,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

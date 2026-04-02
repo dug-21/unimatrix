@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-580",
+  "query": "pickup issue 259 and propose changes",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.3881224864534609,
+          "similarity": 0.29284244775772095,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.3841245242747845,
+          "similarity": 0.27013111114501953,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.38064674767870454,
+          "similarity": 0.3057842254638672,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3015,
+          "title": "Edit Tool Re-Read Required After Cargo Fmt in Parallel Swarm: Edits May Not Persist",
+          "category": "pattern",
+          "final_score": 0.3602553375804747,
+          "similarity": 0.2659958600997925,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.3530745746290531,
+          "similarity": 0.27209705114364624,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.3881224864534609,
+          "similarity": 0.29284244775772095,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.3841245242747845,
+          "similarity": 0.27013111114501953,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.38064674767870454,
+          "similarity": 0.3057842254638672,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3015,
+          "title": "Edit Tool Re-Read Required After Cargo Fmt in Parallel Swarm: Edits May Not Persist",
+          "category": "pattern",
+          "final_score": 0.3602553375804747,
+          "similarity": 0.2659958600997925,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.3530745746290531,
+          "similarity": 0.27209705114364624,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

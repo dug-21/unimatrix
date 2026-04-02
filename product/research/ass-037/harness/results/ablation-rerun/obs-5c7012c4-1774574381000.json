@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-5c7012c4-1774574381000",
+  "query": "knowledge entries stored high ADR count design feature retrospective",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5071672637470287,
+          "similarity": 0.561762809753418,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.478709573370866,
+          "similarity": 0.5176380276679993,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.47830055346842065,
+          "similarity": 0.5132380127906799,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.4704185890504106,
+          "similarity": 0.5115998983383179,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.453477083867417,
+          "similarity": 0.5093836784362793,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5071672637470287,
+          "similarity": 0.561762809753418,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.478709573370866,
+          "similarity": 0.5176380276679993,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.47830055346842065,
+          "similarity": 0.5132380127906799,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.4704185890504106,
+          "similarity": 0.5115998983383179,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.453477083867417,
+          "similarity": 0.5093836784362793,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.44185403677133417,
+          "similarity": 0.561762809753418,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.4147003247187688,
+          "similarity": 0.5176380276679993,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.41199262325580305,
+          "similarity": 0.5132380127906799,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.41098455282358026,
+          "similarity": 0.5115998983383179,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.4096207251915565,
+          "similarity": 0.5093836784362793,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.561762809753418,
+          "similarity": 0.561762809753418,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.5176380276679993,
+          "similarity": 0.5176380276679993,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5132380127906799,
+          "similarity": 0.5132380127906799,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.5115998983383179,
+          "similarity": 0.5115998983383179,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.5093836784362793,
+          "similarity": 0.5093836784362793,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5723405587683646,
+          "similarity": 0.561762809753418,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.5375459611722719,
+          "similarity": 0.5176380276679993,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.53738820811233,
+          "similarity": 0.5132380127906799,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.5267889943107129,
+          "similarity": 0.5115998983383179,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.5038884163249977,
+          "similarity": 0.5093836784362793,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5724096943828415,
+          "similarity": 0.561762809753418,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.5376760783847181,
+          "similarity": 0.5176380276679993,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.537546052526197,
+          "similarity": 0.5132380127906799,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.5268882694477874,
+          "similarity": 0.5115998983383179,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.5038524995791724,
+          "similarity": 0.5093836784362793,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

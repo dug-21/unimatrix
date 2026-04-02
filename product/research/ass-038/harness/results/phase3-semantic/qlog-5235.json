@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5235",
+  "query": "So... I want to write a skill to begin what I'm calling vision-guide mode.  What this agent does:\\\n1. what it does NOT do is change ANY code, run any protocols, or otherwise modify the application codebase, with the exception of writing research doc, or updating roadmap.\\\nThe primary purpose is to serve as a guide, helping to evolve the vision, identify opportunities for advancement, identifying efficient order of feature/bugfix, AND to also ensure the features as they are scoped and designed, stay true to the intended purpose at the detail level.  Its an ongoing conversation with the human, responding to questions, possibly writing research spike scopes, creating new issues with propor scope that will all be executed in other sessions.  Ask me any questions, but creating this skill would allow me to enact a session to be the .. spririt guide (although we should probably try to find a borg reference that we can name it)  but spirit-guide might be it (since its from voyager)",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5403854189075479,
+          "similarity": 0.5232821702957153,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5046275167253541,
+          "similarity": 0.4575164318084717,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5002295240196042,
+          "similarity": 0.4587448239326477,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.4885229341846038,
+          "similarity": 0.47702234983444214,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.4681228084469864,
+          "similarity": 0.45450419187545776,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5403854189075479,
+          "similarity": 0.5232821702957153,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5046275167253541,
+          "similarity": 0.4575164318084717,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5002295240196042,
+          "similarity": 0.4587448239326477,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.4885229341846038,
+          "similarity": 0.47702234983444214,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.4681228084469864,
+          "similarity": 0.45450419187545776,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

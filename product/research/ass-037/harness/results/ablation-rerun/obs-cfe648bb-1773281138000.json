@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-cfe648bb-1773281138000",
+  "query": "architecture specification disagreement column mismatch divergence lesson",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.5160353183746338,
+          "similarity": 0.5160353183746338,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.5120067000389099,
+          "similarity": 0.5120067000389099,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.4862022399902344,
+          "similarity": 0.4862022399902344,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.4649200439453125,
+          "similarity": 0.4649200439453125,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.43387794494628906,
+          "similarity": 0.43387794494628906,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.48759141500962827,
+          "similarity": 0.5120067000389099,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.4749508794039986,
+          "similarity": 0.4862022399902344,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4574796480379832,
+          "similarity": 0.5160353183746338,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.44038399967398895,
+          "similarity": 0.4649200439453125,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.42135090748297116,
+          "similarity": 0.43387794494628906,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.5501695022823194,
+          "similarity": 0.5120067000389099,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5352782682790677,
+          "similarity": 0.4862022399902344,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.5087417638359195,
+          "similarity": 0.5160353183746338,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.4900763591967746,
+          "similarity": 0.4649200439453125,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.46694415157257074,
+          "similarity": 0.43387794494628906,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4137140420766977,
+          "similarity": 0.5160353183746338,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.4112348923316369,
+          "similarity": 0.5120067000389099,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.395355224609375,
+          "similarity": 0.4862022399902344,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.3822584885817308,
+          "similarity": 0.4649200439453125,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.3631556584284856,
+          "similarity": 0.43387794494628906,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.5504189323623417,
+          "similarity": 0.5120067000389099,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5355990266338967,
+          "similarity": 0.4862022399902344,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.5086940935448168,
+          "similarity": 0.5160353183746338,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.4902407795578953,
+          "similarity": 0.4649200439453125,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4671602705701282,
+          "similarity": 0.43387794494628906,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.48759141500962827,
+          "similarity": 0.5120067000389099,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.4749508794039986,
+          "similarity": 0.4862022399902344,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4574796480379832,
+          "similarity": 0.5160353183746338,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.44038399967398895,
+          "similarity": 0.4649200439453125,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.42135090748297116,
+          "similarity": 0.43387794494628906,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 1496,
+        "from_rank": 3,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 3337,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 723,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": -0.5,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

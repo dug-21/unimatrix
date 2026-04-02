@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-abcc3cc8-1773157585000",
+  "query": "SQLite query_log injection_log schema migration",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5707105097496115,
+          "similarity": 0.5391295552253723,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5658605959836174,
+          "similarity": 0.5209630131721497,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5578158359486187,
+          "similarity": 0.5073875188827515,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5342127036211692,
+          "similarity": 0.5009904503822327,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.5122165927434211,
+          "similarity": 0.5086393356323242,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5043126253336722,
+          "similarity": 0.5391295552253723,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.4994815065860748,
+          "similarity": 0.5209630131721497,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.4926506461113331,
+          "similarity": 0.5073875188827515,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.4749971448084399,
+          "similarity": 0.5009904503822327,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.45951775582965854,
+          "similarity": 0.5086393356323242,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5043126253336722,
+          "similarity": 0.5391295552253723,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.4994815065860748,
+          "similarity": 0.5209630131721497,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.4926506461113331,
+          "similarity": 0.5073875188827515,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.4749971448084399,
+          "similarity": 0.5009904503822327,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.45951775582965854,
+          "similarity": 0.5086393356323242,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5705054386163372,
+          "similarity": 0.5391295552253723,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5655690532380884,
+          "similarity": 0.5209630131721497,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5574883793442948,
+          "similarity": 0.5073875188827515,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5339969747040333,
+          "similarity": 0.5009904503822327,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.5121933638011413,
+          "similarity": 0.5086393356323242,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5391295552253723,
+          "similarity": 0.5391295552253723,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5209630131721497,
+          "similarity": 0.5209630131721497,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.5086393356323242,
+          "similarity": 0.5086393356323242,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5073875188827515,
+          "similarity": 0.5073875188827515,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5009904503822327,
+          "similarity": 0.5009904503822327,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.42792588013869065,
+          "similarity": 0.5391295552253723,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.4167464696443998,
+          "similarity": 0.5209630131721497,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.4091626680814303,
+          "similarity": 0.5086393356323242,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.40839231931246245,
+          "similarity": 0.5073875188827515,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.40445566177368164,
+          "similarity": 0.5009904503822327,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

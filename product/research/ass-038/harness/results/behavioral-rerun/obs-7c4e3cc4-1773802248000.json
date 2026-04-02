@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7c4e3cc4-1773802248000",
+  "query": "session identity env var agent_id PERMISSIVE_AUTO_ENROLL enrollment",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.527115873335731,
+          "similarity": 0.5405920147895813,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.525188367944544,
+          "similarity": 0.5062795877456665,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.5110537085441235,
+          "similarity": 0.5525127649307251,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.45583592430808206,
+          "similarity": 0.49189817905426025,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.41442042915463506,
+          "similarity": 0.4133235216140747,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.527115873335731,
+          "similarity": 0.5405920147895813,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.525188367944544,
+          "similarity": 0.5062795877456665,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.5110537085441235,
+          "similarity": 0.5525127649307251,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.45583592430808206,
+          "similarity": 0.49189817905426025,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.41442042915463506,
+          "similarity": 0.4133235216140747,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-372",
+  "query": "unfortunately, I want to think this through a bit... I think there may be mroe edge cases than standard ones... scenario:  context_cycle Begin, at the start of the design session.  Delivery could in theory be in a different session (it could be broken up differently, even).  That said, would we want a context_Cyclc begin staged in both our design protocol and implementation... and would that cause any issues?  1. You're going to have to explain that in more detail.. I need to understand the recordEvnet option better.  2. Well the original thought was send a signal through MCP channel that the hook system can utilize to pull the necessary topic/feature_cycle to place activities in context for sessions.  I'd like to understand the different options for doing that w/out tight coupling the architecture.  3. Record the feature end signal.. it is ground truth., But if the session goes on, we could likely still understand post feature activities, if there are any.  You'd still have the whole session marked for that feature.  unless a new cycle start message came.  4. Unless you think of a better one.. I think that fits with the rest of the tools nicely. 5. I think that should be its own follow up that we can probably do through a gh issue",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5392941542557182,
+          "similarity": 0.558246374130249,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5384869488443806,
+          "similarity": 0.5264202952384949,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5316179787485221,
+          "similarity": 0.5130741596221924,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.529786588823558,
+          "similarity": 0.5219947695732117,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.4909368329017266,
+          "similarity": 0.5158408284187317,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5392941542557182,
+          "similarity": 0.558246374130249,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5384869488443806,
+          "similarity": 0.5264202952384949,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5316179787485221,
+          "similarity": 0.5130741596221924,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.529786588823558,
+          "similarity": 0.5219947695732117,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.4909368329017266,
+          "similarity": 0.5158408284187317,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 12,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2548",
+  "query": "yes.. I think I'd include both in scope... writing the correct topic_signal on writing the observation, and pulling it correctly for context_cycle_review",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5276090082960053,
+          "similarity": 0.5021185278892517,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5171340570833325,
+          "similarity": 0.5161421895027161,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5116663536700248,
+          "similarity": 0.48983240127563477,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5050890479330603,
+          "similarity": 0.5147389769554138,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.49846777868590153,
+          "similarity": 0.48925912380218506,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5276090082960053,
+          "similarity": 0.5021185278892517,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5171340570833325,
+          "similarity": 0.5161421895027161,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5116663536700248,
+          "similarity": 0.48983240127563477,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5050890479330603,
+          "similarity": 0.5147389769554138,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.49846777868590153,
+          "similarity": 0.48925912380218506,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

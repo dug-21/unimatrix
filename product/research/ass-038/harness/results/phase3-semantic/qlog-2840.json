@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2840",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Understood. This is now a proper deep research spike — audit the existing system for corruption risk, then research what self-learning context surfacing should actually be doing, and restate the goal from first principles.\n\nThis will take a researcher with full codebase access plus external research capability. Spawning now.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4431705569875425,
+          "similarity": 0.3385739326477051,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.43830321558848073,
+          "similarity": 0.3410848379135132,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.4379914257424461,
+          "similarity": 0.3255571126937866,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.41308213305586006,
+          "similarity": 0.3233238458633423,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1119,
+          "title": "Human-Gated State Machine for Multi-Turn Conversational Skills",
+          "category": "pattern",
+          "final_score": 0.4026865238313587,
+          "similarity": 0.35480988025665283,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4431705569875425,
+          "similarity": 0.3385739326477051,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.43830321558848073,
+          "similarity": 0.3410848379135132,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.4379914257424461,
+          "similarity": 0.3255571126937866,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.41308213305586006,
+          "similarity": 0.3233238458633423,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1119,
+          "title": "Human-Gated State Machine for Multi-Turn Conversational Skills",
+          "category": "pattern",
+          "final_score": 0.4026865238313587,
+          "similarity": 0.35480988025665283,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

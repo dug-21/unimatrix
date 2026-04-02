@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774576708000",
+  "query": "risk pattern graph traversal edges_of_type TypedRelationGraph",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3650,
+          "title": "TypedRelationGraph: typed edge weights, two-pass build with bootstrap exclusion, edges_of_type filter boundary",
+          "category": "pattern",
+          "final_score": 0.5508850688750512,
+          "similarity": 0.5677030682563782,
+          "confidence": 0.6128265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5270019957690296,
+          "similarity": 0.5764581561088562,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.5262459547574224,
+          "similarity": 0.5478034615516663,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5150427096635892,
+          "similarity": 0.5207759141921997,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5071949288719578,
+          "similarity": 0.58467036485672,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3650,
+          "title": "TypedRelationGraph: typed edge weights, two-pass build with bootstrap exclusion, edges_of_type filter boundary",
+          "category": "pattern",
+          "final_score": 0.5508850688750512,
+          "similarity": 0.5677030682563782,
+          "confidence": 0.6128265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5270019957690296,
+          "similarity": 0.5764581561088562,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.5262459547574224,
+          "similarity": 0.5478034615516663,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5150427096635892,
+          "similarity": 0.5207759141921997,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5071949288719578,
+          "similarity": 0.58467036485672,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

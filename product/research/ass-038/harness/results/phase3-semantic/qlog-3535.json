@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3535",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(nan-010 test plan design) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.48163964630716527,
+          "similarity": 0.41841042041778564,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3548,
+          "title": "Test Exists but Omits Test-Plan Assertion — Coverage Is Weaker Than Specified",
+          "category": "lesson-learned",
+          "final_score": 0.4506033240799483,
+          "similarity": 0.39358246326446533,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.44233772265925664,
+          "similarity": 0.39340877532958984,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.4298530473805946,
+          "similarity": 0.4045919179916382,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.41710378942222726,
+          "similarity": 0.382202684879303,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.48163964630716527,
+          "similarity": 0.41841042041778564,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3548,
+          "title": "Test Exists but Omits Test-Plan Assertion — Coverage Is Weaker Than Specified",
+          "category": "lesson-learned",
+          "final_score": 0.4506033240799483,
+          "similarity": 0.39358246326446533,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.44233772265925664,
+          "similarity": 0.39340877532958984,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.4298530473805946,
+          "similarity": 0.4045919179916382,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.41710378942222726,
+          "similarity": 0.382202684879303,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

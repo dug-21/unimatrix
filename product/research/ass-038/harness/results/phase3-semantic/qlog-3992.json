@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3992",
+  "query": "approve to continue in a worktree",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.46698714755369297,
+          "similarity": 0.37876343727111816,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.464361154954255,
+          "similarity": 0.4135206937789917,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.45796216791024424,
+          "similarity": 0.39257824420928955,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.4570715920626137,
+          "similarity": 0.4180213212966919,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.40881063425386466,
+          "similarity": 0.34717607498168945,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.46698714755369297,
+          "similarity": 0.37876343727111816,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.464361154954255,
+          "similarity": 0.4135206937789917,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.45796216791024424,
+          "similarity": 0.39257824420928955,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.4570715920626137,
+          "similarity": 0.4180213212966919,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.40881063425386466,
+          "similarity": 0.34717607498168945,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

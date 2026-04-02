@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-5c7012c4-1774574372000",
+  "query": "interface signature sync pseudocode architecture spec multi-file consistency",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.6257805228233337,
+          "similarity": 0.6257805228233337,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.5841006636619568,
+          "similarity": 0.5841006636619568,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.5442669987678528,
+          "similarity": 0.5442669987678528,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.503190815448761,
+          "similarity": 0.503190815448761,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.49779367446899414,
+          "similarity": 0.49779367446899414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.5218021964214935,
+          "similarity": 0.6257805228233337,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.5127054339295203,
+          "similarity": 0.5841006636619568,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.5101128320632197,
+          "similarity": 0.5442669987678528,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.47390848736185326,
+          "similarity": 0.503190815448761,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.45682081493582977,
+          "similarity": 0.49779367446899414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.48124955250666696,
+          "similarity": 0.6257805228233337,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.45560040840735805,
+          "similarity": 0.5841006636619568,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.4310873838571402,
+          "similarity": 0.5442669987678528,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.40580973258385294,
+          "similarity": 0.503190815448761,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.40248841505784255,
+          "similarity": 0.49779367446899414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.5864774930453698,
+          "similarity": 0.6257805228233337,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.5779477711073129,
+          "similarity": 0.5442669987678528,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.5778618950255314,
+          "similarity": 0.5841006636619568,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.532312408634458,
+          "similarity": 0.503190815448761,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.5095016863244046,
+          "similarity": 0.49779367446899414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.5862206104978015,
+          "similarity": 0.6257805228233337,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.5781679068742376,
+          "similarity": 0.5442669987678528,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.577821118759934,
+          "similarity": 0.5841006636619568,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.532502745844822,
+          "similarity": 0.503190815448761,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.509578209277708,
+          "similarity": 0.49779367446899414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.5218021964214935,
+          "similarity": 0.6257805228233337,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.5127054339295203,
+          "similarity": 0.5841006636619568,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.5101128320632197,
+          "similarity": 0.5442669987678528,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.47390848736185326,
+          "similarity": 0.503190815448761,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.45682081493582977,
+          "similarity": 0.49779367446899414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 555,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3611,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

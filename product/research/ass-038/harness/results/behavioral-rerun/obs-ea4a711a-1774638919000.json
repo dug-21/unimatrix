@@ -1,0 +1,94 @@
+{
+  "scenario_id": "obs-ea4a711a-1774638919000",
+  "query": "tick source candidate selection stable ordering shuffle embedded filter",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5539709811470187,
+          "similarity": 0.5597363710403442,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5123175541718974,
+          "similarity": 0.5284731388092041,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4099747996892845,
+          "similarity": 0.3812183737754822,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5539709811470187,
+          "similarity": 0.5597363710403442,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5123175541718974,
+          "similarity": 0.5284731388092041,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4099747996892845,
+          "similarity": 0.3812183737754822,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

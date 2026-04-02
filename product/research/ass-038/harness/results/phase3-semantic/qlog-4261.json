@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4261",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] The agents committed their own changes. The crate files are already in history. Wave 2 — spawning the search.rs Step 6d agent.\n[tool: Bash(git log --oneline -5 && git show --stat HEAD~1 | head -20) → 948f890 impl: wave 1 — graph_ppr + config PPR fields (#398)\n5b47959 impl(graph_ppr): add personalized_pagerank pure function with power iteration and 20 unit tests (crt-030)\nc506a01 impl(config): add five PPR fields to InferenceConfig with validation and tests (crt-030)\n0ce8202 pseudocode: crt-030]\n[tool: Bash(git status crates/ --short) → (Bash completed with no output)]\n[tool: Bash(git diff --stat HEAD crates/ && ls crates/unimatrix-engine/src/graph_ppr*.rs 2>/dev/null && ls crates/unimatrix-server/s) → crates/unimatrix-engine/src/graph_ppr.rs\ncrates/unimatrix-engine/src/graph_ppr_tests.rs\ncrates/unimatrix-server/src/infra/config.rs]\n[Assistant] The crate files aren't tracked yet. Let me check and add them.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5416139488035097,
+          "similarity": 0.5623183250427246,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5176098449535702,
+          "similarity": 0.5145948529243469,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.49902575790576853,
+          "similarity": 0.5505138039588928,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.4985606188259797,
+          "similarity": 0.5030312538146973,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.4711412286256489,
+          "similarity": 0.4937683343887329,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5416139488035097,
+          "similarity": 0.5623183250427246,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5176098449535702,
+          "similarity": 0.5145948529243469,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.49902575790576853,
+          "similarity": 0.5505138039588928,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.4985606188259797,
+          "similarity": 0.5030312538146973,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.4711412286256489,
+          "similarity": 0.4937683343887329,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

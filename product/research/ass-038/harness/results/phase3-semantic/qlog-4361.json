@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4361",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Proceeding to Phase 1b — scope risk assessment.\n[Assistant] SCOPE.md is written. Here's what the researcher found and what needs your call on before we proceed.\n\n---\n\n**SCOPE.md summary** — `product/features/crt-031/SCOPE.md`\n\nScope is tight and well-bounded: config extension → runtime policy object → status visibility → maintenance tick guard stub. No schema changes, no deprecation logic, no ranking changes.\n\nThe researcher identified the `boosted_categories` field in `KnowledgeConfig` as the exact structural predecessor — same subset-validation pattern, same `ConfigError` variant shape. The adaptive check is a near-copy of that existing validation. Good precedent to follow.\n\n---\n\n**Three open questions for your call:**\n\n**1. Constructor API for `CategoryAllowlist`**\nThe existing `from_categories(cats)` is called from `main.rs` (×2) and tests. Options:\n- **A** (recommended): Add `from_categories_with_policy(cats, adaptive)` as new constructor, keep `from_categories` delegating with `[\"lesson-learned\"]` as default — no callsite breakage\n- **B**: Extend `from_categories` signature (breaking, requires updating all callers)\n\n**2. `context_status` format**\n- **A**: Full list — every category with its label (`decision: pinned`, `lesson-learned: adaptive`, ...) — verbose but complete\n- **B** (recommended): Summary text shows only adaptive categories (since pinned is the default); JSON includes all — more readable, same data\n\n**3. Domain pack `add_category` runtime path**\nConfirm: categories added at runtime via domain packs silently default to `pinned`. No lifecycle parameter on `add_category`. Correct?\n\n---\n\nThe 15 acceptance criteria look solid and directly map to verifiable test cases. Approve SCOPE.md or give feedback and I'll proceed to Phase 1b.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5771023886286081,
+          "similarity": 0.6627431511878967,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5642691997604903,
+          "similarity": 0.6170212030410767,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5446282638760371,
+          "similarity": 0.5637959837913513,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5328624635416912,
+          "similarity": 0.5467796325683594,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5238906116331828,
+          "similarity": 0.5433031320571899,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5771023886286081,
+          "similarity": 0.6627431511878967,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5642691997604903,
+          "similarity": 0.6170212030410767,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5446282638760371,
+          "similarity": 0.5637959837913513,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5328624635416912,
+          "similarity": 0.5467796325683594,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5238906116331828,
+          "similarity": 0.5433031320571899,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

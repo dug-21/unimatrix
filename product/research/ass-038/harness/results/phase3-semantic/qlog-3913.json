@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3913",
+  "query": "exactly what documentation changed related to the resolved WARN?  Do both Architecture and Specification, Implementation brief and acceptance-map all agree on this resolution?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.5404334340003613,
+          "similarity": 0.6083342432975769,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.519533972547088,
+          "similarity": 0.5169090628623962,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5177197880081529,
+          "similarity": 0.5093514919281006,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.502613194423132,
+          "similarity": 0.4812595844268799,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.46740408640644804,
+          "similarity": 0.4777732491493225,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.5404334340003613,
+          "similarity": 0.6083342432975769,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.519533972547088,
+          "similarity": 0.5169090628623962,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5177197880081529,
+          "similarity": 0.5093514919281006,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.502613194423132,
+          "similarity": 0.4812595844268799,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.46740408640644804,
+          "similarity": 0.4777732491493225,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

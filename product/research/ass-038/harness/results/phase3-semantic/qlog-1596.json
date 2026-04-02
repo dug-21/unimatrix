@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1596",
+  "query": "so before you make any changes.. I'm gonna want to see some examples of results again... best way for me to understand the impact.  That duplicate increases the one measurement is a big deal.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 89,
+          "title": "ADR-006: Near-Duplicate Detection at 0.92 Cosine Similarity",
+          "category": "decision",
+          "final_score": 0.4356856493013175,
+          "similarity": 0.3698241710662842,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.43363596379446634,
+          "similarity": 0.3668789863586426,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.42787255321772477,
+          "similarity": 0.3670259714126587,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4224329798275336,
+          "similarity": 0.3397488594055176,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.41072285928041385,
+          "similarity": 0.34250861406326294,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 89,
+          "title": "ADR-006: Near-Duplicate Detection at 0.92 Cosine Similarity",
+          "category": "decision",
+          "final_score": 0.4356856493013175,
+          "similarity": 0.3698241710662842,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.43363596379446634,
+          "similarity": 0.3668789863586426,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.42787255321772477,
+          "similarity": 0.3670259714126587,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4224329798275336,
+          "similarity": 0.3397488594055176,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.41072285928041385,
+          "similarity": 0.34250861406326294,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

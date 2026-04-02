@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-5becb974-1774976021000",
+  "query": "composite guard negative test predicate NLI tick phase",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.6440003052558203,
+          "similarity": 0.7819549441337585,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.528605606186622,
+          "similarity": 0.5261757969856262,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5210892377498854,
+          "similarity": 0.5244805216789246,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.4975804142999456,
+          "similarity": 0.5100571513175964,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.6440003052558203,
+          "similarity": 0.7819549441337585,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.528605606186622,
+          "similarity": 0.5261757969856262,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5210892377498854,
+          "similarity": 0.5244805216789246,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.4975804142999456,
+          "similarity": 0.5100571513175964,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

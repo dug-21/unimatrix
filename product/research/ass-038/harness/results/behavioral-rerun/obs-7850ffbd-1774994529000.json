@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7850ffbd-1774994529000",
+  "query": "SQL injection input validation trust boundaries cycle_events",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.49146583665247867,
+          "similarity": 0.45040154457092285,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.47403462159006204,
+          "similarity": 0.40366578102111816,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.46148927153745145,
+          "similarity": 0.40668946504592896,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.44619926963899825,
+          "similarity": 0.39571475982666016,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4427964050239589,
+          "similarity": 0.3829241394996643,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.49146583665247867,
+          "similarity": 0.45040154457092285,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.47403462159006204,
+          "similarity": 0.40366578102111816,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.46148927153745145,
+          "similarity": 0.40668946504592896,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.44619926963899825,
+          "similarity": 0.39571475982666016,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4427964050239589,
+          "similarity": 0.3829241394996643,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

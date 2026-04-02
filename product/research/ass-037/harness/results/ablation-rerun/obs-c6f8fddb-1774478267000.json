@@ -1,0 +1,396 @@
+{
+  "scenario_id": "obs-c6f8fddb-1774478267000",
+  "query": "bugfix checklist procedure verification hook payload fields",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5277167523460359,
+          "similarity": 0.4893132448196411,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.520653525262406,
+          "similarity": 0.4380611181259155,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5137217992407972,
+          "similarity": 0.49084794521331787,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.4840640214200047,
+          "similarity": 0.4307742714881897,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.4706457865551261,
+          "similarity": 0.4537755846977234,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.49084794521331787,
+          "similarity": 0.49084794521331787,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.4893132448196411,
+          "similarity": 0.4893132448196411,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.4537755846977234,
+          "similarity": 0.4537755846977234,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.4380611181259155,
+          "similarity": 0.4380611181259155,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.4307742714881897,
+          "similarity": 0.4307742714881897,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5274673789205399,
+          "similarity": 0.4893132448196411,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5201172109303509,
+          "similarity": 0.4380611181259155,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5135732677211382,
+          "similarity": 0.49084794521331787,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.4837179840827851,
+          "similarity": 0.4307742714881897,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.4705362397898183,
+          "similarity": 0.4537755846977234,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.39821412013127255,
+          "similarity": 0.49084794521331787,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.39726968911977917,
+          "similarity": 0.4893132448196411,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.3754003598139836,
+          "similarity": 0.4537755846977234,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.36572991884671724,
+          "similarity": 0.4380611181259155,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.3612457055311937,
+          "similarity": 0.4307742714881897,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.46943029419637194,
+          "similarity": 0.4893132448196411,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.46062336255731834,
+          "similarity": 0.4380611181259155,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.45934359267638925,
+          "similarity": 0.49084794521331787,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.4334448064265884,
+          "similarity": 0.4307742714881897,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.42531161482571495,
+          "similarity": 0.4537755846977234,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.46943029419637194,
+          "similarity": 0.4893132448196411,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.46062336255731834,
+          "similarity": 0.4380611181259155,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.45934359267638925,
+          "similarity": 0.49084794521331787,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.4334448064265884,
+          "similarity": 0.4307742714881897,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.42531161482571495,
+          "similarity": 0.4537755846977234,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 3474,
+        "from_rank": 3,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 1372,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3464,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 1008,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3486,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

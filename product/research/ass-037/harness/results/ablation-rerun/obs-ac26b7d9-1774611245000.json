@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774611245000",
+  "query": "pseudocode agent changes return type function signature architecture spec deviation",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.5282750725746155,
+          "similarity": 0.5282750725746155,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5167402029037476,
+          "similarity": 0.5167402029037476,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.5142892003059387,
+          "similarity": 0.5142892003059387,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.4797389507293701,
+          "similarity": 0.4797389507293701,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.46401721239089966,
+          "similarity": 0.46401721239089966,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.4212461985074557,
+          "similarity": 0.5282750725746155,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.414147817171537,
+          "similarity": 0.5167402029037476,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4126395078805777,
+          "similarity": 0.5142892003059387,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.39137781583345854,
+          "similarity": 0.4797389507293701,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.38170289993286133,
+          "similarity": 0.46401721239089966,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5007245815138576,
+          "similarity": 0.5167402029037476,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.4716465549213716,
+          "similarity": 0.5282750725746155,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.46225544191668405,
+          "similarity": 0.4797389507293701,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.45660658900363565,
+          "similarity": 0.5142892003059387,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.4442057858545538,
+          "similarity": 0.46401721239089966,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5679807782637507,
+          "similarity": 0.5167402029037476,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.5269388917965281,
+          "similarity": 0.5282750725746155,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.5188075721670791,
+          "similarity": 0.4797389507293701,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.5076669652691138,
+          "similarity": 0.5142892003059387,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.49557488133067196,
+          "similarity": 0.46401721239089966,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5007245815138576,
+          "similarity": 0.5167402029037476,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.4716465549213716,
+          "similarity": 0.5282750725746155,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.46225544191668405,
+          "similarity": 0.4797389507293701,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.45660658900363565,
+          "similarity": 0.5142892003059387,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.4442057858545538,
+          "similarity": 0.46401721239089966,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5676480472549195,
+          "similarity": 0.5167402029037476,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.526947568295087,
+          "similarity": 0.5282750725746155,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.5185538798200809,
+          "similarity": 0.4797389507293701,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.507709966795327,
+          "similarity": 0.5142892003059387,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.49536996140249157,
+          "similarity": 0.46401721239089966,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 1496,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 1204,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3644,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 2958,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": -0.5,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

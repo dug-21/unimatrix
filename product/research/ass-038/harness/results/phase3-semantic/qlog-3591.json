@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3591",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Gate 3b: **PASS**. Now Stage 3c — test execution:\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5225178740036741,
+          "similarity": 0.4901276230812073,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5074380423675066,
+          "similarity": 0.4674273729324341,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.4903458735145846,
+          "similarity": 0.4679759740829468,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1119,
+          "title": "Human-Gated State Machine for Multi-Turn Conversational Skills",
+          "category": "pattern",
+          "final_score": 0.46092615949966154,
+          "similarity": 0.4654651880264282,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.45512540917647504,
+          "similarity": 0.48573827743530273,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5225178740036741,
+          "similarity": 0.4901276230812073,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5074380423675066,
+          "similarity": 0.4674273729324341,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.4903458735145846,
+          "similarity": 0.4679759740829468,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1119,
+          "title": "Human-Gated State Machine for Multi-Turn Conversational Skills",
+          "category": "pattern",
+          "final_score": 0.46092615949966154,
+          "similarity": 0.4654651880264282,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.45512540917647504,
+          "similarity": 0.48573827743530273,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

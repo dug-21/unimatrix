@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-2543",
+  "query": "the original was designed before we had the cycle start/stop table at all.  I'm wondering if we could just switch to that for everything, simplify this methodology and have something consistent that would not be so dependent on user session alignment.  essentially, if we can redesign this to be more resilient and adaptable as long as we get the concrete signals... the system would be better off long term",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5055924967109396,
+          "similarity": 0.4661025404930115,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.4776142022253578,
+          "similarity": 0.4177834391593933,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.46808837319189234,
+          "similarity": 0.4236624240875244,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.4661197107719257,
+          "similarity": 0.4387882947921753,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5055924967109396,
+          "similarity": 0.4661025404930115,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.4776142022253578,
+          "similarity": 0.4177834391593933,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.46808837319189234,
+          "similarity": 0.4236624240875244,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.4661197107719257,
+          "similarity": 0.4387882947921753,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

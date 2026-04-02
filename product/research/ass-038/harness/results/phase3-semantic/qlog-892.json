@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-892",
+  "query": "now see if an ADR for SQLlite exists... you're 100% right the old one needs to be deprecated",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 355,
+          "title": "ADR-001: Keep SqliteWriteTransaction, Remove SqliteReadTransaction",
+          "category": "decision",
+          "final_score": 0.5129624072001137,
+          "similarity": 0.5300382971763611,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4945398830310618,
+          "similarity": 0.4725759029388428,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.4886814031751793,
+          "similarity": 0.5348386764526367,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 327,
+          "title": "ADR-001: Abstract Transaction Types Behind Feature Flag",
+          "category": "decision",
+          "final_score": 0.4849912166531831,
+          "similarity": 0.49439430236816406,
+          "confidence": 0.5386985846755485,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 339,
+          "title": "ADR-002: Flatten-and-merge strategy for shared modules",
+          "category": "decision",
+          "final_score": 0.48410081672586525,
+          "similarity": 0.48536133766174316,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 355,
+          "title": "ADR-001: Keep SqliteWriteTransaction, Remove SqliteReadTransaction",
+          "category": "decision",
+          "final_score": 0.5129624072001137,
+          "similarity": 0.5300382971763611,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4945398830310618,
+          "similarity": 0.4725759029388428,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.4886814031751793,
+          "similarity": 0.5348386764526367,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 327,
+          "title": "ADR-001: Abstract Transaction Types Behind Feature Flag",
+          "category": "decision",
+          "final_score": 0.4849912166531831,
+          "similarity": 0.49439430236816406,
+          "confidence": 0.5386985846755485,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 339,
+          "title": "ADR-002: Flatten-and-merge strategy for shared modules",
+          "category": "decision",
+          "final_score": 0.48410081672586525,
+          "similarity": 0.48536133766174316,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

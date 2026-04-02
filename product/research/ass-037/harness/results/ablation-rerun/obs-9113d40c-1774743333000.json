@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-9113d40c-1774743333000",
+  "query": "context_get integer serialization failure fallback search workaround MCP bug",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.567863540254536,
+          "similarity": 0.7009792327880859,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.5113386623047486,
+          "similarity": 0.6138534545898438,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.49126696757692595,
+          "similarity": 0.5289077758789062,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.4716988019131317,
+          "similarity": 0.5345737338066101,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.46773816267477414,
+          "similarity": 0.526652455329895,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.6420696402720998,
+          "similarity": 0.7009792327880859,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.573028217419278,
+          "similarity": 0.6138534545898438,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5538068402154958,
+          "similarity": 0.5289077758789062,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.5263930875467876,
+          "similarity": 0.5345737338066101,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.5217335119722494,
+          "similarity": 0.526652455329895,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.7009792327880859,
+          "similarity": 0.7009792327880859,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.6138534545898438,
+          "similarity": 0.6138534545898438,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.5345737338066101,
+          "similarity": 0.5345737338066101,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5289077758789062,
+          "similarity": 0.5289077758789062,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.526652455329895,
+          "similarity": 0.526652455329895,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.6424521700936321,
+          "similarity": 0.7009792327880859,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.5732933163619439,
+          "similarity": 0.6138534545898438,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5536451579795438,
+          "similarity": 0.5289077758789062,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.5264462086263968,
+          "similarity": 0.5345737338066101,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.5217654531628834,
+          "similarity": 0.526652455329895,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.567863540254536,
+          "similarity": 0.7009792327880859,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.5113386623047486,
+          "similarity": 0.6138534545898438,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.49126696757692595,
+          "similarity": 0.5289077758789062,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.4716988019131317,
+          "similarity": 0.5345737338066101,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.46773816267477414,
+          "similarity": 0.526652455329895,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5275256817157452,
+          "similarity": 0.7009792327880859,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.47390981820913464,
+          "similarity": 0.6138534545898438,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.4251222977271447,
+          "similarity": 0.5345737338066101,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4216355543870192,
+          "similarity": 0.5289077758789062,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.4202476648183969,
+          "similarity": 0.526652455329895,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2902",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(uni-rust-dev) → ]\n[tool: mcp__unimatrix__context_cycle(phase-end) → ]\n[Assistant] Approved. Proceeding to Phase 2.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5207748012320599,
+          "similarity": 0.49276721477508545,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.5096483584383242,
+          "similarity": 0.49946802854537964,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.49736277472051527,
+          "similarity": 0.48284912109375,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.483863088533537,
+          "similarity": 0.48543572425842285,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.47015328970623316,
+          "similarity": 0.469527006149292,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5207748012320599,
+          "similarity": 0.49276721477508545,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.5096483584383242,
+          "similarity": 0.49946802854537964,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.49736277472051527,
+          "similarity": 0.48284912109375,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.483863088533537,
+          "similarity": 0.48543572425842285,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.47015328970623316,
+          "similarity": 0.469527006149292,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -14,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

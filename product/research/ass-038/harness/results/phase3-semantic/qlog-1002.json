@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1002",
+  "query": "product/research/ass-022 is where most of this research for this roadmap occurred... I think this was related to existing limitations (the move to a daemon solves the near term issues we've had, I believe), and the addition of rayon layer for high CPU functions is a second item).  My current thoughts... the SDLC use case deployed in a local project does not require db split, if we carefully address scalability.  A centralized model with higher scalability needs, may imply a different data backend technology choice.  Review the research, and provide comment",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4597925206709179,
+          "similarity": 0.42542552947998047,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.44531544695320513,
+          "similarity": 0.41166913509368896,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1162,
+          "title": "Two-Phase Import: DB Transaction Then Embedding Reconstruction",
+          "category": "pattern",
+          "final_score": 0.43753355840562247,
+          "similarity": 0.384008526802063,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.42943520434574534,
+          "similarity": 0.3760221004486084,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.41523605794909224,
+          "similarity": 0.3952925205230713,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4597925206709179,
+          "similarity": 0.42542552947998047,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.44531544695320513,
+          "similarity": 0.41166913509368896,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1162,
+          "title": "Two-Phase Import: DB Transaction Then Embedding Reconstruction",
+          "category": "pattern",
+          "final_score": 0.43753355840562247,
+          "similarity": 0.384008526802063,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.42943520434574534,
+          "similarity": 0.3760221004486084,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.41523605794909224,
+          "similarity": 0.3952925205230713,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

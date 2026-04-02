@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-260",
+  "query": "run retro on nan-003",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.4445048934653406,
+          "similarity": 0.38045406341552734,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.4338406387326288,
+          "similarity": 0.34674733877182007,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.43192917792978114,
+          "similarity": 0.38341236114501953,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.41521014025213043,
+          "similarity": 0.33386534452438354,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.3995081009918775,
+          "similarity": 0.33069169521331787,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.4445048934653406,
+          "similarity": 0.38045406341552734,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.4338406387326288,
+          "similarity": 0.34674733877182007,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.43192917792978114,
+          "similarity": 0.38341236114501953,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.41521014025213043,
+          "similarity": 0.33386534452438354,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.3995081009918775,
+          "similarity": 0.33069169521331787,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

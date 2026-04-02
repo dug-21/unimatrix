@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774370001000",
+  "query": "sessions table columns session_id feature phase retention",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.6461944580078125,
+          "similarity": 0.6461944580078125,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.54854416847229,
+          "similarity": 0.54854416847229,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.5064862370491028,
+          "similarity": 0.5064862370491028,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.5027799606323242,
+          "similarity": 0.5027799606323242,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4823652505874634,
+          "similarity": 0.4823652505874634,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.49381197415865385,
+          "similarity": 0.6461944580078125,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.43371948829064005,
+          "similarity": 0.54854416847229,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.4078376843379094,
+          "similarity": 0.5064862370491028,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.40555689885066104,
+          "similarity": 0.5027799606323242,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.39299400036151594,
+          "similarity": 0.4823652505874634,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.563607173257238,
+          "similarity": 0.6461944580078125,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.48259107392721673,
+          "similarity": 0.5064862370491028,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4740503131671318,
+          "similarity": 0.4823652505874634,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.4737340730868113,
+          "similarity": 0.54854416847229,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.4733457863664768,
+          "similarity": 0.5027799606323242,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.563607173257238,
+          "similarity": 0.6461944580078125,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.48259107392721673,
+          "similarity": 0.5064862370491028,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4740503131671318,
+          "similarity": 0.4823652505874634,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.4737340730868113,
+          "similarity": 0.54854416847229,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.4733457863664768,
+          "similarity": 0.5027799606323242,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.6416284673500687,
+          "similarity": 0.6461944580078125,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.5438527156235589,
+          "similarity": 0.5064862370491028,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.5343990406290466,
+          "similarity": 0.4823652505874634,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.5315824395331661,
+          "similarity": 0.5027799606323242,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.5279515388936254,
+          "similarity": 0.54854416847229,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.6415986242738744,
+          "similarity": 0.6461944580078125,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.5440969409737189,
+          "similarity": 0.5064862370491028,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.5347391307600375,
+          "similarity": 0.4823652505874634,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.5317706910292501,
+          "similarity": 0.5027799606323242,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.5278169465434381,
+          "similarity": 0.54854416847229,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 3922,
+        "from_rank": 5,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1040,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3686,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

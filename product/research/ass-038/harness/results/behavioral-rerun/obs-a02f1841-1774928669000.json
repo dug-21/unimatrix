@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a02f1841-1774928669000",
+  "query": "xpass xfail integration test incidental fix batch verification",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.6174383592402114,
+          "similarity": 0.7377872467041016,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.4759987240835969,
+          "similarity": 0.41892820596694946,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.4614437464746033,
+          "similarity": 0.416459321975708,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.45665617174769335,
+          "similarity": 0.43321651220321655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.44085127865558804,
+          "similarity": 0.40318721532821655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.6174383592402114,
+          "similarity": 0.7377872467041016,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.4759987240835969,
+          "similarity": 0.41892820596694946,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.4614437464746033,
+          "similarity": 0.416459321975708,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.45665617174769335,
+          "similarity": 0.43321651220321655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.44085127865558804,
+          "similarity": 0.40318721532821655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

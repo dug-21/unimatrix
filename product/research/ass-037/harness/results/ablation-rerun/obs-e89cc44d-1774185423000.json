@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-e89cc44d-1774185423000",
+  "query": "validation testing multibyte unicode boundary",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.5365395452753281,
+          "similarity": 0.5343079566955566,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.5292517976246986,
+          "similarity": 0.5047248005867004,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.5145381063195301,
+          "similarity": 0.42941051721572876,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.46012951919847667,
+          "similarity": 0.3975696563720703,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.45962166876532723,
+          "similarity": 0.3986890912055969,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.5343079566955566,
+          "similarity": 0.5343079566955566,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.5047248005867004,
+          "similarity": 0.5047248005867004,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.42941051721572876,
+          "similarity": 0.42941051721572876,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.3986890912055969,
+          "similarity": 0.3986890912055969,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.3975696563720703,
+          "similarity": 0.3975696563720703,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.47908286364827773,
+          "similarity": 0.5343079566955566,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.47176630496389244,
+          "similarity": 0.5047248005867004,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.4559553124487041,
+          "similarity": 0.42941051721572876,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.41393295783702094,
+          "similarity": 0.3975696563720703,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.4136351631749465,
+          "similarity": 0.3986890912055969,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.47908286364827773,
+          "similarity": 0.5343079566955566,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.47176630496389244,
+          "similarity": 0.5047248005867004,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.4559553124487041,
+          "similarity": 0.42941051721572876,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.41393295783702094,
+          "similarity": 0.3975696563720703,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.4136351631749465,
+          "similarity": 0.3986890912055969,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.42495874258188104,
+          "similarity": 0.5343079566955566,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.4067537234379695,
+          "similarity": 0.5047248005867004,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.3604064721327562,
+          "similarity": 0.42941051721572876,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.34150097920344424,
+          "similarity": 0.3986890912055969,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.34081209622896635,
+          "similarity": 0.3975696563720703,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.5365541308216012,
+          "similarity": 0.5343079566955566,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.5294121047948817,
+          "similarity": 0.5047248005867004,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.5150944957907968,
+          "similarity": 0.42941051721572876,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.4605384071908062,
+          "similarity": 0.3975696563720703,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.46001992090624055,
+          "similarity": 0.3986890912055969,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4443",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Those two modified files are pre-existing changes (ROADMAP.md from before this session, eval-baselines from test runs) — not part of crt-031. All production files committed. Spawning Gate 3b.\n[tool: Bash(git status --short | grep \"^ M\" | head -10) →  M product/research/ass-032/ROADMAP.md\n M product/test/eval-baselines/log.jsonl]\n[tool: Bash(git status --short | grep -v \"^?\" | head -10 && cargo test -p unimatrix-server --lib 2>&1 | tail -5) → Command running in background with ID: bv9kd3fw0. Output is being written to: /tmp/claude-1000/-workspaces-unimatrix/ea862451-7161-4ef2-b968-a895b427086a/tasks/bv9kd3fw0.output]\n[Assistant] Pre-Gate 3b check — commit any outstanding production files, then run the gate.\n[tool: Bash(git add README.md && git commit -m \"$(cat <<'EOF'\ndocs: update README [knowledge] block for adaptive_categories (#445)\n\n) → [feature/crt-031 d502481] docs: update README [knowledge] block for adaptive_categories (#445)\n 1 file changed, 5 insertions(+), 1 deletion(-)]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.516358059906962,
+          "similarity": 0.5482218861579895,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5117224267737964,
+          "similarity": 0.5511279702186584,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5087757706470714,
+          "similarity": 0.5395293235778809,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.4959157423722116,
+          "similarity": 0.5408399105072021,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.516358059906962,
+          "similarity": 0.5482218861579895,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5117224267737964,
+          "similarity": 0.5511279702186584,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5087757706470714,
+          "similarity": 0.5395293235778809,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.4959157423722116,
+          "similarity": 0.5408399105072021,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5255",
+  "query": "my comments... integrate these into the fix and move forward: Subquery filter — necessary for weight correctness, not\n   just cycle prevention. The max_count scalar computes\n  the normalization denominator. If quarantined-endpoint \n  pairs have higher co_access counts than any active   \n  pair, the denominator is inflated and every promoted   \n  edge gets an artificially lower weight. Filtering the  \n  subquery means weights reflect only the eligible\n  population.\n\n  Third bind omission — this is the highest-risk         \n  implementation pitfall in the whole change. status != \n  NULL in SQL is always NULL (not true), so a missing    \n  bind silently promotes nothing. The tests will catch \n  it, which is exactly why those tests need to use real\n  quarantined entries rows rather than phantom IDs.\n\n  One gap: the weight update path. The audit scope in    \n  #476 explicitly asked about the separate update path\n  for pairs already in GRAPH_EDGES where weight drifts.  \n  The recommendation doesn't address it. Given that    \n  compaction runs before promotion, there shouldn't be\n  any quarantined-endpoint edges present in GRAPH_EDGES\n  when the weight update runs — compaction just cleared\n  them. So it's probably a non-issue in practice. But\n  \"probably\" isn't confirmed. I'd want the investigator\n  to either:\n  - Verify the weight update path has no separate\n  co_access SELECT (and close the audit item), or        \n  - Note it explicitly as out of scope with rationale\n                                                         \n  Write-time filter withdrawal is the right pragmatic    \n  call. The comment at the analytics write site is good  \n  documentation hygiene. One thing: make sure the        \n  follow-up issue actually gets filed as part of this PR,\n   not left as \"will file.\" It's easy to forget once the\n  fix ships.\n",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.617386344299659,
+          "similarity": 0.7627395391464233,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.6169353253639033,
+          "similarity": 0.7618826031684875,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5889043295807393,
+          "similarity": 0.6835725903511047,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.617386344299659,
+          "similarity": 0.7627395391464233,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.6169353253639033,
+          "similarity": 0.7618826031684875,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5889043295807393,
+          "similarity": 0.6835725903511047,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

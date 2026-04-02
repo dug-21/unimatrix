@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2758",
+  "query": "so there are a number of new capabilities that have been developed that I think allow our context_cycle_review tool to become MUCH better.  col-024 and col-025(currently in implementation) have essentially created a new set of tables that allow the retro to see the cycle events feature goal, while still providing all of the raw data (with even better attribution) more consistently.  2nd, there is an open git issue focused on context retrospective enhancements comparing what json format delivers and some comments about what ideas may make that even better.  I want you to conduct research, gathering the information, analyze the opportunities and lets work through what a revised context_cycle_review could deliver.  Store all relevant documantation in ass-033.  Do not commit anything as we have active development ongoing.  this is researhc only",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.6080433432015293,
+          "similarity": 0.6549437642097473,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5333374885186979,
+          "similarity": 0.5507773756980896,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5249256380975932,
+          "similarity": 0.5269612073898315,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.5241038476545069,
+          "similarity": 0.5552581548690796,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.49796400235902794,
+          "similarity": 0.5053786039352417,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.6080433432015293,
+          "similarity": 0.6549437642097473,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5333374885186979,
+          "similarity": 0.5507773756980896,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5249256380975932,
+          "similarity": 0.5269612073898315,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.5241038476545069,
+          "similarity": 0.5552581548690796,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.49796400235902794,
+          "similarity": 0.5053786039352417,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

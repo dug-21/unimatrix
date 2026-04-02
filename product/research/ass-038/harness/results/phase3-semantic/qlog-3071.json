@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3071",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Implement bug 389 fix in worktree) → ]\n[Assistant] Good. The investigator's diff looks correct. Now spawning rust-dev in a proper worktree with that as reference.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.5250641767023401,
+          "similarity": 0.5873274207115173,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.5133989934824931,
+          "similarity": 0.5791358351707458,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5130345715711162,
+          "similarity": 0.5305317640304565,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.5079342962302831,
+          "similarity": 0.5208412408828735,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.5057343926005262,
+          "similarity": 0.5104806423187256,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.5250641767023401,
+          "similarity": 0.5873274207115173,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.5133989934824931,
+          "similarity": 0.5791358351707458,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5130345715711162,
+          "similarity": 0.5305317640304565,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.5079342962302831,
+          "similarity": 0.5208412408828735,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.5057343926005262,
+          "similarity": 0.5104806423187256,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774783262000",
+  "query": "search pipeline step insertion pattern",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.4776956524342652,
+          "similarity": 0.5250950455665588,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.46799960830626947,
+          "similarity": 0.4843789339065552,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.45570636416062454,
+          "similarity": 0.4469771385192871,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.43263831845667194,
+          "similarity": 0.4673038125038147,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.42495883531275946,
+          "similarity": 0.42862141132354736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.53548543099522,
+          "similarity": 0.5250950455665588,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.525965017335226,
+          "similarity": 0.4843789339065552,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5126016658081892,
+          "similarity": 0.4469771385192871,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.47929736039511495,
+          "similarity": 0.4673038125038147,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.4723419198516222,
+          "similarity": 0.42862141132354736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.4192892588101901,
+          "similarity": 0.5250950455665588,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.39423319009634167,
+          "similarity": 0.4843789339065552,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.3837254230792706,
+          "similarity": 0.4673038125038147,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.3712167006272536,
+          "similarity": 0.4469771385192871,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.3599208685067984,
+          "similarity": 0.42862141132354736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5355533420110936,
+          "similarity": 0.5250950455665588,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.5262368218020801,
+          "similarity": 0.4843789339065552,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5130305842872016,
+          "similarity": 0.4469771385192871,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4793757495970189,
+          "similarity": 0.4673038125038147,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.4726276748093221,
+          "similarity": 0.42862141132354736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5250950455665588,
+          "similarity": 0.5250950455665588,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.4843789339065552,
+          "similarity": 0.4843789339065552,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4673038125038147,
+          "similarity": 0.4673038125038147,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4469771385192871,
+          "similarity": 0.4469771385192871,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.42862141132354736,
+          "similarity": 0.42862141132354736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.4776956524342652,
+          "similarity": 0.5250950455665588,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.46799960830626947,
+          "similarity": 0.4843789339065552,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.45570636416062454,
+          "similarity": 0.4469771385192871,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.43263831845667194,
+          "similarity": 0.4673038125038147,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.42495883531275946,
+          "similarity": 0.42862141132354736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

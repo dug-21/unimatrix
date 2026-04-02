@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5c7012c4-1774570588000",
+  "query": "nan-010 per-profile section 5 rendering",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.5764788401055345,
+          "similarity": 0.6669360995292664,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.48625887438428106,
+          "similarity": 0.48663878440856934,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.48237185556159246,
+          "similarity": 0.449296772480011,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.48084236630697996,
+          "similarity": 0.4763672351837158,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4322488391432959,
+          "similarity": 0.40278351306915283,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.5764788401055345,
+          "similarity": 0.6669360995292664,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.48625887438428106,
+          "similarity": 0.48663878440856934,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.48237185556159246,
+          "similarity": 0.449296772480011,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.48084236630697996,
+          "similarity": 0.4763672351837158,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4322488391432959,
+          "similarity": 0.40278351306915283,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

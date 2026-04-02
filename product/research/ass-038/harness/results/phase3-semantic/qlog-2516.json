@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2516",
+  "query": "it is not.. I killed it then restarted it",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 979,
+          "title": "Retrospective findings: nxs-009",
+          "category": "lesson-learned",
+          "final_score": 0.40853489092694717,
+          "similarity": 0.30258607864379883,
+          "confidence": 0.6051860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1368,
+          "title": "How to open database with retry after stale process termination",
+          "category": "procedure",
+          "final_score": 0.3938015677921871,
+          "similarity": 0.30091774463653564,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.3524984869880665,
+          "similarity": 0.24702835083007812,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3861,
+          "title": "Retrospective findings: col-025-smoke",
+          "category": "lesson-learned",
+          "final_score": 0.3512541401511744,
+          "similarity": 0.26598286628723145,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.3263647174008423,
+          "similarity": 0.2467949390411377,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 979,
+          "title": "Retrospective findings: nxs-009",
+          "category": "lesson-learned",
+          "final_score": 0.40853489092694717,
+          "similarity": 0.30258607864379883,
+          "confidence": 0.6051860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1368,
+          "title": "How to open database with retry after stale process termination",
+          "category": "procedure",
+          "final_score": 0.3938015677921871,
+          "similarity": 0.30091774463653564,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.3524984869880665,
+          "similarity": 0.24702835083007812,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3861,
+          "title": "Retrospective findings: col-025-smoke",
+          "category": "lesson-learned",
+          "final_score": 0.3512541401511744,
+          "similarity": 0.26598286628723145,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.3263647174008423,
+          "similarity": 0.2467949390411377,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

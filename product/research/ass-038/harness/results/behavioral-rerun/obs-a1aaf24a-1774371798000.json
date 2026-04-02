@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774371798000",
+  "query": "error handling graceful degradation None fallback DB read session registration",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.5060903212668006,
+          "similarity": 0.47188806533813477,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3301,
+          "title": "Graceful degradation via empty fallback, not early return, when post-error side effects must run",
+          "category": "pattern",
+          "final_score": 0.49808991950505344,
+          "similarity": 0.48774611949920654,
+          "confidence": 0.5837496108005646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4941083383631518,
+          "similarity": 0.4741309881210327,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.4836563364553952,
+          "similarity": 0.45970141887664795,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.4373897154530313,
+          "similarity": 0.44250160455703735,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.5060903212668006,
+          "similarity": 0.47188806533813477,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3301,
+          "title": "Graceful degradation via empty fallback, not early return, when post-error side effects must run",
+          "category": "pattern",
+          "final_score": 0.49808991950505344,
+          "similarity": 0.48774611949920654,
+          "confidence": 0.5837496108005646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4941083383631518,
+          "similarity": 0.4741309881210327,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.4836563364553952,
+          "similarity": 0.45970141887664795,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.4373897154530313,
+          "similarity": 0.44250160455703735,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

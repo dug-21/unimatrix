@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bd98afa6-1773804619000",
+  "query": "integration test setup SqlxStore PoolConfig test_default async tokio test",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.5943421607005139,
+          "similarity": 0.6805161833763123,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.5840165237907814,
+          "similarity": 0.6432258486747742,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.48570317756431713,
+          "similarity": 0.47553080320358276,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.47961064198060666,
+          "similarity": 0.47683000564575195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.47548146622279386,
+          "similarity": 0.4785691499710083,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.5943421607005139,
+          "similarity": 0.6805161833763123,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.5840165237907814,
+          "similarity": 0.6432258486747742,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.48570317756431713,
+          "similarity": 0.47553080320358276,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.47961064198060666,
+          "similarity": 0.47683000564575195,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.47548146622279386,
+          "similarity": 0.4785691499710083,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

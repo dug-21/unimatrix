@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-17",
+  "query": "ready to go into design... I like it.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.3710582134135544,
+          "similarity": 0.20373475551605225,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 765,
+          "title": "Design agents do not read sibling feature artifacts unprompted",
+          "category": "lesson-learned",
+          "final_score": 0.365389727566795,
+          "similarity": 0.22687184810638428,
+          "confidence": 0.596240906100752,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.36315173446199667,
+          "similarity": 0.19829702377319336,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.35106802525979297,
+          "similarity": 0.18248909711837769,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.34004327793291467,
+          "similarity": 0.23226535320281982,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.3710582134135544,
+          "similarity": 0.20373475551605225,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 765,
+          "title": "Design agents do not read sibling feature artifacts unprompted",
+          "category": "lesson-learned",
+          "final_score": 0.365389727566795,
+          "similarity": 0.22687184810638428,
+          "confidence": 0.596240906100752,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.36315173446199667,
+          "similarity": 0.19829702377319336,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.35106802525979297,
+          "similarity": 0.18248909711837769,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.34004327793291467,
+          "similarity": 0.23226535320281982,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

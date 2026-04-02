@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-briefing-a02f1841-1774957348000",
+  "query": "briefing:bugfix-batch-337-345-346-378-379-380:",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.5804093681865603,
+          "similarity": 0.5478997826576233,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5673278188926694,
+          "similarity": 0.5174074172973633,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5401785957112032,
+          "similarity": 0.5893036127090454,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.5304743227592259,
+          "similarity": 0.5415118336677551,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5230990228655913,
+          "similarity": 0.5092291831970215,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4588022232055664,
+          "similarity": 0.5893036127090454,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.43332294317392206,
+          "similarity": 0.5478997826576233,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4293918976416955,
+          "similarity": 0.5415118336677551,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.41455841064453125,
+          "similarity": 0.5174074172973633,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.4095256511981671,
+          "similarity": 0.5092291831970215,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.5120053812971813,
+          "similarity": 0.5478997826576233,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5002965121430423,
+          "similarity": 0.5174074172973633,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4856518063545227,
+          "similarity": 0.5893036127090454,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4751678518437042,
+          "similarity": 0.5415118336677551,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.4674885154590038,
+          "similarity": 0.5092291831970215,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5893036127090454,
+          "similarity": 0.5893036127090454,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.5478997826576233,
+          "similarity": 0.5478997826576233,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.5415118336677551,
+          "similarity": 0.5415118336677551,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5174074172973633,
+          "similarity": 0.5174074172973633,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5092291831970215,
+          "similarity": 0.5092291831970215,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.5120053812971813,
+          "similarity": 0.5478997826576233,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5002965121430423,
+          "similarity": 0.5174074172973633,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4856518063545227,
+          "similarity": 0.5893036127090454,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4751678518437042,
+          "similarity": 0.5415118336677551,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.4674885154590038,
+          "similarity": 0.5092291831970215,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.5801982669818269,
+          "similarity": 0.5478997826576233,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5670036604407518,
+          "similarity": 0.5174074172973633,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5404975893280722,
+          "similarity": 0.5893036127090454,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.5305459949079825,
+          "similarity": 0.5415118336677551,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5230089589716395,
+          "similarity": 0.5092291831970215,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 1372,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3925,
+        "from_rank": 3,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 1468,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3927,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4635",
+  "query": "good topics, and I wanted to talk through this, so we can update the issue... with new information since we concieved of this option.  Now... thinking with the end in mind.. if we execute a GNN, the question is, how much raw session data needs to be accessible to make it meaningful?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.531964516523946,
+          "similarity": 0.5631435513496399,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.49929989266749386,
+          "similarity": 0.5094736218452454,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.4763083699332542,
+          "similarity": 0.43015098571777344,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3915,
+          "title": "ADR-001 crt-036: Per-Cycle Transaction Granularity for Activity GC Pass",
+          "category": "decision",
+          "final_score": 0.4587524743177339,
+          "similarity": 0.4132406711578369,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.4320342823754775,
+          "similarity": 0.4105706214904785,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.531964516523946,
+          "similarity": 0.5631435513496399,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.49929989266749386,
+          "similarity": 0.5094736218452454,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.4763083699332542,
+          "similarity": 0.43015098571777344,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3915,
+          "title": "ADR-001 crt-036: Per-Cycle Transaction Granularity for Activity GC Pass",
+          "category": "decision",
+          "final_score": 0.4587524743177339,
+          "similarity": 0.4132406711578369,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.4320342823754775,
+          "similarity": 0.4105706214904785,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002088000",
+  "query": "block_export_sync async bridge tokio current-thread runtime",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5834082480542653,
+          "similarity": 0.6985238194465637,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5536349094268797,
+          "similarity": 0.6242862939834595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2602,
+          "title": "ADR-001: VACUUM INTO via sqlx + block_on Wrapper + Live-DB Path Guard",
+          "category": "decision",
+          "final_score": 0.501625364164953,
+          "similarity": 0.5486171841621399,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.4999085775993957,
+          "similarity": 0.5909932851791382,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.4970511015273437,
+          "similarity": 0.5429260730743408,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5260146581209624,
+          "similarity": 0.6985238194465637,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.4803300270667443,
+          "similarity": 0.6242862939834595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.4598420216487004,
+          "similarity": 0.5909932851791382,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2602,
+          "title": "ADR-001: VACUUM INTO via sqlx + block_on Wrapper + Live-DB Path Guard",
+          "category": "decision",
+          "final_score": 0.43376442102285534,
+          "similarity": 0.5486171841621399,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.43026219881497896,
+          "similarity": 0.5429260730743408,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6985238194465637,
+          "similarity": 0.6985238194465637,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6242862939834595,
+          "similarity": 0.6242862939834595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5909932851791382,
+          "similarity": 0.5909932851791382,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2602,
+          "title": "ADR-001: VACUUM INTO via sqlx + block_on Wrapper + Live-DB Path Guard",
+          "category": "decision",
+          "final_score": 0.5486171841621399,
+          "similarity": 0.5486171841621399,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.5429260730743408,
+          "similarity": 0.5429260730743408,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5834082480542653,
+          "similarity": 0.6985238194465637,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5536349094268797,
+          "similarity": 0.6242862939834595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2602,
+          "title": "ADR-001: VACUUM INTO via sqlx + block_on Wrapper + Live-DB Path Guard",
+          "category": "decision",
+          "final_score": 0.501625364164953,
+          "similarity": 0.5486171841621399,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.4999085775993957,
+          "similarity": 0.5909932851791382,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.4970511015273437,
+          "similarity": 0.5429260730743408,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6638727183061286,
+          "similarity": 0.6985238194465637,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6300215770381576,
+          "similarity": 0.6242862939834595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2602,
+          "title": "ADR-001: VACUUM INTO via sqlx + block_on Wrapper + Live-DB Path Guard",
+          "category": "decision",
+          "final_score": 0.5659784798465595,
+          "similarity": 0.5486171841621399,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.5602582227123467,
+          "similarity": 0.5429260730743408,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5597850344374361,
+          "similarity": 0.5909932851791382,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6636462405208969,
+          "similarity": 0.6985238194465637,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6300590625483191,
+          "similarity": 0.6242862939834595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2602,
+          "title": "ADR-001: VACUUM INTO via sqlx + block_on Wrapper + Live-DB Path Guard",
+          "category": "decision",
+          "final_score": 0.5660919523673728,
+          "similarity": 0.5486171841621399,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.5603715047361246,
+          "similarity": 0.5429260730743408,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5595810589423924,
+          "similarity": 0.5909932851791382,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2571,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 73,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

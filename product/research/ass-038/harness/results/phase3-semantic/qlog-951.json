@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-951",
+  "query": "then we are good to move to delivery session",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.38479252053815793,
+          "similarity": 0.25718629360198975,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.38076121871110324,
+          "similarity": 0.2788560390472412,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.37802003615294866,
+          "similarity": 0.2585325837135315,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.35479940770357576,
+          "similarity": 0.19928395748138428,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.304844281046014,
+          "similarity": 0.20020413398742676,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.38479252053815793,
+          "similarity": 0.25718629360198975,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.38076121871110324,
+          "similarity": 0.2788560390472412,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.37802003615294866,
+          "similarity": 0.2585325837135315,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.35479940770357576,
+          "similarity": 0.19928395748138428,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.304844281046014,
+          "similarity": 0.20020413398742676,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

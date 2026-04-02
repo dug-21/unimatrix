@@ -1,0 +1,250 @@
+{
+  "scenario_id": "obs-f094870a-1775005306000",
+  "query": "random shuffle selection source candidates deterministic re-selection tick",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5081947445869446,
+          "similarity": 0.5081947445869446,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.4318058490753174,
+          "similarity": 0.4318058490753174,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.4246772527694702,
+          "similarity": 0.4246772527694702,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.49387244078161147,
+          "similarity": 0.5081947445869446,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.43678889108965774,
+          "similarity": 0.4318058490753174,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.4315944324350498,
+          "similarity": 0.4246772527694702,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4088890735919659,
+          "similarity": 0.5081947445869446,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.3618805225078876,
+          "similarity": 0.4318058490753174,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.35749369401198167,
+          "similarity": 0.4246772527694702,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.559081078830657,
+          "similarity": 0.5081947445869446,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.48818431975177706,
+          "similarity": 0.4318058490753174,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.4817490212505706,
+          "similarity": 0.4246772527694702,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.49387244078161147,
+          "similarity": 0.5081947445869446,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.43678889108965774,
+          "similarity": 0.4318058490753174,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.4315944324350498,
+          "similarity": 0.4246772527694702,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5594136692505506,
+          "similarity": 0.5081947445869446,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.48855280648822463,
+          "similarity": 0.4318058490753174,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.48212203934521836,
+          "similarity": 0.4246772527694702,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

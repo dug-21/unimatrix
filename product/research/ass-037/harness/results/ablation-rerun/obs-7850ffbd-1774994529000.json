@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-7850ffbd-1774994529000",
+  "query": "SQL injection input validation trust boundaries cycle_events",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.4609365773149414,
+          "similarity": 0.45040154457092285,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4434043190819876,
+          "similarity": 0.40366578102111816,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.4334047971837769,
+          "similarity": 0.40668946504592896,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.42017045955080284,
+          "similarity": 0.39571475982666016,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4164859397694854,
+          "similarity": 0.3829241394996643,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.4609365773149414,
+          "similarity": 0.45040154457092285,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4434043190819876,
+          "similarity": 0.40366578102111816,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.4334047971837769,
+          "similarity": 0.40668946504592896,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.42017045955080284,
+          "similarity": 0.39571475982666016,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4164859397694854,
+          "similarity": 0.3829241394996643,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.3733240274282602,
+          "similarity": 0.45040154457092285,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.34642428618211013,
+          "similarity": 0.40668946504592896,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.34456355755145734,
+          "similarity": 0.40366578102111816,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.33967062143179083,
+          "similarity": 0.39571475982666016,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.33179947046133185,
+          "similarity": 0.3829241394996643,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.5194224650139271,
+          "similarity": 0.45040154457092285,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4997635459280632,
+          "similarity": 0.40366578102111816,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.4858529538827931,
+          "similarity": 0.40668946504592896,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.4688038303123075,
+          "similarity": 0.39571475982666016,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4649422688220561,
+          "similarity": 0.3829241394996643,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.5198735821410057,
+          "similarity": 0.45040154457092285,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.5003916358947753,
+          "similarity": 0.40366578102111816,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.4863703623065635,
+          "similarity": 0.40668946504592896,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.469281536655351,
+          "similarity": 0.39571475982666016,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4654783350267776,
+          "similarity": 0.3829241394996643,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.45040154457092285,
+          "similarity": 0.45040154457092285,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.40668946504592896,
+          "similarity": 0.40668946504592896,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.40366578102111816,
+          "similarity": 0.40366578102111816,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.39571475982666016,
+          "similarity": 0.39571475982666016,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.3829241394996643,
+          "similarity": 0.3829241394996643,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

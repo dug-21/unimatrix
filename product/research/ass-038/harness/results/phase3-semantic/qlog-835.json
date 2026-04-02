@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-835",
+  "query": "Unimatrix delivers the right knowledge, and the right time to any system, across any domain.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5171775570206036,
+          "similarity": 0.4813615083694458,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.4957414979767334,
+          "similarity": 0.4865233302116394,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.4889907182469203,
+          "similarity": 0.46337687969207764,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.48802414622208967,
+          "similarity": 0.4615211486816406,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.48606127175547253,
+          "similarity": 0.47292613983154297,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5171775570206036,
+          "similarity": 0.4813615083694458,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.4957414979767334,
+          "similarity": 0.4865233302116394,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.4889907182469203,
+          "similarity": 0.46337687969207764,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.48802414622208967,
+          "similarity": 0.4615211486816406,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.48606127175547253,
+          "similarity": 0.47292613983154297,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

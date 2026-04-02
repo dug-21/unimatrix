@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-3650",
+  "query": "Now on this feature... Unimatrix came up with this recommendation.  can you find evidence of this being an actual problem, is this the proper root cause? - Batch field additions before compiling — high compile cycle counts\n     typically indicate iterative per-field struct changes or cascading type\n     errors; complete type definitions and resolve compiler errors in-memory\n     before each build",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5954392940175662,
+          "similarity": 0.6350797414779663,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5606947154153971,
+          "similarity": 0.646830677986145,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.556010352917451,
+          "similarity": 0.6315740346908569,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5326847894364716,
+          "similarity": 0.5767554640769958,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5954392940175662,
+          "similarity": 0.6350797414779663,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5606947154153971,
+          "similarity": 0.646830677986145,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.556010352917451,
+          "similarity": 0.6315740346908569,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5326847894364716,
+          "similarity": 0.5767554640769958,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

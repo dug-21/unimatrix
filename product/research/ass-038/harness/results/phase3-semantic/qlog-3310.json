@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3310",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: mcp__unimatrix__context_briefing(Validate implementation of CC@k and ICD metrics in eval harness: verify code matches pseudocode, types are correct, dual) → ]\n[Assistant] Gate 3b — code review.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5379259113994705,
+          "similarity": 0.5368121862411499,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.5256425623224549,
+          "similarity": 0.5493859648704529,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.517710027896255,
+          "similarity": 0.4905306100845337,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.506316333491749,
+          "similarity": 0.49986088275909424,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.49741936040470025,
+          "similarity": 0.49303293228149414,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5379259113994705,
+          "similarity": 0.5368121862411499,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.5256425623224549,
+          "similarity": 0.5493859648704529,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.517710027896255,
+          "similarity": 0.4905306100845337,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.506316333491749,
+          "similarity": 0.49986088275909424,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.49741936040470025,
+          "similarity": 0.49303293228149414,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

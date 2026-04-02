@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1635",
+  "query": "but... I'm confused as to how W1-5 enables any category graph relationships... I understood GNN to enhance and automatically adjust the confidence weights.. somehow I think I'm missing something",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.5019583217721236,
+          "similarity": 0.4627208113670349,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.46656049407924705,
+          "similarity": 0.40575945377349854,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.4415850702501851,
+          "similarity": 0.359286904335022,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.43508321462904254,
+          "similarity": 0.3596082329750061,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4223988900456831,
+          "similarity": 0.3790885806083679,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.5019583217721236,
+          "similarity": 0.4627208113670349,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.46656049407924705,
+          "similarity": 0.40575945377349854,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.4415850702501851,
+          "similarity": 0.359286904335022,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.43508321462904254,
+          "similarity": 0.3596082329750061,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4223988900456831,
+          "similarity": 0.3790885806083679,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

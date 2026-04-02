@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-edf4842f-1774838110000",
+  "query": "batch struct field additions compile cycles multi-struct changes",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.6680524945259094,
+          "similarity": 0.6680524945259094,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.6118975877761841,
+          "similarity": 0.6118975877761841,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.565704882144928,
+          "similarity": 0.565704882144928,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.538336455821991,
+          "similarity": 0.538336455821991,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5752783546152732,
+          "similarity": 0.6680524945259094,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5210969235390779,
+          "similarity": 0.6118975877761841,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4823144299231303,
+          "similarity": 0.565704882144928,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4770922056123282,
+          "similarity": 0.538336455821991,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.6555566204275625,
+          "similarity": 0.6680524945259094,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5867778423009076,
+          "similarity": 0.6118975877761841,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5380919606092751,
+          "similarity": 0.565704882144928,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5334587843966301,
+          "similarity": 0.538336455821991,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5072630735544058,
+          "similarity": 0.6680524945259094,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.47270620786226714,
+          "similarity": 0.6118975877761841,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.44427992747380185,
+          "similarity": 0.565704882144928,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4274378189673791,
+          "similarity": 0.538336455821991,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5752783546152732,
+          "similarity": 0.6680524945259094,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5210969235390779,
+          "similarity": 0.6118975877761841,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4823144299231303,
+          "similarity": 0.565704882144928,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4770922056123282,
+          "similarity": 0.538336455821991,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.6554749480478348,
+          "similarity": 0.6680524945259094,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.586613660957932,
+          "similarity": 0.6118975877761841,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5379114839979311,
+          "similarity": 0.565704882144928,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5334269041912356,
+          "similarity": 0.538336455821991,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

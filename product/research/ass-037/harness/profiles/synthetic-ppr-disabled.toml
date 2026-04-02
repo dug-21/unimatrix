@@ -1,0 +1,11 @@
+[profile]
+name = "synthetic-ppr-disabled"
+description = "Q3b: PPR disabled on synthetic Informs graph. conf-boost-c weights. Baseline for Informs topology test."
+distribution_change = false
+
+[inference]
+ppr_blend_weight = 0.00
+ppr_max_expand   = 0
+w_sim            = 0.50
+w_conf           = 0.35
+w_nli            = 0.00

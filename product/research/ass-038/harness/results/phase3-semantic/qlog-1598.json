@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1598",
+  "query": "So.. when this gets done, I'm going to want to investigate every type a call in our query, with comparisons across... this is fantastic",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.4652850260761081,
+          "similarity": 0.391247034072876,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.45566753785738345,
+          "similarity": 0.3905372619628906,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4502747871427576,
+          "similarity": 0.37584829330444336,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.44964390809170063,
+          "similarity": 0.39298975467681885,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.44500698572023056,
+          "similarity": 0.3858450651168823,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.4652850260761081,
+          "similarity": 0.391247034072876,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.45566753785738345,
+          "similarity": 0.3905372619628906,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4502747871427576,
+          "similarity": 0.37584829330444336,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.44964390809170063,
+          "similarity": 0.39298975467681885,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.44500698572023056,
+          "similarity": 0.3858450651168823,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

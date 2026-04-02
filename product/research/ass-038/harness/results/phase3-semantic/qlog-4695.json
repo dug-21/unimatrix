@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4695",
+  "query": "---\n  WARN-01 resolution — agree, accept it. The SR-05 mechanism is      \n  benign log-only code that addresses a High-severity silent         \n  signal-loss risk. Relying purely on deployment ordering to prevent \n  the #409 race is operationally fragile. Accept the addition, update\n   FR-08 to carve out the conditional warn. The alignment report's\n  recommendation is correct.\n\n  ---\n  Three things the alignment report missed:\n                                           \n  1. f32 vs f64 on CO_ACCESS_WEIGHT_UPDATE_DELTA.\n  The constant is f32 = 0.1. SQLite REAL fetches as f64. When the    \n  tick reads an existing edge weight from GRAPH_EDGES, it gets an f64\n   — comparing it against a f32 delta after implicit conversion      \n  introduces precision noise. 0.1f32 is actually 0.100000001490116...\n   as f64. Should be f64 = 0.1. Minor but the confidence system   \n  already burned time on an f32/f64 precision issue in crt-005 —\n  worth flagging before delivery rather than after.\n\n  2. AC-13 test doesn't actually discriminate global from local\n  normalization.\n  The test seeds pairs with counts [1..10], caps at 3, and asserts\n  global max = 10 not local max = 8. But because candidates are      \n  selected ORDER BY count DESC, the batch always contains the\n  highest-count pairs — so global max always equals batch max. The   \n  test as written would pass with either normalization strategy. It\n  should be reframed as \"future-proofing\" documentation rather than a\n   correctness discriminator, so the delivery agent understands what\n  they're actually validating.\\\nThe design intent was always bidirectional via two writes. Pattern \n  #3744 and ADR-006 (#3828) are clear: Direction::Outgoing is the \n  correct enum for the reverse PPR iteration — it IS working as      \n  designed. For a symmetric co_access relationship, bidirectionality \n  requires both (A→B) and (B→A) rows in GRAPH_EDGES. PPR traversing  \n  Direction::Outgoing from a seeded B will only find A if the A→B row\n   exists. The reverse is also needed.                               \n                                                                     \n  crt-034 v1 writes only (entry_id_a → entry_id_b) — matching the    \n  bootstrap. So seeding entry_id_b reaches nothing via co_access.    \n  That's the real gap.                                               \n                                                                     \n  The path is already documented in ADR-006 (#3828): the follow-up   \n  must write both (entry_id_a, entry_id_b) and (entry_id_b,          \n  entry_id_a) as distinct rows, AND back-fill all bootstrap-era      \n  pairs. The UNIQUE(source_id, target_id, relation_type) constraint  \n  means the follow-up can safely write reverse edges with no\n  collision.\n\n  One additional callout from Pattern #2429: when bidirectional      \n  CoAccess edges exist (A→B and B→A), is_cyclic_directed on the full\n  graph false-positives as cycles. That's already handled — cycle    \n  detection uses a Supersedes-only temp graph. So the follow-up won't\n   break cycle detection. The crt-034 spec should reference ADR-006 explicitly in\n   the Known Limitations section and confirm the back-fill           \n  requirement is part of the follow-up contract. \\\nAny updates need to be consistent across all design documentation",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.5798982653525951,
+          "similarity": 0.6833174228668213,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.5718095366991026,
+          "similarity": 0.6169096827507019,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5620645442183055,
+          "similarity": 0.6576281189918518,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.555933392482214,
+          "similarity": 0.5755679607391357,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5441324636358907,
+          "similarity": 0.5439668893814087,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.5798982653525951,
+          "similarity": 0.6833174228668213,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.5718095366991026,
+          "similarity": 0.6169096827507019,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5620645442183055,
+          "similarity": 0.6576281189918518,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.555933392482214,
+          "similarity": 0.5755679607391357,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5441324636358907,
+          "similarity": 0.5439668893814087,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

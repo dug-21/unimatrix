@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1312",
+  "query": "so... hire an architect to review our current structure, understand our future objectives, and provide a recommendation back to me on both of those topics, targeting a well architected application as the long term objective",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.419244975501072,
+          "similarity": 0.3048741817474365,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.4189787094795414,
+          "similarity": 0.3258540630340576,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.40587893416521026,
+          "similarity": 0.2974644899368286,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.37383224042174157,
+          "similarity": 0.29179197549819946,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.37270033679996417,
+          "similarity": 0.2978361248970032,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.419244975501072,
+          "similarity": 0.3048741817474365,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.4189787094795414,
+          "similarity": 0.3258540630340576,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.40587893416521026,
+          "similarity": 0.2974644899368286,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.37383224042174157,
+          "similarity": 0.29179197549819946,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.37270033679996417,
+          "similarity": 0.2978361248970032,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,4 @@
+[profile]
+name = "baseline-nli"
+description = "Production config: w_nli=0.35 dominant, PPR active (blend=0.15). ASS-037 baseline — all ablations measured against this."
+distribution_change = false

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3261",
+  "query": "one thing I've been wondering... on the observation side, I believe we have set a 30 retention period... to limit the growth of our database... I had originally thought 60 was a better time period... but... that said, the usage pattern matters... and in a development cycle... can go for weeks and put somethign down, then pick it back up a month later... time.. actually is not the most relevant factor.  While we're talking about signls and learning... what SHOULD we be considering for our data base platform depth",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.4540603423185744,
+          "similarity": 0.39423608779907227,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4428405721157088,
+          "similarity": 0.3497058153152466,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.43500378782345694,
+          "similarity": 0.39116156101226807,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.434427146196519,
+          "similarity": 0.36402130126953125,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.4131177758591714,
+          "similarity": 0.37462925910949707,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.4540603423185744,
+          "similarity": 0.39423608779907227,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4428405721157088,
+          "similarity": 0.3497058153152466,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.43500378782345694,
+          "similarity": 0.39116156101226807,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.434427146196519,
+          "similarity": 0.36402130126953125,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.4131177758591714,
+          "similarity": 0.37462925910949707,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

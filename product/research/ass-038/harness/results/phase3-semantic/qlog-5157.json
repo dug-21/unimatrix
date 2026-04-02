@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5157",
+  "query": "now on 468: Fix Summary:                                                                                                                                                       \n  - Root cause: get_cycle_start_goal used ORDER BY timestamp DESC — a later NULL-goal cycle_start row shadowed the original goal                                     \n  - Fix: AND goal IS NOT NULL + ORDER BY timestamp ASC, seq ASC LIMIT 1 (two-part, inseparable)                                                                      \n  - Files changed: crates/unimatrix-store/src/db.rs, crates/unimatrix-store/tests/migration_v15_to_v16.rs\n  - New tests: test_goal_correction_first_written_goal_is_preserved (renamed+flipped), test_multi_session_null_start_preserves_original_goal                         \n  - All tests passing: 4262 unit + 22/22 smoke + 41 lifecycle     \\\nsec review: no findings",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.5512083970410343,
+          "similarity": 0.5565201044082642,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.5352709491631996,
+          "similarity": 0.5701756477355957,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.5350760794988237,
+          "similarity": 0.5749989151954651,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.5512083970410343,
+          "similarity": 0.5565201044082642,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.5352709491631996,
+          "similarity": 0.5701756477355957,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.5350760794988237,
+          "similarity": 0.5749989151954651,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

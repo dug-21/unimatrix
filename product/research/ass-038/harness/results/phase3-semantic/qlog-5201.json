@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5201",
+  "query": "stay in a worktree.  One adjustment.  YOU become the scrum master under bugfix protocol... you don't SPAWN the scrum master.  You DO spawn developer and other specialists to complete your task",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.49239385629252164,
+          "similarity": 0.4746990203857422,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.4506254649992075,
+          "similarity": 0.37968289852142334,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.43280830082140465,
+          "similarity": 0.44333577156066895,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.42606528502247587,
+          "similarity": 0.3992295265197754,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.42315992165766714,
+          "similarity": 0.38154661655426025,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.49239385629252164,
+          "similarity": 0.4746990203857422,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.4506254649992075,
+          "similarity": 0.37968289852142334,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.43280830082140465,
+          "similarity": 0.44333577156066895,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.42606528502247587,
+          "similarity": 0.3992295265197754,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.42315992165766714,
+          "similarity": 0.38154661655426025,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

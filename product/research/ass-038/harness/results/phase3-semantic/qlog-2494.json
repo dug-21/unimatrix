@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2494",
+  "query": "now what I want you to do, is to prepare a list of all id's that were deprecated since the merge and pause.  I'll come back to you when its time to undeprecate them.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.455656680189122,
+          "similarity": 0.3972691297531128,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.450838785336522,
+          "similarity": 0.42159271240234375,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 339,
+          "title": "ADR-002: Flatten-and-merge strategy for shared modules",
+          "category": "decision",
+          "final_score": 0.44778006764380185,
+          "similarity": 0.41635191440582275,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 366,
+          "title": "How to merge cfg-split shared modules after backend removal",
+          "category": "procedure",
+          "final_score": 0.4465883857753201,
+          "similarity": 0.3871842622756958,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.42858422117499606,
+          "similarity": 0.3697197437286377,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.455656680189122,
+          "similarity": 0.3972691297531128,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.450838785336522,
+          "similarity": 0.42159271240234375,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 339,
+          "title": "ADR-002: Flatten-and-merge strategy for shared modules",
+          "category": "decision",
+          "final_score": 0.44778006764380185,
+          "similarity": 0.41635191440582275,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 366,
+          "title": "How to merge cfg-split shared modules after backend removal",
+          "category": "procedure",
+          "final_score": 0.4465883857753201,
+          "similarity": 0.3871842622756958,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.42858422117499606,
+          "similarity": 0.3697197437286377,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

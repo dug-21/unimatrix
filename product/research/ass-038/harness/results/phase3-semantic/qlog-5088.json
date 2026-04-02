@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5088",
+  "query": "update the merge comment to reflect sec review findings were addressed, and merge",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.469941166684253,
+          "similarity": 0.40409207344055176,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.4545139650361808,
+          "similarity": 0.3950979709625244,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.44553784217807435,
+          "similarity": 0.41117626428604126,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4347968790578455,
+          "similarity": 0.39654994010925293,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.469941166684253,
+          "similarity": 0.40409207344055176,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.4545139650361808,
+          "similarity": 0.3950979709625244,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.44553784217807435,
+          "similarity": 0.41117626428604126,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4347968790578455,
+          "similarity": 0.39654994010925293,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

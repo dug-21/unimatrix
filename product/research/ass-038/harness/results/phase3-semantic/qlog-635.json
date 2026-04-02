@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-635",
+  "query": "was the fix implemented and in this PR?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.45398371680880856,
+          "similarity": 0.4166371822357178,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.45028950638396315,
+          "similarity": 0.4033161401748657,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.44798534374823784,
+          "similarity": 0.4326828718185425,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.44647773071198116,
+          "similarity": 0.40011245012283325,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.4267073607775259,
+          "similarity": 0.41199934482574463,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.45398371680880856,
+          "similarity": 0.4166371822357178,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.45028950638396315,
+          "similarity": 0.4033161401748657,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.44798534374823784,
+          "similarity": 0.4326828718185425,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.44647773071198116,
+          "similarity": 0.40011245012283325,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.4267073607775259,
+          "similarity": 0.41199934482574463,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

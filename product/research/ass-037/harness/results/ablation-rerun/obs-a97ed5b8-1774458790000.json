@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a97ed5b8-1774458790000",
+  "query": "reactive protocol hook trigger agent spawn",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5242266217400046,
+          "similarity": 0.4441852569580078,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.521433853261611,
+          "similarity": 0.44543755054473877,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5029452232310576,
+          "similarity": 0.4297248125076294,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.4903638081758778,
+          "similarity": 0.40442800521850586,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4784791513526524,
+          "similarity": 0.41382265090942383,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.4636640570504324,
+          "similarity": 0.4441852569580078,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.4617187752723694,
+          "similarity": 0.44543755054473877,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.44712614924745836,
+          "similarity": 0.4297248125076294,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.43615277490088994,
+          "similarity": 0.40442800521850586,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4281649996218913,
+          "similarity": 0.41382265090942383,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.4636640570504324,
+          "similarity": 0.4441852569580078,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.4617187752723694,
+          "similarity": 0.44543755054473877,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.44712614924745836,
+          "similarity": 0.4297248125076294,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.43615277490088994,
+          "similarity": 0.40442800521850586,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4281649996218913,
+          "similarity": 0.41382265090942383,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.6,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.3702692618736854,
+          "similarity": 0.44543755054473877,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.36949861966646635,
+          "similarity": 0.4441852569580078,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.36059988462007964,
+          "similarity": 0.4297248125076294,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.3508139390211839,
+          "similarity": 0.41382265090942383,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.34503261859600365,
+          "similarity": 0.40442800521850586,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.6,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.44543755054473877,
+          "similarity": 0.44543755054473877,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.4441852569580078,
+          "similarity": 0.4441852569580078,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4297248125076294,
+          "similarity": 0.4297248125076294,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.41382265090942383,
+          "similarity": 0.41382265090942383,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.40442800521850586,
+          "similarity": 0.40442800521850586,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5237068726180434,
+          "similarity": 0.4441852569580078,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.5209403707764364,
+          "similarity": 0.44543755054473877,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5024697660185677,
+          "similarity": 0.4297248125076294,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.4898057834813494,
+          "similarity": 0.40442800521850586,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4780593039471769,
+          "similarity": 0.41382265090942383,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

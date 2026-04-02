@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4831",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Investigate bug #337 merge_configs validation) → ]\n[Assistant] Good, I have all 6 issues. Spawning all 6 investigators in parallel now — each in a worktree.\n[tool: Bash(gh issue view 380 --json title,body,labels 2>&1 | head -60) → {\"body\":\"## Source\\n\\nSecurity review of PR #377 (col-026).\\n\\n## Finding\\n\\nIn `crates/unimatrix-server/src/mcp/tools.rs`, a comment on an `obs.ts as i64` cast claims the cast \\\"saturates to MAX\\\". This is factually incorrect — Rust's `as` cast for integer truncation wraps, it does not saturate. ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.5392974132977204,
+          "similarity": 0.5804311633110046,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.5284079272142989,
+          "similarity": 0.5586072206497192,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5181313032351041,
+          "similarity": 0.583049476146698,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.5118064347819278,
+          "similarity": 0.5710322260856628,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.5072329076465807,
+          "similarity": 0.5623425245285034,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.5392974132977204,
+          "similarity": 0.5804311633110046,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.5284079272142989,
+          "similarity": 0.5586072206497192,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5181313032351041,
+          "similarity": 0.583049476146698,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.5118064347819278,
+          "similarity": 0.5710322260856628,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.5072329076465807,
+          "similarity": 0.5623425245285034,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

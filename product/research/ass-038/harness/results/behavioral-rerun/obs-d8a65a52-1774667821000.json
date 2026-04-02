@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-d8a65a52-1774667821000",
+  "query": "byte-index string slicing UTF-8 panic truncation",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.5750548766585206,
+          "similarity": 0.6572586297988892,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.4964717838925855,
+          "similarity": 0.46316003799438477,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.45117301477967564,
+          "similarity": 0.4293946623802185,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.44807741202082196,
+          "similarity": 0.4060713052749634,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4278060250525062,
+          "similarity": 0.36160123348236084,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.5750548766585206,
+          "similarity": 0.6572586297988892,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.4964717838925855,
+          "similarity": 0.46316003799438477,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.45117301477967564,
+          "similarity": 0.4293946623802185,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.44807741202082196,
+          "similarity": 0.4060713052749634,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4278060250525062,
+          "similarity": 0.36160123348236084,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

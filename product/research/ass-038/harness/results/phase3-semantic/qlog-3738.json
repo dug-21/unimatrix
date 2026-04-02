@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3738",
+  "query": "ugh.. now put us back on the branch you took us off of, there was another design session running, so hoping you did not impact that effort",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.45826203884505956,
+          "similarity": 0.4128926396369934,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.43630243476365516,
+          "similarity": 0.368125319480896,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.41972542580226935,
+          "similarity": 0.35030317306518555,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.4077425431280862,
+          "similarity": 0.3759661912918091,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.38397553293328535,
+          "similarity": 0.3505535125732422,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.45826203884505956,
+          "similarity": 0.4128926396369934,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.43630243476365516,
+          "similarity": 0.368125319480896,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.41972542580226935,
+          "similarity": 0.35030317306518555,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.4077425431280862,
+          "similarity": 0.3759661912918091,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.38397553293328535,
+          "similarity": 0.3505535125732422,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-345d9e22-1773881360000",
+  "query": "config distribution crate boundary plain parameters Arc startup",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.4777361223278914,
+          "similarity": 0.4946366548538208,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.46209441427229064,
+          "similarity": 0.49560415744781494,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.44237437603352686,
+          "similarity": 0.4427574872970581,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.4196518546869528,
+          "similarity": 0.42201489210128784,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4121029488228454,
+          "similarity": 0.4153820276260376,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.49560415744781494,
+          "similarity": 0.49560415744781494,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.4946366548538208,
+          "similarity": 0.4946366548538208,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.4427574872970581,
+          "similarity": 0.4427574872970581,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.42201489210128784,
+          "similarity": 0.42201489210128784,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4153820276260376,
+          "similarity": 0.4153820276260376,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.5385950056604567,
+          "similarity": 0.4946366548538208,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5170311414082601,
+          "similarity": 0.49560415744781494,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.4951454683502272,
+          "similarity": 0.4427574872970581,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.46599128171726,
+          "similarity": 0.42201489210128784,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4562803192052744,
+          "similarity": 0.4153820276260376,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.4777361223278914,
+          "similarity": 0.4946366548538208,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.46209441427229064,
+          "similarity": 0.49560415744781494,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.44237437603352686,
+          "similarity": 0.4427574872970581,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.4196518546869528,
+          "similarity": 0.42201489210128784,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4121029488228454,
+          "similarity": 0.4153820276260376,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.53830956182405,
+          "similarity": 0.4946366548538208,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5168920051487766,
+          "similarity": 0.49560415744781494,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.4948052866550767,
+          "similarity": 0.4427574872970581,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.4657057207457277,
+          "similarity": 0.42201489210128784,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.45601474588333124,
+          "similarity": 0.4153820276260376,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.40114101996788615,
+          "similarity": 0.49560415744781494,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.40054563375619745,
+          "similarity": 0.4946366548538208,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.368619992182805,
+          "similarity": 0.4427574872970581,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.35585531821617716,
+          "similarity": 0.42201489210128784,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.351773555462177,
+          "similarity": 0.4153820276260376,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

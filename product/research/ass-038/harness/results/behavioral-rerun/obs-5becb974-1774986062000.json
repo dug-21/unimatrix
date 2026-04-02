@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5becb974-1774986062000",
+  "query": "format_nli_metadata extension new edge type neutral score metadata variant",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5044331307231563,
+          "similarity": 0.4802480936050415,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.49849475567465773,
+          "similarity": 0.4572552442550659,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.4916711035046064,
+          "similarity": 0.4612915515899658,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.4894489286399224,
+          "similarity": 0.44924747943878174,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.4569884966879617,
+          "similarity": 0.4695335030555725,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5044331307231563,
+          "similarity": 0.4802480936050415,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.49849475567465773,
+          "similarity": 0.4572552442550659,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.4916711035046064,
+          "similarity": 0.4612915515899658,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.4894489286399224,
+          "similarity": 0.44924747943878174,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.4569884966879617,
+          "similarity": 0.4695335030555725,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

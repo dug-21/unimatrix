@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2270",
+  "query": "six-factor confidence scoring NLI co-access boost",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5253187732109523,
+          "similarity": 0.5183809399604797,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5251740477488087,
+          "similarity": 0.5050361752510071,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 701,
+          "title": "ADR-001: W_COAC Disposition — Delete Dead Weight Constant (crt-013)",
+          "category": "decision",
+          "final_score": 0.5187090972368581,
+          "similarity": 0.5066637396812439,
+          "confidence": 0.6126907786696952,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5107626979447134,
+          "similarity": 0.5038089752197266,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.5029783675975338,
+          "similarity": 0.49278509616851807,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5253187732109523,
+          "similarity": 0.5183809399604797,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5251740477488087,
+          "similarity": 0.5050361752510071,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 701,
+          "title": "ADR-001: W_COAC Disposition — Delete Dead Weight Constant (crt-013)",
+          "category": "decision",
+          "final_score": 0.5187090972368581,
+          "similarity": 0.5066637396812439,
+          "confidence": 0.6126907786696952,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5107626979447134,
+          "similarity": 0.5038089752197266,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.5029783675975338,
+          "similarity": 0.49278509616851807,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

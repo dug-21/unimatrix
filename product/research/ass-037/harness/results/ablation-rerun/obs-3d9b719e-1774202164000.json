@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-3d9b719e-1774202164000",
+  "query": "FusionWeights effective NLI absent re-normalization phase weights excluded",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.4692507156958947,
+          "similarity": 0.6062824130058289,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.4593631304227389,
+          "similarity": 0.5902150869369507,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.4589029092055101,
+          "similarity": 0.5894672274589539,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4169414960421049,
+          "similarity": 0.5212799310684204,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.41501334997323847,
+          "similarity": 0.5181466937065125,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.6062824130058289,
+          "similarity": 0.6062824130058289,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5902150869369507,
+          "similarity": 0.5902150869369507,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.5894672274589539,
+          "similarity": 0.5894672274589539,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5212799310684204,
+          "similarity": 0.5212799310684204,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.5181466937065125,
+          "similarity": 0.5181466937065125,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5999012891811182,
+          "similarity": 0.5902150869369507,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.588097788104599,
+          "similarity": 0.5894672274589539,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.5864312912603669,
+          "similarity": 0.6062824130058289,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5546398984531556,
+          "similarity": 0.5212799310684204,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.5545069294868279,
+          "similarity": 0.5181466937065125,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5292752845286167,
+          "similarity": 0.5902150869369507,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.5205695264406363,
+          "similarity": 0.5894672274589539,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.5204684411246577,
+          "similarity": 0.6062824130058289,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4914879209368755,
+          "similarity": 0.5212799310684204,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.4911815278707747,
+          "similarity": 0.5181466937065125,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5292752845286167,
+          "similarity": 0.5902150869369507,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.5205695264406363,
+          "similarity": 0.5894672274589539,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.5204684411246577,
+          "similarity": 0.6062824130058289,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4914879209368755,
+          "similarity": 0.5212799310684204,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.4911815278707747,
+          "similarity": 0.5181466937065125,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.599964597692518,
+          "similarity": 0.5902150869369507,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.5880888375205837,
+          "similarity": 0.5894672274589539,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.5863015453666058,
+          "similarity": 0.6062824130058289,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5548579374556704,
+          "similarity": 0.5212799310684204,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.5547445780866993,
+          "similarity": 0.5181466937065125,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3182,
+        "from_rank": 3,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 2971,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3206,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

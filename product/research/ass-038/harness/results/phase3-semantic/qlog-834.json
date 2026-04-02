@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-834",
+  "query": "hmmm maybe the gap is what you can do with it.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.35569557850956424,
+          "similarity": 0.20133256912231445,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.34713462027679987,
+          "similarity": 0.1954505443572998,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.3421652075602122,
+          "similarity": 0.18464010953903198,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.33793680818375427,
+          "similarity": 0.19084972143173218,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.33445798432117646,
+          "similarity": 0.19053995609283447,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.35569557850956424,
+          "similarity": 0.20133256912231445,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.34713462027679987,
+          "similarity": 0.1954505443572998,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.3421652075602122,
+          "similarity": 0.18464010953903198,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.33793680818375427,
+          "similarity": 0.19084972143173218,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.33445798432117646,
+          "similarity": 0.19053995609283447,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

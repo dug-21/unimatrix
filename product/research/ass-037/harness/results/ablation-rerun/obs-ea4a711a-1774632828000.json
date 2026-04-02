@@ -1,0 +1,396 @@
+{
+  "scenario_id": "obs-ea4a711a-1774632828000",
+  "query": "VectorIndex contains embedding_dim filter no-embedding tick selection",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.4293339252471924,
+          "similarity": 0.4293339252471924,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4290515184402466,
+          "similarity": 0.4290515184402466,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.42826223373413086,
+          "similarity": 0.42826223373413086,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.4097036123275757,
+          "similarity": 0.4097036123275757,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.3759043216705322,
+          "similarity": 0.3759043216705322,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.512314627016699,
+          "similarity": 0.4290515184402466,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.48386741909332465,
+          "similarity": 0.42826223373413086,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.47255469165437897,
+          "similarity": 0.4293339252471924,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.45883341719440407,
+          "similarity": 0.3759043216705322,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.4526593186615129,
+          "similarity": 0.4097036123275757,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.45430082770826247,
+          "similarity": 0.4290515184402466,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.4333869229173801,
+          "similarity": 0.42826223373413086,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.42516236889635745,
+          "similarity": 0.4293339252471924,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.41153812738726514,
+          "similarity": 0.3759043216705322,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.40926374117361447,
+          "similarity": 0.4097036123275757,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.3603593386136569,
+          "similarity": 0.4293339252471924,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.3601855498093825,
+          "similarity": 0.4290515184402466,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.3596998361440805,
+          "similarity": 0.42826223373413086,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.3482791460477389,
+          "similarity": 0.4097036123275757,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.32747958256648135,
+          "similarity": 0.3759043216705322,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5128588303407282,
+          "similarity": 0.4290515184402466,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.4842308516773717,
+          "similarity": 0.42826223373413086,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.47283718032370703,
+          "similarity": 0.4293339252471924,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.45937543742658626,
+          "similarity": 0.3759043216705322,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.4529400749120615,
+          "similarity": 0.4097036123275757,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.45430082770826247,
+          "similarity": 0.4290515184402466,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.4333869229173801,
+          "similarity": 0.42826223373413086,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.42516236889635745,
+          "similarity": 0.4293339252471924,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.41153812738726514,
+          "similarity": 0.3759043216705322,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.40926374117361447,
+          "similarity": 0.4097036123275757,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 1712,
+        "from_rank": 3,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 3761,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3668,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3764,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3675,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": -0.16666666666666669,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

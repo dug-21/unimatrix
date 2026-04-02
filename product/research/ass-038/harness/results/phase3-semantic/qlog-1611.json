@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1611",
+  "query": "yes start pr review",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.40061637591533805,
+          "similarity": 0.33160698413848877,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.3735915371125197,
+          "similarity": 0.28798985481262207,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.3595933715717222,
+          "similarity": 0.24788177013397217,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.35005848768174386,
+          "similarity": 0.2687888741493225,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.34767821281065814,
+          "similarity": 0.2502940893173218,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.40061637591533805,
+          "similarity": 0.33160698413848877,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.3735915371125197,
+          "similarity": 0.28798985481262207,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.3595933715717222,
+          "similarity": 0.24788177013397217,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.35005848768174386,
+          "similarity": 0.2687888741493225,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.34767821281065814,
+          "similarity": 0.2502940893173218,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

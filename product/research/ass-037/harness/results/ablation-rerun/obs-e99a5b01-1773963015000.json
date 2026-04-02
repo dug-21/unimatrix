@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-e99a5b01-1773963015000",
+  "query": "risk pattern read-only enforcement analytics suppression SQLite",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.5376793999051709,
+          "similarity": 0.4970051050186157,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5348296667982378,
+          "similarity": 0.4954712986946106,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 355,
+          "title": "ADR-001: Keep SqliteWriteTransaction, Remove SqliteReadTransaction",
+          "category": "decision",
+          "final_score": 0.5293214426463106,
+          "similarity": 0.505256175994873,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5122436496513183,
+          "similarity": 0.49077504873275757,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.501108249008902,
+          "similarity": 0.4833947420120239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.5374152811072062,
+          "similarity": 0.4970051050186157,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5345740929793831,
+          "similarity": 0.4954712986946106,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 355,
+          "title": "ADR-001: Keep SqliteWriteTransaction, Remove SqliteReadTransaction",
+          "category": "decision",
+          "final_score": 0.5291651746810415,
+          "similarity": 0.505256175994873,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5121042431518472,
+          "similarity": 0.49077504873275757,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.500993226236195,
+          "similarity": 0.4833947420120239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 355,
+          "title": "ADR-001: Keep SqliteWriteTransaction, Remove SqliteReadTransaction",
+          "category": "decision",
+          "final_score": 0.505256175994873,
+          "similarity": 0.505256175994873,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4970051050186157,
+          "similarity": 0.4970051050186157,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.4954712986946106,
+          "similarity": 0.4954712986946106,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.49077504873275757,
+          "similarity": 0.49077504873275757,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4833947420120239,
+          "similarity": 0.4833947420120239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.47723821314652565,
+          "similarity": 0.4970051050186157,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.4750524214311883,
+          "similarity": 0.4954712986946106,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 355,
+          "title": "ADR-001: Keep SqliteWriteTransaction, Remove SqliteReadTransaction",
+          "category": "decision",
+          "final_score": 0.47173820649908865,
+          "similarity": 0.505256175994873,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4582614482268718,
+          "similarity": 0.49077504873275757,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.44962134870734466,
+          "similarity": 0.4833947420120239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.47723821314652565,
+          "similarity": 0.4970051050186157,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.4750524214311883,
+          "similarity": 0.4954712986946106,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 355,
+          "title": "ADR-001: Keep SqliteWriteTransaction, Remove SqliteReadTransaction",
+          "category": "decision",
+          "final_score": 0.47173820649908865,
+          "similarity": 0.505256175994873,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4582614482268718,
+          "similarity": 0.49077504873275757,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.44962134870734466,
+          "similarity": 0.4833947420120239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 355,
+          "title": "ADR-001: Keep SqliteWriteTransaction, Remove SqliteReadTransaction",
+          "category": "decision",
+          "final_score": 0.40708072368915266,
+          "similarity": 0.505256175994873,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4020031415499174,
+          "similarity": 0.4970051050186157,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.401059260735145,
+          "similarity": 0.4954712986946106,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.39816926075862,
+          "similarity": 0.49077504873275757,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.3936275335458609,
+          "similarity": 0.4833947420120239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

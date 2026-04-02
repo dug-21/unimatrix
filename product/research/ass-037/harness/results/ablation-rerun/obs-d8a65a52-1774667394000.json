@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-d8a65a52-1774667394000",
+  "query": "UTF-8 string truncation display Rust unicode",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.44486485994779146,
+          "similarity": 0.5666553974151611,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.39336453951322115,
+          "similarity": 0.4829673767089844,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.3755310131953313,
+          "similarity": 0.45398789644241333,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.337740237896259,
+          "similarity": 0.3925778865814209,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.33674922356238735,
+          "similarity": 0.3909674882888794,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.5666553974151611,
+          "similarity": 0.5666553974151611,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4829673767089844,
+          "similarity": 0.4829673767089844,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.45398789644241333,
+          "similarity": 0.45398789644241333,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.3925778865814209,
+          "similarity": 0.3925778865814209,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.3909674882888794,
+          "similarity": 0.3909674882888794,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.5600006078043891,
+          "similarity": 0.5666553974151611,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.5201162298978736,
+          "similarity": 0.4829673767089844,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.4995668670629481,
+          "similarity": 0.45398789644241333,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.4522362082294381,
+          "similarity": 0.3909674882888794,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.4244575803420123,
+          "similarity": 0.3925778865814209,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.49847582835856635,
+          "similarity": 0.5666553974151611,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.46343949440480686,
+          "similarity": 0.4829673767089844,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.4463978528917489,
+          "similarity": 0.45398789644241333,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.4074126294449391,
+          "similarity": 0.3909674882888794,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.38728894329071045,
+          "similarity": 0.3925778865814209,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.5600438207239394,
+          "similarity": 0.5666553974151611,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.5198750035784654,
+          "similarity": 0.4829673767089844,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.49927089972125627,
+          "similarity": 0.45398789644241333,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.4518383593986552,
+          "similarity": 0.3909674882888794,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.42425056934356686,
+          "similarity": 0.3925778865814209,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.49847582835856635,
+          "similarity": 0.5666553974151611,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.46343949440480686,
+          "similarity": 0.4829673767089844,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.4463978528917489,
+          "similarity": 0.45398789644241333,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.4074126294449391,
+          "similarity": 0.3909674882888794,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.38728894329071045,
+          "similarity": 0.3925778865814209,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3920,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3105,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

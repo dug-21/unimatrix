@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-ea862451-1774803374000",
+  "query": "vision alignment scope addition milestone discipline pattern",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.44229824348191193,
+          "similarity": 0.40011584758758545,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.42654730209872166,
+          "similarity": 0.40030914545059204,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.42575044178962707,
+          "similarity": 0.37350088357925415,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.40394675754397624,
+          "similarity": 0.3886444568634033,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.40192640781253675,
+          "similarity": 0.3713972568511963,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.44229824348191193,
+          "similarity": 0.40011584758758545,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.42654730209872166,
+          "similarity": 0.40030914545059204,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.42575044178962707,
+          "similarity": 0.37350088357925415,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.40394675754397624,
+          "similarity": 0.3886444568634033,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.40192640781253675,
+          "similarity": 0.3713972568511963,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4985779822400994,
+          "similarity": 0.40011584758758545,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4784323402968319,
+          "similarity": 0.37350088357925415,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.47708185327547564,
+          "similarity": 0.40030914545059204,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.44732335511784,
+          "similarity": 0.3886444568634033,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4461362600306231,
+          "similarity": 0.3713972568511963,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.49922152560384137,
+          "similarity": 0.40011584758758545,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.47911816681132596,
+          "similarity": 0.37350088357925415,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4775836356795599,
+          "similarity": 0.40030914545059204,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.44770687732865333,
+          "similarity": 0.3886444568634033,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.44662475024748216,
+          "similarity": 0.3713972568511963,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.3424979356619028,
+          "similarity": 0.40030914545059204,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.3423789831308218,
+          "similarity": 0.40011584758758545,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.3353196657620944,
+          "similarity": 0.3886444568634033,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.32600054374107945,
+          "similarity": 0.37350088357925415,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.32470600421612084,
+          "similarity": 0.3713972568511963,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.40030914545059204,
+          "similarity": 0.40030914545059204,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.40011584758758545,
+          "similarity": 0.40011584758758545,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.3886444568634033,
+          "similarity": 0.3886444568634033,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.37350088357925415,
+          "similarity": 0.37350088357925415,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.3713972568511963,
+          "similarity": 0.3713972568511963,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2969,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 2298,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1582",
+  "query": "please update the @product/PRODUCT-VISION.md W2-2 with a link to these recommendations",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4759875185729384,
+          "similarity": 0.44279325008392334,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4343184872659164,
+          "similarity": 0.3873403072357178,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.4287460801673887,
+          "similarity": 0.34756767749786377,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4277388376938669,
+          "similarity": 0.32170379161834717,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.38680634897158717,
+          "similarity": 0.3256678581237793,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4759875185729384,
+          "similarity": 0.44279325008392334,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4343184872659164,
+          "similarity": 0.3873403072357178,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.4287460801673887,
+          "similarity": 0.34756767749786377,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4277388376938669,
+          "similarity": 0.32170379161834717,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.38680634897158717,
+          "similarity": 0.3256678581237793,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-b0be618b-1774489977000",
+  "query": "eval runner output profile result JSON schema",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5766369836354795,
+          "similarity": 0.6310631632804871,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5264383897344106,
+          "similarity": 0.5677372813224792,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5238896937305675,
+          "similarity": 0.5451253056526184,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5100903240998759,
+          "similarity": 0.5347414016723633,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.5091426252970603,
+          "similarity": 0.5444602966308594,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5766369836354795,
+          "similarity": 0.6310631632804871,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5264383897344106,
+          "similarity": 0.5677372813224792,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5238896937305675,
+          "similarity": 0.5451253056526184,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5100903240998759,
+          "similarity": 0.5347414016723633,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.5091426252970603,
+          "similarity": 0.5444602966308594,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

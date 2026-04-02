@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5243",
+  "query": "back to tick processing... the next tick (32 comes up again) 2026-04-01T02:10:04.144949Z  INFO unimatrix_server::background: background tick starting\n2026-04-01T02:10:04.281417Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.1597 confidence_weight=0.1996\n2026-04-01T02:10:04.282247Z  INFO unimatrix_server::services::status: cycle GC: pass starting k=50 purgeable_count=6 capped_to=10\n2026-04-01T02:10:04.283100Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=vnc-012 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T02:10:04.283729Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=crt-032 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T02:10:04.284390Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-311 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T02:10:04.285063Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-340 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T02:10:04.285769Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-342 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T02:10:04.286432Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-351 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T02:10:04.325866Z  INFO unimatrix_server::services::status: cycle GC: unattributed cleanup observations_deleted=0 query_log_deleted=0 sessions_deleted=0 injection_log_deleted=0\n2026-04-01T02:10:04.325889Z  INFO unimatrix_server::services::status: cycle GC: pass complete cycles_pruned=6 cycles_skipped=0 total_rows_deleted=0\n2026-04-01T02:10:04.326070Z  INFO unimatrix_server::services::status: cycle GC: audit_log cleanup rows_deleted=0 cutoff_days=180\n2026-04-01T02:10:04.326435Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-04-01T02:10:04.326444Z DEBUG unimatrix_server::background: lifecycle guard: adaptive categories eligible for auto-deprecation (stub, #409) categories=[\"lesson-learned\"]\n2026-04-01T02:10:04.326913Z  INFO unimatrix_server::background: maintenance tick complete\n2026-04-01T02:10:04.327686Z  INFO unimatrix_server::background: background tick: GRAPH_EDGES orphaned-edge compaction complete rows_deleted=32\n2026-04-01T02:10:04.436922Z  INFO unimatrix_server::services::co_access_promotion_tick: co_access promotion tick complete promoted_pairs=200 edges_inserted=32 edges_updated=0\n2026-04-01T02:10:04.480790Z DEBUG unimatrix_server::background: typed graph state rebuilt (1486 entries)\n2026-04-01T02:10:04.482408Z DEBUG unimatrix_server::background: PhaseFreqTable rebuilt successfully\n2026-04-01T02:10:04.486349Z  INFO unimatrix_server::background: extraction tick complete\n2026-04-01T02:10:04.518025Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: merged cap accounting supports_candidates=100 informs_candidates_total=235 informs_candidates_accepted=25 informs_candidates_dropped=210\n2026-04-01T02:10:08.418032Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: nli score distribution nli_score_max=0.4475640654563904 nli_score_mean=0.06625883281230927 nli_score_p75=0.08654941618442535 threshold=0.6000000238418579 pairs=125\n2026-04-01T02:10:08.418570Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: Informs write complete informs_edges_written=2 informs_pairs_evaluated=25\n2026-04-01T02:10:08.418579Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 informs_edges_written=2 pairs_scored=125 source_candidates=100\n2026-04-01T02:10:08.418963Z  INFO unimatrix_server::background: background tick complete duration_secs=4",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5576652488797992,
+          "similarity": 0.5672478675842285,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5196710250048695,
+          "similarity": 0.5520293116569519,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5192640873997005,
+          "similarity": 0.5378678441047668,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5186028322217144,
+          "similarity": 0.5544997453689575,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5083197897426721,
+          "similarity": 0.5483997464179993,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5576652488797992,
+          "similarity": 0.5672478675842285,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5196710250048695,
+          "similarity": 0.5520293116569519,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5192640873997005,
+          "similarity": 0.5378678441047668,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5186028322217144,
+          "similarity": 0.5544997453689575,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5083197897426721,
+          "similarity": 0.5483997464179993,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 40,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

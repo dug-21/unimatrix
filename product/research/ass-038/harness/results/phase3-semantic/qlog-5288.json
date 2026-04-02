@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5288",
+  "query": "well, the larger models would not be an option until we get to containerized deployment. as far as ass-035: The assumption holds. Group D max cosine is 0.247 — well below 0.65. The gap between false pairs (max 0.247) and true pairs (min 0.353 for borderline, 0.523 for\n  true) is clean and wide enough that cosine alone is sufficient. The same_feature_cycle filter can be retained for query performance but is not needed for\n  correctness.\n\n  Final delivery spec:\n  - supports_cosine_threshold = 0.65\n  - Category pair filter from informs_category_pairs\n  - same_feature_cycle optional (performance only)\n  - No NLI model change",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5061972413887287,
+          "similarity": 0.4907999038696289,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.48379643237438275,
+          "similarity": 0.4838675856590271,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.4747235722951836,
+          "similarity": 0.47298550605773926,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.4548568777364653,
+          "similarity": 0.4654834270477295,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5061972413887287,
+          "similarity": 0.4907999038696289,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.48379643237438275,
+          "similarity": 0.4838675856590271,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.4747235722951836,
+          "similarity": 0.47298550605773926,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.4548568777364653,
+          "similarity": 0.4654834270477295,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

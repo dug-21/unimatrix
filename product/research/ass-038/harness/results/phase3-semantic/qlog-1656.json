@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1656",
+  "query": "based on all these new design iterations... there's no reason we can't go ahead and implement W1-5, correct?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.4509626377849434,
+          "similarity": 0.3820546269416809,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.41735660504764727,
+          "similarity": 0.3259276747703552,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.40325035990947544,
+          "similarity": 0.3369354009628296,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2902,
+          "title": "Generalization features consistently underestimate DSL expressiveness gap between declared rule types and chosen implementation primitive",
+          "category": "pattern",
+          "final_score": 0.4019567426543307,
+          "similarity": 0.32036876678466797,
+          "confidence": 0.5619272060836578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.382265918036935,
+          "similarity": 0.3275606036186218,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.4509626377849434,
+          "similarity": 0.3820546269416809,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.41735660504764727,
+          "similarity": 0.3259276747703552,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.40325035990947544,
+          "similarity": 0.3369354009628296,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2902,
+          "title": "Generalization features consistently underestimate DSL expressiveness gap between declared rule types and chosen implementation primitive",
+          "category": "pattern",
+          "final_score": 0.4019567426543307,
+          "similarity": 0.32036876678466797,
+          "confidence": 0.5619272060836578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.382265918036935,
+          "similarity": 0.3275606036186218,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

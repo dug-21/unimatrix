@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1494",
+  "query": "create a gh issue for this bug.  its a missed requirement.  We'll treat as a bugfix.  also commit your work and push to main",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4642970018043966,
+          "similarity": 0.46367502212524414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.44135199620069276,
+          "similarity": 0.4032231569290161,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.4360679049854218,
+          "similarity": 0.3803337812423706,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.42233654392879005,
+          "similarity": 0.39214491844177246,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.4211313662859488,
+          "similarity": 0.37900495529174805,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4642970018043966,
+          "similarity": 0.46367502212524414,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.44135199620069276,
+          "similarity": 0.4032231569290161,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.4360679049854218,
+          "similarity": 0.3803337812423706,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.42233654392879005,
+          "similarity": 0.39214491844177246,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.4211313662859488,
+          "similarity": 0.37900495529174805,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-3233",
+  "query": "1. no objections 2. raw Shannon entropy 3. There may be a baseline, but you can check.  if not, you're approved to create a baseline.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.49260624346651716,
+          "similarity": 0.4719732999801636,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4549701758443485,
+          "similarity": 0.371634840965271,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4476428408453951,
+          "similarity": 0.3947376012802124,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.4168377748291253,
+          "similarity": 0.3451526165008545,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.49260624346651716,
+          "similarity": 0.4719732999801636,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4549701758443485,
+          "similarity": 0.371634840965271,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4476428408453951,
+          "similarity": 0.3947376012802124,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.4168377748291253,
+          "similarity": 0.3451526165008545,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

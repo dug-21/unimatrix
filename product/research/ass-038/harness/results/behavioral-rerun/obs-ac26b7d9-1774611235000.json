@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774611235000",
+  "query": "TypedRelationGraph post-scoring filter pure function extraction",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4791144004047334,
+          "similarity": 0.43064355850219727,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.4669007002751262,
+          "similarity": 0.4224364757537842,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.45359463325915905,
+          "similarity": 0.39874565601348877,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.4499455076644642,
+          "similarity": 0.3945457339286804,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.44818957564623363,
+          "similarity": 0.4066299796104431,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4791144004047334,
+          "similarity": 0.43064355850219727,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.4669007002751262,
+          "similarity": 0.4224364757537842,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.45359463325915905,
+          "similarity": 0.39874565601348877,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.4499455076644642,
+          "similarity": 0.3945457339286804,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.44818957564623363,
+          "similarity": 0.4066299796104431,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

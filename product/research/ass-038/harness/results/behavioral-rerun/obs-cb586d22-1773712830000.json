@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cb586d22-1773712830000",
+  "query": "UnimatrixServer Clone Arc-wrapped fields daemon session sharing",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.5762581508852703,
+          "similarity": 0.6796878576278687,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.562123083055682,
+          "similarity": 0.5720333456993103,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.5201237281587652,
+          "similarity": 0.5199189782142639,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.5019294903681771,
+          "similarity": 0.5046762228012085,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4842474960986053,
+          "similarity": 0.5025793313980103,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.5762581508852703,
+          "similarity": 0.6796878576278687,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.562123083055682,
+          "similarity": 0.5720333456993103,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.5201237281587652,
+          "similarity": 0.5199189782142639,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.5019294903681771,
+          "similarity": 0.5046762228012085,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4842474960986053,
+          "similarity": 0.5025793313980103,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

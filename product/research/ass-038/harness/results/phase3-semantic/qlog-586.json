@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-586",
+  "query": "it is time to begin work on crt-014 from @product/PRODUCT-VISION.md",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.44758760624492133,
+          "similarity": 0.34696632623672485,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.4267810917545316,
+          "similarity": 0.359714150428772,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4205560773160639,
+          "similarity": 0.3374735116958618,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4079472278275522,
+          "similarity": 0.3372349143028259,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.3656566232657007,
+          "similarity": 0.3259514570236206,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.44758760624492133,
+          "similarity": 0.34696632623672485,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.4267810917545316,
+          "similarity": 0.359714150428772,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4205560773160639,
+          "similarity": 0.3374735116958618,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4079472278275522,
+          "similarity": 0.3372349143028259,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.3656566232657007,
+          "similarity": 0.3259514570236206,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

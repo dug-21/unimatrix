@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-1ccf6f33-1773192216000",
+  "query": "session feature_cycle topic attribution majority vote",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5498450985126806,
+          "similarity": 0.4866558313369751,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.5422904356437095,
+          "similarity": 0.5249117016792297,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5161751301082341,
+          "similarity": 0.4451271891593933,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.5052928530015841,
+          "similarity": 0.43687450885772705,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.5041551026285418,
+          "similarity": 0.44344961643218994,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5502581002589272,
+          "similarity": 0.4866558313369751,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.5424040221402094,
+          "similarity": 0.5249117016792297,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5166394957353507,
+          "similarity": 0.4451271891593933,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.5057400317214786,
+          "similarity": 0.43687450885772705,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.5045518705121781,
+          "similarity": 0.44344961643218994,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.41917643180260294,
+          "similarity": 0.5249117016792297,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.39563435774583083,
+          "similarity": 0.4866558313369751,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.37007827025193435,
+          "similarity": 0.4451271891593933,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.3690459178044246,
+          "similarity": 0.44344961643218994,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.36499969775860125,
+          "similarity": 0.43687450885772705,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.5249117016792297,
+          "similarity": 0.5249117016792297,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4866558313369751,
+          "similarity": 0.4866558313369751,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4451271891593933,
+          "similarity": 0.4451271891593933,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.44344961643218994,
+          "similarity": 0.44344961643218994,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.43687450885772705,
+          "similarity": 0.43687450885772705,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4856634609984309,
+          "similarity": 0.4866558313369751,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.482673766250669,
+          "similarity": 0.5249117016792297,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4582035746899979,
+          "similarity": 0.4451271891593933,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.4496730594583435,
+          "similarity": 0.43687450885772705,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.4492770496897433,
+          "similarity": 0.44344961643218994,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4856634609984309,
+          "similarity": 0.4866558313369751,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.482673766250669,
+          "similarity": 0.5249117016792297,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4582035746899979,
+          "similarity": 0.4451271891593933,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.4496730594583435,
+          "similarity": 0.43687450885772705,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.4492770496897433,
+          "similarity": 0.44344961643218994,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

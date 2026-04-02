@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-12",
+  "query": "hmm... well, MY protocol there is clear delineation... i can tell you that... but to do this right, Unimatrix as a product, it would need to be able to DETECT the nature of session boundaries (if they were consistent, and if not.. thats an observation in and of itself).  I'm not sure in all honesty, we're quite ready for that",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3541,
+          "title": "Free function at module scope for testable SessionRegistry reads in MCP handlers",
+          "category": "pattern",
+          "final_score": 0.46398850453749796,
+          "similarity": 0.48496806621551514,
+          "confidence": 0.4951572748653303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4289394589425015,
+          "similarity": 0.4707067012786865,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4289075439375134,
+          "similarity": 0.4707067012786865,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.42885076578309744,
+          "similarity": 0.4707067012786865,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.42826418001556177,
+          "similarity": 0.46946293115615845,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3541,
+          "title": "Free function at module scope for testable SessionRegistry reads in MCP handlers",
+          "category": "pattern",
+          "final_score": 0.46398850453749796,
+          "similarity": 0.48496806621551514,
+          "confidence": 0.4951572748653303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4289394589425015,
+          "similarity": 0.4707067012786865,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4289075439375134,
+          "similarity": 0.4707067012786865,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.42885076578309744,
+          "similarity": 0.4707067012786865,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.42826418001556177,
+          "similarity": 0.46946293115615845,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

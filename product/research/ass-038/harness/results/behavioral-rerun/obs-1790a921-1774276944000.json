@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-1790a921-1774276944000",
+  "query": "Handle::current block_on rayon worker thread panic",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2543,
+          "title": "Rayon panic_handler required to prevent SIGABRT in test harness",
+          "category": "pattern",
+          "final_score": 0.5931463748895754,
+          "similarity": 0.7068174481391907,
+          "confidence": 0.528800948787147,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5861188405179313,
+          "similarity": 0.6791955828666687,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.5659818701731701,
+          "similarity": 0.6371316313743591,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5361235314975277,
+          "similarity": 0.5389599204063416,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2543,
+          "title": "Rayon panic_handler required to prevent SIGABRT in test harness",
+          "category": "pattern",
+          "final_score": 0.5931463748895754,
+          "similarity": 0.7068174481391907,
+          "confidence": 0.528800948787147,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5861188405179313,
+          "similarity": 0.6791955828666687,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.5659818701731701,
+          "similarity": 0.6371316313743591,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5361235314975277,
+          "similarity": 0.5389599204063416,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

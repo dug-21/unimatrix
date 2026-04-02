@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-e275cc04-1774459251000",
+  "query": "PostToolUseFailure hook event type dispatch patterns",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5065387614750748,
+          "similarity": 0.5399168729782104,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.505887715282373,
+          "similarity": 0.5031228065490723,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.48795361925968017,
+          "similarity": 0.49941158294677734,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4720994210669316,
+          "similarity": 0.44739699363708496,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.4416320417461701,
+          "similarity": 0.4427051544189453,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5065387614750748,
+          "similarity": 0.5399168729782104,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.505887715282373,
+          "similarity": 0.5031228065490723,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3475,
+          "title": "ADR-003 col-027: PostToolUseFailure Hook Type Is Not Normalized to PostToolUse",
+          "category": "decision",
+          "final_score": 0.48795361925968017,
+          "similarity": 0.49941158294677734,
+          "confidence": 0.5395718480665932,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4720994210669316,
+          "similarity": 0.44739699363708496,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.4416320417461701,
+          "similarity": 0.4427051544189453,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-88cecd44-1773699006000",
+  "query": "typed relationship graph edges persistence",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.5217273015852005,
+          "similarity": 0.5466915965080261,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5144072129175874,
+          "similarity": 0.4966682195663452,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5045570511363489,
+          "similarity": 0.5338127613067627,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.4952764468444021,
+          "similarity": 0.562025249004364,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.49275494776192097,
+          "similarity": 0.485004186630249,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.5217273015852005,
+          "similarity": 0.5466915965080261,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5144072129175874,
+          "similarity": 0.4966682195663452,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5045570511363489,
+          "similarity": 0.5338127613067627,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.4952764468444021,
+          "similarity": 0.562025249004364,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.49275494776192097,
+          "similarity": 0.485004186630249,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

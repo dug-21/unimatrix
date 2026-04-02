@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4843",
+  "query": "OK... lets get back to a vision discussion... back of my mind.. we have GNN, centralized/dockerized/HTTPS, a UI (especially important in a centralized configuration to show status across multiple projects, define administration/real elevated priviledge ideas, and then graph enhancements, like mincut, parameterized relationships, etc., PLUS, any more cleanup we want to do with all of the functionality we have (longer term, if dockerized... GGUF models??)  With a few more enhancements.. I think it can provide real value soon... but trying to think about the most valuable additions",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4771960824332362,
+          "similarity": 0.4081118106842041,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4746203883918576,
+          "similarity": 0.4100874662399292,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.4509082374607867,
+          "similarity": 0.3726460933685303,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3,
+          "title": "Roadmap milestones 1-2: Foundation and MCP Server",
+          "category": "decision",
+          "final_score": 0.43464237769837166,
+          "similarity": 0.3614856004714966,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.39042538170710983,
+          "similarity": 0.3729988932609558,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4771960824332362,
+          "similarity": 0.4081118106842041,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4746203883918576,
+          "similarity": 0.4100874662399292,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.4509082374607867,
+          "similarity": 0.3726460933685303,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3,
+          "title": "Roadmap milestones 1-2: Foundation and MCP Server",
+          "category": "decision",
+          "final_score": 0.43464237769837166,
+          "similarity": 0.3614856004714966,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.39042538170710983,
+          "similarity": 0.3729988932609558,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

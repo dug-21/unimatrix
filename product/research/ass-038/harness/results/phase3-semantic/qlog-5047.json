@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5047",
+  "query": "is there unimatrix ADR record for ADR-001? . If so, please update it as well.  if not, leave for retro to correct/add.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5257724942336817,
+          "similarity": 0.5559445023536682,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2161,
+          "title": "ADR-001 alc-003 test",
+          "category": "decision",
+          "final_score": 0.4953388853212073,
+          "similarity": 0.5670685768127441,
+          "confidence": 0.46296472185364257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.4904803522874641,
+          "similarity": 0.5142228603363037,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.4891064698946438,
+          "similarity": 0.4868471026420593,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.4877019294676199,
+          "similarity": 0.4883997440338135,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5257724942336817,
+          "similarity": 0.5559445023536682,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2161,
+          "title": "ADR-001 alc-003 test",
+          "category": "decision",
+          "final_score": 0.4953388853212073,
+          "similarity": 0.5670685768127441,
+          "confidence": 0.46296472185364257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.4904803522874641,
+          "similarity": 0.5142228603363037,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.4891064698946438,
+          "similarity": 0.4868471026420593,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.4877019294676199,
+          "similarity": 0.4883997440338135,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2021",
+  "query": "So... I spent a little time in another session designing WA-5.. this is what we came up with for requirements.  #1 - is this small enough addition that we could consolidate into 1 feature, or should it still be 2.  If stays 2 features... what do you think this implies for existing BriefingService?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.5292267050668463,
+          "similarity": 0.5226868987083435,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4912049369589886,
+          "similarity": 0.43658447265625,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.48625589019995175,
+          "similarity": 0.4502665400505066,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4822804213743084,
+          "similarity": 0.4177720546722412,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.46840287299742334,
+          "similarity": 0.44063055515289307,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.5292267050668463,
+          "similarity": 0.5226868987083435,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4912049369589886,
+          "similarity": 0.43658447265625,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.48625589019995175,
+          "similarity": 0.4502665400505066,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4822804213743084,
+          "similarity": 0.4177720546722412,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.46840287299742334,
+          "similarity": 0.44063055515289307,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

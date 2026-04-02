@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-30b7b9c9-1774910780000",
+  "query": "typed_graph TypedGraphState PPR test patterns",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5507372281354935,
+          "similarity": 0.5775368809700012,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5459826337531214,
+          "similarity": 0.5795617699623108,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5285968061238177,
+          "similarity": 0.5594037175178528,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5058997052581857,
+          "similarity": 0.5061755180358887,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.498915279037074,
+          "similarity": 0.5689390301704407,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5507372281354935,
+          "similarity": 0.5775368809700012,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5459826337531214,
+          "similarity": 0.5795617699623108,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5285968061238177,
+          "similarity": 0.5594037175178528,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5058997052581857,
+          "similarity": 0.5061755180358887,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.498915279037074,
+          "similarity": 0.5689390301704407,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

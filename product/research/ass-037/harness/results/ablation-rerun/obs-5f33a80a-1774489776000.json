@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-5f33a80a-1774489776000",
+  "query": "schema migration pragma_table_info column addition idempotent",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.6277598444719096,
+          "similarity": 0.6600205898284912,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.6089359184400582,
+          "similarity": 0.6290509104728699,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5995782773634967,
+          "similarity": 0.5782830715179443,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5787614143040908,
+          "similarity": 0.5528160929679871,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1277,
+          "title": "ADR-005 col-022: Schema v12 Migration for Keywords Column",
+          "category": "decision",
+          "final_score": 0.5614089509128968,
+          "similarity": 0.5340602993965149,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5545122145315693,
+          "similarity": 0.6600205898284912,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.5385855198972475,
+          "similarity": 0.6290509104728699,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5281415357589722,
+          "similarity": 0.5782830715179443,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5111558942049795,
+          "similarity": 0.5528160929679871,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1277,
+          "title": "ADR-005 col-022: Schema v12 Migration for Keywords Column",
+          "category": "decision",
+          "final_score": 0.4971736856220045,
+          "similarity": 0.5340602993965149,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5545122145315693,
+          "similarity": 0.6600205898284912,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.5385855198972475,
+          "similarity": 0.6290509104728699,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5281415357589722,
+          "similarity": 0.5782830715179443,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5111558942049795,
+          "similarity": 0.5528160929679871,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1277,
+          "title": "ADR-005 col-022: Schema v12 Migration for Keywords Column",
+          "category": "decision",
+          "final_score": 0.4971736856220045,
+          "similarity": 0.5340602993965149,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.6600205898284912,
+          "similarity": 0.6600205898284912,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.6290509104728699,
+          "similarity": 0.6290509104728699,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5782830715179443,
+          "similarity": 0.5782830715179443,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5528160929679871,
+          "similarity": 0.5528160929679871,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1277,
+          "title": "ADR-005 col-022: Schema v12 Migration for Keywords Column",
+          "category": "decision",
+          "final_score": 0.5340602993965149,
+          "similarity": 0.5340602993965149,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5023203629713793,
+          "similarity": 0.6600205898284912,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.48326209875253534,
+          "similarity": 0.6290509104728699,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.45202035170335036,
+          "similarity": 0.5782830715179443,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.43634836490337664,
+          "similarity": 0.5528160929679871,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1277,
+          "title": "ADR-005 col-022: Schema v12 Migration for Keywords Column",
+          "category": "decision",
+          "final_score": 0.424806338090163,
+          "similarity": 0.5340602993965149,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.6279693298313678,
+          "similarity": 0.6600205898284912,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.60906653527144,
+          "similarity": 0.6290509104728699,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.599439996806058,
+          "similarity": 0.5782830715179443,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5785929381915187,
+          "similarity": 0.5528160929679871,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1277,
+          "title": "ADR-005 col-022: Schema v12 Migration for Keywords Column",
+          "category": "decision",
+          "final_score": 0.5612313622666866,
+          "similarity": 0.5340602993965149,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

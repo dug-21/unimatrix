@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2749",
+  "query": "OK... I want to start a research spike to start a feature dedicated to @product/research/ass-031/OPEN-QUESTIONS.md  from the full research in ass-031.  The overall goal of W3-1 from @product/PRODUCT-VISION.md is large.  ass-031 began to break this down, and what we're going to do is to tackle exactly how to persist the data needed for GNN surfaced in OQ-02 from the open questions doc.  We'll store this research in ass-032",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.4712322010010407,
+          "similarity": 0.4084576368331909,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.45031643763036366,
+          "similarity": 0.3639099597930908,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.44753086680832166,
+          "similarity": 0.4027196168899536,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.44736587068005385,
+          "similarity": 0.36591559648513794,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.4260171369081638,
+          "similarity": 0.36302125453948975,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.4712322010010407,
+          "similarity": 0.4084576368331909,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.45031643763036366,
+          "similarity": 0.3639099597930908,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.44753086680832166,
+          "similarity": 0.4027196168899536,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.44736587068005385,
+          "similarity": 0.36591559648513794,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.4260171369081638,
+          "similarity": 0.36302125453948975,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

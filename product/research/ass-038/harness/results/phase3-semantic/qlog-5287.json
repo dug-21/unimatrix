@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5287",
+  "query": "seems like we could add 1 test to the already created ass-035 test harness to validate cosine assumption.  2. I we made the mistake before by building an architecture around an assumption that did not pan out.  I want another spike to test our GGUF assumption before we head down any more build paths",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.47624132583729206,
+          "similarity": 0.4266836643218994,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.47553811791781997,
+          "similarity": 0.43254756927490234,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.47016007779031554,
+          "similarity": 0.431970477104187,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.4295976213735503,
+          "similarity": 0.4174908399581909,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.47624132583729206,
+          "similarity": 0.4266836643218994,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.47553811791781997,
+          "similarity": 0.43254756927490234,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.47016007779031554,
+          "similarity": 0.431970477104187,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.4295976213735503,
+          "similarity": 0.4174908399581909,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2062",
+  "query": "so lets talk about what retro should do.  (I think).\\\n\\\n1. run context_cycle_review.  Its been defaulting to JSON, for some reason, but would prefer they left that off.\\\n2. Provide This report, summarized directly back to the user.\\\n3. Have Architect review existing feature ADR's to ensure all are stored properly and don't need updating, read agent indivual report files to look for new knowledge that is true knowledge to be stored... Patterns, Procedures, and yes, lessons\\\n4. Have main agent summarize any other findings (not store)  \\\n\\\nNot sure if its doing dramatically more than that.. but the goal here is to help the human learn what they can change/improve about the process by looking at how it went.. AND, to ensure we're capturaing all of the knowledge or lessons that should be learned/retained.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5474514572834642,
+          "similarity": 0.5398191809654236,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5386543967386693,
+          "similarity": 0.5221675038337708,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5202142398828822,
+          "similarity": 0.496715784072876,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.5169656908794011,
+          "similarity": 0.49678468704223633,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1005,
+          "title": "ADR-002: Structured Agent Report Stewardship Block",
+          "category": "decision",
+          "final_score": 0.49084197949487607,
+          "similarity": 0.49519211053848267,
+          "confidence": 0.5534395007168315,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5474514572834642,
+          "similarity": 0.5398191809654236,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5386543967386693,
+          "similarity": 0.5221675038337708,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5202142398828822,
+          "similarity": 0.496715784072876,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.5169656908794011,
+          "similarity": 0.49678468704223633,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1005,
+          "title": "ADR-002: Structured Agent Report Stewardship Block",
+          "category": "decision",
+          "final_score": 0.49084197949487607,
+          "similarity": 0.49519211053848267,
+          "confidence": 0.5534395007168315,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

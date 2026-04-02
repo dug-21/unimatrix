@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002090000",
+  "query": "AF_UNIX UDS socket MCP client Python integration test",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5375785114100919,
+          "similarity": 0.6244093775749207,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.48838521271869545,
+          "similarity": 0.5625162720680237,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.47997807268296505,
+          "similarity": 0.5422304272651672,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.4641129084088038,
+          "similarity": 0.48610615730285645,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.4637631518966951,
+          "similarity": 0.4857543706893921,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4804057708153358,
+          "similarity": 0.6244093775749207,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.4423177058880146,
+          "similarity": 0.5625162720680237,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.42983410908625674,
+          "similarity": 0.5422304272651672,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.3952960968017578,
+          "similarity": 0.48610615730285645,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.3950796127319336,
+          "similarity": 0.4857543706893921,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.6244093775749207,
+          "similarity": 0.6244093775749207,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5625162720680237,
+          "similarity": 0.5625162720680237,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.5422304272651672,
+          "similarity": 0.5422304272651672,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.48610615730285645,
+          "similarity": 0.48610615730285645,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.4857543706893921,
+          "similarity": 0.4857543706893921,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.6080088021731731,
+          "similarity": 0.6244093775749207,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5465565398033052,
+          "similarity": 0.5625162720680237,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.5370061363035631,
+          "similarity": 0.5422304272651672,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.5207328000412155,
+          "similarity": 0.48610615730285645,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.5202872309670921,
+          "similarity": 0.4857543706893921,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5375785114100919,
+          "similarity": 0.6244093775749207,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.48838521271869545,
+          "similarity": 0.5625162720680237,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.47997807268296505,
+          "similarity": 0.5422304272651672,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.4641129084088038,
+          "similarity": 0.48610615730285645,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.4637631518966951,
+          "similarity": 0.4857543706893921,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.6081152994160415,
+          "similarity": 0.6244093775749207,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5466601744284008,
+          "similarity": 0.5625162720680237,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.5370400602708462,
+          "similarity": 0.5422304272651672,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.5205079517117455,
+          "similarity": 0.48610615730285645,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.5200629916146394,
+          "similarity": 0.4857543706893921,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

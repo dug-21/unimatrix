@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3726",
+  "query": "so at this time I want to run an eval to set a baseline for the next several features.  Use @docs/testing/eval-harness.md to run an evaluation run",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5382878884917096,
+          "similarity": 0.5581998825073242,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5276178952422556,
+          "similarity": 0.5855314135551453,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5249966384526435,
+          "similarity": 0.543501615524292,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5073326681530439,
+          "similarity": 0.5295018553733826,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.47315297461582306,
+          "similarity": 0.48146647214889526,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5382878884917096,
+          "similarity": 0.5581998825073242,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5276178952422556,
+          "similarity": 0.5855314135551453,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5249966384526435,
+          "similarity": 0.543501615524292,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5073326681530439,
+          "similarity": 0.5295018553733826,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.47315297461582306,
+          "similarity": 0.48146647214889526,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

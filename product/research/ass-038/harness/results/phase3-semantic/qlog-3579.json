@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3579",
+  "query": "any other options... I don't like any of them.  We had been talking about the coacces part of the current confidence pipeline beginning to build those edges with other signals we had at our disposal, thats why I was surprisd we still had ground truth requirement, because we were going to use signals we had to bild the graph over time",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.48874640586141793,
+          "similarity": 0.4363020658493042,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.466306111342888,
+          "similarity": 0.41500675678253174,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.46107511782370114,
+          "similarity": 0.4354736804962158,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.4607491375341979,
+          "similarity": 0.3972485065460205,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.4437019447264089,
+          "similarity": 0.3879997730255127,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.48874640586141793,
+          "similarity": 0.4363020658493042,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.466306111342888,
+          "similarity": 0.41500675678253174,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.46107511782370114,
+          "similarity": 0.4354736804962158,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.4607491375341979,
+          "similarity": 0.3972485065460205,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.4437019447264089,
+          "similarity": 0.3879997730255127,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

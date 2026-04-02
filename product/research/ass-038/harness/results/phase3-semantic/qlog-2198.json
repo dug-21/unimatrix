@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2198",
+  "query": "now pickup gh issue 360 and work as a bugfix in a worktree since there is active development ongoing in a differetn session",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.4840727246901334,
+          "similarity": 0.45097267627716064,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.47586366878609687,
+          "similarity": 0.44329166412353516,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4669348147040918,
+          "similarity": 0.5081761479377747,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4597274587689898,
+          "similarity": 0.4549928903579712,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.44891805090888304,
+          "similarity": 0.442649781703949,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.4840727246901334,
+          "similarity": 0.45097267627716064,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.47586366878609687,
+          "similarity": 0.44329166412353516,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4669348147040918,
+          "similarity": 0.5081761479377747,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4597274587689898,
+          "similarity": 0.4549928903579712,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.44891805090888304,
+          "similarity": 0.442649781703949,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

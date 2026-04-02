@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4194",
+  "query": "just for grins... you scanned a file... I'm wondering what your response quality is now if you did a context_search for whatever you were looking for",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.4759687125614043,
+          "similarity": 0.4446723461151123,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.4611610060012673,
+          "similarity": 0.3695793151855469,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4359273931921802,
+          "similarity": 0.37028348445892334,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.42469070369345374,
+          "similarity": 0.3663731813430786,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.4172741031200027,
+          "similarity": 0.36411017179489136,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.4759687125614043,
+          "similarity": 0.4446723461151123,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.4611610060012673,
+          "similarity": 0.3695793151855469,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4359273931921802,
+          "similarity": 0.37028348445892334,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.42469070369345374,
+          "similarity": 0.3663731813430786,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.4172741031200027,
+          "similarity": 0.36411017179489136,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

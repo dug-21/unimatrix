@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-d8a65a52-1774652835000",
+  "query": "risk pattern scoring hot path lock contention",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.49495530128479004,
+          "similarity": 0.49495530128479004,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.4925408363342285,
+          "similarity": 0.4925408363342285,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.4804539680480957,
+          "similarity": 0.4804539680480957,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4651775360107422,
+          "similarity": 0.4651775360107422,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.45731133222579956,
+          "similarity": 0.45731133222579956,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4799997041538738,
+          "similarity": 0.49495530128479004,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4741601965767996,
+          "similarity": 0.4651775360107422,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.46060586375938545,
+          "similarity": 0.4925408363342285,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.45271573077371224,
+          "similarity": 0.45731133222579956,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.4392686871726887,
+          "similarity": 0.4804539680480957,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4007417238675631,
+          "similarity": 0.49495530128479004,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.3992558992826022,
+          "similarity": 0.4925408363342285,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.39181782649113583,
+          "similarity": 0.4804539680480957,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.3824169452373798,
+          "similarity": 0.4651775360107422,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.3775762044466459,
+          "similarity": 0.45731133222579956,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5416706428303375,
+          "similarity": 0.49495530128479004,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.5365750211827895,
+          "similarity": 0.4651775360107422,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.5152883584605066,
+          "similarity": 0.4925408363342285,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.5079126371182521,
+          "similarity": 0.45731133222579956,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.4871870247421124,
+          "similarity": 0.4804539680480957,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4799997041538738,
+          "similarity": 0.49495530128479004,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4741601965767996,
+          "similarity": 0.4651775360107422,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.46060586375938545,
+          "similarity": 0.4925408363342285,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.45271573077371224,
+          "similarity": 0.45731133222579956,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.4392686871726887,
+          "similarity": 0.4804539680480957,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5413672964566651,
+          "similarity": 0.49495530128479004,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.5361114011492047,
+          "similarity": 0.4651775360107422,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.5151406472778683,
+          "similarity": 0.4925408363342285,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.507584057216353,
+          "similarity": 0.45731133222579956,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.48714330359474856,
+          "similarity": 0.4804539680480957,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 1544,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3782,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3700,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1274,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1603",
+  "query": "is that actually a proper pipeline (i mean, we're kind of building a self learning, smarter vector db), but this seems like several pieces are out of order... but I'm no expert in this area",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.454982414706844,
+          "similarity": 0.3727753162384033,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.43874585358234064,
+          "similarity": 0.3679116368293762,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4334783353134716,
+          "similarity": 0.3836911916732788,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 450,
+          "title": "Feedback-to-Label Pipeline for Neural Model Retraining",
+          "category": "pattern",
+          "final_score": 0.431124123037696,
+          "similarity": 0.37993520498275757,
+          "confidence": 0.5560008982698071,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 447,
+          "title": "NeuralModel Trait for Framework-Agnostic ML Models",
+          "category": "pattern",
+          "final_score": 0.4262893162095295,
+          "similarity": 0.38229894638061523,
+          "confidence": 0.5395010777392727,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.454982414706844,
+          "similarity": 0.3727753162384033,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.43874585358234064,
+          "similarity": 0.3679116368293762,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4334783353134716,
+          "similarity": 0.3836911916732788,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 450,
+          "title": "Feedback-to-Label Pipeline for Neural Model Retraining",
+          "category": "pattern",
+          "final_score": 0.431124123037696,
+          "similarity": 0.37993520498275757,
+          "confidence": 0.5560008982698071,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 447,
+          "title": "NeuralModel Trait for Framework-Agnostic ML Models",
+          "category": "pattern",
+          "final_score": 0.4262893162095295,
+          "similarity": 0.38229894638061523,
+          "confidence": 0.5395010777392727,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

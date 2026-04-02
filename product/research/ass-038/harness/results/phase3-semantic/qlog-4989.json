@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4989",
+  "query": "so... talking about vision... Unimatrix represents Semantic+Graph bounded by SQL... all 3 technologies in unison working together leveraging each's strengths... not looking to convert to total graph database platform... its about leveraging technoogies for their strengths, and aligning them for the best result.  That said... for crt-037 a couple things.  IT MUST enable domain agnosticism... software engineering category relationships in config, structural Informs definition in code.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5681687973212338,
+          "similarity": 0.5782448649406433,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5083715812376539,
+          "similarity": 0.47421473264694214,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4935133971253597,
+          "similarity": 0.44535934925079346,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.4717757324295577,
+          "similarity": 0.4457836151123047,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.44015657170448896,
+          "similarity": 0.4426414966583252,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5681687973212338,
+          "similarity": 0.5782448649406433,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5083715812376539,
+          "similarity": 0.47421473264694214,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4935133971253597,
+          "similarity": 0.44535934925079346,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.4717757324295577,
+          "similarity": 0.4457836151123047,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.44015657170448896,
+          "similarity": 0.4426414966583252,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

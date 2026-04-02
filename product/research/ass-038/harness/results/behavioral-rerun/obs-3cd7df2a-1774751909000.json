@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774751909000",
+  "query": "search pipeline step insertion pattern context_search",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5018405778581024,
+          "similarity": 0.5181514620780945,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5015657763165472,
+          "similarity": 0.47378450632095337,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.48381815384022187,
+          "similarity": 0.4440796375274658,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.4802075165267806,
+          "similarity": 0.4522194266319275,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4415020705353858,
+          "similarity": 0.4412189722061157,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5018405778581024,
+          "similarity": 0.5181514620780945,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5015657763165472,
+          "similarity": 0.47378450632095337,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.48381815384022187,
+          "similarity": 0.4440796375274658,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.4802075165267806,
+          "similarity": 0.4522194266319275,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4415020705353858,
+          "similarity": 0.4412189722061157,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

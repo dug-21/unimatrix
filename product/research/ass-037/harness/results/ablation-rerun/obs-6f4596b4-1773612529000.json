@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-6f4596b4-1773612529000",
+  "query": "pytest fixture scope server function module shared state test ordering",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.5607729708157527,
+          "similarity": 0.5688838362693787,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.5425975354828869,
+          "similarity": 0.5060874223709106,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.5370233455047775,
+          "similarity": 0.5138000845909119,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.5093435143097029,
+          "similarity": 0.4579054117202759,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.500483383851542,
+          "similarity": 0.5259871482849121,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.499197724185004,
+          "similarity": 0.5688838362693787,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.4814701631640255,
+          "similarity": 0.5060874223709106,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.4779598720528315,
+          "similarity": 0.5138000845909119,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.4538006612628033,
+          "similarity": 0.4579054117202759,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.45220840454076,
+          "similarity": 0.5259871482849121,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.44623620693500227,
+          "similarity": 0.5688838362693787,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.41983824509840745,
+          "similarity": 0.5259871482849121,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.4123385135944073,
+          "similarity": 0.5138000845909119,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.4075922599205604,
+          "similarity": 0.5060874223709106,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.3779417918278621,
+          "similarity": 0.4579054117202759,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.5688838362693787,
+          "similarity": 0.5688838362693787,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.5259871482849121,
+          "similarity": 0.5259871482849121,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.5138000845909119,
+          "similarity": 0.5138000845909119,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.5060874223709106,
+          "similarity": 0.5060874223709106,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.4579054117202759,
+          "similarity": 0.4579054117202759,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.499197724185004,
+          "similarity": 0.5688838362693787,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.4814701631640255,
+          "similarity": 0.5060874223709106,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.4779598720528315,
+          "similarity": 0.5138000845909119,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.4538006612628033,
+          "similarity": 0.4579054117202759,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.45220840454076,
+          "similarity": 0.5259871482849121,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.5608256387732438,
+          "similarity": 0.5688838362693787,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.5423604568263156,
+          "similarity": 0.5060874223709106,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.5368725451092328,
+          "similarity": 0.5138000845909119,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.5090095006565247,
+          "similarity": 0.4579054117202759,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.500648992711499,
+          "similarity": 0.5259871482849121,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

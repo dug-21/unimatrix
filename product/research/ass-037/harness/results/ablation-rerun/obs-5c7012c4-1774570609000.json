@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-5c7012c4-1774570609000",
+  "query": "eval harness sidecar backward compat corrupt abort",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5439332648241969,
+          "similarity": 0.6415876746177673,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.391309472641959,
+          "similarity": 0.3531073331832886,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.3904976895863088,
+          "similarity": 0.3256692886352539,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.38252916724912034,
+          "similarity": 0.34542059898376465,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.374628979528504,
+          "similarity": 0.3079477548599243,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.6152192088859261,
+          "similarity": 0.6415876746177673,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.4347087322872162,
+          "similarity": 0.3256692886352539,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4333213414950996,
+          "similarity": 0.3531073331832886,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.4220469917957309,
+          "similarity": 0.34542059898376465,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.41468063073342143,
+          "similarity": 0.3079477548599243,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5439332648241969,
+          "similarity": 0.6415876746177673,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.391309472641959,
+          "similarity": 0.3531073331832886,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.3904976895863088,
+          "similarity": 0.3256692886352539,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.38252916724912034,
+          "similarity": 0.34542059898376465,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.374628979528504,
+          "similarity": 0.3079477548599243,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.4909770305340107,
+          "similarity": 0.6415876746177673,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.3134506665743314,
+          "similarity": 0.3531073331832886,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.30872036860539365,
+          "similarity": 0.34542059898376465,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.2965657160832332,
+          "similarity": 0.3256692886352539,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.2856601568368765,
+          "similarity": 0.3079477548599243,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.6415876746177673,
+          "similarity": 0.6415876746177673,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.3531073331832886,
+          "similarity": 0.3531073331832886,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.34542059898376465,
+          "similarity": 0.34542059898376465,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.3256692886352539,
+          "similarity": 0.3256692886352539,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.3079477548599243,
+          "similarity": 0.3079477548599243,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.615046865972646,
+          "similarity": 0.6415876746177673,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.4354214083895166,
+          "similarity": 0.3256692886352539,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4338456160592291,
+          "similarity": 0.3531073331832886,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.42254781789254126,
+          "similarity": 0.34542059898376465,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.4153782312293267,
+          "similarity": 0.3079477548599243,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3610,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3582,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

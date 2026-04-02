@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5043",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Clean alignment — no blocking variances. Spawning synthesizer.\n[tool: Agent(uni-vision-guardian) → Report written. Here is the summary:\n\n**Report path:** `/workspaces/unimatrix/product/features/crt-037/ALIGNMENT-REPORT.md`\n\n---\n\n## Alignment Status\n\n| Check | Status |\n|-------|--------|\n| Vision Alignment | PASS |\n| Milestone Fit | PASS |\n| Scope Gaps | WARN |\n| Scope Additions | PASS |\n| Archite]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5103997024391385,
+          "similarity": 0.4663093090057373,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.49473171241948277,
+          "similarity": 0.44328534603118896,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.48722626231722277,
+          "similarity": 0.4814959764480591,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.4836237671297281,
+          "similarity": 0.48353952169418335,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.44053513326142957,
+          "similarity": 0.4580167531967163,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5103997024391385,
+          "similarity": 0.4663093090057373,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.49473171241948277,
+          "similarity": 0.44328534603118896,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.48722626231722277,
+          "similarity": 0.4814959764480591,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.4836237671297281,
+          "similarity": 0.48353952169418335,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.44053513326142957,
+          "similarity": 0.4580167531967163,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

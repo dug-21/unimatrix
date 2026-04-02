@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-b0be618b-1774493774000",
+  "query": "nan-008 architectural decisions",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4776314157617,
+          "similarity": 0.4702466130256653,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.4661582145531158,
+          "similarity": 0.4109262228012085,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4578300860714608,
+          "similarity": 0.451387882232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.44125335492712525,
+          "similarity": 0.4099212884902954,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.43060704178084264,
+          "similarity": 0.40888917446136475,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4776314157617,
+          "similarity": 0.4702466130256653,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.4661582145531158,
+          "similarity": 0.4109262228012085,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4578300860714608,
+          "similarity": 0.451387882232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.44125335492712525,
+          "similarity": 0.4099212884902954,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.43060704178084264,
+          "similarity": 0.40888917446136475,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

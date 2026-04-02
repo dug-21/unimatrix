@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-684",
+  "query": "I choose option 1.  I'm not convinced we have any reliability on an unhelpful score",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.44903396714416643,
+          "similarity": 0.37034571170806885,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.42511995392821433,
+          "similarity": 0.3266780376434326,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.4204512898392426,
+          "similarity": 0.35828840732574463,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.41658422427821373,
+          "similarity": 0.31123417615890503,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.3917034582763885,
+          "similarity": 0.3339420557022095,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.44903396714416643,
+          "similarity": 0.37034571170806885,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.42511995392821433,
+          "similarity": 0.3266780376434326,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.4204512898392426,
+          "similarity": 0.35828840732574463,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.41658422427821373,
+          "similarity": 0.31123417615890503,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.3917034582763885,
+          "similarity": 0.3339420557022095,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

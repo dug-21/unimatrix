@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-d8a65a52-1774641137000",
+  "query": "TypedGraphState Arc RwLock rebuild tick cached state pattern",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.530291175842285,
+          "similarity": 0.4925532341003418,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5161349207464188,
+          "similarity": 0.5256224274635315,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.4951735643077487,
+          "similarity": 0.4958995580673218,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.4906851346605873,
+          "similarity": 0.48356783390045166,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3693,
+          "title": "run_single_tick rebuild: use timeout+spawn+swap triple-nest; error branch must NOT write to handle",
+          "category": "pattern",
+          "final_score": 0.4897907672188181,
+          "similarity": 0.5334572196006775,
+          "confidence": 0.4959217687358244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.530291175842285,
+          "similarity": 0.4925532341003418,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5161349207464188,
+          "similarity": 0.5256224274635315,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.4951735643077487,
+          "similarity": 0.4958995580673218,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.4906851346605873,
+          "similarity": 0.48356783390045166,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3693,
+          "title": "run_single_tick rebuild: use timeout+spawn+swap triple-nest; error branch must NOT write to handle",
+          "category": "pattern",
+          "final_score": 0.4897907672188181,
+          "similarity": 0.5334572196006775,
+          "confidence": 0.4959217687358244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4731",
+  "query": "do you know of a way to look deeper into the observation data and inject a stop cycle event in the cycle events table to normalize these?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.4963792834072501,
+          "similarity": 0.45852088928222656,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.4942790932983183,
+          "similarity": 0.4734247922897339,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.48504454060604685,
+          "similarity": 0.42458462715148926,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.4806455489861624,
+          "similarity": 0.42250704765319824,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.4756958610215297,
+          "similarity": 0.44803833961486816,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.4963792834072501,
+          "similarity": 0.45852088928222656,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.4942790932983183,
+          "similarity": 0.4734247922897339,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.48504454060604685,
+          "similarity": 0.42458462715148926,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.4806455489861624,
+          "similarity": 0.42250704765319824,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.4756958610215297,
+          "similarity": 0.44803833961486816,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

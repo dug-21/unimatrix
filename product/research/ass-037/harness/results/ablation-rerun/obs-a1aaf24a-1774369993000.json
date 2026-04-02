@@ -1,0 +1,321 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774369993000",
+  "query": "features table feature_entries feature_cycles schema",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.3709223453815167,
+          "similarity": 0.4464988112449646,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.36990965329683745,
+          "similarity": 0.44485318660736084,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.3393660325270433,
+          "similarity": 0.3952198028564453,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.3352375030517578,
+          "similarity": 0.38851094245910645,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.4629365375570121,
+          "similarity": 0.44485318660736084,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.4544852106519623,
+          "similarity": 0.4464988112449646,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.417500460965089,
+          "similarity": 0.3952198028564453,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.3852554712295532,
+          "similarity": 0.38851094245910645,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.4629365375570121,
+          "similarity": 0.44485318660736084,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.4544852106519623,
+          "similarity": 0.4464988112449646,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.417500460965089,
+          "similarity": 0.3952198028564453,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.3852554712295532,
+          "similarity": 0.38851094245910645,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5231625822736087,
+          "similarity": 0.44485318660736084,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.5114013860669124,
+          "similarity": 0.4464988112449646,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.46566535790733343,
+          "similarity": 0.3952198028564453,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.42206526027006264,
+          "similarity": 0.38851094245910645,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5226540797043473,
+          "similarity": 0.44485318660736084,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.5109799407758608,
+          "similarity": 0.4464988112449646,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.4652079192381718,
+          "similarity": 0.3952198028564453,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.42184737508947195,
+          "similarity": 0.38851094245910645,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1886,
+          "title": "feature_cycle and topic are domain-neutral attribution fields",
+          "category": "convention",
+          "final_score": 0.4464988112449646,
+          "similarity": 0.4464988112449646,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.44485318660736084,
+          "similarity": 0.44485318660736084,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.3952198028564453,
+          "similarity": 0.3952198028564453,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.38851094245910645,
+          "similarity": 0.38851094245910645,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6666666666666666,
+    "rank_changes": [
+      {
+        "entry_id": 3396,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1886,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

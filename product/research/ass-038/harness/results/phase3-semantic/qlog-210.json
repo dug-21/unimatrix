@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-210",
+  "query": "You are researching the problem space for nan-003.\nYour agent ID: nan-003-researcher\n\nHigh-level intent: nan-003 delivers two skills for onboarding new repos to Unimatrix:\n\n1. `/unimatrix-init` — Deterministic setup:\n   - Append a Unimatrix block to CLAUDE.md with awareness of available skills (unimatrix- prefix), category conventions, and basic usage instructions\n   - Scan existing .claude/agents/ definitions and recommend changes (add context_briefing orientation, outcome reporting, reference unimatrix-* skills) — READ-ONLY recommendations, no auto-editing\n   - Must be idempotent — safe to run twice\n\n2. `/unimatrix-seed` — Optional, conversational repo exploration:\n   - Agent explores repo structure: directory layout, README, package manifests, config files\n   - Identifies modules, goals, patterns, conventions at a high level\n   - Stores foundational knowledge entries via context_store\n   - Presents human with options for deeper exploration\n   - Human controls depth: high-level pass is automatic, deeper dives require explicit opt-in\n\nKey design decisions already made:\n- Skill naming: all production skills use unimatrix- prefix\n- Three-layer chain: CLAUDE.md awareness -> skill invocation -> agent behavior\n- Wiring NOT in scope (nan-004): settings.json, hooks, binary installation, ONNX model download\n- No auto-editing of agent files: recommendations only\n- Seed depth is human-controlled\n\nExisting context:\n- alc-001 research identified the CLAUDE.md block + agent orientation + skills pattern\n- uni-init bootstrap prototype produced 67 low-quality entries — this conversational, human-directed approach is the fix\n- Existing skills in .claude/skills/ are the reference for skill file format\n- Current skills: store-adr, review-pr, retro, query-patterns, store-pattern, store-procedure, store-lesson, record-outcome, knowledge-lookup, knowledge-search, uni-git\n\nDependencies:\n- Assumes MCP server is already wired (nan-004 or manual setup)\n- Skills are files in .claude/skills/ — they need to be in the target repo\n- Skills call MCP tools (context_store, context_search, context_briefing, etc.) which must be available\n\nExplore the problem space — existing codebase patterns, technical landscape, constraints, and relevant project knowledge.\n\nSynthesize findings and propose scope boundaries with rationale.\nWrite SCOPE.md to product/features/nan-003/SCOPE.md.\n\nReturn: SCOPE.md path, key findings, open questions for human.\n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.6060851719159387,
+          "similarity": 0.6481117010116577,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5873678284025982,
+          "similarity": 0.6606133580207825,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5868896296268236,
+          "similarity": 0.650985062122345,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1093,
+          "title": "ADR-004 nan-003: Terminal-Only Output for Agent Orientation Recommendations",
+          "category": "decision",
+          "final_score": 0.5620305472981364,
+          "similarity": 0.6561611890792847,
+          "confidence": 0.516709786838821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5587935751064395,
+          "similarity": 0.6524435877799988,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.6060851719159387,
+          "similarity": 0.6481117010116577,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5873678284025982,
+          "similarity": 0.6606133580207825,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5868896296268236,
+          "similarity": 0.650985062122345,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1093,
+          "title": "ADR-004 nan-003: Terminal-Only Output for Agent Orientation Recommendations",
+          "category": "decision",
+          "final_score": 0.5620305472981364,
+          "similarity": 0.6561611890792847,
+          "confidence": 0.516709786838821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5587935751064395,
+          "similarity": 0.6524435877799988,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 13,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

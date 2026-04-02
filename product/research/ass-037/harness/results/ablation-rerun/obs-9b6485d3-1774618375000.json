@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-9b6485d3-1774618375000",
+  "query": "NLI tick graph inference implementation patterns",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5208912603385967,
+          "similarity": 0.574810802936554,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5154940554676924,
+          "similarity": 0.5701525211334229,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5066494369872392,
+          "similarity": 0.5414275527000427,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.49435181954950363,
+          "similarity": 0.5485557913780212,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5208912603385967,
+          "similarity": 0.574810802936554,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5154940554676924,
+          "similarity": 0.5701525211334229,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5066494369872392,
+          "similarity": 0.5414275527000427,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.49435181954950363,
+          "similarity": 0.5485557913780212,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.44988357103787935,
+          "similarity": 0.574810802936554,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.4470169360821064,
+          "similarity": 0.5701525211334229,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.4337266408480131,
+          "similarity": 0.5485557913780212,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.42934003243079555,
+          "similarity": 0.5414275527000427,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.589967337431745,
+          "similarity": 0.574810802936554,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5830161034719874,
+          "similarity": 0.5701525211334229,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5736926044236574,
+          "similarity": 0.5414275527000427,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5561146747367676,
+          "similarity": 0.5485557913780212,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.574810802936554,
+          "similarity": 0.574810802936554,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5701525211334229,
+          "similarity": 0.5701525211334229,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5485557913780212,
+          "similarity": 0.5485557913780212,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5414275527000427,
+          "similarity": 0.5414275527000427,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5898689183765813,
+          "similarity": 0.574810802936554,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5829325737165422,
+          "similarity": 0.5701525211334229,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5734830911007767,
+          "similarity": 0.5414275527000427,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5560655910785939,
+          "similarity": 0.5485557913780212,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

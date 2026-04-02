@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-abcc3cc8-1773157713000",
+  "query": "idempotent counter update topic deliveries",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 865,
+          "title": "ADR-002 col-020: Idempotent Counter Updates via Absolute-Set",
+          "category": "decision",
+          "final_score": 0.5570588093389276,
+          "similarity": 0.5996482968330383,
+          "confidence": 0.5839477727298916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.48756526996497507,
+          "similarity": 0.4341002106666565,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.47391129482435235,
+          "similarity": 0.45584118366241455,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.4606761857539271,
+          "similarity": 0.36519384384155273,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.45144434275195655,
+          "similarity": 0.3913317322731018,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 865,
+          "title": "ADR-002 col-020: Idempotent Counter Updates via Absolute-Set",
+          "category": "decision",
+          "final_score": 0.5570588093389276,
+          "similarity": 0.5996482968330383,
+          "confidence": 0.5839477727298916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.48756526996497507,
+          "similarity": 0.4341002106666565,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.47391129482435235,
+          "similarity": 0.45584118366241455,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.4606761857539271,
+          "similarity": 0.36519384384155273,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.45144434275195655,
+          "similarity": 0.3913317322731018,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

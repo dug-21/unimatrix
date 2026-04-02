@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-801",
+  "query": "mcp is back up",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4750356644935674,
+          "similarity": 0.44336217641830444,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.47071380574370236,
+          "similarity": 0.43179237842559814,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4637552226299345,
+          "similarity": 0.4173511266708374,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.44991624231017,
+          "similarity": 0.3907356262207031,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.43532822509745284,
+          "similarity": 0.3630183935165405,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4750356644935674,
+          "similarity": 0.44336217641830444,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.47071380574370236,
+          "similarity": 0.43179237842559814,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4637552226299345,
+          "similarity": 0.4173511266708374,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.44991624231017,
+          "similarity": 0.3907356262207031,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.43532822509745284,
+          "similarity": 0.3630183935165405,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

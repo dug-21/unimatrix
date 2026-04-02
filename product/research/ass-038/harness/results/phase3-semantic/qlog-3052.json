@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3052",
+  "query": "I want to pickup issue #383 as a bugfix. First job is to determin if it actually needs to be fixed at all any more.  Read the issue and comments, and begin bugfix protocol in a worktree",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5512221898728619,
+          "similarity": 0.5502722859382629,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3257,
+          "title": "Bug fix clippy triage: scope to affected crates, not workspace, when pre-existing errors exist",
+          "category": "procedure",
+          "final_score": 0.5237144305240313,
+          "similarity": 0.5087289810180664,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5209710068379995,
+          "similarity": 0.49757111072540283,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.49029503571359734,
+          "similarity": 0.552560567855835,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4759993585208504,
+          "similarity": 0.494104266166687,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5512221898728619,
+          "similarity": 0.5502722859382629,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3257,
+          "title": "Bug fix clippy triage: scope to affected crates, not workspace, when pre-existing errors exist",
+          "category": "procedure",
+          "final_score": 0.5237144305240313,
+          "similarity": 0.5087289810180664,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5209710068379995,
+          "similarity": 0.49757111072540283,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.49029503571359734,
+          "similarity": 0.552560567855835,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4759993585208504,
+          "similarity": 0.494104266166687,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4555",
+  "query": "so there are alot of interesting details in this design... I'm asking you to review the proposed design and provide me your thoughts product/features/crt-033 you'll find architecture/architecture.md and specification/specification.md.  These are the 3 things highlighted, but I'm a little suspect of this: Three items for your review before delivery proceeds:           \n                                                                  \n  1. pending_cycle_reviews source — SCOPE said                    \n  query_log.feature_cycle (column doesn't exist). Architecture and\n   spec both converged on cycle_events with                       \n  event_type='cycle_start'. This changes semantics slightly:    \n  \"cycle had a start event\" vs \"Unimatrix was queried during this\n  cycle.\" Confirm the substitution matches intent.\n  2. Schema cascade touchpoint count — architecture lists 7\n  touchpoints, spec AC-02b lists 5. Architecture is authoritative \n  for delivery. AC-02b in the spec could be updated before\n  delivery starts if you want the spec to be the single source.   \n  3. raw_signals_available type — spec says bool, architecture  \n  struct says i32. Delivery must resolve before implementation    \n  (sqlx binding differs).",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5744256366470123,
+          "similarity": 0.6068089604377747,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5609122758590346,
+          "similarity": 0.5833996534347534,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.5560290365221763,
+          "similarity": 0.6159160137176514,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.5456519601798394,
+          "similarity": 0.571033239364624,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.5390726701944978,
+          "similarity": 0.5746586918830872,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5744256366470123,
+          "similarity": 0.6068089604377747,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5609122758590346,
+          "similarity": 0.5833996534347534,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.5560290365221763,
+          "similarity": 0.6159160137176514,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.5456519601798394,
+          "similarity": 0.571033239364624,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.5390726701944978,
+          "similarity": 0.5746586918830872,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

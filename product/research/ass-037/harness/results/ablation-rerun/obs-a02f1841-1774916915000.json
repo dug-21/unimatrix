@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a02f1841-1774916915000",
+  "query": "Rust as cast wrapping truncation integer overflow u64 i64",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.5749921202993534,
+          "similarity": 0.7060726284980774,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.47929842133227546,
+          "similarity": 0.5283005833625793,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.44122575529665026,
+          "similarity": 0.45670366287231445,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.43124852014849563,
+          "similarity": 0.42072510719299316,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.4186062980376102,
+          "similarity": 0.4300469160079956,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.53066007907574,
+          "similarity": 0.7060726284980774,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.421261897453895,
+          "similarity": 0.5283005833625793,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.3772022540752704,
+          "similarity": 0.45670366287231445,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.3607981021587665,
+          "similarity": 0.4300469160079956,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.35506160442645734,
+          "similarity": 0.42072510719299316,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.5749921202993534,
+          "similarity": 0.7060726284980774,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.47929842133227546,
+          "similarity": 0.5283005833625793,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.44122575529665026,
+          "similarity": 0.45670366287231445,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.43124852014849563,
+          "similarity": 0.42072510719299316,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.4186062980376102,
+          "similarity": 0.4300469160079956,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.6517099250902021,
+          "similarity": 0.7060726284980774,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.5373796124201411,
+          "similarity": 0.5283005833625793,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.49197115150703985,
+          "similarity": 0.45670366287231445,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.4816366086394946,
+          "similarity": 0.42072510719299316,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.4635497776869234,
+          "similarity": 0.4300469160079956,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.6513546133032226,
+          "similarity": 0.7060726284980774,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.5374389524793409,
+          "similarity": 0.5283005833625793,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.4922016579687048,
+          "similarity": 0.45670366287231445,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.48203472302803385,
+          "similarity": 0.42072510719299316,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.46376875063907325,
+          "similarity": 0.4300469160079956,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.7060726284980774,
+          "similarity": 0.7060726284980774,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.5283005833625793,
+          "similarity": 0.5283005833625793,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.45670366287231445,
+          "similarity": 0.45670366287231445,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.4300469160079956,
+          "similarity": 0.4300469160079956,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.42072510719299316,
+          "similarity": 0.42072510719299316,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

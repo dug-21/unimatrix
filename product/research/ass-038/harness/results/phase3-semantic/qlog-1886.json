@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1886",
+  "query": "now its time to pickup issue #340 and work in bugfix protocol in a worktree",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.537704923047236,
+          "similarity": 0.524589478969574,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5135740704213735,
+          "similarity": 0.4835169315338135,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4884941439809275,
+          "similarity": 0.4672895669937134,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.48266548144964416,
+          "similarity": 0.46664971113204956,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.47684436923579165,
+          "similarity": 0.5270043015480042,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.537704923047236,
+          "similarity": 0.524589478969574,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5135740704213735,
+          "similarity": 0.4835169315338135,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4884941439809275,
+          "similarity": 0.4672895669937134,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.48266548144964416,
+          "similarity": 0.46664971113204956,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.47684436923579165,
+          "similarity": 0.5270043015480042,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

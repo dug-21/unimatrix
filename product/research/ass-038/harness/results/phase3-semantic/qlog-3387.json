@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3387",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Good. Now spawning Phase 2b (vision guardian) and then Phase 2c (synthesizer) sequentially.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5113505539922946,
+          "similarity": 0.47486114501953125,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.47521350925430517,
+          "similarity": 0.4276554584503174,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.469313213957843,
+          "similarity": 0.42702025175094604,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.46078903634215207,
+          "similarity": 0.4129353165626526,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3693,
+          "title": "run_single_tick rebuild: use timeout+spawn+swap triple-nest; error branch must NOT write to handle",
+          "category": "pattern",
+          "final_score": 0.43829778129264174,
+          "similarity": 0.4356205463409424,
+          "confidence": 0.4959217687358244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5113505539922946,
+          "similarity": 0.47486114501953125,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.47521350925430517,
+          "similarity": 0.4276554584503174,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.469313213957843,
+          "similarity": 0.42702025175094604,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.46078903634215207,
+          "similarity": 0.4129353165626526,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3693,
+          "title": "run_single_tick rebuild: use timeout+spawn+swap triple-nest; error branch must NOT write to handle",
+          "category": "pattern",
+          "final_score": 0.43829778129264174,
+          "similarity": 0.4356205463409424,
+          "confidence": 0.4959217687358244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-a18ee37f-1773276029000",
+  "query": "unimatrix",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.45724964141845703,
+          "similarity": 0.45724964141845703,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.44438040256500244,
+          "similarity": 0.44438040256500244,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.43138182163238525,
+          "similarity": 0.43138182163238525,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4209315776824951,
+          "similarity": 0.4209315776824951,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.4114542007446289,
+          "similarity": 0.4114542007446289,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4386335299013889,
+          "similarity": 0.4209315776824951,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4376355537144228,
+          "similarity": 0.44438040256500244,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.43177205943717334,
+          "similarity": 0.45724964141845703,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4231870156116239,
+          "similarity": 0.43138182163238525,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.41262820492390234,
+          "similarity": 0.4114542007446289,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4386335299013889,
+          "similarity": 0.4209315776824951,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4376355537144228,
+          "similarity": 0.44438040256500244,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.43177205943717334,
+          "similarity": 0.45724964141845703,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4231870156116239,
+          "similarity": 0.43138182163238525,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.41262820492390234,
+          "similarity": 0.4114542007446289,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4921507687193088,
+          "similarity": 0.4209315776824951,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.48848209308205065,
+          "similarity": 0.44438040256500244,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.4791724696766637,
+          "similarity": 0.45724964141845703,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.46992513695395594,
+          "similarity": 0.43138182163238525,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.4573863400186279,
+          "similarity": 0.4114542007446289,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.49168830643984895,
+          "similarity": 0.4209315776824951,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.48819571846830356,
+          "similarity": 0.44438040256500244,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.47903011364901293,
+          "similarity": 0.45724964141845703,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.469674855685634,
+          "similarity": 0.43138182163238525,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.4570880793739915,
+          "similarity": 0.4114542007446289,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.37753824087289667,
+          "similarity": 0.45724964141845703,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.36961870927077073,
+          "similarity": 0.44438040256500244,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.3616195825430063,
+          "similarity": 0.43138182163238525,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.35518866318922776,
+          "similarity": 0.4209315776824951,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.34935643122746396,
+          "similarity": 0.4114542007446289,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 2285,
+        "from_rank": 1,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 1199,
+        "from_rank": 3,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 2524,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-1133",
+  "query": "Last thing to add to scope for review and architect to review... is to ensure proper review/constraints applied when reading config.  likely these should be scanned for bad characters/etc.  Might as well put some thought into config protection while we building this",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.501668554916039,
+          "similarity": 0.4794647693634033,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.49650426812395876,
+          "similarity": 0.5080124735832214,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.4929241193166227,
+          "similarity": 0.4590059518814087,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.45493388496433185,
+          "similarity": 0.45407986640930176,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.501668554916039,
+          "similarity": 0.4794647693634033,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.49650426812395876,
+          "similarity": 0.5080124735832214,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.4929241193166227,
+          "similarity": 0.4590059518814087,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.45493388496433185,
+          "similarity": 0.45407986640930176,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

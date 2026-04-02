@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773884127000",
+  "query": "risk pattern graph penalty supersession typed edges analytics queue shed",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5520491577450521,
+          "similarity": 0.5398848056793213,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.537669101843066,
+          "similarity": 0.554490864276886,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5277076290263853,
+          "similarity": 0.5119326114654541,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5176094895035969,
+          "similarity": 0.5196192860603333,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 38,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.554490864276886,
+          "similarity": 0.554490864276886,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5398848056793213,
+          "similarity": 0.5398848056793213,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5196192860603333,
+          "similarity": 0.5196192860603333,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5119326114654541,
+          "similarity": 0.5119326114654541,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5521286633141093,
+          "similarity": 0.5398848056793213,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.537559155683368,
+          "similarity": 0.554490864276886,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.527810733716326,
+          "similarity": 0.5119326114654541,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5175963535783895,
+          "similarity": 0.5196192860603333,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4373789934011606,
+          "similarity": 0.554490864276886,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.4283906496488131,
+          "similarity": 0.5398848056793213,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.4159195606525128,
+          "similarity": 0.5196192860603333,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.41118929936335635,
+          "similarity": 0.5119326114654541,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.4908283693916597,
+          "similarity": 0.5398848056793213,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.48125673230337424,
+          "similarity": 0.554490864276886,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.47111443538371284,
+          "similarity": 0.5119326114654541,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.46422157803999325,
+          "similarity": 0.5196192860603333,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.4908283693916597,
+          "similarity": 0.5398848056793213,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.48125673230337424,
+          "similarity": 0.554490864276886,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.47111443538371284,
+          "similarity": 0.5119326114654541,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.46422157803999325,
+          "similarity": 0.5196192860603333,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 24,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

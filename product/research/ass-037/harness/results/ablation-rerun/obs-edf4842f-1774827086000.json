@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-edf4842f-1774827086000",
+  "query": "schema migration cascade touchpoints CURRENT_SCHEMA_VERSION migration block create_tables_if_needed",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.6116058826446533,
+          "similarity": 0.6116058826446533,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5996437668800354,
+          "similarity": 0.5996437668800354,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5932173132896423,
+          "similarity": 0.5932173132896423,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5930836796760559,
+          "similarity": 0.5930836796760559,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5624702572822571,
+          "similarity": 0.5624702572822571,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5447598279922841,
+          "similarity": 0.6116058826446533,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5356086566448212,
+          "similarity": 0.5932173132896423,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5282216235896754,
+          "similarity": 0.5930836796760559,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5198958073005108,
+          "similarity": 0.5996437668800354,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5057370482584521,
+          "similarity": 0.5624702572822571,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5447598279922841,
+          "similarity": 0.6116058826446533,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5356086566448212,
+          "similarity": 0.5932173132896423,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5282216235896754,
+          "similarity": 0.5930836796760559,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5198958073005108,
+          "similarity": 0.5996437668800354,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5057370482584521,
+          "similarity": 0.5624702572822571,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.6190719579308732,
+          "similarity": 0.6116058826446533,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.6082647760347886,
+          "similarity": 0.5932173132896423,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.598203697651734,
+          "similarity": 0.5930836796760559,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.586253940238875,
+          "similarity": 0.5996437668800354,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5703259515085931,
+          "similarity": 0.5624702572822571,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.619120755808561,
+          "similarity": 0.6116058826446533,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.6083631254644954,
+          "similarity": 0.5932173132896423,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5982371618215097,
+          "similarity": 0.5930836796760559,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5861664250320701,
+          "similarity": 0.5996437668800354,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5703772959153013,
+          "similarity": 0.5624702572822571,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.4725266970120944,
+          "similarity": 0.6116058826446533,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.4651653950030987,
+          "similarity": 0.5996437668800354,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.4612106543320876,
+          "similarity": 0.5932173132896423,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.46112841826218826,
+          "similarity": 0.5930836796760559,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.4422893890967736,
+          "similarity": 0.5624702572822571,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3894,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 681,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 760,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

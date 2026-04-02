@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1874",
+  "query": "yeah... I want to eliminate them from the search.  Their presence impacts search quality.  So.. my recommendation is quarantine them all, in batches of 25.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.44028346378158534,
+          "similarity": 0.3911707401275635,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.43047372905707815,
+          "similarity": 0.3628661632537842,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 973,
+          "title": "Retrospective findings: crt-003",
+          "category": "lesson-learned",
+          "final_score": 0.42822232616623435,
+          "similarity": 0.3626519441604614,
+          "confidence": 0.57281496507912,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3872,
+          "title": "Retrospective findings: crt-030",
+          "category": "lesson-learned",
+          "final_score": 0.3996925135160747,
+          "similarity": 0.358015775680542,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.39407854024987465,
+          "similarity": 0.34734922647476196,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.44028346378158534,
+          "similarity": 0.3911707401275635,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.43047372905707815,
+          "similarity": 0.3628661632537842,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 973,
+          "title": "Retrospective findings: crt-003",
+          "category": "lesson-learned",
+          "final_score": 0.42822232616623435,
+          "similarity": 0.3626519441604614,
+          "confidence": 0.57281496507912,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3872,
+          "title": "Retrospective findings: crt-030",
+          "category": "lesson-learned",
+          "final_score": 0.3996925135160747,
+          "similarity": 0.358015775680542,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.39407854024987465,
+          "similarity": 0.34734922647476196,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

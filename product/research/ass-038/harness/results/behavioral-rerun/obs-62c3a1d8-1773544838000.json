@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-62c3a1d8-1773544838000",
+  "query": "crt-014 topology supersession graph penalty",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5684676532320309,
+          "similarity": 0.5993830561637878,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.5521482560939327,
+          "similarity": 0.580207884311676,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.5441652988204014,
+          "similarity": 0.5797392129898071,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.5316304795838126,
+          "similarity": 0.5539577603340149,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5088434093673412,
+          "similarity": 0.5419568419456482,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5684676532320309,
+          "similarity": 0.5993830561637878,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.5521482560939327,
+          "similarity": 0.580207884311676,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.5441652988204014,
+          "similarity": 0.5797392129898071,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.5316304795838126,
+          "similarity": 0.5539577603340149,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5088434093673412,
+          "similarity": 0.5419568419456482,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-683",
+  "query": "how can we determine implicitly something was unhelpful",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.38983995758415557,
+          "similarity": 0.2595610022544861,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.38521550214641975,
+          "similarity": 0.2913404107093811,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.38230982098595323,
+          "similarity": 0.24988317489624023,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.3638356519934819,
+          "similarity": 0.28224462270736694,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.3590964036899814,
+          "similarity": 0.2637938857078552,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.38983995758415557,
+          "similarity": 0.2595610022544861,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.38521550214641975,
+          "similarity": 0.2913404107093811,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.38230982098595323,
+          "similarity": 0.24988317489624023,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.3638356519934819,
+          "similarity": 0.28224462270736694,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.3590964036899814,
+          "similarity": 0.2637938857078552,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

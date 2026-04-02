@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-29d12dbd-1774901986000",
+  "query": "graph structure co-access knowledge graph topology",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4584072448759119,
+          "similarity": 0.3912999629974365,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.45689713810133536,
+          "similarity": 0.3873990774154663,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.4510999685014966,
+          "similarity": 0.38821613788604736,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4485297548270507,
+          "similarity": 0.4076162576675415,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.44485452926006386,
+          "similarity": 0.4203779697418213,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4584072448759119,
+          "similarity": 0.3912999629974365,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.45689713810133536,
+          "similarity": 0.3873990774154663,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.4510999685014966,
+          "similarity": 0.38821613788604736,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4485297548270507,
+          "similarity": 0.4076162576675415,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.44485452926006386,
+          "similarity": 0.4203779697418213,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

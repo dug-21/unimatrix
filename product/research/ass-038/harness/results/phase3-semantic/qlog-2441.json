@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2441",
+  "query": "for subagentstart... why could we not just use compactPayload? . same one we use for briefing and PreCompact. . The idea of that is to provide the agent with a compact index of potentially relevant information.  It can then use as it sees fit",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5130456571853493,
+          "similarity": 0.46816015243530273,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.47912244743104326,
+          "similarity": 0.40688252449035645,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.47805590394604647,
+          "similarity": 0.44360601902008057,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.47298374611254235,
+          "similarity": 0.4233870506286621,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.45351483691074224,
+          "similarity": 0.4097326993942261,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5130456571853493,
+          "similarity": 0.46816015243530273,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.47912244743104326,
+          "similarity": 0.40688252449035645,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.47805590394604647,
+          "similarity": 0.44360601902008057,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.47298374611254235,
+          "similarity": 0.4233870506286621,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.45351483691074224,
+          "similarity": 0.4097326993942261,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

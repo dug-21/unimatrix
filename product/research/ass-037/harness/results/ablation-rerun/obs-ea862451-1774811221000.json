@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ea862451-1774811221000",
+  "query": "maintenance tick parameter threading background pattern",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5371424249440125,
+          "similarity": 0.6002890467643738,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.48740591253553117,
+          "similarity": 0.4762403964996338,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4725135184537544,
+          "similarity": 0.4756261110305786,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.467335631928458,
+          "similarity": 0.4931596517562866,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.46225343673879443,
+          "similarity": 0.43014323711395264,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.46556249031653774,
+          "similarity": 0.6002890467643738,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.3996367087730995,
+          "similarity": 0.4931596517562866,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.38922485938439005,
+          "similarity": 0.4762403964996338,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.38884683755727917,
+          "similarity": 0.4756261110305786,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.3608573766855093,
+          "similarity": 0.43014323711395264,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.6002890467643738,
+          "similarity": 0.6002890467643738,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.4931596517562866,
+          "similarity": 0.4931596517562866,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.4762403964996338,
+          "similarity": 0.4762403964996338,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4756261110305786,
+          "similarity": 0.4756261110305786,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.43014323711395264,
+          "similarity": 0.43014323711395264,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.6097749904364511,
+          "similarity": 0.6002890467643738,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5536708214703727,
+          "similarity": 0.4762403964996338,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5332905046394101,
+          "similarity": 0.4756261110305786,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.5244646269845221,
+          "similarity": 0.4931596517562866,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5236671448263892,
+          "similarity": 0.43014323711395264,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.6097133933996195,
+          "similarity": 0.6002890467643738,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5531680265030303,
+          "similarity": 0.4762403964996338,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.532916060525067,
+          "similarity": 0.4756261110305786,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.5242613479245984,
+          "similarity": 0.4931596517562866,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5230598467243603,
+          "similarity": 0.43014323711395264,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5371424249440125,
+          "similarity": 0.6002890467643738,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.48740591253553117,
+          "similarity": 0.4762403964996338,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4725135184537544,
+          "similarity": 0.4756261110305786,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.467335631928458,
+          "similarity": 0.4931596517562866,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.46225343673879443,
+          "similarity": 0.43014323711395264,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

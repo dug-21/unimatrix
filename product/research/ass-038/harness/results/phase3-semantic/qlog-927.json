@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-927",
+  "query": "q5 first: retrospective is a retrospective of the feature_cycle (or topic)  (may span sessions), but it supposed to be scoped directly to the feature they implemented; OQ-01-Longer term, this will migrate to a container model supporting N projects (potentially in SaaS style model).  If this informs this decision, that future direction should be the deciding factor.  OQ-02- Option A. . few users to worry about, can manage.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5126179934720867,
+          "similarity": 0.47541344165802,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4992900572915755,
+          "similarity": 0.44831252098083496,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4980952835851359,
+          "similarity": 0.44759809970855713,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4863122862191993,
+          "similarity": 0.4317195415496826,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.4449128162251631,
+          "similarity": 0.4214250445365906,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5126179934720867,
+          "similarity": 0.47541344165802,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4992900572915755,
+          "similarity": 0.44831252098083496,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4980952835851359,
+          "similarity": 0.44759809970855713,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4863122862191993,
+          "similarity": 0.4317195415496826,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.4449128162251631,
+          "similarity": 0.4214250445365906,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

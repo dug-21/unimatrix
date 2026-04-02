@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-52",
+  "query": "go back and check the requirements of col-020 vs what we delivered.  I specifically directed us NOT to focus on the session 1 -> session 2 reuse, and instead focus on ANY context search -> lookup patterns of ANY data.  Are you indicating that there was 0 search done against unimatrix at all, or did we not build the capabiilty to focus on ANY search and delivery of data to agents in col-020?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5291564645682135,
+          "similarity": 0.5396725535392761,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5188807812616981,
+          "similarity": 0.5352832078933716,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5162204534671302,
+          "similarity": 0.5381519794464111,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5148342191642787,
+          "similarity": 0.526095986366272,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.479367109605806,
+          "similarity": 0.5364280343055725,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5291564645682135,
+          "similarity": 0.5396725535392761,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5188807812616981,
+          "similarity": 0.5352832078933716,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5162204534671302,
+          "similarity": 0.5381519794464111,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5148342191642787,
+          "similarity": 0.526095986366272,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.479367109605806,
+          "similarity": 0.5364280343055725,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

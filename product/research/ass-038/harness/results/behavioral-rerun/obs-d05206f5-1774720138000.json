@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-d05206f5-1774720138000",
+  "query": "retiring categories from INITIAL_CATEGORIES duplicate constant categories.rs config.rs",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5701939190625241,
+          "similarity": 0.63211590051651,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.47389414571558863,
+          "similarity": 0.429401159286499,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.4656897503548497,
+          "similarity": 0.43272149562835693,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4564719674920531,
+          "similarity": 0.4335453510284424,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.4527901090500739,
+          "similarity": 0.406637966632843,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5701939190625241,
+          "similarity": 0.63211590051651,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.47389414571558863,
+          "similarity": 0.429401159286499,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.4656897503548497,
+          "similarity": 0.43272149562835693,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4564719674920531,
+          "similarity": 0.4335453510284424,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.4527901090500739,
+          "similarity": 0.406637966632843,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

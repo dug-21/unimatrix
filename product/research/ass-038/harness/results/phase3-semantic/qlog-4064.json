@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4064",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Spawning Phase 3 tester.\n[tool: Bash(gh issue comment 434 --body \"## Fix Execution — Complete\n\n- Summary: Lowered \\`supports_edge_threshold\\` default from ) → https://github.com/dug-21/unimatrix/issues/434#issuecomment-4148056601]\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'bugfix-434'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.5631504385887092,
+          "similarity": 0.5792099833488464,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5274037235779986,
+          "similarity": 0.5379618406295776,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.518310430307283,
+          "similarity": 0.5377569198608398,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5153660011088027,
+          "similarity": 0.543849766254425,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5115967957425592,
+          "similarity": 0.5448892712593079,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.5631504385887092,
+          "similarity": 0.5792099833488464,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5274037235779986,
+          "similarity": 0.5379618406295776,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.518310430307283,
+          "similarity": 0.5377569198608398,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5153660011088027,
+          "similarity": 0.543849766254425,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5115967957425592,
+          "similarity": 0.5448892712593079,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -12,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

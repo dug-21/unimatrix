@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2588",
+  "query": "does that spec change require any upates to architecture, risk-test-strategy, implementation brief, acceptance-map?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.5474620022947826,
+          "similarity": 0.6298832893371582,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5273152260618863,
+          "similarity": 0.5275828242301941,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.4967282709901293,
+          "similarity": 0.4700782299041748,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4896913710698306,
+          "similarity": 0.4939687252044678,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.4812463354470551,
+          "similarity": 0.49587875604629517,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.5474620022947826,
+          "similarity": 0.6298832893371582,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5273152260618863,
+          "similarity": 0.5275828242301941,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.4967282709901293,
+          "similarity": 0.4700782299041748,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4896913710698306,
+          "similarity": 0.4939687252044678,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3620,
+          "title": "Architecture document governs over Specification when they conflict on behavior — correct the spec, not the architecture",
+          "category": "lesson-learned",
+          "final_score": 0.4812463354470551,
+          "similarity": 0.49587875604629517,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

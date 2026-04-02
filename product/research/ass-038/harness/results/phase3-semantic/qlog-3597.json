@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3597",
+  "query": "1. Please use the full code version: mcp__context_briefing... instead of the pseudocode.  agents will sometimes get the value's in the incorrect quoted or unquoted format.  2. You can remove /uni-query-patterns from the definitions, but do not remove the skill - If we include briefing for spec (im ok with... need to also include the knowledge search backup",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5419769576503081,
+          "similarity": 0.5330513119697571,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5317124722611584,
+          "similarity": 0.5250066518783569,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.5276557562560421,
+          "similarity": 0.5532110333442688,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.5231898899171962,
+          "similarity": 0.5293605923652649,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.5021395961532238,
+          "similarity": 0.531482994556427,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5419769576503081,
+          "similarity": 0.5330513119697571,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5317124722611584,
+          "similarity": 0.5250066518783569,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.5276557562560421,
+          "similarity": 0.5532110333442688,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.5231898899171962,
+          "similarity": 0.5293605923652649,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.5021395961532238,
+          "similarity": 0.531482994556427,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

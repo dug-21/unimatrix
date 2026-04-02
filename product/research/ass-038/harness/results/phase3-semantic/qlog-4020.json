@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4020",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Investigate bug #430 root cause) → ]\n[Assistant] Cycle started. Spawning the investigator in a worktree.\n[tool: mcp__unimatrix__context_cycle(start) → Acknowledged: cycle_started for topic 'bugfix-430' with goal: 'Redirect write_auto_outcome_entry() from ENTRIES to OUTCOME_INDEX (or drop entirely) to stop session telemetry polluting the knowledge store'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confir]\n[tool: mcp__unimatrix__context_search(write_auto_outcome_entry UDS listener session close hook) → #3448 | UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged | lesson-learned | [broken-pipe, col-006, early-eof, error-classification, fire-and-forget, logging, uds] | 0.49\n#1614 | ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sess]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5662905284405808,
+          "similarity": 0.5936183333396912,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5620198681361568,
+          "similarity": 0.6014252305030823,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.5615661847299933,
+          "similarity": 0.612115204334259,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.551773020071462,
+          "similarity": 0.6130231022834778,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5662905284405808,
+          "similarity": 0.5936183333396912,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5620198681361568,
+          "similarity": 0.6014252305030823,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.5615661847299933,
+          "similarity": 0.612115204334259,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.551773020071462,
+          "similarity": 0.6130231022834778,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

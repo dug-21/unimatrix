@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4122",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Good data collected. Phase 1b first — the cycle review shows **0 entries stored this cycle**, so stewardship is clean. Now building the briefing and spawning the architect.\n[tool: Bash(git log --oneline main~5..main) → 2ce4f3b fix(observe): remove RecurringFrictionRule from extraction pipeline (#437) (#438)\n02bb3a7 chore: add gate report for bugfix-407\n38af408 chore: fix MCP integer/tag format ambiguity in skills + CLAUDE.md\n38a19ad chore: add security reviewer report (bugfix-434) (#434)\n5c1f57f fix(config): lower]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5617382200731403,
+          "similarity": 0.5669640302658081,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5132786778196342,
+          "similarity": 0.5398838520050049,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.4914167691184633,
+          "similarity": 0.5373696088790894,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.48215046882629387,
+          "similarity": 0.5370858907699585,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5617382200731403,
+          "similarity": 0.5669640302658081,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5132786778196342,
+          "similarity": 0.5398838520050049,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.4914167691184633,
+          "similarity": 0.5373696088790894,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.48215046882629387,
+          "similarity": 0.5370858907699585,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

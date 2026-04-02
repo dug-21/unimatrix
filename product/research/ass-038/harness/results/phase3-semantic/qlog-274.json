@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-274",
+  "query": "there are some miscellaneous un tracked changes... need to clean thse up",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5068541391227877,
+          "similarity": 0.46578794717788696,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5040258193851129,
+          "similarity": 0.46446526050567627,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.4967999293751485,
+          "similarity": 0.4551237225532532,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.4829166633281292,
+          "similarity": 0.4249361753463745,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 369,
+          "title": "Retrospective findings: nxs-008",
+          "category": "lesson-learned",
+          "final_score": 0.47854762888926716,
+          "similarity": 0.44525146484375,
+          "confidence": 0.5914129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5068541391227877,
+          "similarity": 0.46578794717788696,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5040258193851129,
+          "similarity": 0.46446526050567627,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.4967999293751485,
+          "similarity": 0.4551237225532532,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.4829166633281292,
+          "similarity": 0.4249361753463745,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 369,
+          "title": "Retrospective findings: nxs-008",
+          "category": "lesson-learned",
+          "final_score": 0.47854762888926716,
+          "similarity": 0.44525146484375,
+          "confidence": 0.5914129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-4a5ba677-1774403533000",
+  "query": "scope addition milestone discipline retrospective formatter",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5084509770234065,
+          "similarity": 0.49565935134887695,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5075449480426562,
+          "similarity": 0.46577465534210205,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.49023460594864143,
+          "similarity": 0.43110716342926025,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.4371741937072824,
+          "similarity": 0.39239704608917236,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.4182766072238163,
+          "similarity": 0.37226831912994385,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5084509770234065,
+          "similarity": 0.49565935134887695,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5075449480426562,
+          "similarity": 0.46577465534210205,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.49023460594864143,
+          "similarity": 0.43110716342926025,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.4371741937072824,
+          "similarity": 0.39239704608917236,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.4182766072238163,
+          "similarity": 0.37226831912994385,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

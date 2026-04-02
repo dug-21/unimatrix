@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-b1ecc03a-1773959850000",
+  "query": "rayon tokio bridge oneshot channel CPU-bound inference",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5270810834549561,
+          "similarity": 0.6453382968902588,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4890448291309398,
+          "similarity": 0.5255179405212402,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.48407906564237096,
+          "similarity": 0.5386465191841125,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.45903355903331,
+          "similarity": 0.49677085876464844,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5918979959030983,
+          "similarity": 0.6453382968902588,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5509231360402597,
+          "similarity": 0.5255179405212402,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5429581332228592,
+          "similarity": 0.5386465191841125,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5126120478850001,
+          "similarity": 0.49677085876464844,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5915487128901104,
+          "similarity": 0.6453382968902588,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5510891830697957,
+          "similarity": 0.5255179405212402,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5429863137067726,
+          "similarity": 0.5386465191841125,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5127155850687933,
+          "similarity": 0.49677085876464844,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.4932851057786208,
+          "similarity": 0.6453382968902588,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4276286271902231,
+          "similarity": 0.5386465191841125,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4195495018592248,
+          "similarity": 0.5255179405212402,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.4018589900090144,
+          "similarity": 0.49677085876464844,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.6453382968902588,
+          "similarity": 0.6453382968902588,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5386465191841125,
+          "similarity": 0.5386465191841125,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5255179405212402,
+          "similarity": 0.5255179405212402,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.49677085876464844,
+          "similarity": 0.49677085876464844,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5270810834549561,
+          "similarity": 0.6453382968902588,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4890448291309398,
+          "similarity": 0.5255179405212402,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.48407906564237096,
+          "similarity": 0.5386465191841125,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.45903355903331,
+          "similarity": 0.49677085876464844,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

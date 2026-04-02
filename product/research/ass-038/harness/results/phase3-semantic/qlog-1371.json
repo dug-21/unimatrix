@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1371",
+  "query": "<task-notification>\n<task-id>a03920e3ecdf17724</task-id>\n<tool-use-id>toolu_01GV3gzM4hTd1CEkDtVzpoJQ</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/b1ecc03a-07c6-4a35-863d-d67630141488/tasks/a03920e3ecdf17724.output</output-file>\n<status>completed</status>\n<summary>Agent \"crt-022 docs update\" completed</summary>\n<result>Done.\n\n**Sections modified:** `Configuration > Key Config Sections`\n\nAdded the `[inference]` block to the TOML example in that section, documenting:\n- `rayon_pool_size` — the number of threads for the dedicated ML inference pool\n- Default formula: `(num_cpus / 2).max(4).min(8)`\n- Valid range: `[1, 64]`; out-of-range aborts startup\n\nAll claims trace directly to SPECIFICATION.md FR-05, FR-06, AC-09, and NFR-04. No other sections required changes — the internal `RayonPool` infrastructure, `AsyncEmbedService` removal, and 7 call-site migrations are implementation details not visible to users.\n\n**Commit hash:** `cbdf750`</result>\n<usage><total_tokens>42743</total_tokens><tool_uses>7</tool_uses><duration_ms>50351</duration_ms></usage>\n</task-notification>\nFull transcript available at: /tmp/claude-1000/-workspaces-unimatrix/b1ecc03a-07c6-4a35-863d-d67630141488/tasks/a03920e3ecdf17724.output",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5080495339139836,
+          "similarity": 0.48144423961639404,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5055015598192892,
+          "similarity": 0.49750471115112305,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2572,
+          "title": "ADR-001: Rayon Dependency Confined to unimatrix-server Only",
+          "category": "decision",
+          "final_score": 0.48500347548411804,
+          "similarity": 0.5040476322174072,
+          "confidence": 0.5249413874320245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.4699857174473434,
+          "similarity": 0.4867871403694153,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.46464404000734016,
+          "similarity": 0.48142367601394653,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5080495339139836,
+          "similarity": 0.48144423961639404,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5055015598192892,
+          "similarity": 0.49750471115112305,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2572,
+          "title": "ADR-001: Rayon Dependency Confined to unimatrix-server Only",
+          "category": "decision",
+          "final_score": 0.48500347548411804,
+          "similarity": 0.5040476322174072,
+          "confidence": 0.5249413874320245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.4699857174473434,
+          "similarity": 0.4867871403694153,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.46464404000734016,
+          "similarity": 0.48142367601394653,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

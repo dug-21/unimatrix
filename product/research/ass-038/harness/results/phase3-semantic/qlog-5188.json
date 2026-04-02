@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5188",
+  "query": "yes.  cycle stop command goes after successful 'non-blocking' security pr review",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5015284032248779,
+          "similarity": 0.49034011363983154,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4936808144418816,
+          "similarity": 0.4409935474395752,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3375,
+          "title": "ADR-005 col-024: Open-Ended Window Capped at unix_now_secs(), No Additional Max-Age Limit",
+          "category": "decision",
+          "final_score": 0.48668600918662797,
+          "similarity": 0.47581231594085693,
+          "confidence": 0.569844430733909,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.45522165648936974,
+          "similarity": 0.4599050283432007,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.45416458422951167,
+          "similarity": 0.44485950469970703,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5015284032248779,
+          "similarity": 0.49034011363983154,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4936808144418816,
+          "similarity": 0.4409935474395752,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3375,
+          "title": "ADR-005 col-024: Open-Ended Window Capped at unix_now_secs(), No Additional Max-Age Limit",
+          "category": "decision",
+          "final_score": 0.48668600918662797,
+          "similarity": 0.47581231594085693,
+          "confidence": 0.569844430733909,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.45522165648936974,
+          "similarity": 0.4599050283432007,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.45416458422951167,
+          "similarity": 0.44485950469970703,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

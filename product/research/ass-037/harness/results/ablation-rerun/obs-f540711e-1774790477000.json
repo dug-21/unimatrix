@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-f540711e-1774790477000",
+  "query": "InferenceConfig configurable tick cap procedure add field",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5126919821709749,
+          "similarity": 0.589687705039978,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.47736267886675027,
+          "similarity": 0.47010546922683716,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.4673107335148726,
+          "similarity": 0.4737858772277832,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4493688456200256,
+          "similarity": 0.48991382122039795,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.4377025211505779,
+          "similarity": 0.42278480529785156,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.589687705039978,
+          "similarity": 0.589687705039978,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.48991382122039795,
+          "similarity": 0.48991382122039795,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.4737858772277832,
+          "similarity": 0.4737858772277832,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.47010546922683716,
+          "similarity": 0.47010546922683716,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.42278480529785156,
+          "similarity": 0.42278480529785156,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5773356388658767,
+          "similarity": 0.589687705039978,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5400304285249469,
+          "similarity": 0.47010546922683716,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5259886477723005,
+          "similarity": 0.4737858772277832,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.5000562602799987,
+          "similarity": 0.48991382122039795,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.4902502738146197,
+          "similarity": 0.42278480529785156,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5772549064072225,
+          "similarity": 0.589687705039978,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5404874544027125,
+          "similarity": 0.47010546922683716,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.526329842351023,
+          "similarity": 0.4737858772277832,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.5001225507313687,
+          "similarity": 0.48991382122039795,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.4906912245892392,
+          "similarity": 0.42278480529785156,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.4590385877169096,
+          "similarity": 0.589687705039978,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.39763927459716797,
+          "similarity": 0.48991382122039795,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.3877143859863281,
+          "similarity": 0.4737858772277832,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.3854495195242075,
+          "similarity": 0.47010546922683716,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.35632911095252406,
+          "similarity": 0.42278480529785156,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5126919821709749,
+          "similarity": 0.589687705039978,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.47736267886675027,
+          "similarity": 0.47010546922683716,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.4673107335148726,
+          "similarity": 0.4737858772277832,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4493688456200256,
+          "similarity": 0.48991382122039795,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3916,
+          "title": "ADR-002 crt-036: max_cycles_per_tick Cap in RetentionConfig, Not InferenceConfig",
+          "category": "decision",
+          "final_score": 0.4377025211505779,
+          "similarity": 0.42278480529785156,
+          "confidence": 0.5877003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773883791000",
+  "query": "typed relationship graph RelationType RelationEdge supersession graph persistence",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5404449373121347,
+          "similarity": 0.5461398959159851,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.5271484067692537,
+          "similarity": 0.556991696357727,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5246388598288794,
+          "similarity": 0.5719681978225708,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5055044784043964,
+          "similarity": 0.5814585089683533,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.4920766951904135,
+          "similarity": 0.49001550674438477,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5404449373121347,
+          "similarity": 0.5461398959159851,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.5271484067692537,
+          "similarity": 0.556991696357727,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5246388598288794,
+          "similarity": 0.5719681978225708,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5055044784043964,
+          "similarity": 0.5814585089683533,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.4920766951904135,
+          "similarity": 0.49001550674438477,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

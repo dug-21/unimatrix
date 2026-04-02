@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-5becb974-1774976888000",
+  "query": "NLI detection tick rayon batch patterns",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5536967099156869,
+          "similarity": 0.5135962963104248,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.53768456083442,
+          "similarity": 0.48748141527175903,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5241880944187238,
+          "similarity": 0.4491450786590576,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5148132880224873,
+          "similarity": 0.5263102054595947,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.502026698698743,
+          "similarity": 0.4427701234817505,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5539588041222572,
+          "similarity": 0.5135962963104248,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.5380126859688165,
+          "similarity": 0.48748141527175903,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5246785716459113,
+          "similarity": 0.4491450786590576,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5147381447712644,
+          "similarity": 0.5263102054595947,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5024139965759782,
+          "similarity": 0.4427701234817505,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.42003704951359677,
+          "similarity": 0.5263102054595947,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4122131054217999,
+          "similarity": 0.5135962963104248,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.39614240939800555,
+          "similarity": 0.48748141527175903,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.3725508176363432,
+          "similarity": 0.4491450786590576,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.3686277682964618,
+          "similarity": 0.4427701234817505,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.49028400702553204,
+          "similarity": 0.5135962963104248,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.47680077229669193,
+          "similarity": 0.48748141527175903,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.464347607817668,
+          "similarity": 0.4491450786590576,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.46261709158046366,
+          "similarity": 0.5263102054595947,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4476709206111949,
+          "similarity": 0.4427701234817505,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5263102054595947,
+          "similarity": 0.5263102054595947,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5135962963104248,
+          "similarity": 0.5135962963104248,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.48748141527175903,
+          "similarity": 0.48748141527175903,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4491450786590576,
+          "similarity": 0.4491450786590576,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4427701234817505,
+          "similarity": 0.4427701234817505,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.49028400702553204,
+          "similarity": 0.5135962963104248,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.47680077229669193,
+          "similarity": 0.48748141527175903,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.464347607817668,
+          "similarity": 0.4491450786590576,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.46261709158046366,
+          "similarity": 0.5263102054595947,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4476709206111949,
+          "similarity": 0.4427701234817505,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

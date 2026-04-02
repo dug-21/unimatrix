@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3331",
+  "query": "go ahead and merge and create a gh issue for security finding 1 for follow up",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.4183807425546453,
+          "similarity": 0.3595777750015259,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 84,
+          "title": "ADR-001: Combined Audit Transaction on UnimatrixServer",
+          "category": "decision",
+          "final_score": 0.39574544995724836,
+          "similarity": 0.307326078414917,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.38829387480522704,
+          "similarity": 0.3027573823928833,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.3804181825621078,
+          "similarity": 0.3009604811668396,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.3651831115997052,
+          "similarity": 0.3053090572357178,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.4183807425546453,
+          "similarity": 0.3595777750015259,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 84,
+          "title": "ADR-001: Combined Audit Transaction on UnimatrixServer",
+          "category": "decision",
+          "final_score": 0.39574544995724836,
+          "similarity": 0.307326078414917,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.38829387480522704,
+          "similarity": 0.3027573823928833,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.3804181825621078,
+          "similarity": 0.3009604811668396,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.3651831115997052,
+          "similarity": 0.3053090572357178,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

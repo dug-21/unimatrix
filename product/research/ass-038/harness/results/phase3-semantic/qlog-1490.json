@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1490",
+  "query": "add a thorough how to in docs/testing, and include why and when to use... this will be the full authoritative documentation on using this new capability.  then add a simplified procedure in unimatrix and point to the authoritative source",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5414843991345105,
+          "similarity": 0.5630956292152405,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5061116309716929,
+          "similarity": 0.48907971382141113,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5051806850309403,
+          "similarity": 0.5092530250549316,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.4927592382610704,
+          "similarity": 0.4932193160057068,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4677262829121187,
+          "similarity": 0.49429941177368164,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5414843991345105,
+          "similarity": 0.5630956292152405,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5061116309716929,
+          "similarity": 0.48907971382141113,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5051806850309403,
+          "similarity": 0.5092530250549316,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.4927592382610704,
+          "similarity": 0.4932193160057068,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4677262829121187,
+          "similarity": 0.49429941177368164,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

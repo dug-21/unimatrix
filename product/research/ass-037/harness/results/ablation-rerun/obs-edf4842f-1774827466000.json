@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-edf4842f-1774827466000",
+  "query": "lesson-learned failures gate rejection memoization schema migration",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5443763242269626,
+          "similarity": 0.4978898763656616,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5084610223309182,
+          "similarity": 0.4320676326751709,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.5057464934280784,
+          "similarity": 0.4294931888580322,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.48133872964645175,
+          "similarity": 0.42008060216903687,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.449435292412253,
+          "similarity": 0.4350399971008301,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5440744641759151,
+          "similarity": 0.4978898763656616,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5079649613591275,
+          "similarity": 0.4320676326751709,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.5052513420997016,
+          "similarity": 0.4294931888580322,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.480940949597897,
+          "similarity": 0.42008060216903687,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.4493418164686723,
+          "similarity": 0.4350399971008301,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.40254761622502255,
+          "similarity": 0.4978898763656616,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.3638707674466647,
+          "similarity": 0.4350399971008301,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.3620416201077975,
+          "similarity": 0.4320676326751709,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.3604573469895583,
+          "similarity": 0.4294931888580322,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.35466498595017654,
+          "similarity": 0.42008060216903687,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.48218059882004854,
+          "similarity": 0.4978898763656616,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.45131214717503826,
+          "similarity": 0.4320676326751709,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.44915053013031664,
+          "similarity": 0.4294931888580322,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.43069540318306027,
+          "similarity": 0.42008060216903687,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.40851999855041504,
+          "similarity": 0.4350399971008301,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.48218059882004854,
+          "similarity": 0.4978898763656616,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.45131214717503826,
+          "similarity": 0.4320676326751709,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.44915053013031664,
+          "similarity": 0.4294931888580322,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.43069540318306027,
+          "similarity": 0.42008060216903687,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.40851999855041504,
+          "similarity": 0.4350399971008301,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.4978898763656616,
+          "similarity": 0.4978898763656616,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.4350399971008301,
+          "similarity": 0.4350399971008301,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4320676326751709,
+          "similarity": 0.4320676326751709,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.4294931888580322,
+          "similarity": 0.4294931888580322,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.42008060216903687,
+          "similarity": 0.42008060216903687,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

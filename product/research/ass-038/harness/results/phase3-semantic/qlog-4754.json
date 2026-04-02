@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4754",
+  "query": "Hmmm... started to do some reasearch on mincut principles and how they might apply to Unimatrix... could mincut help with this problem?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.46812915531726496,
+          "similarity": 0.4237399101257324,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4539754634571328,
+          "similarity": 0.39682865142822266,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.45230440921744475,
+          "similarity": 0.3756551742553711,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.4303079158789652,
+          "similarity": 0.4014824628829956,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.4153654374266351,
+          "similarity": 0.3914480209350586,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.46812915531726496,
+          "similarity": 0.4237399101257324,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4539754634571328,
+          "similarity": 0.39682865142822266,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.45230440921744475,
+          "similarity": 0.3756551742553711,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.4303079158789652,
+          "similarity": 0.4014824628829956,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.4153654374266351,
+          "similarity": 0.3914480209350586,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-18f5d7e9-1774716245000",
+  "query": "spawn_blocking return tuple primary result derived signals same data closure",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5847204801101251,
+          "similarity": 0.6161173582077026,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5599916682125652,
+          "similarity": 0.5363110899925232,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3720,
+          "title": "Verify inputs are still in scope at the proposed call site before finalising a fix plan",
+          "category": "lesson-learned",
+          "final_score": 0.5489872634792988,
+          "similarity": 0.5738763809204102,
+          "confidence": 0.5134313814205683,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5374101862801731,
+          "similarity": 0.48414719104766846,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.5327641553526006,
+          "similarity": 0.5128402709960938,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5200190182379271,
+          "similarity": 0.6161173582077026,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.49630186469719195,
+          "similarity": 0.5363110899925232,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3720,
+          "title": "Verify inputs are still in scope at the proposed call site before finalising a fix plan",
+          "category": "lesson-learned",
+          "final_score": 0.49096760488637553,
+          "similarity": 0.5738763809204102,
+          "confidence": 0.5134313814205683,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.4761236493646739,
+          "similarity": 0.48414719104766846,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.47478818968518705,
+          "similarity": 0.5128402709960938,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5849243559419275,
+          "similarity": 0.6161173582077026,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5598378982241232,
+          "similarity": 0.5363110899925232,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3720,
+          "title": "Verify inputs are still in scope at the proposed call site before finalising a fix plan",
+          "category": "lesson-learned",
+          "final_score": 0.5491488811250202,
+          "similarity": 0.5738763809204102,
+          "confidence": 0.5134313814205683,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5370643226747671,
+          "similarity": 0.48414719104766846,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.5326347794801556,
+          "similarity": 0.5128402709960938,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.6161173582077026,
+          "similarity": 0.6161173582077026,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3720,
+          "title": "Verify inputs are still in scope at the proposed call site before finalising a fix plan",
+          "category": "lesson-learned",
+          "final_score": 0.5738763809204102,
+          "similarity": 0.5738763809204102,
+          "confidence": 0.5134313814205683,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5363110899925232,
+          "similarity": 0.5363110899925232,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.5128402709960938,
+          "similarity": 0.5128402709960938,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.48414719104766846,
+          "similarity": 0.48414719104766846,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.47530298966627854,
+          "similarity": 0.6161173582077026,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3720,
+          "title": "Verify inputs are still in scope at the proposed call site before finalising a fix plan",
+          "category": "lesson-learned",
+          "final_score": 0.4493085421048678,
+          "similarity": 0.5738763809204102,
+          "confidence": 0.5134313814205683,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.4261914399953989,
+          "similarity": 0.5363110899925232,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.4117478590745192,
+          "similarity": 0.5128402709960938,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.3940905791062575,
+          "similarity": 0.48414719104766846,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5200190182379271,
+          "similarity": 0.6161173582077026,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.49630186469719195,
+          "similarity": 0.5363110899925232,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3720,
+          "title": "Verify inputs are still in scope at the proposed call site before finalising a fix plan",
+          "category": "lesson-learned",
+          "final_score": 0.49096760488637553,
+          "similarity": 0.5738763809204102,
+          "confidence": 0.5134313814205683,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.4761236493646739,
+          "similarity": 0.48414719104766846,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.47478818968518705,
+          "similarity": 0.5128402709960938,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

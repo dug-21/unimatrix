@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1066",
+  "query": "now, the last clarification... 3. Per-call agent_id found in registry with explicit enrollment → use those capabilities (allows future per-role narrowing)... I've found that requiring explicit enrollment created significant friction... which is why the auto_enrollment thing became a thing.  You are correct about the future statement, but for now, I still don't want to restrict permissions based on the agent_id",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5423137715479631,
+          "similarity": 0.5694680213928223,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.5366269384690608,
+          "similarity": 0.5280128717422485,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.487104128365762,
+          "similarity": 0.44361305236816406,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.46512952279921815,
+          "similarity": 0.4325748682022095,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.46031502429448057,
+          "similarity": 0.500523567199707,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5423137715479631,
+          "similarity": 0.5694680213928223,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.5366269384690608,
+          "similarity": 0.5280128717422485,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.487104128365762,
+          "similarity": 0.44361305236816406,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.46512952279921815,
+          "similarity": 0.4325748682022095,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.46031502429448057,
+          "similarity": 0.500523567199707,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

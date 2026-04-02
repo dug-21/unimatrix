@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-281",
+  "query": "1. defer; 2. Support --force; 3. include progress; 4. acceptable, 5. yes",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.4347634568090045,
+          "similarity": 0.38549184799194336,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.43230383036373365,
+          "similarity": 0.351848840713501,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.4294027362049836,
+          "similarity": 0.35330134630203247,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.417850171278932,
+          "similarity": 0.34082186222076416,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.41219657074346017,
+          "similarity": 0.3494220972061157,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.4347634568090045,
+          "similarity": 0.38549184799194336,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.43230383036373365,
+          "similarity": 0.351848840713501,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.4294027362049836,
+          "similarity": 0.35330134630203247,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.417850171278932,
+          "similarity": 0.34082186222076416,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.41219657074346017,
+          "similarity": 0.3494220972061157,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

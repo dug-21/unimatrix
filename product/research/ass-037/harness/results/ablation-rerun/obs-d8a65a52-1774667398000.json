@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-d8a65a52-1774667398000",
+  "query": "string handling display truncation convention",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.41193437197674815,
+          "similarity": 0.3331976532936096,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.36666807996779643,
+          "similarity": 0.2941328287124634,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.36246727442741394,
+          "similarity": 0.3429345488548279,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.359976806828415,
+          "similarity": 0.2896573543548584,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.35401789075648954,
+          "similarity": 0.2710317373275757,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.41193437197674815,
+          "similarity": 0.3331976532936096,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.36666807996779643,
+          "similarity": 0.2941328287124634,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.36246727442741394,
+          "similarity": 0.3429345488548279,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.359976806828415,
+          "similarity": 0.2896573543548584,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.35401789075648954,
+          "similarity": 0.2710317373275757,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.46410623082165336,
+          "similarity": 0.3331976532936096,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.4058059108663418,
+          "similarity": 0.2941328287124634,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.39706058247479914,
+          "similarity": 0.2896573543548584,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.39525561697342815,
+          "similarity": 0.3429345488548279,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.39070771894738016,
+          "similarity": 0.2710317373275757,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.307190491602971,
+          "similarity": 0.3429345488548279,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.30119855587299055,
+          "similarity": 0.3331976532936096,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.27715866382305443,
+          "similarity": 0.2941328287124634,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.27440452575683594,
+          "similarity": 0.2896573543548584,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.2629426075862004,
+          "similarity": 0.2710317373275757,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.3429345488548279,
+          "similarity": 0.3429345488548279,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.3331976532936096,
+          "similarity": 0.3331976532936096,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.2941328287124634,
+          "similarity": 0.2941328287124634,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.2896573543548584,
+          "similarity": 0.2896573543548584,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.2710317373275757,
+          "similarity": 0.2710317373275757,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.46325617512341927,
+          "similarity": 0.3331976532936096,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.4050807609822257,
+          "similarity": 0.2941328287124634,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.3963631589155787,
+          "similarity": 0.2896573543548584,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.3949158697778528,
+          "similarity": 0.3429345488548279,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.38993060218361514,
+          "similarity": 0.2710317373275757,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3706,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3920,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": -0.08333333333333331,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

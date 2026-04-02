@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3950",
+  "query": "add this as another gh issue... we'll need to think about this.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.40127040647123624,
+          "similarity": 0.327983558177948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.3972356497410531,
+          "similarity": 0.3194020986557007,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.3884923165129056,
+          "similarity": 0.31964612007141113,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.38562161991956734,
+          "similarity": 0.32238656282424927,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.3825178973432165,
+          "similarity": 0.30494993925094604,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.40127040647123624,
+          "similarity": 0.327983558177948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.3972356497410531,
+          "similarity": 0.3194020986557007,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.3884923165129056,
+          "similarity": 0.31964612007141113,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.38562161991956734,
+          "similarity": 0.32238656282424927,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.3825178973432165,
+          "similarity": 0.30494993925094604,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

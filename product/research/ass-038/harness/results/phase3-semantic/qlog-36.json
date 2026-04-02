@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-36",
+  "query": "it is time to pickup the completed design for col-020 and move to implementation",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.4622555952724944,
+          "similarity": 0.404366135597229,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.46034592519562223,
+          "similarity": 0.4007377624511719,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.45470003390241653,
+          "similarity": 0.4061248302459717,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.4285649238465181,
+          "similarity": 0.41552871465682983,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.416254127831291,
+          "similarity": 0.4220867156982422,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.4622555952724944,
+          "similarity": 0.404366135597229,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.46034592519562223,
+          "similarity": 0.4007377624511719,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.45470003390241653,
+          "similarity": 0.4061248302459717,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.4285649238465181,
+          "similarity": 0.41552871465682983,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.416254127831291,
+          "similarity": 0.4220867156982422,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

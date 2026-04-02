@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4648",
+  "query": "so.. I need a deeper dive... what exactly was the coaccess policy looking at.. AND... did we just move to the graph version of coaccess promotion, and is all of that original coaccess code no longer contributing?  I don't believe we're confident enough in PPR to totally remove it... but I don't know if its contributing to the graph, or simply disconnected at the moment",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.499298898670565,
+          "similarity": 0.4936339855194092,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.4867711382635739,
+          "similarity": 0.4582250118255615,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.46701223093225086,
+          "similarity": 0.3950071334838867,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.4667992696342327,
+          "similarity": 0.4203348159790039,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4548237238361289,
+          "similarity": 0.3953012228012085,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.499298898670565,
+          "similarity": 0.4936339855194092,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.4867711382635739,
+          "similarity": 0.4582250118255615,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.46701223093225086,
+          "similarity": 0.3950071334838867,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.4667992696342327,
+          "similarity": 0.4203348159790039,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4548237238361289,
+          "similarity": 0.3953012228012085,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

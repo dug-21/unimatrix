@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2951",
+  "query": "Store the usage pattern for this in unimatrix... how and why to use",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5075838443644821,
+          "similarity": 0.46313345432281494,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5053864773113101,
+          "similarity": 0.49450957775115967,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.49500113185208483,
+          "similarity": 0.4445016384124756,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.4875010067135752,
+          "similarity": 0.4728565216064453,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.458270933041489,
+          "similarity": 0.45461219549179077,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5075838443644821,
+          "similarity": 0.46313345432281494,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5053864773113101,
+          "similarity": 0.49450957775115967,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.49500113185208483,
+          "similarity": 0.4445016384124756,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.4875010067135752,
+          "similarity": 0.4728565216064453,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.458270933041489,
+          "similarity": 0.45461219549179077,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

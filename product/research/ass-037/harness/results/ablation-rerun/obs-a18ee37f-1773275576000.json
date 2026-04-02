@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a18ee37f-1773275576000",
+  "query": "adding CLI subcommand procedure server binary",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.48748796995130245,
+          "similarity": 0.5252069234848022,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.44227515650132615,
+          "similarity": 0.4322388172149658,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.3974585414314093,
+          "similarity": 0.36633241176605225,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.3956270431148835,
+          "similarity": 0.4128243923187256,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.3869690708302154,
+          "similarity": 0.3651142716407776,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.48748796995130245,
+          "similarity": 0.5252069234848022,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.44227515650132615,
+          "similarity": 0.4322388172149658,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.3974585414314093,
+          "similarity": 0.36633241176605225,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.3956270431148835,
+          "similarity": 0.4128243923187256,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.3869690708302154,
+          "similarity": 0.3651142716407776,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.5252069234848022,
+          "similarity": 0.5252069234848022,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.4322388172149658,
+          "similarity": 0.4322388172149658,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.4128243923187256,
+          "similarity": 0.4128243923187256,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.36633241176605225,
+          "similarity": 0.36633241176605225,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.3651142716407776,
+          "similarity": 0.3651142716407776,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.41935810675987834,
+          "similarity": 0.5252069234848022,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.36214696443997896,
+          "similarity": 0.4322388172149658,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.35019962604229266,
+          "similarity": 0.4128243923187256,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.32158917647141677,
+          "similarity": 0.36633241176605225,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.3208395517789401,
+          "similarity": 0.3651142716407776,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.5489828093954345,
+          "similarity": 0.5252069234848022,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.49604052684349026,
+          "similarity": 0.4322388172149658,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.4409889380660468,
+          "similarity": 0.36633241176605225,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.43391707953820036,
+          "similarity": 0.4128243923187256,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.42671105097865086,
+          "similarity": 0.3651142716407776,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.548828420525885,
+          "similarity": 0.5252069234848022,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.4956262300277206,
+          "similarity": 0.4322388172149658,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.44050415542773513,
+          "similarity": 0.36633241176605225,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.4337801140367752,
+          "similarity": 0.4128243923187256,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.42631107189204126,
+          "similarity": 0.3651142716407776,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

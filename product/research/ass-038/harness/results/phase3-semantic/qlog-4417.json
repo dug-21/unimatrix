@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4417",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Brief is clear. The cycle is already running from Session 1. Stage 3a — spawning pseudocode and test plan agents in parallel.\n\n**Wave plan (identified from brief dependencies):**\n- **Wave 1**: `infra/categories/` module split + `infra/config.rs` (foundational — everything else depends on these)\n- **Wave 2**: `main.rs`, `services/status.rs`, `services/mod.rs`, `mcp/response/status.rs`, `background.rs` (all depend on Wave 1)\n- **Wave 3**: `eval/profile/layer.rs`, 6 literal-removal sites, `README.md`, test updates (depend on Wave 1 helper, otherwise independent)\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3547,
+          "title": "Wave-Parallel Swarm: Type-Definition Waves Must Complete Before Downstream Waves Are Spawned",
+          "category": "lesson-learned",
+          "final_score": 0.5339880059691285,
+          "similarity": 0.5757315754890442,
+          "confidence": 0.555493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5290104705064765,
+          "similarity": 0.607484757900238,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.5261415609297171,
+          "similarity": 0.5614350438117981,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 340,
+          "title": "ADR-003: Wave execution order (7 waves with compilation gates)",
+          "category": "decision",
+          "final_score": 0.5181475829405527,
+          "similarity": 0.5697153806686401,
+          "confidence": 0.5210928955977289,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.5007566861102455,
+          "similarity": 0.5724377036094666,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3547,
+          "title": "Wave-Parallel Swarm: Type-Definition Waves Must Complete Before Downstream Waves Are Spawned",
+          "category": "lesson-learned",
+          "final_score": 0.5339880059691285,
+          "similarity": 0.5757315754890442,
+          "confidence": 0.555493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5290104705064765,
+          "similarity": 0.607484757900238,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.5261415609297171,
+          "similarity": 0.5614350438117981,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 340,
+          "title": "ADR-003: Wave execution order (7 waves with compilation gates)",
+          "category": "decision",
+          "final_score": 0.5181475829405527,
+          "similarity": 0.5697153806686401,
+          "confidence": 0.5210928955977289,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.5007566861102455,
+          "similarity": 0.5724377036094666,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

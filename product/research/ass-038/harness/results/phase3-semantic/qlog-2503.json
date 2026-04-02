@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2503",
+  "query": "you're approved to skip integration",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.38502149849200074,
+          "similarity": 0.29098212718963623,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.3742865168503069,
+          "similarity": 0.2613605856895447,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.3672379859315894,
+          "similarity": 0.2796989679336548,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.36707895489660947,
+          "similarity": 0.2630198001861572,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.3542981017075111,
+          "similarity": 0.2982422113418579,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.38502149849200074,
+          "similarity": 0.29098212718963623,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.3742865168503069,
+          "similarity": 0.2613605856895447,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.3672379859315894,
+          "similarity": 0.2796989679336548,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.36707895489660947,
+          "similarity": 0.2630198001861572,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.3542981017075111,
+          "similarity": 0.2982422113418579,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

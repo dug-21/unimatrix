@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2910",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Investigate log visibility root cause) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.4874672314791737,
+          "similarity": 0.4908421039581299,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 102,
+          "title": "ADR-005: Audit Log Reverse Scan for Rate Tracking",
+          "category": "decision",
+          "final_score": 0.47731170540817613,
+          "similarity": 0.45238804817199707,
+          "confidence": 0.5778631315764826,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.46872616370613185,
+          "similarity": 0.4082460403442383,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.4576733885974329,
+          "similarity": 0.45109015703201294,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.44605943667903203,
+          "similarity": 0.4004800319671631,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.4874672314791737,
+          "similarity": 0.4908421039581299,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 102,
+          "title": "ADR-005: Audit Log Reverse Scan for Rate Tracking",
+          "category": "decision",
+          "final_score": 0.47731170540817613,
+          "similarity": 0.45238804817199707,
+          "confidence": 0.5778631315764826,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.46872616370613185,
+          "similarity": 0.4082460403442383,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.4576733885974329,
+          "similarity": 0.45109015703201294,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.44605943667903203,
+          "similarity": 0.4004800319671631,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

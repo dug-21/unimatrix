@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-1610",
+  "query": "yes",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.30380111306607405,
+          "similarity": 0.1326318383216858,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3864,
+          "title": "Retrospective findings: col-028",
+          "category": "lesson-learned",
+          "final_score": 0.2804499394768162,
+          "similarity": 0.13145488500595093,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3972,
+          "title": "Retrospective findings: bugfix-473",
+          "category": "lesson-learned",
+          "final_score": 0.27409310411152077,
+          "similarity": 0.11937689781188965,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3854,
+          "title": "Retrospective findings: bugfix-439",
+          "category": "lesson-learned",
+          "final_score": 0.27389662837982176,
+          "similarity": 0.11900359392166138,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.30380111306607405,
+          "similarity": 0.1326318383216858,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3864,
+          "title": "Retrospective findings: col-028",
+          "category": "lesson-learned",
+          "final_score": 0.2804499394768162,
+          "similarity": 0.13145488500595093,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3972,
+          "title": "Retrospective findings: bugfix-473",
+          "category": "lesson-learned",
+          "final_score": 0.27409310411152077,
+          "similarity": 0.11937689781188965,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3854,
+          "title": "Retrospective findings: bugfix-439",
+          "category": "lesson-learned",
+          "final_score": 0.27389662837982176,
+          "similarity": 0.11900359392166138,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

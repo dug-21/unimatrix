@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1718",
+  "query": "Fantastic... this is the part I've been stuck on.  To get over the hump, lets look at what we have to work with..  At any point:  We have: Feature, session data, observation data? claude log, previous hook messages... I feel like we can solve this problem, but it will take some real analysis and thinking through what would be noise, vs what we could use as a real signal.  We also probably have information about what we've already served this session, and any specific searches the agent has performed to that point? Look around, and understand what information we have available to us to solve this problem that would work as an effective signal for our responses",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5223044706645763,
+          "similarity": 0.4953784942626953,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.47210052062406227,
+          "similarity": 0.43057847023010254,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.4690224049251809,
+          "similarity": 0.42189109325408936,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.4624454358413177,
+          "similarity": 0.39231789112091064,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.44814677693033766,
+          "similarity": 0.39364922046661377,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5223044706645763,
+          "similarity": 0.4953784942626953,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.47210052062406227,
+          "similarity": 0.43057847023010254,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.4690224049251809,
+          "similarity": 0.42189109325408936,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.4624454358413177,
+          "similarity": 0.39231789112091064,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.44814677693033766,
+          "similarity": 0.39364922046661377,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

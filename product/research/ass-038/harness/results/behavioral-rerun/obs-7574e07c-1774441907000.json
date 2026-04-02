@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7574e07c-1774441907000",
+  "query": "MCP response rendering input sanitization security",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4911456707518356,
+          "similarity": 0.44455742835998535,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.46961989235667834,
+          "similarity": 0.43307220935821533,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4690666189039959,
+          "similarity": 0.4328375458717346,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 77,
+          "title": "ADR-001: rmcp 0.16 with stdio Transport",
+          "category": "decision",
+          "final_score": 0.4645794558937759,
+          "similarity": 0.40267252922058105,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.42421412668730074,
+          "similarity": 0.4270068407058716,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4911456707518356,
+          "similarity": 0.44455742835998535,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.46961989235667834,
+          "similarity": 0.43307220935821533,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4690666189039959,
+          "similarity": 0.4328375458717346,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 77,
+          "title": "ADR-001: rmcp 0.16 with stdio Transport",
+          "category": "decision",
+          "final_score": 0.4645794558937759,
+          "similarity": 0.40267252922058105,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.42421412668730074,
+          "similarity": 0.4270068407058716,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

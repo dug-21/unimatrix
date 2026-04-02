@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4758",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Branch created, cycle declared. Spawning Phase 1 researcher now.\n[tool: mcp__unimatrix__context_cycle(start) → Acknowledged: cycle_started for topic 'crt-035' with goal: 'Extend CoAccess edge promotion to write bidirectional edges and back-fill bootstrap-era forward-only pairs so PPR traversal is complete in both directions.'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_revi]\n[tool: Bash(git checkout -b feature/crt-035) → Switched to a new branch 'feature/crt-035']\n[tool: ToolSearch(select:mcp__unimatrix__context_cycle) → ]\n[Assistant] Good. Executing the protocol. Creating the branch and declaring the cycle first.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5140219592126404,
+          "similarity": 0.5100579261779785,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5116989144039545,
+          "similarity": 0.47344499826431274,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.504762943712139,
+          "similarity": 0.47671592235565186,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.48141615003506655,
+          "similarity": 0.4851265549659729,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 758,
+          "title": "ADR-017-001: Extraction Facade over Individual Functions",
+          "category": "decision",
+          "final_score": 0.4760211218980325,
+          "similarity": 0.46814072132110596,
+          "confidence": 0.5518563004073657,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5140219592126404,
+          "similarity": 0.5100579261779785,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5116989144039545,
+          "similarity": 0.47344499826431274,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.504762943712139,
+          "similarity": 0.47671592235565186,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.48141615003506655,
+          "similarity": 0.4851265549659729,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 758,
+          "title": "ADR-017-001: Extraction Facade over Individual Functions",
+          "category": "decision",
+          "final_score": 0.4760211218980325,
+          "similarity": 0.46814072132110596,
+          "confidence": 0.5518563004073657,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1130",
+  "query": "so.. 1 or 2 elements are actually real issues, but not an issue requiring externalization.  1. Context_retrospective should be renamed as context_cycle_review.  Hard coded.  context_cycle, and context_cycle_review are both generic and self explanatory.  They are to be hardcoded... just the context_retrospective gets a name change.  2. CycleParams field doc --- could use an 'example of Feature cycle identifier' but it should be any 'topic'.  What we're trying to convey is that Unimatrix has the concept of a workflow built in... and can watch and track and measure against these cycles.  Software devilivery: feature, for another domain... could be something else.  If that change fits nicely wihin the scope of WO-3, great... but its not externalization.. its simply addressing 1 externally facing domain specific context that to a more neutral concept",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5444602028484491,
+          "similarity": 0.5331985354423523,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5296824895626243,
+          "similarity": 0.5078359842300415,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5283514346167528,
+          "similarity": 0.5121764540672302,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5263381855039636,
+          "similarity": 0.5077687501907349,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.4986173407406693,
+          "similarity": 0.5068337917327881,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5444602028484491,
+          "similarity": 0.5331985354423523,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5296824895626243,
+          "similarity": 0.5078359842300415,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5283514346167528,
+          "similarity": 0.5121764540672302,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5263381855039636,
+          "similarity": 0.5077687501907349,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.4986173407406693,
+          "similarity": 0.5068337917327881,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

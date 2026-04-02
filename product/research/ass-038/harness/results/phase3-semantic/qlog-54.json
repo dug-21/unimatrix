@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-54",
+  "query": "lets talk about issue #2 further... isn't knowledge_in/out the same as what I'm pushing issue 2 to become?  Lets think objecctively",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.44044561168160146,
+          "similarity": 0.3355708122253418,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.41755565346427215,
+          "similarity": 0.3320220708847046,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.4147950411040855,
+          "similarity": 0.3105607032775879,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.4147199909298497,
+          "similarity": 0.33421623706817627,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.41319636604217125,
+          "similarity": 0.338661789894104,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.44044561168160146,
+          "similarity": 0.3355708122253418,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.41755565346427215,
+          "similarity": 0.3320220708847046,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.4147950411040855,
+          "similarity": 0.3105607032775879,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.4147199909298497,
+          "similarity": 0.33421623706817627,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.41319636604217125,
+          "similarity": 0.338661789894104,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-5f33a80a-1774523330000",
+  "query": "free function module scope testability MCP handler phase snapshot",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.51516815332266,
+          "similarity": 0.6808982491493225,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3541,
+          "title": "Free function at module scope for testable SessionRegistry reads in MCP handlers",
+          "category": "pattern",
+          "final_score": 0.45357539103581357,
+          "similarity": 0.580810010433197,
+          "confidence": 0.4951572748653303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.44217894627497745,
+          "similarity": 0.5622907876968384,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.42461692369901216,
+          "similarity": 0.5337525010108948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.4197975672208346,
+          "similarity": 0.5259210467338562,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.6167939255915438,
+          "similarity": 0.6808982491493225,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5566223028336952,
+          "similarity": 0.5622907876968384,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5459042544385991,
+          "similarity": 0.5259210467338562,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3541,
+          "title": "Free function at module scope for testable SessionRegistry reads in MCP handlers",
+          "category": "pattern",
+          "final_score": 0.5457702549736151,
+          "similarity": 0.580810010433197,
+          "confidence": 0.4951572748653303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.5400662133932306,
+          "similarity": 0.5337525010108948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.6808982491493225,
+          "similarity": 0.6808982491493225,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3541,
+          "title": "Free function at module scope for testable SessionRegistry reads in MCP handlers",
+          "category": "pattern",
+          "final_score": 0.580810010433197,
+          "similarity": 0.580810010433197,
+          "confidence": 0.4951572748653303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5622907876968384,
+          "similarity": 0.5622907876968384,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.5337525010108948,
+          "similarity": 0.5337525010108948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5259210467338562,
+          "similarity": 0.5259210467338562,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.6163749430846304,
+          "similarity": 0.6808982491493225,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.556585253913021,
+          "similarity": 0.5622907876968384,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5460348636392838,
+          "similarity": 0.5259210467338562,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3541,
+          "title": "Free function at module scope for testable SessionRegistry reads in MCP handlers",
+          "category": "pattern",
+          "final_score": 0.5455412369640754,
+          "similarity": 0.580810010433197,
+          "confidence": 0.4951572748653303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.5401074794872328,
+          "similarity": 0.5337525010108948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.5477087620437537,
+          "similarity": 0.6808982491493225,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.49567574125783237,
+          "similarity": 0.5622907876968384,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3541,
+          "title": "Free function at module scope for testable SessionRegistry reads in MCP handlers",
+          "category": "pattern",
+          "final_score": 0.4889521876761976,
+          "similarity": 0.580810010433197,
+          "confidence": 0.4951572748653303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.48539118970389644,
+          "similarity": 0.5259210467338562,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.4816320565557621,
+          "similarity": 0.5337525010108948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.5477087620437537,
+          "similarity": 0.6808982491493225,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.49567574125783237,
+          "similarity": 0.5622907876968384,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3541,
+          "title": "Free function at module scope for testable SessionRegistry reads in MCP handlers",
+          "category": "pattern",
+          "final_score": 0.4889521876761976,
+          "similarity": 0.580810010433197,
+          "confidence": 0.4951572748653303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.48539118970389644,
+          "similarity": 0.5259210467338562,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.4816320565557621,
+          "similarity": 0.5337525010108948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 3541,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 919,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 1685,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3513,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

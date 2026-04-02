@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-67e04789-1774667646000",
+  "query": "batch struct field additions before compiling compile cycle",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.6009852866178567,
+          "similarity": 0.6456171274185181,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5306576668385262,
+          "similarity": 0.5729039311408997,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5002736752317777,
+          "similarity": 0.5320307016372681,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4942824327648788,
+          "similarity": 0.5403919816017151,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.6009852866178567,
+          "similarity": 0.6456171274185181,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5306576668385262,
+          "similarity": 0.5729039311408997,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5002736752317777,
+          "similarity": 0.5320307016372681,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4942824327648788,
+          "similarity": 0.5403919816017151,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

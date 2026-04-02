@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4747",
+  "query": "pull origin, build for local install, kill all unimatrix server processes",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5427220714587134,
+          "similarity": 0.5733667016029358,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.49324368787628625,
+          "similarity": 0.5196720957756042,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.4907469854534532,
+          "similarity": 0.48939603567123413,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.4850706251838339,
+          "similarity": 0.5142906308174133,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.4813303388200728,
+          "similarity": 0.49842506647109985,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5427220714587134,
+          "similarity": 0.5733667016029358,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.49324368787628625,
+          "similarity": 0.5196720957756042,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.4907469854534532,
+          "similarity": 0.48939603567123413,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.4850706251838339,
+          "similarity": 0.5142906308174133,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.4813303388200728,
+          "similarity": 0.49842506647109985,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

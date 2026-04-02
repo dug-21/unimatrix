@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774263716000",
+  "query": "database query hot path spawn_blocking background maintenance",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5542276501655579,
+          "similarity": 0.5542276501655579,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.46462106704711914,
+          "similarity": 0.46462106704711914,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.412273645401001,
+          "similarity": 0.412273645401001,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.4083244800567627,
+          "similarity": 0.4083244800567627,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.40801531076431274,
+          "similarity": 0.40801531076431274,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5111638789236186,
+          "similarity": 0.5542276501655579,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.4785105335235596,
+          "similarity": 0.46462106704711914,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.44889671311299245,
+          "similarity": 0.412273645401001,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.42478183659566426,
+          "similarity": 0.4083244800567627,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.39315279665321806,
+          "similarity": 0.40801531076431274,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5786339857612846,
+          "similarity": 0.5542276501655579,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5426006276747759,
+          "similarity": 0.46462106704711914,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.5070863076647936,
+          "similarity": 0.412273645401001,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.474374630615935,
+          "similarity": 0.4083244800567627,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.4309925335667393,
+          "similarity": 0.40801531076431274,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.578475503062611,
+          "similarity": 0.5542276501655579,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5420942668914794,
+          "similarity": 0.46462106704711914,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.5064706410267169,
+          "similarity": 0.412273645401001,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.4739457335343819,
+          "similarity": 0.4083244800567627,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.4308433308212689,
+          "similarity": 0.40801531076431274,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5111638789236186,
+          "similarity": 0.5542276501655579,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.4785105335235596,
+          "similarity": 0.46462106704711914,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.44889671311299245,
+          "similarity": 0.412273645401001,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.42478183659566426,
+          "similarity": 0.4083244800567627,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.39315279665321806,
+          "similarity": 0.40801531076431274,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.43721701548649716,
+          "similarity": 0.5542276501655579,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.3820745027982272,
+          "similarity": 0.46462106704711914,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.3498607048621544,
+          "similarity": 0.412273645401001,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.3474304492657001,
+          "similarity": 0.4083244800567627,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.34724019123957706,
+          "similarity": 0.40801531076431274,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

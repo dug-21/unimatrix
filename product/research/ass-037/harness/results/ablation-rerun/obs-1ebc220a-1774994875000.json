@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-1ebc220a-1774994875000",
+  "query": "NLI detection guard predicate nli_detection_tick inference",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5273245460023387,
+          "similarity": 0.5876420736312866,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.525690924359135,
+          "similarity": 0.5844101309776306,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5102964118928072,
+          "similarity": 0.5848965644836426,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5017869327411083,
+          "similarity": 0.5634260177612305,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5975393696472013,
+          "similarity": 0.5876420736312866,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5956140009853195,
+          "similarity": 0.5844101309776306,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5744365884329075,
+          "similarity": 0.5848965644836426,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5648618667268906,
+          "similarity": 0.5634260177612305,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5273245460023387,
+          "similarity": 0.5876420736312866,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.525690924359135,
+          "similarity": 0.5844101309776306,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5102964118928072,
+          "similarity": 0.5848965644836426,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5017869327411083,
+          "similarity": 0.5634260177612305,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5974751014912538,
+          "similarity": 0.5876420736312866,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5955412485826721,
+          "similarity": 0.5844101309776306,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5745045103553148,
+          "similarity": 0.5848965644836426,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5648525430323084,
+          "similarity": 0.5634260177612305,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.45777973761925334,
+          "similarity": 0.5876420736312866,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.45609019352839547,
+          "similarity": 0.5848965644836426,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4557908498323881,
+          "similarity": 0.5844101309776306,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.44287754939152646,
+          "similarity": 0.5634260177612305,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5876420736312866,
+          "similarity": 0.5876420736312866,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5848965644836426,
+          "similarity": 0.5848965644836426,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5844101309776306,
+          "similarity": 0.5844101309776306,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5634260177612305,
+          "similarity": 0.5634260177612305,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

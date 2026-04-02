@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774783275000",
+  "query": "InferenceConfig field addition procedure config fields serde default",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5935097652130245,
+          "similarity": 0.6289453506469727,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5822619083100677,
+          "similarity": 0.6646519899368286,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5386154440929218,
+          "similarity": 0.5346959829330444,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5382604057906138,
+          "similarity": 0.5672645568847656,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.5086035070342427,
+          "similarity": 0.5560521483421326,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5935097652130245,
+          "similarity": 0.6289453506469727,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5822619083100677,
+          "similarity": 0.6646519899368286,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5386154440929218,
+          "similarity": 0.5346959829330444,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5382604057906138,
+          "similarity": 0.5672645568847656,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.5086035070342427,
+          "similarity": 0.5560521483421326,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

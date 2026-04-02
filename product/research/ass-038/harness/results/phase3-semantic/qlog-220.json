@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-220",
+  "query": "Your agent ID: nan-003-agent-2-spec\n\nWrite the specification for nan-003 (Unimatrix Onboarding Skills: /unimatrix-init and /unimatrix-seed).\n\nRead these artifacts:\n- SCOPE.md: product/features/nan-003/SCOPE.md\n- Scope Risk Assessment: product/features/nan-003/SCOPE-RISK-ASSESSMENT.md\n- Product vision: product/PRODUCT-VISION.md\n- Existing skill examples in .claude/skills/ (to understand format and conventions)\n\nConsider SR-XX risks when defining constraints and acceptance criteria.\n\nProduce:\n- specification/SPECIFICATION.md at product/features/nan-003/specification/SPECIFICATION.md\n\nCover: functional requirements, non-functional requirements, user workflows for both skills, acceptance criteria with verification methods, domain models, constraints and dependencies.\n\nReturn: SPECIFICATION.md path, key requirements, open questions.\n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5684112237330682,
+          "similarity": 0.6707171201705933,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5613585902052575,
+          "similarity": 0.5653054714202881,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5605758856555825,
+          "similarity": 0.6097086668014526,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.5346075109809181,
+          "similarity": 0.5751955509185791,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.5079787876152654,
+          "similarity": 0.5548651814460754,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5684112237330682,
+          "similarity": 0.6707171201705933,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5613585902052575,
+          "similarity": 0.5653054714202881,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5605758856555825,
+          "similarity": 0.6097086668014526,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.5346075109809181,
+          "similarity": 0.5751955509185791,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.5079787876152654,
+          "similarity": 0.5548651814460754,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

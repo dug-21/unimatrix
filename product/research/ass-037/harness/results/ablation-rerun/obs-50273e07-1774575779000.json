@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-50273e07-1774575779000",
+  "query": "SQL pseudocode bugs JOIN double-count test tracing before gate approval",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.6050422016454059,
+          "similarity": 0.633981466293335,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.5704687355862327,
+          "similarity": 0.562767505645752,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5560369969891823,
+          "similarity": 0.5312843322753906,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.5339072006941076,
+          "similarity": 0.5401211977005005,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.5080408581565408,
+          "similarity": 0.5346694588661194,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.5361008516483197,
+          "similarity": 0.633981466293335,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.5058249006160946,
+          "similarity": 0.562767505645752,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.49306155011178926,
+          "similarity": 0.5312843322753906,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.4775696174843141,
+          "similarity": 0.5401211977005005,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.4583347294330597,
+          "similarity": 0.5346694588661194,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.6052301189483145,
+          "similarity": 0.633981466293335,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.5704187275996061,
+          "similarity": 0.562767505645752,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5558762654001316,
+          "similarity": 0.5312843322753906,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.5339475513240192,
+          "similarity": 0.5401211977005005,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.5082137711481614,
+          "similarity": 0.5346694588661194,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.4862962869497446,
+          "similarity": 0.633981466293335,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.4424723111666166,
+          "similarity": 0.562767505645752,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.42853612166184646,
+          "similarity": 0.5401211977005005,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.42518120545607346,
+          "similarity": 0.5346694588661194,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.42309805063100964,
+          "similarity": 0.5312843322753906,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.633981466293335,
+          "similarity": 0.633981466293335,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.562767505645752,
+          "similarity": 0.562767505645752,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.5401211977005005,
+          "similarity": 0.5401211977005005,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.5346694588661194,
+          "similarity": 0.5346694588661194,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5312843322753906,
+          "similarity": 0.5312843322753906,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.5361008516483197,
+          "similarity": 0.633981466293335,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.5058249006160946,
+          "similarity": 0.562767505645752,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.49306155011178926,
+          "similarity": 0.5312843322753906,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.4775696174843141,
+          "similarity": 0.5401211977005005,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.4583347294330597,
+          "similarity": 0.5346694588661194,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

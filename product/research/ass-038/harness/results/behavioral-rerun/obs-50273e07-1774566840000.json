@@ -1,0 +1,94 @@
+{
+  "scenario_id": "obs-50273e07-1774566840000",
+  "query": "risk pattern SQL JOIN entries status filter",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.457857052660677,
+          "similarity": 0.40964460372924805,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.4420885507105188,
+          "similarity": 0.4296737313270569,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.43962358494039966,
+          "similarity": 0.42499029636383057,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0986122886681096
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.457857052660677,
+          "similarity": 0.40964460372924805,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.4420885507105188,
+          "similarity": 0.4296737313270569,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.43962358494039966,
+          "similarity": 0.42499029636383057,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0986122886681096
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

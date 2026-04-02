@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-30b7b9c9-1774916299000",
+  "query": "co_access_promotion_tick bidirectional GRAPH_EDGES",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5771060575116171,
+          "similarity": 0.5601054430007935,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5463676886939051,
+          "similarity": 0.48650896549224854,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5345111150272437,
+          "similarity": 0.4920850992202759,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.5235463651211275,
+          "similarity": 0.4994896650314331,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5144599945177536,
+          "similarity": 0.48923635482788086,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5104705164013777,
+          "similarity": 0.5601054430007935,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4828185278692914,
+          "similarity": 0.48650896549224854,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.47457846232129725,
+          "similarity": 0.4920850992202759,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.46711875637620953,
+          "similarity": 0.4994896650314331,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.4597663070649262,
+          "similarity": 0.48923635482788086,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5769956639108975,
+          "similarity": 0.5601054430007935,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5459789956861021,
+          "similarity": 0.48650896549224854,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5342356214181074,
+          "similarity": 0.4920850992202759,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.5233901527828827,
+          "similarity": 0.4994896650314331,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5142962046496374,
+          "similarity": 0.48923635482788086,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5104705164013777,
+          "similarity": 0.5601054430007935,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4828185278692914,
+          "similarity": 0.48650896549224854,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.47457846232129725,
+          "similarity": 0.4920850992202759,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.46711875637620953,
+          "similarity": 0.4994896650314331,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.4597663070649262,
+          "similarity": 0.48923635482788086,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5601054430007935,
+          "similarity": 0.5601054430007935,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.4994896650314331,
+          "similarity": 0.4994896650314331,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.4920850992202759,
+          "similarity": 0.4920850992202759,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.48923635482788086,
+          "similarity": 0.48923635482788086,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.48650896549224854,
+          "similarity": 0.48650896549224854,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.44083411876971906,
+          "similarity": 0.5601054430007935,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.403532101557805,
+          "similarity": 0.4994896650314331,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.39897544567401594,
+          "similarity": 0.4920850992202759,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.39722237220177287,
+          "similarity": 0.48923635482788086,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.3955439787644606,
+          "similarity": 0.48650896549224854,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

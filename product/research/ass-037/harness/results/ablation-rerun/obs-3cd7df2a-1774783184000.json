@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774783184000",
+  "query": "crt-030 pattern lesson procedure implementation",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.5445668833432036,
+          "similarity": 0.5297335982322693,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5169237086760816,
+          "similarity": 0.42632681131362915,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.5027026175334177,
+          "similarity": 0.45553910732269287,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.48016039509403585,
+          "similarity": 0.3965108394622803,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.45237453580352216,
+          "similarity": 0.38602256774902344,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.4846646210005006,
+          "similarity": 0.5297335982322693,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4574991737833685,
+          "similarity": 0.42632681131362915,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.4490178600126859,
+          "similarity": 0.45553910732269287,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.4285516790331117,
+          "similarity": 0.3965108394622803,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.40747616410585114,
+          "similarity": 0.38602256774902344,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.42214375275831956,
+          "similarity": 0.5297335982322693,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.37648560450627255,
+          "similarity": 0.45553910732269287,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.3585088069622333,
+          "similarity": 0.42632681131362915,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.3401605165921725,
+          "similarity": 0.3965108394622803,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.3337061955378606,
+          "similarity": 0.38602256774902344,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.5297335982322693,
+          "similarity": 0.5297335982322693,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.45553910732269287,
+          "similarity": 0.45553910732269287,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.42632681131362915,
+          "similarity": 0.42632681131362915,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.3965108394622803,
+          "similarity": 0.3965108394622803,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.38602256774902344,
+          "similarity": 0.38602256774902344,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.4846646210005006,
+          "similarity": 0.5297335982322693,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4574991737833685,
+          "similarity": 0.42632681131362915,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.4490178600126859,
+          "similarity": 0.45553910732269287,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.4285516790331117,
+          "similarity": 0.3965108394622803,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.40747616410585114,
+          "similarity": 0.38602256774902344,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.544663832919092,
+          "similarity": 0.5297335982322693,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.51751584526015,
+          "similarity": 0.42632681131362915,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.5030108757700892,
+          "similarity": 0.45553910732269287,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1011,
+          "title": "Category-to-Skill Mapping: One Skill Per Knowledge Category with Enforced Content Template",
+          "category": "pattern",
+          "final_score": 0.4807071242158121,
+          "similarity": 0.3965108394622803,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4528082087973424,
+          "similarity": 0.38602256774902344,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

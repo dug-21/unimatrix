@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4354",
+  "query": "now select the most appropriate prefix and next number, and begin the design",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.37872956403403,
+          "similarity": 0.2525362968444824,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.37472781286297385,
+          "similarity": 0.23714792728424072,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.3653944442614051,
+          "similarity": 0.2609046697616577,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.3617610811511176,
+          "similarity": 0.2276405692100525,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.36150681141679364,
+          "similarity": 0.23812901973724365,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.37872956403403,
+          "similarity": 0.2525362968444824,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.37472781286297385,
+          "similarity": 0.23714792728424072,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.3653944442614051,
+          "similarity": 0.2609046697616577,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.3617610811511176,
+          "similarity": 0.2276405692100525,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.36150681141679364,
+          "similarity": 0.23812901973724365,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

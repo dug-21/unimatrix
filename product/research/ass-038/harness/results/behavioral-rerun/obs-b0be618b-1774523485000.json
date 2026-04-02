@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-b0be618b-1774523485000",
+  "query": "baseline recording eval snapshot log procedure delivery step",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.593446671704232,
+          "similarity": 0.6819260120391846,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5786812571630641,
+          "similarity": 0.6825518012046814,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.5193403855760037,
+          "similarity": 0.5165385007858276,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.5095062866564531,
+          "similarity": 0.5505377650260925,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4981809717066338,
+          "similarity": 0.4462052583694458,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.593446671704232,
+          "similarity": 0.6819260120391846,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5786812571630641,
+          "similarity": 0.6825518012046814,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.5193403855760037,
+          "similarity": 0.5165385007858276,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.5095062866564531,
+          "similarity": 0.5505377650260925,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4981809717066338,
+          "similarity": 0.4462052583694458,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-af1f3351-1774269589000",
+  "query": "service replacement migration delete old service wire new",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.4632432333382456,
+          "similarity": 0.4638007879257202,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.45515570915752723,
+          "similarity": 0.36879533529281616,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.4507578165069632,
+          "similarity": 0.3907151222229004,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.44880927241031787,
+          "similarity": 0.38840270042419434,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.44513562405353524,
+          "similarity": 0.36874866485595703,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.4632432333382456,
+          "similarity": 0.4638007879257202,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.45515570915752723,
+          "similarity": 0.36879533529281616,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.4507578165069632,
+          "similarity": 0.3907151222229004,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.44880927241031787,
+          "similarity": 0.38840270042419434,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.44513562405353524,
+          "similarity": 0.36874866485595703,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-3837f36d-1774009702000",
+  "query": "safe coding rules Rust code quality enforcement",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.6273082359713174,
+          "similarity": 0.6309738755226135,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.5695602507792452,
+          "similarity": 0.5661885738372803,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 235,
+          "title": "Server Error Type Convention",
+          "category": "convention",
+          "final_score": 0.5433802243447459,
+          "similarity": 0.49514663219451904,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.4837196737177232,
+          "similarity": 0.4933234453201294,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.48444546186006987,
+          "similarity": 0.6309738755226135,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.4445775838998648,
+          "similarity": 0.5661885738372803,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 235,
+          "title": "Server Error Type Convention",
+          "category": "convention",
+          "final_score": 0.40085946596585786,
+          "similarity": 0.49514663219451904,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.39973750481238735,
+          "similarity": 0.4933234453201294,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5521084201735751,
+          "similarity": 0.6309738755226135,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.505407366556113,
+          "similarity": 0.5661885738372803,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 235,
+          "title": "Server Error Type Convention",
+          "category": "convention",
+          "final_score": 0.48125892289363764,
+          "similarity": 0.49514663219451904,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.4376617226600647,
+          "similarity": 0.4933234453201294,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.6309738755226135,
+          "similarity": 0.6309738755226135,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.5661885738372803,
+          "similarity": 0.5661885738372803,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 235,
+          "title": "Server Error Type Convention",
+          "category": "convention",
+          "final_score": 0.49514663219451904,
+          "similarity": 0.49514663219451904,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.4933234453201294,
+          "similarity": 0.4933234453201294,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5521084201735751,
+          "similarity": 0.6309738755226135,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.505407366556113,
+          "similarity": 0.5661885738372803,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 235,
+          "title": "Server Error Type Convention",
+          "category": "convention",
+          "final_score": 0.48125892289363764,
+          "similarity": 0.49514663219451904,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.4376617226600647,
+          "similarity": 0.4933234453201294,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.6273320388255463,
+          "similarity": 0.6309738755226135,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.5695383567731285,
+          "similarity": 0.5661885738372803,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 235,
+          "title": "Server Error Type Convention",
+          "category": "convention",
+          "final_score": 0.5430670192009132,
+          "similarity": 0.49514663219451904,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.4837820358709855,
+          "similarity": 0.4933234453201294,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

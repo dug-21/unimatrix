@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-7574e07c-1774441911000",
+  "query": "markdown injection user content sanitization output rendering",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.6153921158562634,
+          "similarity": 0.63777756690979,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.45957803760489047,
+          "similarity": 0.3716144561767578,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3904,
+          "title": "Partial pipe-escaping in markdown table rows: escaping one field but not all fields in the same writeln!",
+          "category": "lesson-learned",
+          "final_score": 0.45148870411949593,
+          "similarity": 0.3663005828857422,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.43893122217777625,
+          "similarity": 0.37538856267929077,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.4349711384492762,
+          "similarity": 0.41045093536376953,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.63777756690979,
+          "similarity": 0.63777756690979,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.41045093536376953,
+          "similarity": 0.41045093536376953,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.37538856267929077,
+          "similarity": 0.37538856267929077,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.3716144561767578,
+          "similarity": 0.3716144561767578,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3904,
+          "title": "Partial pipe-escaping in markdown table rows: escaping one field but not all fields in the same writeln!",
+          "category": "lesson-learned",
+          "final_score": 0.3663005828857422,
+          "similarity": 0.3663005828857422,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4886323488675631,
+          "similarity": 0.63777756690979,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.3487390371469351,
+          "similarity": 0.41045093536376953,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.32716219241802513,
+          "similarity": 0.37538856267929077,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.3248396653395433,
+          "similarity": 0.3716144561767578,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3904,
+          "title": "Partial pipe-escaping in markdown table rows: escaping one field but not all fields in the same writeln!",
+          "category": "lesson-learned",
+          "final_score": 0.32156958946814906,
+          "similarity": 0.3663005828857422,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.5439126534745483,
+          "similarity": 0.63777756690979,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.41137931712476,
+          "similarity": 0.3716144561767578,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3904,
+          "title": "Partial pipe-escaping in markdown table rows: escaping one field but not all fields in the same writeln!",
+          "category": "lesson-learned",
+          "final_score": 0.40510609749318577,
+          "similarity": 0.3663005828857422,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.396606216349472,
+          "similarity": 0.37538856267929077,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.39622546768188477,
+          "similarity": 0.41045093536376953,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.6155374759280394,
+          "similarity": 0.63777756690979,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.4590068455176948,
+          "similarity": 0.3716144561767578,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3904,
+          "title": "Partial pipe-escaping in markdown table rows: escaping one field but not all fields in the same writeln!",
+          "category": "lesson-learned",
+          "final_score": 0.4509355345010949,
+          "similarity": 0.3663005828857422,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.43851860750570815,
+          "similarity": 0.37538856267929077,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.43481191635131833,
+          "similarity": 0.41045093536376953,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.5439126534745483,
+          "similarity": 0.63777756690979,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.41137931712476,
+          "similarity": 0.3716144561767578,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3904,
+          "title": "Partial pipe-escaping in markdown table rows: escaping one field but not all fields in the same writeln!",
+          "category": "lesson-learned",
+          "final_score": 0.40510609749318577,
+          "similarity": 0.3663005828857422,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.396606216349472,
+          "similarity": 0.37538856267929077,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.39622546768188477,
+          "similarity": 0.41045093536376953,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.0,
+    "rank_changes": [
+      {
+        "entry_id": 3920,
+        "from_rank": 5,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3904,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 87,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3459,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

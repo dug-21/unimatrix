@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774263422000",
+  "query": "source_domain ADR-005 domain filter observations background maintenance",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5581978559494019,
+          "similarity": 0.5581978559494019,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.5578138828277588,
+          "similarity": 0.5578138828277588,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.4824885129928589,
+          "similarity": 0.4824885129928589,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.45697659254074097,
+          "similarity": 0.45697659254074097,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.43783819675445557,
+          "similarity": 0.43783819675445557,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.5778974407877462,
+          "similarity": 0.5578138828277588,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5638205450801517,
+          "similarity": 0.5581978559494019,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5285978458514335,
+          "similarity": 0.4824885129928589,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5113650171863949,
+          "similarity": 0.45697659254074097,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.4949286547653342,
+          "similarity": 0.43783819675445557,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.5109790487661979,
+          "similarity": 0.5578138828277588,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5006815901220714,
+          "similarity": 0.5581978559494019,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.46980432115724186,
+          "similarity": 0.4824885129928589,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.45546611877273907,
+          "similarity": 0.45697659254074097,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.4421368932782088,
+          "similarity": 0.43783819675445557,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.5780287058724521,
+          "similarity": 0.5578138828277588,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5638572946823135,
+          "similarity": 0.5581978559494019,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5288992140400517,
+          "similarity": 0.4824885129928589,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5117204970860398,
+          "similarity": 0.45697659254074097,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.49530179501377136,
+          "similarity": 0.43783819675445557,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.5109790487661979,
+          "similarity": 0.5578138828277588,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5006815901220714,
+          "similarity": 0.5581978559494019,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.46980432115724186,
+          "similarity": 0.4824885129928589,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.45546611877273907,
+          "similarity": 0.45697659254074097,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.4421368932782088,
+          "similarity": 0.43783819675445557,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.4396602190457858,
+          "similarity": 0.5581978559494019,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.4394239278940054,
+          "similarity": 0.5578138828277588,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.3930698541494516,
+          "similarity": 0.4824885129928589,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.37737021079430216,
+          "similarity": 0.45697659254074097,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.36559273646428037,
+          "similarity": 0.43783819675445557,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3298,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 2907,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": -0.5,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

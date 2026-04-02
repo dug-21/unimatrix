@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-af1f3351-1774269597000",
+  "query": "stdout injection JSON envelope hook output format",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.5140386827192676,
+          "similarity": 0.5105018615722656,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.47081962538682753,
+          "similarity": 0.40741944313049316,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.45712034356533626,
+          "similarity": 0.408860445022583,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1268,
+          "title": "Test payloads must match real producer serialization to catch .to_string() vs .as_str() bugs",
+          "category": "lesson-learned",
+          "final_score": 0.4426578210266183,
+          "similarity": 0.40281593799591064,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.4382371519024879,
+          "similarity": 0.38657939434051514,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.5140386827192676,
+          "similarity": 0.5105018615722656,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.47081962538682753,
+          "similarity": 0.40741944313049316,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.45712034356533626,
+          "similarity": 0.408860445022583,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1268,
+          "title": "Test payloads must match real producer serialization to catch .to_string() vs .as_str() bugs",
+          "category": "lesson-learned",
+          "final_score": 0.4426578210266183,
+          "similarity": 0.40281593799591064,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.4382371519024879,
+          "similarity": 0.38657939434051514,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

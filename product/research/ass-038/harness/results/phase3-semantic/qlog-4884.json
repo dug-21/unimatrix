@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4884",
+  "query": "<task-notification>\n<task-id>b2pf8ffth</task-id>\n<tool-use-id>toolu_01WBzJ32wuXVASHCo1S99uH7</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/a02f1841-68ff-4c33-965e-355a886d5939/tasks/b2pf8ffth.output</output-file>\n<status>completed</status>\n<summary>Background command \"Run confidence and edge_cases suites synchronously\" completed (exit code 0)</summary>\n</task-notification>",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5395874413519631,
+          "similarity": 0.6040714979171753,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3875,
+          "title": "Retrospective findings: crt-034",
+          "category": "lesson-learned",
+          "final_score": 0.5374174882785704,
+          "similarity": 0.5738475918769836,
+          "confidence": 0.5674937655032859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3811,
+          "title": "Retrospective findings: vnc-012",
+          "category": "lesson-learned",
+          "final_score": 0.5223572129780842,
+          "similarity": 0.5713340640068054,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5222721947619788,
+          "similarity": 0.59091717004776,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5115583226053337,
+          "similarity": 0.5705608129501343,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5395874413519631,
+          "similarity": 0.6040714979171753,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3875,
+          "title": "Retrospective findings: crt-034",
+          "category": "lesson-learned",
+          "final_score": 0.5374174882785704,
+          "similarity": 0.5738475918769836,
+          "confidence": 0.5674937655032859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3811,
+          "title": "Retrospective findings: vnc-012",
+          "category": "lesson-learned",
+          "final_score": 0.5223572129780842,
+          "similarity": 0.5713340640068054,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5222721947619788,
+          "similarity": 0.59091717004776,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5115583226053337,
+          "similarity": 0.5705608129501343,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

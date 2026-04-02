@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-9113d40c-1774743332000",
+  "query": "clippy output parsing tester agent pipe filter worktree",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.5852336169827151,
+          "similarity": 0.6474202275276184,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5396016239928327,
+          "similarity": 0.540178120136261,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.5227713971418493,
+          "similarity": 0.5373113751411438,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.51373112560721,
+          "similarity": 0.5219429135322571,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.489543350388022,
+          "similarity": 0.48082369565963745,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.5226287943393795,
+          "similarity": 0.6474202275276184,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.4817224774902254,
+          "similarity": 0.540178120136261,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.46925568757057184,
+          "similarity": 0.5373113751411438,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.4615714567661285,
+          "similarity": 0.5219429135322571,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.44101184782981867,
+          "similarity": 0.48082369565963745,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.5226287943393795,
+          "similarity": 0.6474202275276184,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.4817224774902254,
+          "similarity": 0.540178120136261,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.46925568757057184,
+          "similarity": 0.5373113751411438,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.4615714567661285,
+          "similarity": 0.5219429135322571,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.44101184782981867,
+          "similarity": 0.48082369565963745,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.6474202275276184,
+          "similarity": 0.6474202275276184,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.540178120136261,
+          "similarity": 0.540178120136261,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.5373113751411438,
+          "similarity": 0.5373113751411438,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5219429135322571,
+          "similarity": 0.5219429135322571,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.48082369565963745,
+          "similarity": 0.48082369565963745,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.5856374261420976,
+          "similarity": 0.6474202275276184,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5396053674742836,
+          "similarity": 0.540178120136261,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.5228658125834031,
+          "similarity": 0.5373113751411438,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5137844489054246,
+          "similarity": 0.5219429135322571,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.48948672925342207,
+          "similarity": 0.48082369565963745,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.4945662938631498,
+          "similarity": 0.6474202275276184,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.42857115085308367,
+          "similarity": 0.540178120136261,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.42680700008685774,
+          "similarity": 0.5373113751411438,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.41734948525061977,
+          "similarity": 0.5219429135322571,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.39204535117516154,
+          "similarity": 0.48082369565963745,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

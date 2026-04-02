@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4995",
+  "query": "switching: summary for 409: SESSION 2 COMPLETE — crt-036 delivered.                \n                                                         \n  Gates: 3a PASS · 3b PASS · 3c PASS\n  Security Review: LOW risk — no blocking findings       \n  Merge readiness: READY                                 \n                                                         \n  Files created/modified:                                \n                                                         \n  ┌──────────────────────────────────┬───────────────┐   \n  │               File               │    Change     │   \n  ├──────────────────────────────────┼───────────────┤   \n  │ crates/unimatrix-store/src/reten │ New — 5 store │   \n  │ tion.rs                          │  methods +    │ \n  │                                  │ stats types   │   \n  ├──────────────────────────────────┼───────────────┤   \n  │ crates/unimatrix-store/src/lib.r │ pub mod       │   \n  │ s                                │ retention     │   \n  ├──────────────────────────────────┼───────────────┤   \n  │ crates/unimatrix-server/src/infr │ RetentionConf │\n  │ a/config.rs                      │ ig + wire-up  │\n  ├──────────────────────────────────┼───────────────┤   \n  │                                  │ Step 4        │\n  │ crates/unimatrix-server/src/serv │ replaced;     │   \n  │ ices/status.rs                   │ both DELETE   │ \n  │                                  │ sites removed │   \n  ├──────────────────────────────────┼───────────────┤   \n  │ crates/unimatrix-server/src/back │ Arc<Retention │   \n  │ ground.rs                        │ Config>       │   \n  │                                  │ threaded      │   \n  ├──────────────────────────────────┼───────────────┤\n  │ crates/unimatrix-server/src/main │ Config        │\n  │ .rs                              │ snapshot      │   \n  ├──────────────────────────────────┼───────────────┤\n  │ crates/unimatrix-server/src/mcp/ │ FR-07 60-day  │   \n  │ tools.rs                         │ DELETE        │   \n  │                                  │ removed       │\n  ├──────────────────────────────────┼───────────────┤   \n  │ config.toml                      │ [retention]   │ \n  │                                  │ block         │   \n  └──────────────────────────────────┴───────────────┘\n                                                         \n  Tests: 4191 passed, 29 new · Smoke 22/22 ·             \n  Tools+lifecycle 139/139\n  PR: https://github.com/dug-21/unimatrix/pull/463       \n  GH Issue:                                              \n  https://github.com/dug-21/unimatrix/issues/409         \n                                                         \n  Human action required: approve and merge.              \n                                                       \n✻ Brewed for 2h 3m 2s                                    \n                                                         \n● Agent \"crt-036 docs update\" completed                  \n                         \n● Bash(git push 2>&1 | tail -3 && git log --oneline -3)  \n  ⎿  Everything up-to-date                               \n     f760019 chore: add security reviewer report (cr     \n     t-036) (#409)                                       \n     … +3 lines (ctrl+o to expand)                       \n                                                         \n● Already pushed — the security reviewer commit included\n  it. The docs update is in the PR.                      \n                                                         \n  README changes:                                        \n  1. Configuration section: [retention] TOML block added \n  with all three fields, validation ranges, and doc      \n  comments                                             \n  2. Tips for Maximum Value: Operational note that the   \n  K-window only advances past reviewed cycles — skipping\n  context_cycle_review stalls GC and lets raw signals    \n  accumulate; context_status pending_cycle_reviews shows\n  what's blocked                                    \\\nSec review: Findings (all non-blocking)\n\nF-1 (low): Test helper format! for SQL table name\nretention.rs lines 385–402. count_for_session and count_table build SQL strings via format!(\"{table}\"). The table parameter is always a string literal at every call site (\"observations\", \"entries\", etc.), never external input. This is test-only code behind #[cfg(test)]. Not a production risk. Note for future test authors: do not replicate this pattern in production store methods.\n\nF-2 (low): audit_log_retention_days lower bound is 1 day\nAn operator setting audit_log_retention_days = 1 permanently destroys almost all audit history on each tick. This is the documented operational trade-off (RISK-TEST-STRATEGY Security Risks section), not a code bug. The validate() lower bound prevents 0. An operator with write access to config.toml already has full filesystem access. Acceptable. Consider a startup tracing::warn! if the value is < 30 days in a future enhancement.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5520452828111904,
+          "similarity": 0.551651120185852,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5486102191605677,
+          "similarity": 0.5491756200790405,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.539268840832894,
+          "similarity": 0.5620469450950623,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.5183712579348992,
+          "similarity": 0.5395375490188599,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.5066149748875692,
+          "similarity": 0.5334867238998413,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5520452828111904,
+          "similarity": 0.551651120185852,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5486102191605677,
+          "similarity": 0.5491756200790405,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.539268840832894,
+          "similarity": 0.5620469450950623,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.5183712579348992,
+          "similarity": 0.5395375490188599,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.5066149748875692,
+          "similarity": 0.5334867238998413,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

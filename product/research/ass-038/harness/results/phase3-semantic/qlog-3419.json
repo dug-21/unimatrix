@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3419",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Wave 2: report entry point for nan-009) → ]\n[Assistant] Wave 2 — Report Entry Point, Report Aggregation, and Report Rendering in parallel (each owns a distinct file).\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.4511866291524572,
+          "similarity": 0.39154911041259766,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.4502212685851644,
+          "similarity": 0.38867223262786865,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3334,
+          "title": "ADR-002 crt-028: Tool-Use/Tool-Result Pairing via Adjacent-Record Scan",
+          "category": "decision",
+          "final_score": 0.4359011618841604,
+          "similarity": 0.3836219310760498,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.42558068084251677,
+          "similarity": 0.3992435932159424,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.4236379329202966,
+          "similarity": 0.39461755752563477,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.4511866291524572,
+          "similarity": 0.39154911041259766,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.4502212685851644,
+          "similarity": 0.38867223262786865,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3334,
+          "title": "ADR-002 crt-028: Tool-Use/Tool-Result Pairing via Adjacent-Record Scan",
+          "category": "decision",
+          "final_score": 0.4359011618841604,
+          "similarity": 0.3836219310760498,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.42558068084251677,
+          "similarity": 0.3992435932159424,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.4236379329202966,
+          "similarity": 0.39461755752563477,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-b0be618b-1774493425000",
+  "query": "aggregate stats accumulation eval report",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.39739197951096755,
+          "similarity": 0.48951196670532227,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.3821721076965332,
+          "similarity": 0.46477967500686646,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.36316622220552885,
+          "similarity": 0.4338951110839844,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.3457602354196402,
+          "similarity": 0.4056103825569153,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.33584983532245344,
+          "similarity": 0.3895059823989868,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.46525752537683335,
+          "similarity": 0.46477967500686646,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.4545624568397492,
+          "similarity": 0.48951196670532227,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.4444997970156405,
+          "similarity": 0.4338951110839844,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.4174238311597093,
+          "similarity": 0.4056103825569153,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.398335858209726,
+          "similarity": 0.3895059823989868,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.5240075641496031,
+          "similarity": 0.46477967500686646,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.5071749896264468,
+          "similarity": 0.48951196670532227,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.4985092585591476,
+          "similarity": 0.4338951110839844,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.4641588258944295,
+          "similarity": 0.4056103825569153,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.4395938082497185,
+          "similarity": 0.3895059823989868,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.524394674536157,
+          "similarity": 0.46477967500686646,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.5072904342207026,
+          "similarity": 0.48951196670532227,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.4989315732485278,
+          "similarity": 0.4338951110839844,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.464541495458727,
+          "similarity": 0.4056103825569153,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.4399211796605076,
+          "similarity": 0.3895059823989868,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.48951196670532227,
+          "similarity": 0.48951196670532227,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.46477967500686646,
+          "similarity": 0.46477967500686646,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.4338951110839844,
+          "similarity": 0.4338951110839844,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.4056103825569153,
+          "similarity": 0.4056103825569153,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.3895059823989868,
+          "similarity": 0.3895059823989868,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.46525752537683335,
+          "similarity": 0.46477967500686646,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3529,
+          "title": "eval/report render_report: pass new aggregate slices as parameters, not struct fields",
+          "category": "pattern",
+          "final_score": 0.4545624568397492,
+          "similarity": 0.48951196670532227,
+          "confidence": 0.5326882449569602,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.4444997970156405,
+          "similarity": 0.4338951110839844,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.4174238311597093,
+          "similarity": 0.4056103825569153,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.398335858209726,
+          "similarity": 0.3895059823989868,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3529,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 1040,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

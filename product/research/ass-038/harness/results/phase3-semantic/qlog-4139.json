@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4139",
+  "query": "OK... lets begin with quarantining these entries.  All of them eventually need to be quarantined.  To do that, you need to use the context_quarantine with agent_id: \"human\"",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.4908224646765885,
+          "similarity": 0.47697365283966064,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.4832812119333312,
+          "similarity": 0.4363495111465454,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.4759102067218034,
+          "similarity": 0.39760279655456543,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.45058856217198295,
+          "similarity": 0.4439893960952759,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 361,
+          "title": "ADR-007: JSON Array Columns for Non-Queried Vec Fields",
+          "category": "decision",
+          "final_score": 0.4435336085159046,
+          "similarity": 0.39016199111938477,
+          "confidence": 0.5750740929440489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.4908224646765885,
+          "similarity": 0.47697365283966064,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.4832812119333312,
+          "similarity": 0.4363495111465454,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.4759102067218034,
+          "similarity": 0.39760279655456543,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.45058856217198295,
+          "similarity": 0.4439893960952759,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 361,
+          "title": "ADR-007: JSON Array Columns for Non-Queried Vec Fields",
+          "category": "decision",
+          "final_score": 0.4435336085159046,
+          "similarity": 0.39016199111938477,
+          "confidence": 0.5750740929440489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

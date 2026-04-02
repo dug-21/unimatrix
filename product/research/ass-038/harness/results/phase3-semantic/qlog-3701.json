@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3701",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] **Phase 1 Summary:**\n\nStewardship: 7 entries found — 5 ADRs (#3626–3630, decisions), 2 patterns (#3631 inline cfg-test, #3636 path-attribute). Both patterns look strong and well-tagged. ADR quality needs architect review. F-04 shows `context_store` failed 23 times — likely duplicate-key rejections during architect's bulk ADR write.\n\n**RETROSPECTIVE BRIEFING built. Spawning Phase 2 architect.**\n[tool: mcp__unimatrix__context_search(graph_suppression module sibling path attribute Rust module resolution) → #3636 | Use #[path] attribute when declaring a submodule inside a file-based module (not mod.rs) | pattern | [col-030, engine, module-split, path-attribute] | 0.70\n#3626 | ADR-001: graph_suppression.rs Module Split for suppress_contradicts | decision | [] | 0.49\n#3631 | Inline #[cfg(test)] in new si]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5577013627199047,
+          "similarity": 0.5966843366622925,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.5542571808233826,
+          "similarity": 0.5989137887954712,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5511785591016908,
+          "similarity": 0.6023090481758118,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5446733539451838,
+          "similarity": 0.6576682925224304,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.5427033731677938,
+          "similarity": 0.6073721647262573,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5577013627199047,
+          "similarity": 0.5966843366622925,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.5542571808233826,
+          "similarity": 0.5989137887954712,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5511785591016908,
+          "similarity": 0.6023090481758118,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5446733539451838,
+          "similarity": 0.6576682925224304,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.5427033731677938,
+          "similarity": 0.6073721647262573,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-5becb974-1774967220000",
+  "query": "NLI detection tick graph inference run_graph_inference_tick",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.557003032398991,
+          "similarity": 0.6470343470573425,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5359321123589976,
+          "similarity": 0.6048572063446045,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5191535720406447,
+          "similarity": 0.5774715542793274,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5050079677447704,
+          "similarity": 0.5698680877685547,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.6325464671752291,
+          "similarity": 0.6470343470573425,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.6076476799127598,
+          "similarity": 0.6048572063446045,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5872574569391221,
+          "similarity": 0.5774715542793274,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5686592207639091,
+          "similarity": 0.5698680877685547,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.557003032398991,
+          "similarity": 0.6470343470573425,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5359321123589976,
+          "similarity": 0.6048572063446045,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5191535720406447,
+          "similarity": 0.5774715542793274,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5050079677447704,
+          "similarity": 0.5698680877685547,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.632451775149856,
+          "similarity": 0.6470343470573425,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.6076659183020943,
+          "similarity": 0.6048572063446045,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5873214170872254,
+          "similarity": 0.5774715542793274,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5686513196723755,
+          "similarity": 0.5698680877685547,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.6470343470573425,
+          "similarity": 0.6470343470573425,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.6048572063446045,
+          "similarity": 0.6048572063446045,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5774715542793274,
+          "similarity": 0.5774715542793274,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5698680877685547,
+          "similarity": 0.5698680877685547,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.49432882895836466,
+          "similarity": 0.6470343470573425,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.46837366544283354,
+          "similarity": 0.6048572063446045,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.4515209564795861,
+          "similarity": 0.5774715542793274,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.4468419001652644,
+          "similarity": 0.5698680877685547,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-af1f3351-1774269616000",
+  "query": "typed contract surface downstream compile stable interface struct formatter",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.5682305741838254,
+          "similarity": 0.5598518252372742,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.5417794156395455,
+          "similarity": 0.49088865518569946,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5148642191939979,
+          "similarity": 0.48992353677749634,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.5108570317014148,
+          "similarity": 0.5081624388694763,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.5039859772794496,
+          "similarity": 0.5598518252372742,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.4797884781935045,
+          "similarity": 0.49088865518569946,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.46010989803973396,
+          "similarity": 0.48992353677749634,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.4584931544445648,
+          "similarity": 0.5081624388694763,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.5681761667231335,
+          "similarity": 0.5598518252372742,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.5414489561560789,
+          "similarity": 0.49088865518569946,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5147022667107739,
+          "similarity": 0.48992353677749634,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.5108395343453632,
+          "similarity": 0.5081624388694763,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.5598518252372742,
+          "similarity": 0.5598518252372742,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.5081624388694763,
+          "similarity": 0.5081624388694763,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.49088865518569946,
+          "similarity": 0.49088865518569946,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.48992353677749634,
+          "similarity": 0.48992353677749634,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.5039859772794496,
+          "similarity": 0.5598518252372742,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.4797884781935045,
+          "similarity": 0.49088865518569946,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.46010989803973396,
+          "similarity": 0.48992353677749634,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.4584931544445648,
+          "similarity": 0.5081624388694763,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.440678046299861,
+          "similarity": 0.5598518252372742,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.40886919315044695,
+          "similarity": 0.5081624388694763,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.39823917242196893,
+          "similarity": 0.49088865518569946,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.3976452534015362,
+          "similarity": 0.48992353677749634,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-154",
+  "query": "now... run retro",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.3759848851774089,
+          "similarity": 0.25656604766845703,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 652,
+          "title": "ADR-004: Persistence backward compat via serde(default) — no version bump (crt-012)",
+          "category": "decision",
+          "final_score": 0.34286279127039254,
+          "similarity": 0.20165550708770752,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.3376785390018773,
+          "similarity": 0.2176799178123474,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.3331910874316629,
+          "similarity": 0.22136622667312622,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.3263912723599932,
+          "similarity": 0.20165413618087769,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.3759848851774089,
+          "similarity": 0.25656604766845703,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 652,
+          "title": "ADR-004: Persistence backward compat via serde(default) — no version bump (crt-012)",
+          "category": "decision",
+          "final_score": 0.34286279127039254,
+          "similarity": 0.20165550708770752,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.3376785390018773,
+          "similarity": 0.2176799178123474,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.3331910874316629,
+          "similarity": 0.22136622667312622,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.3263912723599932,
+          "similarity": 0.20165413618087769,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

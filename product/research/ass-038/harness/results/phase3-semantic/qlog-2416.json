@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2416",
+  "query": "but, is role used by the backend at all?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.3807590416279253,
+          "similarity": 0.3131476640701294,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.38062484537452834,
+          "similarity": 0.3139230012893677,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.3596088210079206,
+          "similarity": 0.30656224489212036,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.3424894847125475,
+          "similarity": 0.30656224489212036,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.33842104565739717,
+          "similarity": 0.29889023303985596,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.3807590416279253,
+          "similarity": 0.3131476640701294,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.38062484537452834,
+          "similarity": 0.3139230012893677,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.3596088210079206,
+          "similarity": 0.30656224489212036,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.3424894847125475,
+          "similarity": 0.30656224489212036,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.33842104565739717,
+          "similarity": 0.29889023303985596,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

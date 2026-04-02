@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2831",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Wave 1 is fully committed. `compile_cycles` has iterative/batch framing; `permission_retries` correctly retains the allowlist mention (independent per ADR-005). Now launching **Stage 3b — Wave 2** (PhaseStats computation + knowledge_reuse extension, in parallel).\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.5614173002145669,
+          "similarity": 0.6157000660896301,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5396702413373842,
+          "similarity": 0.5586252808570862,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 340,
+          "title": "ADR-003: Wave execution order (7 waves with compilation gates)",
+          "category": "decision",
+          "final_score": 0.5151732170536637,
+          "similarity": 0.564064085483551,
+          "confidence": 0.5210928955977289,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5007860869516519,
+          "similarity": 0.5330042839050293,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.4804504502447028,
+          "similarity": 0.5338558554649353,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.5614173002145669,
+          "similarity": 0.6157000660896301,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5396702413373842,
+          "similarity": 0.5586252808570862,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 340,
+          "title": "ADR-003: Wave execution order (7 waves with compilation gates)",
+          "category": "decision",
+          "final_score": 0.5151732170536637,
+          "similarity": 0.564064085483551,
+          "confidence": 0.5210928955977289,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5007860869516519,
+          "similarity": 0.5330042839050293,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.4804504502447028,
+          "similarity": 0.5338558554649353,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-1790a921-1774282056000",
+  "query": "bugfix-360 check_entry_contradiction rayon tokio",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.508757093679713,
+          "similarity": 0.532208263874054,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.4912985481454787,
+          "similarity": 0.4990370273590088,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.46715152889023903,
+          "similarity": 0.46274226903915405,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3660,
+          "title": "Grep Gate as Primary Test Coverage for Compile-Invisible Rayon/Tokio Boundary (R-09 Pattern)",
+          "category": "pattern",
+          "final_score": 0.45116310691064665,
+          "similarity": 0.4469153881072998,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.508757093679713,
+          "similarity": 0.532208263874054,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.4912985481454787,
+          "similarity": 0.4990370273590088,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.46715152889023903,
+          "similarity": 0.46274226903915405,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3660,
+          "title": "Grep Gate as Primary Test Coverage for Compile-Invisible Rayon/Tokio Boundary (R-09 Pattern)",
+          "category": "pattern",
+          "final_score": 0.45116310691064665,
+          "similarity": 0.4469153881072998,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

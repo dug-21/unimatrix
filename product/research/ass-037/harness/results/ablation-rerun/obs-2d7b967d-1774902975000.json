@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-2d7b967d-1774902975000",
+  "query": "f32 f64 SQLite REAL precision type mismatch",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.563847225108017,
+          "similarity": 0.7188705801963806,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.45814025585946355,
+          "similarity": 0.4566847085952759,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.4558671406194235,
+          "similarity": 0.49588632583618164,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.4143699775502471,
+          "similarity": 0.39309221506118774,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.40148670593725583,
+          "similarity": 0.3941495418548584,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.6348029971878291,
+          "similarity": 0.7188705801963806,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.5154194973958053,
+          "similarity": 0.4566847085952759,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.5084562394937007,
+          "similarity": 0.49588632583618164,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.4615772030041444,
+          "similarity": 0.39309221506118774,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.443790621692816,
+          "similarity": 0.3941495418548584,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.7188705801963806,
+          "similarity": 0.7188705801963806,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.49588632583618164,
+          "similarity": 0.49588632583618164,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.4566847085952759,
+          "similarity": 0.4566847085952759,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.3941495418548584,
+          "similarity": 0.3941495418548584,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.39309221506118774,
+          "similarity": 0.39309221506118774,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.563847225108017,
+          "similarity": 0.7188705801963806,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.45814025585946355,
+          "similarity": 0.4566847085952759,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.4558671406194235,
+          "similarity": 0.49588632583618164,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.4143699775502471,
+          "similarity": 0.39309221506118774,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.40148670593725583,
+          "similarity": 0.3941495418548584,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.6353488905839885,
+          "similarity": 0.7188705801963806,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.5150381026633344,
+          "similarity": 0.4566847085952759,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.5083746166777428,
+          "similarity": 0.49588632583618164,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.46113249529022904,
+          "similarity": 0.39309221506118774,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.4434682770185435,
+          "similarity": 0.3941495418548584,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5385357416593112,
+          "similarity": 0.7188705801963806,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.40131466205303484,
+          "similarity": 0.49588632583618164,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.37719058990478516,
+          "similarity": 0.4566847085952759,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.3387074103722205,
+          "similarity": 0.3941495418548584,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.3380567477299617,
+          "similarity": 0.39309221506118774,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

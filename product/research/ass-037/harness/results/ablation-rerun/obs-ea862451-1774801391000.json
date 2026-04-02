@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ea862451-1774801391000",
+  "query": "category policy lifecycle adaptive pinned",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5744208277485789,
+          "similarity": 0.5927640199661255,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5018214138044023,
+          "similarity": 0.45184385776519775,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.4636944517914957,
+          "similarity": 0.3535892963409424,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.4476636741615576,
+          "similarity": 0.3416222333908081,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.43676380932481146,
+          "similarity": 0.3947345018386841,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5108468902144022,
+          "similarity": 0.5927640199661255,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.44788730561215,
+          "similarity": 0.45184385776519775,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.41309090747244276,
+          "similarity": 0.3535892963409424,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.40055655070276397,
+          "similarity": 0.3416222333908081,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.3964089540679829,
+          "similarity": 0.3947345018386841,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5108468902144022,
+          "similarity": 0.5927640199661255,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.44788730561215,
+          "similarity": 0.45184385776519775,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.41309090747244276,
+          "similarity": 0.3535892963409424,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.40055655070276397,
+          "similarity": 0.3416222333908081,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.3964089540679829,
+          "similarity": 0.3947345018386841,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5745399393863552,
+          "similarity": 0.5927640199661255,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.501496884219732,
+          "similarity": 0.45184385776519775,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.4629794832496089,
+          "similarity": 0.3535892963409424,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.44697509337733193,
+          "similarity": 0.3416222333908081,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.4364908917437327,
+          "similarity": 0.3947345018386841,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5927640199661255,
+          "similarity": 0.5927640199661255,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.45184385776519775,
+          "similarity": 0.45184385776519775,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.3947345018386841,
+          "similarity": 0.3947345018386841,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.3535892963409424,
+          "similarity": 0.3535892963409424,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.3416222333908081,
+          "similarity": 0.3416222333908081,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.46093170459453875,
+          "similarity": 0.5927640199661255,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.37421160477858323,
+          "similarity": 0.45184385776519775,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.33906738574688255,
+          "similarity": 0.3947345018386841,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.31374725928673375,
+          "similarity": 0.3535892963409424,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.30638291285588193,
+          "similarity": 0.3416222333908081,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

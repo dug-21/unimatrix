@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-4a5ba677-1774403240000",
+  "query": "outcome rework gate rejection formatter regression test",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.5199183168677671,
+          "similarity": 0.48206186294555664,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.506697077479845,
+          "similarity": 0.5378788113594055,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5012004952411617,
+          "similarity": 0.44639551639556885,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.49924163280157063,
+          "similarity": 0.4459027647972107,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.4685861515120685,
+          "similarity": 0.4471423029899597,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.5199183168677671,
+          "similarity": 0.48206186294555664,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.506697077479845,
+          "similarity": 0.5378788113594055,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5012004952411617,
+          "similarity": 0.44639551639556885,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.49924163280157063,
+          "similarity": 0.4459027647972107,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.4685861515120685,
+          "similarity": 0.4471423029899597,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

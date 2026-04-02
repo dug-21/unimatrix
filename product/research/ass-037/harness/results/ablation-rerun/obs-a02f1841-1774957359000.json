@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-a02f1841-1774957359000",
+  "query": "batch bugfix swarm parallel investigators architects procedure",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.6859677645092475,
+          "similarity": 0.8058506846427917,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.48725430050225327,
+          "similarity": 0.42626845836639404,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.4745681835395934,
+          "similarity": 0.42142027616500854,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4732517657560461,
+          "similarity": 0.4755280017852783,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.47213246773646267,
+          "similarity": 0.43413591384887695,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.6073372773312226,
+          "similarity": 0.8058506846427917,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.4354473088206698,
+          "similarity": 0.42626845836639404,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.42876400089263916,
+          "similarity": 0.4755280017852783,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.42585826773349006,
+          "similarity": 0.42142027616500854,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.4249919346257712,
+          "similarity": 0.43413591384887695,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.8058506846427917,
+          "similarity": 0.8058506846427917,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4755280017852783,
+          "similarity": 0.4755280017852783,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.43413591384887695,
+          "similarity": 0.43413591384887695,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.42626845836639404,
+          "similarity": 0.42626845836639404,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.42142027616500854,
+          "similarity": 0.42142027616500854,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.686746225029595,
+          "similarity": 0.8058506846427917,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.4868582885403321,
+          "similarity": 0.42626845836639404,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.47422306725794017,
+          "similarity": 0.42142027616500854,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4732665465094826,
+          "similarity": 0.4755280017852783,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.4718857368670627,
+          "similarity": 0.43413591384887695,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.6073372773312226,
+          "similarity": 0.8058506846427917,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.4354473088206698,
+          "similarity": 0.42626845836639404,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.42876400089263916,
+          "similarity": 0.4755280017852783,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.42585826773349006,
+          "similarity": 0.42142027616500854,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.4249919346257712,
+          "similarity": 0.43413591384887695,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.5920619597801795,
+          "similarity": 0.8058506846427917,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.3887864626370944,
+          "similarity": 0.4755280017852783,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.36331440852238583,
+          "similarity": 0.43413591384887695,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.3584728974562425,
+          "similarity": 0.42626845836639404,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.35548940071692836,
+          "similarity": 0.42142027616500854,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3925,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3918,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

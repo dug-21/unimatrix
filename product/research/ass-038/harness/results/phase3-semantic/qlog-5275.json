@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5275",
+  "query": "One thing to confirm before merge: the third test      \n  (test_quarantine_mixed_batch_only_active_pairs_promoted\n  _with_correct_weight) — does it verify that the batch  \n  fills to capacity with the next eligible active pairs,\n  or just that quarantined pairs don't appear? The\n  meaningful invariant is that the batch slot vacated by\n  a quarantined pair gets used by a valid pair, not that\n  the batch is simply smaller. If it only checks the\n  negative (quarantined absent), the promotion throughput\n   improvement after the fix isn't actually validated.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5376050901209487,
+          "similarity": 0.5861040353775024,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5312950266710996,
+          "similarity": 0.5991660356521606,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3886,
+          "title": "test-design normalization: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5101607618833842,
+          "similarity": 0.5903054475784302,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5376050901209487,
+          "similarity": 0.5861040353775024,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5312950266710996,
+          "similarity": 0.5991660356521606,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3886,
+          "title": "test-design normalization: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5101607618833842,
+          "similarity": 0.5903054475784302,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

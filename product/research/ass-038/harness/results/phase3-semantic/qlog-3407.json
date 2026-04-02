@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3407",
+  "query": "OK... so I would like to begin working on gh issue 401.  This is a different type of request.. so its one of our usual protocols.  My rquest is for you to read the request, and then help me figure out the best way to solve for this.. I'll need to have a strong hand in curation.  for now.. Read, research, and then lets talk",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.3916758662281803,
+          "similarity": 0.25556570291519165,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.38983612018036995,
+          "similarity": 0.24190568923950195,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3915,
+          "title": "ADR-001 crt-036: Per-Cycle Transaction Granularity for Activity GC Pass",
+          "category": "decision",
+          "final_score": 0.3812979952005914,
+          "similarity": 0.2660771608352661,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.37163071782883483,
+          "similarity": 0.25486814975738525,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.32269117091850297,
+          "similarity": 0.23903793096542358,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.3916758662281803,
+          "similarity": 0.25556570291519165,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.38983612018036995,
+          "similarity": 0.24190568923950195,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3915,
+          "title": "ADR-001 crt-036: Per-Cycle Transaction Granularity for Activity GC Pass",
+          "category": "decision",
+          "final_score": 0.3812979952005914,
+          "similarity": 0.2660771608352661,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.37163071782883483,
+          "similarity": 0.25486814975738525,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.32269117091850297,
+          "similarity": 0.23903793096542358,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

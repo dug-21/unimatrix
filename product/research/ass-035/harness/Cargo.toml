@@ -1,0 +1,32 @@
+# Declares this as its own workspace root so Cargo doesn't inherit from the
+# parent Unimatrix workspace (which uses workspace.package fields).
+[workspace]
+
+[package]
+name = "ass035-nli-harness"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+# Standalone research binary — NOT part of the main Unimatrix workspace.
+# Uses exact same ort + tokenizers versions as unimatrix-embed to guarantee
+# identical tokenization and inference behavior.
+#
+# Run: cargo run --release -- [--model minilm2-q8|deberta-q8] [--db PATH]
+#
+# ORT_LIB_LOCATION is picked up automatically from /usr/local/lib in this env.
+
+[dependencies]
+# NLI inference — exact version match with unimatrix-embed
+ort     = { version = "=2.0.0-rc.9", default-features = false }
+ort-sys = "=2.0.0-rc.9"
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
+
+# DB access — read-only SQLite queries
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# GGUF inference — ASS-036 extension
+# Compiles llama.cpp from source via build.rs; requires cmake.
+# default-features = false: no CUDA/Metal; CPU-only inference.
+llama-cpp-2    = { version = "0.1.141", default-features = false }
+llama-cpp-sys-2 = { version = "0.1.141", default-features = false }

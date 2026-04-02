@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5f33a80a-1774523294000",
+  "query": "session state field addition lock-and-mutate pattern",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5199420184000167,
+          "similarity": 0.5116651058197021,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.47536329123404186,
+          "similarity": 0.42835533618927,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.47360852415158194,
+          "similarity": 0.46451056003570557,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.4531322512637037,
+          "similarity": 0.42704713344573975,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.4495610991607689,
+          "similarity": 0.45542144775390625,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5199420184000167,
+          "similarity": 0.5116651058197021,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.47536329123404186,
+          "similarity": 0.42835533618927,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.47360852415158194,
+          "similarity": 0.46451056003570557,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.4531322512637037,
+          "similarity": 0.42704713344573975,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.4495610991607689,
+          "similarity": 0.45542144775390625,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

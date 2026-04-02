@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-c6f8fddb-1774471014000",
+  "query": "cycle event hook path field extraction persistence",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5187616745337824,
+          "similarity": 0.5010474324226379,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.509401941844142,
+          "similarity": 0.4855300188064575,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5085177037471991,
+          "similarity": 0.4997711181640625,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5004239176316486,
+          "similarity": 0.49300020933151245,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.47258147958245755,
+          "similarity": 0.49916017055511475,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5187616745337824,
+          "similarity": 0.5010474324226379,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.509401941844142,
+          "similarity": 0.4855300188064575,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5085177037471991,
+          "similarity": 0.4997711181640625,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5004239176316486,
+          "similarity": 0.49300020933151245,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.47258147958245755,
+          "similarity": 0.49916017055511475,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

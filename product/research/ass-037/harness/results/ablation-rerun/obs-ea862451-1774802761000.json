@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-ea862451-1774802761000",
+  "query": "KnowledgeConfig parallel list default collision validate_config test fixture",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5455928215613732,
+          "similarity": 0.7303383350372314,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.4823870292076698,
+          "similarity": 0.6276289224624634,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.46610296689547026,
+          "similarity": 0.6011673212051392,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.38994561708890474,
+          "similarity": 0.4774116277694702,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.3791160583496094,
+          "similarity": 0.45981359481811523,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.7303383350372314,
+          "similarity": 0.7303383350372314,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.6276289224624634,
+          "similarity": 0.6276289224624634,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.6011673212051392,
+          "similarity": 0.6011673212051392,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4774116277694702,
+          "similarity": 0.4774116277694702,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.45981359481811523,
+          "similarity": 0.45981359481811523,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5874930375382691,
+          "similarity": 0.7303383350372314,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5241937791042217,
+          "similarity": 0.6011673212051392,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.5217384389325644,
+          "similarity": 0.6276289224624634,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4552927639610566,
+          "similarity": 0.45981359481811523,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.44311774889456174,
+          "similarity": 0.4774116277694702,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.6665506570942549,
+          "similarity": 0.7303383350372314,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5919763059416533,
+          "similarity": 0.6011673212051392,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.586222514684182,
+          "similarity": 0.6276289224624634,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5108707149634304,
+          "similarity": 0.45981359481811523,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.49266860051354144,
+          "similarity": 0.4774116277694702,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.666133744166523,
+          "similarity": 0.7303383350372314,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5919162339464672,
+          "similarity": 0.6011673212051392,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.5859518845679841,
+          "similarity": 0.6276289224624634,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5112044216310468,
+          "similarity": 0.45981359481811523,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4927683192896465,
+          "similarity": 0.4774116277694702,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5874930375382691,
+          "similarity": 0.7303383350372314,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5241937791042217,
+          "similarity": 0.6011673212051392,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.5217384389325644,
+          "similarity": 0.6276289224624634,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4552927639610566,
+          "similarity": 0.45981359481811523,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.44311774889456174,
+          "similarity": 0.4774116277694702,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3899,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3774,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3770,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3776,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": -0.16666666666666669,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

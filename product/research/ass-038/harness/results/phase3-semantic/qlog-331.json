@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-331",
+  "query": "yes.  Then scope is acceptable, so continue with design.  We'll start with a version of 0.5,",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.4365614092631901,
+          "similarity": 0.34401655197143555,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.426837550522311,
+          "similarity": 0.3407858610153198,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.3991451903464731,
+          "similarity": 0.30420100688934326,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.3940880601360144,
+          "similarity": 0.35002267360687256,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.37713829481064365,
+          "similarity": 0.29887235164642334,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.4365614092631901,
+          "similarity": 0.34401655197143555,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.426837550522311,
+          "similarity": 0.3407858610153198,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.3991451903464731,
+          "similarity": 0.30420100688934326,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.3940880601360144,
+          "similarity": 0.35002267360687256,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.37713829481064365,
+          "similarity": 0.29887235164642334,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-c6f8fddb-1774478277000",
+  "query": "ADR-005 col-025 goal byte-length guard truncate hook path MCP path path-specific behavior",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.6075080565416897,
+          "similarity": 0.6488063335418701,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.5608245897801113,
+          "similarity": 0.528921365737915,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.5306753033029759,
+          "similarity": 0.5037136673927307,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5272915560556606,
+          "similarity": 0.48901569843292236,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.48769817602124166,
+          "similarity": 0.48042309284210205,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.4954192821796124,
+          "similarity": 0.6488063335418701,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.4216439173771785,
+          "similarity": 0.528921365737915,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.4061314876262958,
+          "similarity": 0.5037136673927307,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.39708658365102917,
+          "similarity": 0.48901569843292236,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.3917988263643705,
+          "similarity": 0.48042309284210205,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.6488063335418701,
+          "similarity": 0.6488063335418701,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.528921365737915,
+          "similarity": 0.528921365737915,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.5037136673927307,
+          "similarity": 0.5037136673927307,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.48901569843292236,
+          "similarity": 0.48901569843292236,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.48042309284210205,
+          "similarity": 0.48042309284210205,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.6072381331626037,
+          "similarity": 0.6488063335418701,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.5610331075843087,
+          "similarity": 0.528921365737915,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.5308515231455265,
+          "similarity": 0.5037136673927307,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5275417250597307,
+          "similarity": 0.48901569843292236,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.487745725584504,
+          "similarity": 0.48042309284210205,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5387596637000306,
+          "similarity": 0.6488063335418701,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.496532790221276,
+          "similarity": 0.528921365737915,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.4727428002483644,
+          "similarity": 0.5037136673927307,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.46928152100301257,
+          "similarity": 0.48901569843292236,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.4396735352717173,
+          "similarity": 0.48042309284210205,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5387596637000306,
+          "similarity": 0.6488063335418701,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.496532790221276,
+          "similarity": 0.528921365737915,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.4727428002483644,
+          "similarity": 0.5037136673927307,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.46928152100301257,
+          "similarity": 0.48901569843292236,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.4396735352717173,
+          "similarity": 0.48042309284210205,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

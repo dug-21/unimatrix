@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-f540711e-1774785599000",
+  "query": "vector index maintenance hnsw compaction",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5692835640117343,
+          "similarity": 0.590739369392395,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.5176722039872417,
+          "similarity": 0.5105273127555847,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5118376237204372,
+          "similarity": 0.5132575631141663,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.49018585591593655,
+          "similarity": 0.4908139705657959,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.47055174495530505,
+          "similarity": 0.4837538003921509,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5692835640117343,
+          "similarity": 0.590739369392395,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.5176722039872417,
+          "similarity": 0.5105273127555847,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5118376237204372,
+          "similarity": 0.5132575631141663,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.49018585591593655,
+          "similarity": 0.4908139705657959,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.47055174495530505,
+          "similarity": 0.4837538003921509,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5107",
+  "query": "so... separate issue... I asked an agent to run context_cycle_review on crt-036.  It came back w/out a goal statement.  The agent went and did some research that made no sense to me.  effectively, it was doing direct DB queries on cycle_events to look for crt-036... but it responsed with this.. of whch none of it makes any sense to me: With 71k shards, direct search isn't practical. But I have enough to diagnose the issue. \n                                                                                          \n  Root cause: The goal column was added to cycle_events by col-025. New shards get the     \n  latest schema, but existing shards don't get retroactively migrated. When crt-036's      \n  context_cycle start was called, it wrote to a shard created before col-025 shipped — that\n   shard's cycle_events table has no goal column. The goal value was silently dropped at   \n  the SQL layer.                                                                           \n                                                                                           \n  Confirmed by:                                                                            \n  - Newest shards (ac6c3d848e4349b9) have goal column in schema                            \n  - Older shards (ac71232e9fdd56dc) — same era as the crt-036 session — do not           \n  - context_cycle_review reports \"No goal recorded\" even with force: true                  \n                                                                                         \n  This is a known structural gap in the shard-per-session model: schema migrations only    \n  apply to shards created after the migration ships. The goal wasn't lost in the call — it\n  was accepted, passed through, and silently discarded at INSERT time because the target   \n  shard's table lacked the column.                                                         \n                                                                                           \n  Worth filing as a bug: either retroactively migrate existing shard schemas when the      \n  server starts, or detect and warn when a goal parameter is dropped due to schema         \n  mismatch.    ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5232174201188388,
+          "similarity": 0.5117794275283813,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5201753063599553,
+          "similarity": 0.49380987882614136,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5055081626984284,
+          "similarity": 0.515535295009613,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.4982369752027437,
+          "similarity": 0.48826122283935547,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.4876361949616791,
+          "similarity": 0.49116313457489014,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5232174201188388,
+          "similarity": 0.5117794275283813,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5201753063599553,
+          "similarity": 0.49380987882614136,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5055081626984284,
+          "similarity": 0.515535295009613,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.4982369752027437,
+          "similarity": 0.48826122283935547,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.4876361949616791,
+          "similarity": 0.49116313457489014,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

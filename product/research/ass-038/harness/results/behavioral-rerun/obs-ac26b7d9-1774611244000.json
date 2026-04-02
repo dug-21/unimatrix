@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774611244000",
+  "query": "Option tracing format specifier compile cycles batch field additions",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.457653907289851,
+          "similarity": 0.4510531425476074,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.4535956774636548,
+          "similarity": 0.41866040229797363,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.45198988924554895,
+          "similarity": 0.4287416338920593,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.44811233618261137,
+          "similarity": 0.41317951679229736,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.42166345888230405,
+          "similarity": 0.402415931224823,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3815,
+          "title": "Single-file annotation iteration drives compile cycles: batch all field attributes before first build",
+          "category": "lesson-learned",
+          "final_score": 0.457653907289851,
+          "similarity": 0.4510531425476074,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.4535956774636548,
+          "similarity": 0.41866040229797363,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.45198988924554895,
+          "similarity": 0.4287416338920593,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.44811233618261137,
+          "similarity": 0.41317951679229736,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.42166345888230405,
+          "similarity": 0.402415931224823,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

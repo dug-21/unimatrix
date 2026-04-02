@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-50273e07-1774575749000",
+  "query": "graph_edges SQL query cross-category JOIN aggregate",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.5266635947294394,
+          "similarity": 0.6016553640365601,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.49963249163016726,
+          "similarity": 0.5347812175750732,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.47551848208235586,
+          "similarity": 0.5128167271614075,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.43219676720990624,
+          "similarity": 0.43129920959472656,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.41320611158834836,
+          "similarity": 0.41758835315704346,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.6016553640365601,
+          "similarity": 0.6016553640365601,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5347812175750732,
+          "similarity": 0.5347812175750732,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.5128167271614075,
+          "similarity": 0.5128167271614075,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.43129920959472656,
+          "similarity": 0.43129920959472656,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.41758835315704346,
+          "similarity": 0.41758835315704346,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.595258329625058,
+          "similarity": 0.6016553640365601,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5647131044360068,
+          "similarity": 0.5347812175750732,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.5337688256854485,
+          "similarity": 0.5128167271614075,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.48229956189646683,
+          "similarity": 0.43129920959472656,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.4575781577529249,
+          "similarity": 0.41758835315704346,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.4664033009455754,
+          "similarity": 0.6016553640365601,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.4252499800461989,
+          "similarity": 0.5347812175750732,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.4117333705608661,
+          "similarity": 0.5128167271614075,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.3615687443659856,
+          "similarity": 0.43129920959472656,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.3531312942504883,
+          "similarity": 0.41758835315704346,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.5266635947294394,
+          "similarity": 0.6016553640365601,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.49963249163016726,
+          "similarity": 0.5347812175750732,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.47551848208235586,
+          "similarity": 0.5128167271614075,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.43219676720990624,
+          "similarity": 0.43129920959472656,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.41320611158834836,
+          "similarity": 0.41758835315704346,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.5952998688095481,
+          "similarity": 0.6016553640365601,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5645187415343123,
+          "similarity": 0.5347812175750732,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.53363277309763,
+          "similarity": 0.5128167271614075,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.4819683907776243,
+          "similarity": 0.43129920959472656,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.4573184836971075,
+          "similarity": 0.41758835315704346,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

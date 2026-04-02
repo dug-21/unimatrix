@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3044",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] All three gates **PASS**. Risk coverage report exists. Proceeding to Step 2 — fresh-context security review.\n\n**Step 2: Security Review**\n[tool: Bash(grep -i \"pass\\|fail\" product/features/col-027/reports/gate-3a-report.md | head -3 && echo \"---\" && grep -i \"pass\\|fail\" ) → ]\n[tool: Bash(grep -h \"^GATE RESULT\\|^Gate:\" product/features/col-027/reports/gate-3a-report.md product/features/col-027/reports/gate-) → ]\n[Assistant] **Step 1: Verify gate results**\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5298569653893487,
+          "similarity": 0.500842809677124,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.49567518983029324,
+          "similarity": 0.45946675539016724,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3946,
+          "title": "AC-22-style CI grep gates must exclude test code — domain strings in test helpers cause false failures",
+          "category": "lesson-learned",
+          "final_score": 0.4654473872940301,
+          "similarity": 0.4438108801841736,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.4648869499489493,
+          "similarity": 0.42300140857696533,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.4528238322981556,
+          "similarity": 0.46288836002349854,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5298569653893487,
+          "similarity": 0.500842809677124,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.49567518983029324,
+          "similarity": 0.45946675539016724,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3946,
+          "title": "AC-22-style CI grep gates must exclude test code — domain strings in test helpers cause false failures",
+          "category": "lesson-learned",
+          "final_score": 0.4654473872940301,
+          "similarity": 0.4438108801841736,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.4648869499489493,
+          "similarity": 0.42300140857696533,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.4528238322981556,
+          "similarity": 0.46288836002349854,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

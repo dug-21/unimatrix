@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2718",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Targeted fix — spawning architect and spec writer in parallel to align `MAX_GOAL_BYTES = 1024`.\n[Assistant] Sharp point. The goal feeds directly into the embedding pipeline — and 384-dim models (typically 128–256 token windows) start losing quality well before you hit their hard truncation limit. Beyond ~100 tokens the embedding centroid diffuses rather than sharpens.\n\n443 bytes ≈ ~90–110 tokens — already at the sweet spot for dense retrieval. At 2048 you're past the model's effective window; at 1024 you're enforcing conciseness that actually *benefits* retrieval quality.\n\n**1024 is the right value.** It gives ~2.3x headroom over the 443-byte example, stays within the effective embedding range of a 384-dim model, and enforces the design intent: a focused 1–2 sentence statement, not a paragraph. A goal that approaches 1024 bytes is probably already too diffuse to embed well anyway — the limit doubles as a quality gate.\n\nUpdate: `MAX_GOAL_BYTES = 1024`. Shall I send the architect and spec writer back in to align on this value, then run the synthesizer?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.499235894481902,
+          "similarity": 0.4557536840438843,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4906324190851066,
+          "similarity": 0.4393931031227112,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.4813566258197557,
+          "similarity": 0.450472354888916,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4680578102630709,
+          "similarity": 0.4313312768936157,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.46322683331710146,
+          "similarity": 0.4343937635421753,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.499235894481902,
+          "similarity": 0.4557536840438843,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4906324190851066,
+          "similarity": 0.4393931031227112,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.4813566258197557,
+          "similarity": 0.450472354888916,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4680578102630709,
+          "similarity": 0.4313312768936157,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.46322683331710146,
+          "similarity": 0.4343937635421753,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

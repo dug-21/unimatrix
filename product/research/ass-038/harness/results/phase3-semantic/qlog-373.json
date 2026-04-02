@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-373",
+  "query": "Q2: Option A makes the most sense.  Q1: Record_Event makes sense (I think).    So.. separate thought on this topic though.. Our hooks inject context into the agent.. if we're getting data (now feature) is there any chance of using that to perform the search that does the injection?  or would this already happen based on our system today?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5113010767886512,
+          "similarity": 0.4744720458984375,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.49930442573186884,
+          "similarity": 0.4592621326446533,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.48737983948913854,
+          "similarity": 0.44683122634887695,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4820846421266304,
+          "similarity": 0.4663689136505127,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.475218998943995,
+          "similarity": 0.48040932416915894,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5113010767886512,
+          "similarity": 0.4744720458984375,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.49930442573186884,
+          "similarity": 0.4592621326446533,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.48737983948913854,
+          "similarity": 0.44683122634887695,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4820846421266304,
+          "similarity": 0.4663689136505127,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.475218998943995,
+          "similarity": 0.48040932416915894,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5058",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(uni-rust-dev) → ]\n[Assistant] Stage 3b — Wave 1. Spawning 3 parallel implementation agents.\n[tool: Bash(git add product/features/crt-037/pseudocode/ product/features/crt-037/test-plan/ product/features/crt-037/reports/ && gi) → [feature/crt-037 8405cdd] pseudocode: crt-037 component design + test plans (#466)\n 13 files changed, 2697 insertions(+)\n create mode 100644 product/features/crt-037/pseudocode/OVERVIEW.md\n create mode 100644 product/features/crt-037/pseudocode/config.md\n create mode 100644 product/features/crt-037/]\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'crt-037'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[Assistant] Gate 3a PASS — 11/11 checks. Committing and starting Stage 3b.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5452490164923011,
+          "similarity": 0.5692249536514282,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.5385795975350459,
+          "similarity": 0.5806829333305359,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5174100639742105,
+          "similarity": 0.5477334856987,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.5012807731532084,
+          "similarity": 0.556111216545105,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.4935364931508114,
+          "similarity": 0.5587193369865417,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5452490164923011,
+          "similarity": 0.5692249536514282,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.5385795975350459,
+          "similarity": 0.5806829333305359,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5174100639742105,
+          "similarity": 0.5477334856987,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.5012807731532084,
+          "similarity": 0.556111216545105,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.4935364931508114,
+          "similarity": 0.5587193369865417,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

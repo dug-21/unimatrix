@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cb586d22-1773713930000",
+  "query": "bridge unix socket tokio copy bidirectional stdio",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.5095502671929893,
+          "similarity": 0.5474655032157898,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5044269971701035,
+          "similarity": 0.49920570850372314,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 77,
+          "title": "ADR-001: rmcp 0.16 with stdio Transport",
+          "category": "decision",
+          "final_score": 0.4510182698562104,
+          "similarity": 0.37690627574920654,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.4449675990201478,
+          "similarity": 0.37605440616607666,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.42582994735986,
+          "similarity": 0.3924470543861389,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.5095502671929893,
+          "similarity": 0.5474655032157898,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5044269971701035,
+          "similarity": 0.49920570850372314,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 77,
+          "title": "ADR-001: rmcp 0.16 with stdio Transport",
+          "category": "decision",
+          "final_score": 0.4510182698562104,
+          "similarity": 0.37690627574920654,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.4449675990201478,
+          "similarity": 0.37605440616607666,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.42582994735986,
+          "similarity": 0.3924470543861389,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

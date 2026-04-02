@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-3d9b719e-1774202618000",
+  "query": "risk pattern session registry scoring boost additive",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4566574478499718,
+          "similarity": 0.4594230651855469,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.45615153840598405,
+          "similarity": 0.4508247375488281,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4547268158762981,
+          "similarity": 0.4477577209472656,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4533582627101311,
+          "similarity": 0.4409811496734619,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.447373249059764,
+          "similarity": 0.4393109083175659,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.5128589398673574,
+          "similarity": 0.4508247375488281,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.5127671502330936,
+          "similarity": 0.4594230651855469,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5111949561088369,
+          "similarity": 0.4477577209472656,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.509944799179864,
+          "similarity": 0.4409811496734619,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.5019352570526268,
+          "similarity": 0.4393109083175659,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4566574478499718,
+          "similarity": 0.4594230651855469,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.45615153840598405,
+          "similarity": 0.4508247375488281,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4547268158762981,
+          "similarity": 0.4477577209472656,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4533582627101311,
+          "similarity": 0.4409811496734619,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.447373249059764,
+          "similarity": 0.4393109083175659,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4594230651855469,
+          "similarity": 0.4594230651855469,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.4508247375488281,
+          "similarity": 0.4508247375488281,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4477577209472656,
+          "similarity": 0.4477577209472656,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4409811496734619,
+          "similarity": 0.4409811496734619,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4393109083175659,
+          "similarity": 0.4393109083175659,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.513264392170093,
+          "similarity": 0.4508247375488281,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.5131158043837313,
+          "similarity": 0.4594230651855469,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5116095785608734,
+          "similarity": 0.4477577209472656,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.5103955419870954,
+          "similarity": 0.4409811496734619,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.5023445665214834,
+          "similarity": 0.4393109083175659,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.378875732421875,
+          "similarity": 0.4594230651855469,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.3735844538762019,
+          "similarity": 0.4508247375488281,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.37169705904447115,
+          "similarity": 0.4477577209472656,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.36752686133751505,
+          "similarity": 0.4409811496734619,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.3664990205031175,
+          "similarity": 0.4393109083175659,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 188,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 1545,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2783",
+  "query": "Couple of things... in bugfix protocol I noticed we're searching for content prior to declaring the feature started.  This is inaccurate.  We should declare the feature started context_cycle(start...) 1st, then query.  Now... I'm debating between a uni-briefing skill, or just add the instructions on querying context_briefing at the beginning of these protocols (which covers the primary agent, then for several of the agent types, use context_briefing and optionally use the other skills for in depth searches... does that make sense?  play it back to me before you change anything",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5544696014734107,
+          "similarity": 0.5612184405326843,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5419257186650621,
+          "similarity": 0.5560392141342163,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5359266783843523,
+          "similarity": 0.5215557813644409,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.5200955174052555,
+          "similarity": 0.5153422355651855,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5119147289523903,
+          "similarity": 0.5170489549636841,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5544696014734107,
+          "similarity": 0.5612184405326843,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5419257186650621,
+          "similarity": 0.5560392141342163,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5359266783843523,
+          "similarity": 0.5215557813644409,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.5200955174052555,
+          "similarity": 0.5153422355651855,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5119147289523903,
+          "similarity": 0.5170489549636841,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-d95fe479-1774805979000",
+  "query": "boosted_categories category score boost lesson-learned underrepresented surfacing",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.45015650182119227,
+          "similarity": 0.384299635887146,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4490300884769993,
+          "similarity": 0.42968785762786865,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.43852162892750735,
+          "similarity": 0.35835617780685425,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.4245447336634811,
+          "similarity": 0.34510278701782227,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.41820821020201626,
+          "similarity": 0.35402655601501465,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.45015650182119227,
+          "similarity": 0.384299635887146,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4490300884769993,
+          "similarity": 0.42968785762786865,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.43852162892750735,
+          "similarity": 0.35835617780685425,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.4245447336634811,
+          "similarity": 0.34510278701782227,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.41820821020201626,
+          "similarity": 0.35402655601501465,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

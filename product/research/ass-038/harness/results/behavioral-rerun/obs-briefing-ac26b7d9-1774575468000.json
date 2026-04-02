@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-briefing-ac26b7d9-1774575468000",
+  "query": "briefing:col-030:",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5017631720159806,
+          "similarity": 0.45478928089141846,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.46007233961842076,
+          "similarity": 0.4248025417327881,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4581022740192142,
+          "similarity": 0.3736894130706787,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.4504759546070407,
+          "similarity": 0.385506808757782,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.43561054274618505,
+          "similarity": 0.3757145404815674,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5017631720159806,
+          "similarity": 0.45478928089141846,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.46007233961842076,
+          "similarity": 0.4248025417327881,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4581022740192142,
+          "similarity": 0.3736894130706787,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.4504759546070407,
+          "similarity": 0.385506808757782,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.43561054274618505,
+          "similarity": 0.3757145404815674,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

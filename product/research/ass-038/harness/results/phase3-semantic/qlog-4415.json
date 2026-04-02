@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4415",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Clean. Phase 2c — synthesizer.\n[tool: Agent(Phase 2b: Vision alignment v2 for crt-031) → Report written. Here is the summary:\n\n---\n\n**Report path:** `/workspaces/unimatrix/product/features/crt-031/ALIGNMENT-REPORT.md`\n\n**Variance summary: 0 FAIL, 0 VARIANCE, 1 WARN**\n\nThe WARN is:\n\n**WARN — Scope Additions (`list_adaptive()` and `lifecycle.rs` stub)**\nTwo items appear in the source do]\n[Assistant] Phase 2b — vision alignment.\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'crt-031'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5563251772015646,
+          "similarity": 0.5566792488098145,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5495245683347532,
+          "similarity": 0.5473917722702026,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5280771436617047,
+          "similarity": 0.5210129022598267,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.507663763427464,
+          "similarity": 0.5292155146598816,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5563251772015646,
+          "similarity": 0.5566792488098145,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5495245683347532,
+          "similarity": 0.5473917722702026,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5280771436617047,
+          "similarity": 0.5210129022598267,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.507663763427464,
+          "similarity": 0.5292155146598816,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 13,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

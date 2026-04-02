@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-88cecd44-1773700603000",
+  "query": "spawn_blocking pool saturation mutex contention hot path performance",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.5988218242986887,
+          "similarity": 0.6379883885383606,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5584402393208929,
+          "similarity": 0.556175708770752,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1915,
+          "title": "ADR-005 vnc-005: MCP Accept Loop — Single Acceptor Task + Per-Connection Spawned Tasks",
+          "category": "decision",
+          "final_score": 0.5381261589294969,
+          "similarity": 0.5596998333930969,
+          "confidence": 0.5896283836756392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5377388414238186,
+          "similarity": 0.5422536730766296,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5367867313874584,
+          "similarity": 0.5258700847625732,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.5988218242986887,
+          "similarity": 0.6379883885383606,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5584402393208929,
+          "similarity": 0.556175708770752,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1915,
+          "title": "ADR-005 vnc-005: MCP Accept Loop — Single Acceptor Task + Per-Connection Spawned Tasks",
+          "category": "decision",
+          "final_score": 0.5381261589294969,
+          "similarity": 0.5596998333930969,
+          "confidence": 0.5896283836756392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5377388414238186,
+          "similarity": 0.5422536730766296,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5367867313874584,
+          "similarity": 0.5258700847625732,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

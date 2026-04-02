@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5286",
+  "query": "pushback:  I don't care about 'fixing my current corpus'.  I care about creating the system that will nurture itself based on the configuration we set.  Not interested in spending time bootstrapping.  I'm interested in identifying the proper methods for long term high precision relevant results, regardless of domain/corpus.  We can USE the corpus we have to inform our decisions, but everything we do is about creating the product, not fixing the corpus.  That said, we have defined category informs relationships (feature is irrelevant to this dimension), and no good mechanism to identify those potential relationships NLI failed. Good knowledge.  Now the question is where to go from here.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.4762106744985052,
+          "similarity": 0.44069504737854004,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.44561288486937944,
+          "similarity": 0.4133197069168091,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.44280106039927336,
+          "similarity": 0.4030880928039551,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.4390436923074419,
+          "similarity": 0.36713314056396484,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.4352489021655356,
+          "similarity": 0.37592023611068726,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.4762106744985052,
+          "similarity": 0.44069504737854004,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.44561288486937944,
+          "similarity": 0.4133197069168091,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.44280106039927336,
+          "similarity": 0.4030880928039551,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.4390436923074419,
+          "similarity": 0.36713314056396484,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.4352489021655356,
+          "similarity": 0.37592023611068726,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

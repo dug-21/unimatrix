@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3723",
+  "query": "our prouction database sits in a hash of the git repo in ~/.unimatrix... which is our production directory?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 80,
+          "title": "ADR-004: Project Isolation via Path Hash",
+          "category": "decision",
+          "final_score": 0.5243732638190279,
+          "similarity": 0.5360254049301147,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4884406484807302,
+          "similarity": 0.4919980764389038,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.4824544149629021,
+          "similarity": 0.45409953594207764,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.4659674211293109,
+          "similarity": 0.4509078860282898,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 588,
+          "title": "Git worktrees use .git file not directory — check both in project root detection",
+          "category": "lesson-learned",
+          "final_score": 0.4610561069485821,
+          "similarity": 0.4511609673500061,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 80,
+          "title": "ADR-004: Project Isolation via Path Hash",
+          "category": "decision",
+          "final_score": 0.5243732638190279,
+          "similarity": 0.5360254049301147,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4884406484807302,
+          "similarity": 0.4919980764389038,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.4824544149629021,
+          "similarity": 0.45409953594207764,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.4659674211293109,
+          "similarity": 0.4509078860282898,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 588,
+          "title": "Git worktrees use .git file not directory — check both in project root detection",
+          "category": "lesson-learned",
+          "final_score": 0.4610561069485821,
+          "similarity": 0.4511609673500061,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

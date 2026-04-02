@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-d8a65a52-1774652840000",
+  "query": "query_log background tick rebuild Arc RwLock",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5589844455192615,
+          "similarity": 0.4860835671424866,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5346266000394353,
+          "similarity": 0.47852087020874023,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5321331744342624,
+          "similarity": 0.468999445438385,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.518675827555678,
+          "similarity": 0.4719839096069336,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.47221178225945515,
+          "similarity": 0.42246711254119873,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.49232749785695756,
+          "similarity": 0.4860835671424866,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4739608980428352,
+          "similarity": 0.47852087020874023,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.47149762428101816,
+          "similarity": 0.468999445438385,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.4618278675146261,
+          "similarity": 0.4719839096069336,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4244531144930137,
+          "similarity": 0.42246711254119873,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.3952821951646071,
+          "similarity": 0.4860835671424866,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.39062822782076323,
+          "similarity": 0.47852087020874023,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.38660548283503604,
+          "similarity": 0.4719839096069336,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.3847688895005446,
+          "similarity": 0.468999445438385,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.3561336077176608,
+          "similarity": 0.42246711254119873,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5594609218485215,
+          "similarity": 0.4860835671424866,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5349933041559758,
+          "similarity": 0.47852087020874023,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5325458131858696,
+          "similarity": 0.468999445438385,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5189810034899836,
+          "similarity": 0.4719839096069336,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4725369108197053,
+          "similarity": 0.42246711254119873,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.49232749785695756,
+          "similarity": 0.4860835671424866,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4739608980428352,
+          "similarity": 0.47852087020874023,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.47149762428101816,
+          "similarity": 0.468999445438385,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.4618278675146261,
+          "similarity": 0.4719839096069336,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4244531144930137,
+          "similarity": 0.42246711254119873,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.4860835671424866,
+          "similarity": 0.4860835671424866,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.47852087020874023,
+          "similarity": 0.47852087020874023,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.4719839096069336,
+          "similarity": 0.4719839096069336,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.468999445438385,
+          "similarity": 0.468999445438385,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.42246711254119873,
+          "similarity": 0.42246711254119873,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

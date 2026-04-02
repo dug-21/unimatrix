@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1740",
+  "query": "explain the questions in more detail pls",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.39755942440927916,
+          "similarity": 0.2630468010902405,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.38139259220817423,
+          "similarity": 0.22337007522583008,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 305,
+          "title": "Module Reorganization Reveals Hidden Coupling in Flat Layouts",
+          "category": "lesson-learned",
+          "final_score": 0.35279574398528046,
+          "similarity": 0.20743811130523682,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.34497259918725487,
+          "similarity": 0.2012730836868286,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.3397464804636976,
+          "similarity": 0.20728439092636108,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.39755942440927916,
+          "similarity": 0.2630468010902405,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.38139259220817423,
+          "similarity": 0.22337007522583008,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 305,
+          "title": "Module Reorganization Reveals Hidden Coupling in Flat Layouts",
+          "category": "lesson-learned",
+          "final_score": 0.35279574398528046,
+          "similarity": 0.20743811130523682,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.34497259918725487,
+          "similarity": 0.2012730836868286,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.3397464804636976,
+          "similarity": 0.20728439092636108,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

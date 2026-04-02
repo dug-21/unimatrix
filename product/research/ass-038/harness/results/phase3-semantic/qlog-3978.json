@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3978",
+  "query": "check gh issues for a potential panic event",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 733,
+          "title": "Panic Hook for Long-Running Server Processes",
+          "category": "pattern",
+          "final_score": 0.46798908951557905,
+          "similarity": 0.41401779651641846,
+          "confidence": 0.6073735336616886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.46624749434621704,
+          "similarity": 0.3888702392578125,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.46619758917074083,
+          "similarity": 0.45134520530700684,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.4231820463875057,
+          "similarity": 0.36961567401885986,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.41519566793526563,
+          "similarity": 0.37038248777389526,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 733,
+          "title": "Panic Hook for Long-Running Server Processes",
+          "category": "pattern",
+          "final_score": 0.46798908951557905,
+          "similarity": 0.41401779651641846,
+          "confidence": 0.6073735336616886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.46624749434621704,
+          "similarity": 0.3888702392578125,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.46619758917074083,
+          "similarity": 0.45134520530700684,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.4231820463875057,
+          "similarity": 0.36961567401885986,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.41519566793526563,
+          "similarity": 0.37038248777389526,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

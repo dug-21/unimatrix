@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7c4e3cc4-1773804574000",
+  "query": "agent enrollment registry permissive auto-enroll capability",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.5662217425803409,
+          "similarity": 0.5842429995536804,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5190601487400086,
+          "similarity": 0.5252861380577087,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.46493107502585396,
+          "similarity": 0.40148425102233887,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.4282356270397032,
+          "similarity": 0.39515841007232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.3937622041791694,
+          "similarity": 0.37395811080932617,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.5662217425803409,
+          "similarity": 0.5842429995536804,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5190601487400086,
+          "similarity": 0.5252861380577087,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.46493107502585396,
+          "similarity": 0.40148425102233887,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.4282356270397032,
+          "similarity": 0.39515841007232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.3937622041791694,
+          "similarity": 0.37395811080932617,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

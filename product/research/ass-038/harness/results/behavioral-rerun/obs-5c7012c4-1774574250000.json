@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5c7012c4-1774574250000",
+  "query": "nan-010 ADR distribution targets mrr floor atomic write",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 186,
+          "title": "ADR-004: RwLock for Weight Access with Atomic Swap",
+          "category": "decision",
+          "final_score": 0.4605362389568437,
+          "similarity": 0.43140941858291626,
+          "confidence": 0.5622991934786955,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.45835662258856247,
+          "similarity": 0.4336245059967041,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.45583952061158384,
+          "similarity": 0.4157026410102844,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2161,
+          "title": "ADR-001 alc-003 test",
+          "category": "decision",
+          "final_score": 0.44491567728528647,
+          "similarity": 0.47126448154449463,
+          "confidence": 0.46296472185364257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 950,
+          "title": "ADR-001: Format-Dependent evidence_limit Default (AMENDED BY HUMAN OVERRIDE)",
+          "category": "decision",
+          "final_score": 0.4387938554927798,
+          "similarity": 0.4108290672302246,
+          "confidence": 0.5326846545800817,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 186,
+          "title": "ADR-004: RwLock for Weight Access with Atomic Swap",
+          "category": "decision",
+          "final_score": 0.4605362389568437,
+          "similarity": 0.43140941858291626,
+          "confidence": 0.5622991934786955,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.45835662258856247,
+          "similarity": 0.4336245059967041,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.45583952061158384,
+          "similarity": 0.4157026410102844,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2161,
+          "title": "ADR-001 alc-003 test",
+          "category": "decision",
+          "final_score": 0.44491567728528647,
+          "similarity": 0.47126448154449463,
+          "confidence": 0.46296472185364257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 950,
+          "title": "ADR-001: Format-Dependent evidence_limit Default (AMENDED BY HUMAN OVERRIDE)",
+          "category": "decision",
+          "final_score": 0.4387938554927798,
+          "similarity": 0.4108290672302246,
+          "confidence": 0.5326846545800817,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

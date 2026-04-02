@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-3d9b719e-1774202157000",
+  "query": "w_phase_explicit placeholder deferred W3-1 GNN dimension",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.5374060273170471,
+          "similarity": 0.5374060273170471,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.5165058374404907,
+          "similarity": 0.5165058374404907,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.4579724669456482,
+          "similarity": 0.4579724669456482,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.45414072275161743,
+          "similarity": 0.45414072275161743,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.4325697422027588,
+          "similarity": 0.4325697422027588,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.49485528334943635,
+          "similarity": 0.5374060273170471,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.48698857935746315,
+          "similarity": 0.5165058374404907,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4660703613758087,
+          "similarity": 0.45414072275161743,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.4612363231011937,
+          "similarity": 0.4579724669456482,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.44400266600236044,
+          "similarity": 0.4325697422027588,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.5578988176053983,
+          "similarity": 0.5374060273170471,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.5491504189768621,
+          "similarity": 0.5165058374404907,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.5265533663244808,
+          "similarity": 0.45414072275161743,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.5195427506344181,
+          "similarity": 0.4579724669456482,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.4983791746892439,
+          "similarity": 0.4325697422027588,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.42686524757972133,
+          "similarity": 0.5374060273170471,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.4140035922710712,
+          "similarity": 0.5165058374404907,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.37798305658193737,
+          "similarity": 0.4579724669456482,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.3756250601548415,
+          "similarity": 0.45414072275161743,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.3623506105863131,
+          "similarity": 0.4325697422027588,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.49485528334943635,
+          "similarity": 0.5374060273170471,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.48698857935746315,
+          "similarity": 0.5165058374404907,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4660703613758087,
+          "similarity": 0.45414072275161743,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.4612363231011937,
+          "similarity": 0.4579724669456482,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.44400266600236044,
+          "similarity": 0.4325697422027588,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.5577657475385908,
+          "similarity": 0.5374060273170471,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.5489384411746778,
+          "similarity": 0.5165058374404907,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.5260831543532284,
+          "similarity": 0.45414072275161743,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.519142943597478,
+          "similarity": 0.4579724669456482,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.49795184071205884,
+          "similarity": 0.4325697422027588,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2298,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3175,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

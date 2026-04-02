@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-briefing-edf4842f-1774830922000",
+  "query": "briefing:crt-033:",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4900071985433905,
+          "similarity": 0.43067508935928345,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4833004137007437,
+          "similarity": 0.41971004009246826,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.464641213836233,
+          "similarity": 0.3999744653701782,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.4612924722361622,
+          "similarity": 0.4060581922531128,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.44713973161631015,
+          "similarity": 0.4002305865287781,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4900071985433905,
+          "similarity": 0.43067508935928345,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4833004137007437,
+          "similarity": 0.41971004009246826,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.464641213836233,
+          "similarity": 0.3999744653701782,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.4612924722361622,
+          "similarity": 0.4060581922531128,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.44713973161631015,
+          "similarity": 0.4002305865287781,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

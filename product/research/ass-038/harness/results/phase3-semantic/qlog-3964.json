@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3964",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(git add product/features/col-031/testing/ product/test/infra-001/suites/ product/features/col-031/agents/ && git commit ) → [feature/col-031 7b2f744] test(col-031): Stage 3c execution — 3840 unit + 176 integration pass (#414)\n 4 files changed, 384 insertions(+)\n create mode 100644 product/features/col-031/agents/col-031-agent-9-tester-report.md\n create mode 100644 product/features/col-031/agents/col-031-gate-3b-report.]\n[Assistant] 3840 unit + 176 integration tests pass, 0 failures. AC-12 eval gate pending (requires scenario files). Committing and spawning Gate 3c.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5108204075082592,
+          "similarity": 0.5409946441650391,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.49182805460253964,
+          "similarity": 0.49023938179016113,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.49026190759304067,
+          "similarity": 0.514555037021637,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4742194697152602,
+          "similarity": 0.4907224774360657,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.456560061605353,
+          "similarity": 0.4884641170501709,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5108204075082592,
+          "similarity": 0.5409946441650391,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.49182805460253964,
+          "similarity": 0.49023938179016113,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.49026190759304067,
+          "similarity": 0.514555037021637,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4742194697152602,
+          "similarity": 0.4907224774360657,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.456560061605353,
+          "similarity": 0.4884641170501709,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-c6f8fddb-1774470959000",
+  "query": "build_cycle_event_or_fallthrough hook.rs UDS listener",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5325926813869865,
+          "similarity": 0.5273263454437256,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.518142842995493,
+          "similarity": 0.48747140169143677,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.5155613325567175,
+          "similarity": 0.5101824998855591,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.49435786590319675,
+          "similarity": 0.48968803882598877,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.4676009677717978,
+          "similarity": 0.47971010208129883,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5325926813869865,
+          "similarity": 0.5273263454437256,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.518142842995493,
+          "similarity": 0.48747140169143677,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.5155613325567175,
+          "similarity": 0.5101824998855591,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.49435786590319675,
+          "similarity": 0.48968803882598877,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.4676009677717978,
+          "similarity": 0.47971010208129883,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

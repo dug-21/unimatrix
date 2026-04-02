@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5147",
+  "query": "yes, file.  I prefer cleaner long term",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.44042928507159584,
+          "similarity": 0.3522754907608032,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 867,
+          "title": "ADR-004 col-020: Explicit Tool-to-Field Mapping for File Path Extraction",
+          "category": "decision",
+          "final_score": 0.43860928774217633,
+          "similarity": 0.3897041082382202,
+          "confidence": 0.5623621978170213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.41413273523399885,
+          "similarity": 0.3288736343383789,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.41386839463631,
+          "similarity": 0.3211967945098877,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1254,
+          "title": "ADR-001 nan-005: README as Single File with Capability-First Section Order",
+          "category": "decision",
+          "final_score": 0.4047061977776696,
+          "similarity": 0.37482380867004395,
+          "confidence": 0.4915970958678977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.44042928507159584,
+          "similarity": 0.3522754907608032,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 867,
+          "title": "ADR-004 col-020: Explicit Tool-to-Field Mapping for File Path Extraction",
+          "category": "decision",
+          "final_score": 0.43860928774217633,
+          "similarity": 0.3897041082382202,
+          "confidence": 0.5623621978170213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.41413273523399885,
+          "similarity": 0.3288736343383789,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.41386839463631,
+          "similarity": 0.3211967945098877,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1254,
+          "title": "ADR-001 nan-005: README as Single File with Capability-First Section Order",
+          "category": "decision",
+          "final_score": 0.4047061977776696,
+          "similarity": 0.37482380867004395,
+          "confidence": 0.4915970958678977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

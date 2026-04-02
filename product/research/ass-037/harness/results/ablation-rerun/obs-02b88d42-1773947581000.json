@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-02b88d42-1773947581000",
+  "query": "lesson-learned failures gate rejection",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5478471816977483,
+          "similarity": 0.47944390773773193,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.530739869034784,
+          "similarity": 0.47060978412628174,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5289571689795047,
+          "similarity": 0.444282591342926,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.5193319205390976,
+          "similarity": 0.4384894371032715,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.4899013769236731,
+          "similarity": 0.41963452100753784,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.4837175270941975,
+          "similarity": 0.47944390773773193,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4705832229005937,
+          "similarity": 0.47060978412628174,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.46752076334116527,
+          "similarity": 0.444282591342926,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.4600760375355563,
+          "similarity": 0.4384894371032715,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.43723664447786287,
+          "similarity": 0.41963452100753784,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.4837175270941975,
+          "similarity": 0.47944390773773193,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4705832229005937,
+          "similarity": 0.47060978412628174,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.46752076334116527,
+          "similarity": 0.444282591342926,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.4600760375355563,
+          "similarity": 0.4384894371032715,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.43723664447786287,
+          "similarity": 0.41963452100753784,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5482942619197092,
+          "similarity": 0.47944390773773193,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5311328761256893,
+          "similarity": 0.47060978412628174,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5295105975915086,
+          "similarity": 0.444282591342926,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.5198603027837763,
+          "similarity": 0.4384894371032715,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.490360637419857,
+          "similarity": 0.41963452100753784,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.39119625091552734,
+          "similarity": 0.47944390773773193,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.38575986715463495,
+          "similarity": 0.47060978412628174,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.36955851774949294,
+          "similarity": 0.444282591342926,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.3659934997558594,
+          "similarity": 0.4384894371032715,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.35439047446617716,
+          "similarity": 0.41963452100753784,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.47944390773773193,
+          "similarity": 0.47944390773773193,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.47060978412628174,
+          "similarity": 0.47060978412628174,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.444282591342926,
+          "similarity": 0.444282591342926,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.4384894371032715,
+          "similarity": 0.4384894371032715,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.41963452100753784,
+          "similarity": 0.41963452100753784,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

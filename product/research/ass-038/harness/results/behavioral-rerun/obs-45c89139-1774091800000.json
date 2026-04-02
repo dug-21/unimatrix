@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-45c89139-1774091800000",
+  "query": "backward compatibility breaking change workspace refactor",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.4780430042709406,
+          "similarity": 0.4335073232650757,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.47658958943125473,
+          "similarity": 0.4573249816894531,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.46625718322108956,
+          "similarity": 0.42155373096466064,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2934,
+          "title": "cargo fmt on a partially-broken workspace silently reverts all file changes",
+          "category": "pattern",
+          "final_score": 0.46131662174801125,
+          "similarity": 0.46859073638916016,
+          "confidence": 0.5113012070458018,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.43984020393799594,
+          "similarity": 0.40565723180770874,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.4780430042709406,
+          "similarity": 0.4335073232650757,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.47658958943125473,
+          "similarity": 0.4573249816894531,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.46625718322108956,
+          "similarity": 0.42155373096466064,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2934,
+          "title": "cargo fmt on a partially-broken workspace silently reverts all file changes",
+          "category": "pattern",
+          "final_score": 0.46131662174801125,
+          "similarity": 0.46859073638916016,
+          "confidence": 0.5113012070458018,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.43984020393799594,
+          "similarity": 0.40565723180770874,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

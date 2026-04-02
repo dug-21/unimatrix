@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-4a5ba677-1774403545000",
+  "query": "scope review feature alignment variance gap addition",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.3873971700668335,
+          "similarity": 0.3873971700668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.3851433992385864,
+          "similarity": 0.3851433992385864,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.37226247787475586,
+          "similarity": 0.37226247787475586,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.36768025159835815,
+          "similarity": 0.36768025159835815,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.3614703416824341,
+          "similarity": 0.3614703416824341,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.4291756711291224,
+          "similarity": 0.36768025159835815,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.41896442899271885,
+          "similarity": 0.3851433992385864,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.41847225681996814,
+          "similarity": 0.3873971700668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.4139708314784348,
+          "similarity": 0.3614703416824341,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.406765543939226,
+          "similarity": 0.37226247787475586,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.4291756711291224,
+          "similarity": 0.36768025159835815,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.41896442899271885,
+          "similarity": 0.3851433992385864,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.41847225681996814,
+          "similarity": 0.3873971700668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.4139708314784348,
+          "similarity": 0.3614703416824341,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.406765543939226,
+          "similarity": 0.37226247787475586,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.4836322559398616,
+          "similarity": 0.36768025159835815,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4681202759683814,
+          "similarity": 0.3851433992385864,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.46724424383933527,
+          "similarity": 0.3873971700668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.4634629209540079,
+          "similarity": 0.3614703416824341,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.45265642556487584,
+          "similarity": 0.37226247787475586,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.3345521046565129,
+          "similarity": 0.3873971700668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.33316516876220703,
+          "similarity": 0.3851433992385864,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.32523844792292667,
+          "similarity": 0.37226247787475586,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.32241861636822045,
+          "similarity": 0.36768025159835815,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.31859713334303635,
+          "similarity": 0.3614703416824341,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.4843901121773878,
+          "similarity": 0.36768025159835815,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4686626084960272,
+          "similarity": 0.3851433992385864,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.46776612013850205,
+          "similarity": 0.3873971700668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 647,
+          "title": "Implementation agents must write gate report artifacts, not just self-assess",
+          "category": "lesson-learned",
+          "final_score": 0.46412953911918164,
+          "similarity": 0.3614703416824341,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.45318187620337336,
+          "similarity": 0.37226247787475586,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.0,
+    "rank_changes": [
+      {
+        "entry_id": 3426,
+        "from_rank": 1,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 605,
+        "from_rank": 3,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 925,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 647,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": -0.75,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

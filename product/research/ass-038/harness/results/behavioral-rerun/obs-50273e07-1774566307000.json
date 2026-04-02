@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774566307000",
+  "query": "GRAPH_EDGES SQL query read.rs",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5397536249590964,
+          "similarity": 0.5458580851554871,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5091209828155248,
+          "similarity": 0.49846601486206055,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.49482485254499853,
+          "similarity": 0.4613708257675171,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.4875130810103139,
+          "similarity": 0.46846961975097656,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.44107471215097527,
+          "similarity": 0.459041953086853,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5397536249590964,
+          "similarity": 0.5458580851554871,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5091209828155248,
+          "similarity": 0.49846601486206055,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.49482485254499853,
+          "similarity": 0.4613708257675171,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.4875130810103139,
+          "similarity": 0.46846961975097656,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.44107471215097527,
+          "similarity": 0.459041953086853,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

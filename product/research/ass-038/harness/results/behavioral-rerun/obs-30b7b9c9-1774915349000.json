@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-30b7b9c9-1774915349000",
+  "query": "security migration SQL injection access control trust boundary",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.470782213964819,
+          "similarity": 0.41667771339416504,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.4678725339304165,
+          "similarity": 0.43097925186157227,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.45975754871367847,
+          "similarity": 0.3916545510292053,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4551596488064845,
+          "similarity": 0.37618398666381836,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.42502129604859995,
+          "similarity": 0.35631024837493896,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.470782213964819,
+          "similarity": 0.41667771339416504,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.4678725339304165,
+          "similarity": 0.43097925186157227,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.45975754871367847,
+          "similarity": 0.3916545510292053,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4551596488064845,
+          "similarity": 0.37618398666381836,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.42502129604859995,
+          "similarity": 0.35631024837493896,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,190 @@
+{
+  "scenario_id": "obs-ea4a711a-1774632957000",
+  "query": "background tick fan-out source candidate selection shuffle two bounds cap",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.49682867527008057,
+          "similarity": 0.49682867527008057,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.39379483461380005,
+          "similarity": 0.39379483461380005,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.48818940612317946,
+          "similarity": 0.49682867527008057,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.41697134116739304,
+          "similarity": 0.39379483461380005,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5523647651434191,
+          "similarity": 0.49682867527008057,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.4646159348088268,
+          "similarity": 0.39379483461380005,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.40189456939697266,
+          "similarity": 0.49682867527008057,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.33848912899310774,
+          "similarity": 0.39379483461380005,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5527277461229836,
+          "similarity": 0.49682867527008057,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.4650788178166375,
+          "similarity": 0.39379483461380005,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.48818940612317946,
+          "similarity": 0.49682867527008057,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.41697134116739304,
+          "similarity": 0.39379483461380005,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

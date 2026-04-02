@@ -1,0 +1,201 @@
+{
+  "scenario_id": "obs-f094870a-1775006708000",
+  "query": "multi-type background tick independent budget per edge type fan-out",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.4035833734627485,
+          "similarity": 0.2892525792121887,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.38940128382514505,
+          "similarity": 0.3329821825027466,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.3329821825027466,
+          "similarity": 0.3329821825027466,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.2892525792121887,
+          "similarity": 0.2892525792121887,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.40284096570787464,
+          "similarity": 0.2892525792121887,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.3890349260243502,
+          "similarity": 0.3329821825027466,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.3647002134665874,
+          "similarity": 0.2892525792121887,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.3574910912513733,
+          "similarity": 0.3329821825027466,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.3010659584632287,
+          "similarity": 0.3329821825027466,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.2741554333613469,
+          "similarity": 0.2892525792121887,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.3647002134665874,
+          "similarity": 0.2892525792121887,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.3574910912513733,
+          "similarity": 0.3329821825027466,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": -1.0,
+    "rank_changes": [
+      {
+        "entry_id": 3970,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3976,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

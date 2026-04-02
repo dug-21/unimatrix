@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774751927000",
+  "query": "search.rs tracing qualified logging gotcha pattern",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5075523320306272,
+          "similarity": 0.5858661532402039,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.47617810643751884,
+          "similarity": 0.505332887172699,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.44775546617213446,
+          "similarity": 0.47421467304229736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.44388970259205235,
+          "similarity": 0.4541826844215393,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.43728867086615814,
+          "similarity": 0.4587293863296509,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5705751465871154,
+          "similarity": 0.5858661532402039,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.5354079022502514,
+          "similarity": 0.505332887172699,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.4994472405262338,
+          "similarity": 0.47421467304229736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.496105210967372,
+          "similarity": 0.4541826844215393,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.486599216254565,
+          "similarity": 0.4587293863296509,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5858661532402039,
+          "similarity": 0.5858661532402039,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.505332887172699,
+          "similarity": 0.505332887172699,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.47421467304229736,
+          "similarity": 0.47421467304229736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.4587293863296509,
+          "similarity": 0.4587293863296509,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.4541826844215393,
+          "similarity": 0.4541826844215393,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5706744388381093,
+          "similarity": 0.5858661532402039,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.535212609944553,
+          "similarity": 0.505332887172699,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.499283392685429,
+          "similarity": 0.47421467304229736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.4958329867690223,
+          "similarity": 0.4541826844215393,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.48641824333297456,
+          "similarity": 0.4587293863296509,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.45668686353243315,
+          "similarity": 0.5858661532402039,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.40712793056781477,
+          "similarity": 0.505332887172699,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.38797826033372146,
+          "similarity": 0.47421467304229736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.378448853125939,
+          "similarity": 0.4587293863296509,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.37565088272094727,
+          "similarity": 0.4541826844215393,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5075523320306272,
+          "similarity": 0.5858661532402039,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.47617810643751884,
+          "similarity": 0.505332887172699,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.44775546617213446,
+          "similarity": 0.47421467304229736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.44388970259205235,
+          "similarity": 0.4541826844215393,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.43728867086615814,
+          "similarity": 0.4587293863296509,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

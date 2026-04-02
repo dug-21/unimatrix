@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-345d9e22-1773881359000",
+  "query": "multi-file rename blast radius Rust Python Markdown",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.5488582238720872,
+          "similarity": 0.5404406785964966,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2340,
+          "title": "Multi-crate rename eradication: grep critical trees separately, not repo-wide",
+          "category": "lesson-learned",
+          "final_score": 0.5028660362224846,
+          "similarity": 0.4781948924064636,
+          "confidence": 0.538110527388229,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.49717790355504077,
+          "similarity": 0.5116103291511536,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.4660209666935018,
+          "similarity": 0.40269672870635986,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.4625983437142437,
+          "similarity": 0.40107154846191406,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.4287327252901518,
+          "similarity": 0.5404406785964966,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.4109909717853253,
+          "similarity": 0.5116103291511536,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2340,
+          "title": "Multi-crate rename eradication: grep critical trees separately, not repo-wide",
+          "category": "lesson-learned",
+          "final_score": 0.39042762609628534,
+          "similarity": 0.4781948924064636,
+          "confidence": 0.538110527388229,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.34396721766545224,
+          "similarity": 0.40269672870635986,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.3429671067457933,
+          "similarity": 0.40107154846191406,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.488485325863699,
+          "similarity": 0.5404406785964966,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2340,
+          "title": "Multi-crate rename eradication: grep critical trees separately, not repo-wide",
+          "category": "lesson-learned",
+          "final_score": 0.45053060441970044,
+          "similarity": 0.4781948924064636,
+          "confidence": 0.538110527388229,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.44877321038661205,
+          "similarity": 0.5116103291511536,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.418293613498577,
+          "similarity": 0.40269672870635986,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.4156839038819428,
+          "similarity": 0.40107154846191406,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.488485325863699,
+          "similarity": 0.5404406785964966,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2340,
+          "title": "Multi-crate rename eradication: grep critical trees separately, not repo-wide",
+          "category": "lesson-learned",
+          "final_score": 0.45053060441970044,
+          "similarity": 0.4781948924064636,
+          "confidence": 0.538110527388229,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.44877321038661205,
+          "similarity": 0.5116103291511536,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.418293613498577,
+          "similarity": 0.40269672870635986,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.4156839038819428,
+          "similarity": 0.40107154846191406,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.5488035644871807,
+          "similarity": 0.5404406785964966,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2340,
+          "title": "Multi-crate rename eradication: grep critical trees separately, not repo-wide",
+          "category": "lesson-learned",
+          "final_score": 0.5027058339899131,
+          "similarity": 0.4781948924064636,
+          "confidence": 0.538110527388229,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.49727162060436614,
+          "similarity": 0.5116103291511536,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.4656097703429359,
+          "similarity": 0.40269672870635986,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.462198819069748,
+          "similarity": 0.40107154846191406,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.5404406785964966,
+          "similarity": 0.5404406785964966,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.5116103291511536,
+          "similarity": 0.5116103291511536,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2340,
+          "title": "Multi-crate rename eradication: grep critical trees separately, not repo-wide",
+          "category": "lesson-learned",
+          "final_score": 0.4781948924064636,
+          "similarity": 0.4781948924064636,
+          "confidence": 0.538110527388229,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.40269672870635986,
+          "similarity": 0.40269672870635986,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.40107154846191406,
+          "similarity": 0.40107154846191406,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2340,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3492,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

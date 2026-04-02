@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-a8ba4691-1774707599000",
+  "query": "category allowlist test count validation poison recovery",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5133854749346943,
+          "similarity": 0.5659157633781433,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.4745648258492737,
+          "similarity": 0.5044819116592407,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.46118794428633536,
+          "similarity": 0.47515565156936646,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.4608602055485517,
+          "similarity": 0.4654412269592285,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.45702215886104464,
+          "similarity": 0.45770883560180664,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5805373417360369,
+          "similarity": 0.5659157633781433,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5332770245324109,
+          "similarity": 0.5044819116592407,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5182942794824015,
+          "similarity": 0.4654412269592285,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5177917223960127,
+          "similarity": 0.47515565156936646,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.5137844498483156,
+          "similarity": 0.45770883560180664,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5659157633781433,
+          "similarity": 0.5659157633781433,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5044819116592407,
+          "similarity": 0.5044819116592407,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.47515565156936646,
+          "similarity": 0.47515565156936646,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.4654412269592285,
+          "similarity": 0.4654412269592285,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.45770883560180664,
+          "similarity": 0.45770883560180664,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.4444097005403959,
+          "similarity": 0.5659157633781433,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.40660425332876354,
+          "similarity": 0.5044819116592407,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.38855732404268706,
+          "similarity": 0.47515565156936646,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.3825792165902945,
+          "similarity": 0.4654412269592285,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.3778208219088041,
+          "similarity": 0.45770883560180664,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5133854749346943,
+          "similarity": 0.5659157633781433,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.4745648258492737,
+          "similarity": 0.5044819116592407,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.46118794428633536,
+          "similarity": 0.47515565156936646,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.4608602055485517,
+          "similarity": 0.4654412269592285,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.45702215886104464,
+          "similarity": 0.45770883560180664,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5804423964220246,
+          "similarity": 0.5659157633781433,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5330900432799877,
+          "similarity": 0.5044819116592407,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5179510778426406,
+          "similarity": 0.4654412269592285,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5175148647932422,
+          "similarity": 0.47515565156936646,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.5134203224830785,
+          "similarity": 0.45770883560180664,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3523,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3770,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

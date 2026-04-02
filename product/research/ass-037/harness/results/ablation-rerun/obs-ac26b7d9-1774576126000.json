@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774576126000",
+  "query": "zero-regression eval gate filter suppression integration test",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.666323205981233,
+          "similarity": 0.7579038143157959,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5170361192580177,
+          "similarity": 0.44302093982696533,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.49284174995464547,
+          "similarity": 0.45945727825164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.4902664847482375,
+          "similarity": 0.46673351526260376,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.48258862996843,
+          "similarity": 0.4192701578140259,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.5896000368088838,
+          "similarity": 0.7579038143157959,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.4583420968756247,
+          "similarity": 0.44302093982696533,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.4418887948420737,
+          "similarity": 0.45945727825164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.440532261406759,
+          "similarity": 0.46673351526260376,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.43154815596371504,
+          "similarity": 0.4192701578140259,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.7579038143157959,
+          "similarity": 0.7579038143157959,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.46673351526260376,
+          "similarity": 0.46673351526260376,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.45945727825164795,
+          "similarity": 0.45945727825164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.44302093982696533,
+          "similarity": 0.44302093982696533,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4192701578140259,
+          "similarity": 0.4192701578140259,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.5896000368088838,
+          "similarity": 0.7579038143157959,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.4583420968756247,
+          "similarity": 0.44302093982696533,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.4418887948420737,
+          "similarity": 0.45945727825164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.440532261406759,
+          "similarity": 0.46673351526260376,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.43154815596371504,
+          "similarity": 0.4192701578140259,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.6669178852561327,
+          "similarity": 0.7579038143157959,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5165555012097641,
+          "similarity": 0.44302093982696533,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.4926249676708597,
+          "similarity": 0.45945727825164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.490113673258071,
+          "similarity": 0.46673351526260376,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.48217747105833636,
+          "similarity": 0.4192701578140259,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.5625561934251052,
+          "similarity": 0.7579038143157959,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.3833744709308331,
+          "similarity": 0.46673351526260376,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.37889678661639875,
+          "similarity": 0.45945727825164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.36878211681659406,
+          "similarity": 0.44302093982696533,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.35416625096247745,
+          "similarity": 0.4192701578140259,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

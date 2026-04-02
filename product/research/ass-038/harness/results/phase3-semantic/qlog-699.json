@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-699",
+  "query": "create a gh issue.. unimatrix is unhealthy.. youve attempted 2 localized fixes (the last 2 PR's) to try to resolve, however, since the implemenation of crt-014 we've been unstable.  You saw one issue above... another session saw Cycle stopped. The store call is hitting a timing issue with the connection. .  I want to perform a all encompassing availability review of this mcp server.  It had been fine prior to crt-014... Review the full architecture, we've continued to add responsibilities of the backtick processes over time... so I want a complete availability review, and also identify architecture choke points that won't scale to 3-5 times the volume we currently have.  This is a broad research request that should identify opportunities in priority order how to enhance the availability, and in the future scalability of unimatrix.  Store detailed research, findings and analysis in product/research/ass-020 and also tie it to the gh issue.  If unimatrix is unavailable, continue as its reliability is why we're performing this review.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5216586514641585,
+          "similarity": 0.5270462036132812,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.5071083996333045,
+          "similarity": 0.5167533755302429,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5070617292344064,
+          "similarity": 0.5207504034042358,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.4976264112670604,
+          "similarity": 0.5206445455551147,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3760,
+          "title": "context_store failures during heavy compilation phases — contention or timing issue",
+          "category": "lesson-learned",
+          "final_score": 0.4873551888794537,
+          "similarity": 0.5283394455909729,
+          "confidence": 0.4966220189714134,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5216586514641585,
+          "similarity": 0.5270462036132812,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.5071083996333045,
+          "similarity": 0.5167533755302429,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5070617292344064,
+          "similarity": 0.5207504034042358,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.4976264112670604,
+          "similarity": 0.5206445455551147,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3760,
+          "title": "context_store failures during heavy compilation phases — contention or timing issue",
+          "category": "lesson-learned",
+          "final_score": 0.4873551888794537,
+          "similarity": 0.5283394455909729,
+          "confidence": 0.4966220189714134,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

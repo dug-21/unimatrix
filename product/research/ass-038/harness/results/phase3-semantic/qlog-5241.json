@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5241",
+  "query": "minilm2-q8.  My fear is that we tested on 1-2 sentence decscriptions, and the size vs benefit did not pan out for the slightly larger model.  To your point, thats not what we have with the Informs assessment",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.46935136742210126,
+          "similarity": 0.4460303783416748,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.4559804900597443,
+          "similarity": 0.37356841564178467,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.4354707429401974,
+          "similarity": 0.3632891774177551,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.43284675447381493,
+          "similarity": 0.3845440149307251,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.4205660738923085,
+          "similarity": 0.3698352575302124,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.46935136742210126,
+          "similarity": 0.4460303783416748,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.4559804900597443,
+          "similarity": 0.37356841564178467,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.4354707429401974,
+          "similarity": 0.3632891774177551,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.43284675447381493,
+          "similarity": 0.3845440149307251,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.4205660738923085,
+          "similarity": 0.3698352575302124,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

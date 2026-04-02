@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bde10d2b-1773764015000",
+  "query": "sqlx compile-time query check offline schema cache developer workflow",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.5189342791895021,
+          "similarity": 0.5496021509170532,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.4803050932792309,
+          "similarity": 0.4880903959274292,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4605459334576488,
+          "similarity": 0.45751309394836426,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.45792623670504085,
+          "similarity": 0.423220694065094,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.43560595779210376,
+          "similarity": 0.4289066791534424,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.5189342791895021,
+          "similarity": 0.5496021509170532,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.4803050932792309,
+          "similarity": 0.4880903959274292,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4605459334576488,
+          "similarity": 0.45751309394836426,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.45792623670504085,
+          "similarity": 0.423220694065094,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.43560595779210376,
+          "similarity": 0.4289066791534424,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773933225000",
+  "query": "SupersessionGraph typed graph petgraph unimatrix-engine graph pattern",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.5439820746801818,
+          "similarity": 0.5646921396255493,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5241416304538068,
+          "similarity": 0.5059843063354492,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.5198973931835639,
+          "similarity": 0.5336301922798157,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.5119227139700369,
+          "similarity": 0.5280628800392151,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5028260381394745,
+          "similarity": 0.5305238366127014,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.5439820746801818,
+          "similarity": 0.5646921396255493,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5241416304538068,
+          "similarity": 0.5059843063354492,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.5198973931835639,
+          "similarity": 0.5336301922798157,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.5119227139700369,
+          "similarity": 0.5280628800392151,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5028260381394745,
+          "similarity": 0.5305238366127014,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

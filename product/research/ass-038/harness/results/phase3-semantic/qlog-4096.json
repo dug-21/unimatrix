@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4096",
+  "query": "so explain this duplicate issue that we're proposing to defer?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.4118979136969201,
+          "similarity": 0.2981865406036377,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.4039736724769326,
+          "similarity": 0.30411767959594727,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.4037978838753923,
+          "similarity": 0.3495255708694458,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.38175406479055574,
+          "similarity": 0.28998708724975586,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.375245769745446,
+          "similarity": 0.29544591903686523,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.4118979136969201,
+          "similarity": 0.2981865406036377,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.4039736724769326,
+          "similarity": 0.30411767959594727,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.4037978838753923,
+          "similarity": 0.3495255708694458,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.38175406479055574,
+          "similarity": 0.28998708724975586,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.375245769745446,
+          "similarity": 0.29544591903686523,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

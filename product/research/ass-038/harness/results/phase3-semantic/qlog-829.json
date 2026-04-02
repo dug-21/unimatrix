@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-829",
+  "query": "If the LLM has read/write, though... it does not require admin",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.40241786305314053,
+          "similarity": 0.2722351551055908,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.3968419226083686,
+          "similarity": 0.2930715084075928,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.3782519217242888,
+          "similarity": 0.30941444635391235,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.36374146798274476,
+          "similarity": 0.26254940032958984,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.3606518852759324,
+          "similarity": 0.2749440670013428,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.40241786305314053,
+          "similarity": 0.2722351551055908,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.3968419226083686,
+          "similarity": 0.2930715084075928,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.3782519217242888,
+          "similarity": 0.30941444635391235,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.36374146798274476,
+          "similarity": 0.26254940032958984,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.3606518852759324,
+          "similarity": 0.2749440670013428,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

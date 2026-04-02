@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280163000",
+  "query": "ONNX model embedding download dependency",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.5409030935705982,
+          "similarity": 0.5697373151779175,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.5408401322006576,
+          "similarity": 0.6332157254219055,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.5117567966526676,
+          "similarity": 0.5766048431396484,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 70,
+          "title": "ADR-004: Custom Cache Directory (~/.cache/unimatrix/models/)",
+          "category": "decision",
+          "final_score": 0.5074455206099922,
+          "similarity": 0.5143626928329468,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.4760161782717961,
+          "similarity": 0.508705198764801,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.5409030935705982,
+          "similarity": 0.5697373151779175,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.5408401322006576,
+          "similarity": 0.6332157254219055,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.5117567966526676,
+          "similarity": 0.5766048431396484,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 70,
+          "title": "ADR-004: Custom Cache Directory (~/.cache/unimatrix/models/)",
+          "category": "decision",
+          "final_score": 0.5074455206099922,
+          "similarity": 0.5143626928329468,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.4760161782717961,
+          "similarity": 0.508705198764801,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

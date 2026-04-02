@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5061",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(uni-rust-dev) → ]\n[tool: Agent(uni-rust-dev) → ]\n[Assistant] Stage 3b — Wave 1. Spawning 3 parallel implementation agents.\n[tool: Bash(git add product/features/crt-037/pseudocode/ product/features/crt-037/test-plan/ product/features/crt-037/reports/ && gi) → [feature/crt-037 8405cdd] pseudocode: crt-037 component design + test plans (#466)\n 13 files changed, 2697 insertions(+)\n create mode 100644 product/features/crt-037/pseudocode/OVERVIEW.md\n create mode 100644 product/features/crt-037/pseudocode/config.md\n create mode 100644 product/features/crt-037/]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5333021752021784,
+          "similarity": 0.5465259552001953,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.5279187829376786,
+          "similarity": 0.5144272446632385,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.5260885923208349,
+          "similarity": 0.5892738103866577,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.5054769345952717,
+          "similarity": 0.5177878737449646,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.4735390460771296,
+          "similarity": 0.5034019351005554,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5333021752021784,
+          "similarity": 0.5465259552001953,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.5279187829376786,
+          "similarity": 0.5144272446632385,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.5260885923208349,
+          "similarity": 0.5892738103866577,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.5054769345952717,
+          "similarity": 0.5177878737449646,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.4735390460771296,
+          "similarity": 0.5034019351005554,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

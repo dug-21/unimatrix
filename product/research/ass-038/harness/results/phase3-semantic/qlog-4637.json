@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4637",
+  "query": "2 things.  k: or whatever we call it, should be a constant exposed in config.  We are attempting to be a multi-domain platform, not just a software development workflow system... so this will be different based on the domain.  2. 10-15 actually feels low.  if we're at 190MB with ~200+ sessions, moving to 50 will dramatically decrease the size",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.47224149913891234,
+          "similarity": 0.41383302211761475,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.45829014211460206,
+          "similarity": 0.3958321809768677,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.43691531197106837,
+          "similarity": 0.3591642379760742,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.4105471644309643,
+          "similarity": 0.36155033111572266,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.4025875487501659,
+          "similarity": 0.3546218276023865,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.47224149913891234,
+          "similarity": 0.41383302211761475,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.45829014211460206,
+          "similarity": 0.3958321809768677,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.43691531197106837,
+          "similarity": 0.3591642379760742,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.4105471644309643,
+          "similarity": 0.36155033111572266,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.4025875487501659,
+          "similarity": 0.3546218276023865,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

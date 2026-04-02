@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774264981000",
+  "query": "write_pool read_pool visibility pub crate cross-crate pool access pattern",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5050661856117221,
+          "similarity": 0.5123205184936523,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5001768787862462,
+          "similarity": 0.4846305847167969,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.4733647520096985,
+          "similarity": 0.4282963275909424,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.45953013709987145,
+          "similarity": 0.4285169839859009,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.44944126562404096,
+          "similarity": 0.43544912338256836,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5050661856117221,
+          "similarity": 0.5123205184936523,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5001768787862462,
+          "similarity": 0.4846305847167969,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.4733647520096985,
+          "similarity": 0.4282963275909424,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.45953013709987145,
+          "similarity": 0.4285169839859009,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.44944126562404096,
+          "similarity": 0.43544912338256836,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

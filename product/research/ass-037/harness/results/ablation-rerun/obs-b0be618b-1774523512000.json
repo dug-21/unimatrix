@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-b0be618b-1774523512000",
+  "query": "test plan specifies assertion but implementation exists without test asserting it coverage gap",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3548,
+          "title": "Test Exists but Omits Test-Plan Assertion — Coverage Is Weaker Than Specified",
+          "category": "lesson-learned",
+          "final_score": 0.5364882069053104,
+          "similarity": 0.619350254535675,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.52585249904201,
+          "similarity": 0.5669960379600525,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5068501012039371,
+          "similarity": 0.5588614344596863,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.4793152759550157,
+          "similarity": 0.5040466785430908,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2984,
+          "title": "Test plan expected values copied from a different input set silently fail when inputs differ",
+          "category": "pattern",
+          "final_score": 0.4539516074151154,
+          "similarity": 0.4866069555282593,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3548,
+          "title": "Test Exists but Omits Test-Plan Assertion — Coverage Is Weaker Than Specified",
+          "category": "lesson-learned",
+          "final_score": 0.47729246432964617,
+          "similarity": 0.619350254535675,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.4450744848984938,
+          "similarity": 0.5669960379600525,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.44006857505211466,
+          "similarity": 0.5588614344596863,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.40633641756497896,
+          "similarity": 0.5040466785430908,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2984,
+          "title": "Test plan expected values copied from a different input set silently fail when inputs differ",
+          "category": "pattern",
+          "final_score": 0.39560428032508266,
+          "similarity": 0.4866069555282593,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3548,
+          "title": "Test Exists but Omits Test-Plan Assertion — Coverage Is Weaker Than Specified",
+          "category": "lesson-learned",
+          "final_score": 0.619350254535675,
+          "similarity": 0.619350254535675,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5669960379600525,
+          "similarity": 0.5669960379600525,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5588614344596863,
+          "similarity": 0.5588614344596863,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.5040466785430908,
+          "similarity": 0.5040466785430908,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2984,
+          "title": "Test plan expected values copied from a different input set silently fail when inputs differ",
+          "category": "pattern",
+          "final_score": 0.4866069555282593,
+          "similarity": 0.4866069555282593,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3548,
+          "title": "Test Exists but Omits Test-Plan Assertion — Coverage Is Weaker Than Specified",
+          "category": "lesson-learned",
+          "final_score": 0.6070082982488891,
+          "similarity": 0.619350254535675,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5975430341792243,
+          "similarity": 0.5669960379600525,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5722588218034739,
+          "similarity": 0.5588614344596863,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.539839920081091,
+          "similarity": 0.5040466785430908,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2984,
+          "title": "Test plan expected values copied from a different input set silently fail when inputs differ",
+          "category": "pattern",
+          "final_score": 0.5067368184591526,
+          "similarity": 0.4866069555282593,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3548,
+          "title": "Test Exists but Omits Test-Plan Assertion — Coverage Is Weaker Than Specified",
+          "category": "lesson-learned",
+          "final_score": 0.5364882069053104,
+          "similarity": 0.619350254535675,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.52585249904201,
+          "similarity": 0.5669960379600525,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5068501012039371,
+          "similarity": 0.5588614344596863,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.4793152759550157,
+          "similarity": 0.5040466785430908,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2984,
+          "title": "Test plan expected values copied from a different input set silently fail when inputs differ",
+          "category": "pattern",
+          "final_score": 0.4539516074151154,
+          "similarity": 0.4866069555282593,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3548,
+          "title": "Test Exists but Omits Test-Plan Assertion — Coverage Is Weaker Than Specified",
+          "category": "lesson-learned",
+          "final_score": 0.6070884408221799,
+          "similarity": 0.619350254535675,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5973446770609179,
+          "similarity": 0.5669960379600525,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5721718257817607,
+          "similarity": 0.5588614344596863,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.5396074964347404,
+          "similarity": 0.5040466785430908,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2984,
+          "title": "Test plan expected values copied from a different input set silently fail when inputs differ",
+          "category": "pattern",
+          "final_score": 0.5066061050634975,
+          "similarity": 0.4866069555282593,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

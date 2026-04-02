@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-1ebc220a-1774994876000",
+  "query": "guard relaxation predicate cross-feature empty check filter",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.6269755056433763,
+          "similarity": 0.6502693295478821,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5316551224451314,
+          "similarity": 0.48717355728149414,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5279021553485318,
+          "similarity": 0.5057880282402039,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.4758806110830868,
+          "similarity": 0.47999703884124756,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5532442490793087,
+          "similarity": 0.6502693295478821,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.4721468433015595,
+          "similarity": 0.48717355728149414,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.47074214377108775,
+          "similarity": 0.5057880282402039,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.4309985194206238,
+          "similarity": 0.47999703884124756,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.6271267642401588,
+          "similarity": 0.6502693295478821,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5313662811128999,
+          "similarity": 0.48717355728149414,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5277585571205556,
+          "similarity": 0.5057880282402039,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.4759073411334644,
+          "similarity": 0.47999703884124756,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.4963195874140813,
+          "similarity": 0.6502693295478821,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.407408017378587,
+          "similarity": 0.5057880282402039,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.39595295832707333,
+          "similarity": 0.48717355728149414,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.39153663928692156,
+          "similarity": 0.47999703884124756,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.6502693295478821,
+          "similarity": 0.6502693295478821,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5057880282402039,
+          "similarity": 0.5057880282402039,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.48717355728149414,
+          "similarity": 0.48717355728149414,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.47999703884124756,
+          "similarity": 0.47999703884124756,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5532442490793087,
+          "similarity": 0.6502693295478821,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.4721468433015595,
+          "similarity": 0.48717355728149414,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.47074214377108775,
+          "similarity": 0.5057880282402039,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.4309985194206238,
+          "similarity": 0.47999703884124756,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

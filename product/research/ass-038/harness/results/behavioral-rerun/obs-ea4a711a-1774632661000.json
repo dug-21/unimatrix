@@ -1,0 +1,94 @@
+{
+  "scenario_id": "obs-ea4a711a-1774632661000",
+  "query": "background tick candidate selection stable ordering stalls progress",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5576788848065666,
+          "similarity": 0.6146596670150757,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5148572838942432,
+          "similarity": 0.4854203462600708,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.48829818823339266,
+          "similarity": 0.47903263568878174,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0986122886681096
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5576788848065666,
+          "similarity": 0.6146596670150757,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5148572838942432,
+          "similarity": 0.4854203462600708,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.48829818823339266,
+          "similarity": 0.47903263568878174,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0986122886681096
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

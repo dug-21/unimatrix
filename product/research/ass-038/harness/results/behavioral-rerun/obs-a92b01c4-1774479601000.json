@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a92b01c4-1774479601000",
+  "query": "session registry goal cycle_start listener",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5391225563246193,
+          "similarity": 0.5298096537590027,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.5122618175577103,
+          "similarity": 0.48361390829086304,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.49944272609403295,
+          "similarity": 0.4877389669418335,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.4869193706810908,
+          "similarity": 0.48980116844177246,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.4757602041364196,
+          "similarity": 0.48700523376464844,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5391225563246193,
+          "similarity": 0.5298096537590027,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.5122618175577103,
+          "similarity": 0.48361390829086304,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.49944272609403295,
+          "similarity": 0.4877389669418335,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3499,
+          "title": "handle_cycle_event: new optional state fields must mirror the if-Some guard used by existing fields",
+          "category": "lesson-learned",
+          "final_score": 0.4869193706810908,
+          "similarity": 0.48980116844177246,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.4757602041364196,
+          "similarity": 0.48700523376464844,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

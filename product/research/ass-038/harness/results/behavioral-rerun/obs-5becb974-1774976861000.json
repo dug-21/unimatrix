@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5becb974-1774976861000",
+  "query": "PPR graph traversal edges_of_type patterns",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5679925585915387,
+          "similarity": 0.621380627155304,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5593040782455977,
+          "similarity": 0.5938138961791992,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.532247562451217,
+          "similarity": 0.5394366979598999,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5287842928532357,
+          "similarity": 0.5693445205688477,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.4935867492776167,
+          "similarity": 0.5588148236274719,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5679925585915387,
+          "similarity": 0.621380627155304,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5593040782455977,
+          "similarity": 0.5938138961791992,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.532247562451217,
+          "similarity": 0.5394366979598999,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5287842928532357,
+          "similarity": 0.5693445205688477,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.4935867492776167,
+          "similarity": 0.5588148236274719,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

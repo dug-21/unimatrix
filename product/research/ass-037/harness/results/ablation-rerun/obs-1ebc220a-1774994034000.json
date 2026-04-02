@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-1ebc220a-1774994034000",
+  "query": "SQL injection parameter binding cycle_events query safety",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.4562389689704584,
+          "similarity": 0.43471837043762207,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.4354247775888584,
+          "similarity": 0.4413379430770874,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.4256143089152679,
+          "similarity": 0.4000524878501892,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.42548399980512325,
+          "similarity": 0.40119898319244385,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.41690079397860724,
+          "similarity": 0.4125053286552429,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.4562389689704584,
+          "similarity": 0.43471837043762207,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.4354247775888584,
+          "similarity": 0.4413379430770874,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.4256143089152679,
+          "similarity": 0.4000524878501892,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.42548399980512325,
+          "similarity": 0.40119898319244385,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.41690079397860724,
+          "similarity": 0.4125053286552429,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.5144423785562957,
+          "similarity": 0.43471837043762207,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.48545761097779894,
+          "similarity": 0.4413379430770874,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.4758329223526208,
+          "similarity": 0.4000524878501892,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.4755510012622186,
+          "similarity": 0.40119898319244385,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.46281878009307864,
+          "similarity": 0.4125053286552429,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.4413379430770874,
+          "similarity": 0.4413379430770874,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.43471837043762207,
+          "similarity": 0.43471837043762207,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.4125053286552429,
+          "similarity": 0.4125053286552429,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.40119898319244385,
+          "similarity": 0.40119898319244385,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.4000524878501892,
+          "similarity": 0.4000524878501892,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.514963450504784,
+          "similarity": 0.43471837043762207,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.48574597482028725,
+          "similarity": 0.4413379430770874,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.4763282193101531,
+          "similarity": 0.4000524878501892,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.47603696216463554,
+          "similarity": 0.40119898319244385,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.4631476261809077,
+          "similarity": 0.4125053286552429,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.3677464265089769,
+          "similarity": 0.4413379430770874,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.36367284334622896,
+          "similarity": 0.43471837043762207,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.35000327917245716,
+          "similarity": 0.4125053286552429,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.343045528118427,
+          "similarity": 0.40119898319244385,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.34233999252319336,
+          "similarity": 0.4000524878501892,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

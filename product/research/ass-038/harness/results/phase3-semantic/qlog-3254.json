@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3254",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Phase 2b — vision alignment check.\n[tool: mcp__unimatrix__context_cycle(phase-end) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.48373913804691737,
+          "similarity": 0.4438541531562805,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.48135035164662143,
+          "similarity": 0.45046043395996094,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4695980526200677,
+          "similarity": 0.42337244749069214,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.44907347927286534,
+          "similarity": 0.43630045652389526,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.4429147898193807,
+          "similarity": 0.41895586252212524,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.48373913804691737,
+          "similarity": 0.4438541531562805,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.48135035164662143,
+          "similarity": 0.45046043395996094,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4695980526200677,
+          "similarity": 0.42337244749069214,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.44907347927286534,
+          "similarity": 0.43630045652389526,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.4429147898193807,
+          "similarity": 0.41895586252212524,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

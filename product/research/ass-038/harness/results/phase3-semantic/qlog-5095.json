@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5095",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Stewardship clean. Now spawning the architect for Phase 2.\n[tool: mcp__unimatrix__context_correct(What: When a detection phase has N composite guard predicates, each predicate requires its own independent negative test) → Corrected #3943 -> #3949 | Per-guard negative test for multi-predicate composite guards in NLI detection tick | pattern]\n[Assistant] **Stewardship review — crt-037 entries:**\n\n| Entry | Title | Quality | Action |\n|-------|-------|---------|--------|\n| #3942 | ADR-001: NliCandidatePair Tagged Union | High — three options compared, R-05 rationale, full tags | ✓ Keep |\n| #3940 | ADR-003: Directional Dedup | High — clean context/decision/consequences | ✓ Keep |\n| #3939 | ADR-002: Combined Cap Priority | High — 3 options, outlier status, debug log consequence | ✓ Keep |\n| #3946 | Lesson: AC-22 grep gate false positive | High — what/cause/takeaway, actionable fix | ✓ Keep |\n| #3943 | Pattern: Per-guard negative tests | Good content, **empty tags** | Fix tags |\n| #3937 | Pattern: NLI neutral-zone score | High — what/why/scope, confirmed by live data | ✓ Keep |\n| #3938, #3941 | ADR-001 earlier versions | Deprecated in correction chain | ✓ Already handled |\n\nOne fix needed — #3943 is missing tags entirely. Patching that, then spawning the architect.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5853838427490743,
+          "similarity": 0.6705836653709412,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.547940350525108,
+          "similarity": 0.562952995300293,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5325288121421037,
+          "similarity": 0.5462157130241394,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1005,
+          "title": "ADR-002: Structured Agent Report Stewardship Block",
+          "category": "decision",
+          "final_score": 0.5218386848512732,
+          "similarity": 0.5540858507156372,
+          "confidence": 0.5534395007168315,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 40,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5853838427490743,
+          "similarity": 0.6705836653709412,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.547940350525108,
+          "similarity": 0.562952995300293,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5325288121421037,
+          "similarity": 0.5462157130241394,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1005,
+          "title": "ADR-002: Structured Agent Report Stewardship Block",
+          "category": "decision",
+          "final_score": 0.5218386848512732,
+          "similarity": 0.5540858507156372,
+          "confidence": 0.5534395007168315,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

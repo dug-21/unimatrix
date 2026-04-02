@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-9b6485d3-1774615798000",
+  "query": "NLI tick rayon pool W1-2 contract score_batch dispatch",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.5398076130793645,
+          "similarity": 0.7209373712539673,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.4651223329397348,
+          "similarity": 0.5995737910270691,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4235025185805101,
+          "similarity": 0.5319415926933289,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4029038135822003,
+          "similarity": 0.49846869707107544,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.39426539494441104,
+          "similarity": 0.48443126678466797,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.6753397188995272,
+          "similarity": 0.7209373712539673,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5578343715756611,
+          "similarity": 0.5995737910270691,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5548678019945538,
+          "similarity": 0.5319415926933289,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5450602163344047,
+          "similarity": 0.49846869707107544,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.5337145952079144,
+          "similarity": 0.48443126678466797,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.5935287502877962,
+          "similarity": 0.7209373712539673,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.49924888436420084,
+          "similarity": 0.5995737910270691,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4922566552169841,
+          "similarity": 0.5319415926933289,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.48272020740585736,
+          "similarity": 0.49846869707107544,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.473451438421814,
+          "similarity": 0.48443126678466797,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.6756358075511794,
+          "similarity": 0.7209373712539673,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.558105406766904,
+          "similarity": 0.5995737910270691,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5547189305055847,
+          "similarity": 0.5319415926933289,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5447576740015259,
+          "similarity": 0.49846869707107544,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.5333945735947765,
+          "similarity": 0.48443126678466797,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.7209373712539673,
+          "similarity": 0.7209373712539673,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5995737910270691,
+          "similarity": 0.5995737910270691,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5319415926933289,
+          "similarity": 0.5319415926933289,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.49846869707107544,
+          "similarity": 0.49846869707107544,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.48443126678466797,
+          "similarity": 0.48443126678466797,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.5935287502877962,
+          "similarity": 0.7209373712539673,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.49924888436420084,
+          "similarity": 0.5995737910270691,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4922566552169841,
+          "similarity": 0.5319415926933289,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.48272020740585736,
+          "similarity": 0.49846869707107544,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.473451438421814,
+          "similarity": 0.48443126678466797,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

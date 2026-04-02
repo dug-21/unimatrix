@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-dc8c4f99-1774365609000",
+  "query": "ObservationSource trait block_sync multi-step SQL implementation pattern",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.47426392481877255,
+          "similarity": 0.6144288778305054,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.46890702614417445,
+          "similarity": 0.6057239174842834,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.41990830348088193,
+          "similarity": 0.5261009931564331,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.4059853186974159,
+          "similarity": 0.5034761428833008,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.3992848763099084,
+          "similarity": 0.4925879240036011,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.6144288778305054,
+          "similarity": 0.6144288778305054,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.6057239174842834,
+          "similarity": 0.6057239174842834,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5261009931564331,
+          "similarity": 0.5261009931564331,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5034761428833008,
+          "similarity": 0.5034761428833008,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4925879240036011,
+          "similarity": 0.4925879240036011,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.6111641366333305,
+          "similarity": 0.6057239174842834,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.5957346958552299,
+          "similarity": 0.6144288778305054,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5578123703212201,
+          "similarity": 0.5261009931564331,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5113285448054792,
+          "similarity": 0.5034761428833008,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.504894599529384,
+          "similarity": 0.4925879240036011,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.5385686280300613,
+          "similarity": 0.6057239174842834,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.5278340354825356,
+          "similarity": 0.6144288778305054,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.4941358044459903,
+          "similarity": 0.5261009931564331,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.4585393423829048,
+          "similarity": 0.5034761428833008,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.45309523458845496,
+          "similarity": 0.4925879240036011,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.6111996936212329,
+          "similarity": 0.6057239174842834,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.5956125116593131,
+          "similarity": 0.6144288778305054,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5580196342242579,
+          "similarity": 0.5261009931564331,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5113798676938595,
+          "similarity": 0.5034761428833008,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.5049750353171343,
+          "similarity": 0.4925879240036011,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.5385686280300613,
+          "similarity": 0.6057239174842834,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.5278340354825356,
+          "similarity": 0.6144288778305054,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.4941358044459903,
+          "similarity": 0.5261009931564331,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.4585393423829048,
+          "similarity": 0.5034761428833008,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.45309523458845496,
+          "similarity": 0.4925879240036011,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 383,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3371,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

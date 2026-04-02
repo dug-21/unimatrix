@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1974",
+  "query": "OK.. I waited until after crt-026 merged... You are free to now focus on this bugfix based on our current main, in a worktree",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.49220811502475115,
+          "similarity": 0.5007652044296265,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.48596820715880507,
+          "similarity": 0.4933004379272461,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.48511771064830067,
+          "similarity": 0.47130894660949707,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.47573325088485385,
+          "similarity": 0.4854038953781128,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.44403144761135704,
+          "similarity": 0.46465975046157837,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.49220811502475115,
+          "similarity": 0.5007652044296265,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.48596820715880507,
+          "similarity": 0.4933004379272461,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.48511771064830067,
+          "similarity": 0.47130894660949707,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.47573325088485385,
+          "similarity": 0.4854038953781128,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.44403144761135704,
+          "similarity": 0.46465975046157837,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

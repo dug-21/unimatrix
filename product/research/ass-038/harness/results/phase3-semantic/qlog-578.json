@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-578",
+  "query": "now.. first, lets clean up the worktrees from crt-019",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.5182081075795976,
+          "similarity": 0.5341807007789612,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.4836232191505405,
+          "similarity": 0.4610788822174072,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.46147792143214106,
+          "similarity": 0.4080425500869751,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.46046438843120296,
+          "similarity": 0.4097291827201843,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.44593163349672005,
+          "similarity": 0.4128398895263672,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.5182081075795976,
+          "similarity": 0.5341807007789612,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.4836232191505405,
+          "similarity": 0.4610788822174072,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.46147792143214106,
+          "similarity": 0.4080425500869751,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.46046438843120296,
+          "similarity": 0.4097291827201843,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.44593163349672005,
+          "similarity": 0.4128398895263672,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

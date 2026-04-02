@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-b0be618b-1774523514000",
+  "query": "str byte slice indexing truncation Rust security unsafe string",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.6152963879030435,
+          "similarity": 0.7337175011634827,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.5191247663217565,
+          "similarity": 0.5301969051361084,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.5185901732185604,
+          "similarity": 0.5340911149978638,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.48450011641631696,
+          "similarity": 0.4752744436264038,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.47973502746299324,
+          "similarity": 0.4770663380622864,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.6152963879030435,
+          "similarity": 0.7337175011634827,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.5191247663217565,
+          "similarity": 0.5301969051361084,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.5185901732185604,
+          "similarity": 0.5340911149978638,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.48450011641631696,
+          "similarity": 0.4752744436264038,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.47973502746299324,
+          "similarity": 0.4770663380622864,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-d0882d2b-1774492193000",
+  "query": "database size growth SQLite signal depth feature cycle activity",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.5112710361140977,
+          "similarity": 0.4521108865737915,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.5025662590286881,
+          "similarity": 0.46444499492645264,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.4830850339447471,
+          "similarity": 0.4163534641265869,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.4726809718752061,
+          "similarity": 0.4175184965133667,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.458374523629407,
+          "similarity": 0.4107474088668823,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.3819661507239709,
+          "similarity": 0.46444499492645264,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.3743759301992563,
+          "similarity": 0.4521108865737915,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.3530883055466872,
+          "similarity": 0.4175184965133667,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.3523713625394381,
+          "similarity": 0.4163534641265869,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.3489214823796199,
+          "similarity": 0.4107474088668823,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.510886879298901,
+          "similarity": 0.4521108865737915,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.5023187183526996,
+          "similarity": 0.46444499492645264,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.482651712062811,
+          "similarity": 0.4163534641265869,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.47232277398324607,
+          "similarity": 0.4175184965133667,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4580652566504295,
+          "similarity": 0.4107474088668823,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.46444499492645264,
+          "similarity": 0.46444499492645264,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4521108865737915,
+          "similarity": 0.4521108865737915,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.4175184965133667,
+          "similarity": 0.4175184965133667,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.4163534641265869,
+          "similarity": 0.4163534641265869,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4107474088668823,
+          "similarity": 0.4107474088668823,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.45479110392411354,
+          "similarity": 0.4521108865737915,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4493300597870766,
+          "similarity": 0.46444499492645264,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.4317014864545005,
+          "similarity": 0.4163534641265869,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.42420460068860494,
+          "similarity": 0.4175184965133667,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.41329768213477386,
+          "similarity": 0.4107474088668823,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.45479110392411354,
+          "similarity": 0.4521108865737915,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4493300597870766,
+          "similarity": 0.46444499492645264,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.4317014864545005,
+          "similarity": 0.4163534641265869,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.42420460068860494,
+          "similarity": 0.4175184965133667,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.41329768213477386,
+          "similarity": 0.4107474088668823,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 2440,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 407,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 396,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 329,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

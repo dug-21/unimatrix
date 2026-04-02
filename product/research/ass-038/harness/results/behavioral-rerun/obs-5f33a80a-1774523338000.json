@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5f33a80a-1774523338000",
+  "query": "positional column index SQLite analytics INSERT SELECT atomic change unit",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.5956270413070892,
+          "similarity": 0.7213968634605408,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5241728353582543,
+          "similarity": 0.5356445908546448,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.4874184666646757,
+          "similarity": 0.4351956844329834,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.4872748025891461,
+          "similarity": 0.49047648906707764,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.4723413700057887,
+          "similarity": 0.44027745723724365,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3540,
+          "title": "Atomic change unit for SQLite positional column additions: INSERT + SELECT(s) + row deserializer must be modified together",
+          "category": "pattern",
+          "final_score": 0.5956270413070892,
+          "similarity": 0.7213968634605408,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5241728353582543,
+          "similarity": 0.5356445908546448,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.4874184666646757,
+          "similarity": 0.4351956844329834,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.4872748025891461,
+          "similarity": 0.49047648906707764,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.4723413700057887,
+          "similarity": 0.44027745723724365,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

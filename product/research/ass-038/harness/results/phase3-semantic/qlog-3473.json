@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3473",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Phase 1b scope risk assessment for col-029) → ]\n[Assistant] Now spawning the scope risk strategist (Phase 1b):\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.51426493878402,
+          "similarity": 0.4803984761238098,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.49037503368689506,
+          "similarity": 0.471537709236145,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4900514420313784,
+          "similarity": 0.4558156728744507,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4766296753059518,
+          "similarity": 0.43673253059387207,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.4758889300289386,
+          "similarity": 0.4394887685775757,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.51426493878402,
+          "similarity": 0.4803984761238098,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.49037503368689506,
+          "similarity": 0.471537709236145,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4900514420313784,
+          "similarity": 0.4558156728744507,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4766296753059518,
+          "similarity": 0.43673253059387207,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.4758889300289386,
+          "similarity": 0.4394887685775757,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

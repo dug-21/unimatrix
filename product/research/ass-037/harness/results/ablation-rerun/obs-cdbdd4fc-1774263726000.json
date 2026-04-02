@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774263726000",
+  "query": "named constant configuration cutoff window time predicate SQL index",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.46856288236074944,
+          "similarity": 0.4784298539161682,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.4611887743891154,
+          "similarity": 0.47921222448349,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.45673646856023464,
+          "similarity": 0.46180111169815063,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.45103967621777336,
+          "similarity": 0.45203161239624023,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4503746983878441,
+          "similarity": 0.4324575662612915,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.3910536766052246,
+          "similarity": 0.47921222448349,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.3905722177945651,
+          "similarity": 0.4784298539161682,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.3803391456604004,
+          "similarity": 0.46180111169815063,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.374327146089994,
+          "similarity": 0.45203161239624023,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.36228157923771787,
+          "similarity": 0.4324575662612915,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.5272739437722793,
+          "similarity": 0.4784298539161682,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5171472173957492,
+          "similarity": 0.47921222448349,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.512658719700488,
+          "similarity": 0.46180111169815063,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5066511735960336,
+          "similarity": 0.4324575662612915,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.5057785028063964,
+          "similarity": 0.45203161239624023,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.46856288236074944,
+          "similarity": 0.4784298539161682,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.4611887743891154,
+          "similarity": 0.47921222448349,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.45673646856023464,
+          "similarity": 0.46180111169815063,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.45103967621777336,
+          "similarity": 0.45203161239624023,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4503746983878441,
+          "similarity": 0.4324575662612915,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.5275931861896397,
+          "similarity": 0.4784298539161682,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5173951585258947,
+          "similarity": 0.47921222448349,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.51299112236717,
+          "similarity": 0.46180111169815063,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5071360991341693,
+          "similarity": 0.4324575662612915,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.5061297896718223,
+          "similarity": 0.45203161239624023,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.47921222448349,
+          "similarity": 0.47921222448349,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.4784298539161682,
+          "similarity": 0.4784298539161682,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.46180111169815063,
+          "similarity": 0.46180111169815063,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.45203161239624023,
+          "similarity": 0.45203161239624023,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4324575662612915,
+          "similarity": 0.4324575662612915,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3659,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3917,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

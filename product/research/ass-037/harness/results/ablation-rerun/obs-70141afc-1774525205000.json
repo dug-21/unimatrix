@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-70141afc-1774525205000",
+  "query": "co-access staleness retention cleanup",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.5472195104286718,
+          "similarity": 0.6394916772842407,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5149596916234005,
+          "similarity": 0.5440600514411926,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4882746244076616,
+          "similarity": 0.48979341983795166,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.4695122760973704,
+          "similarity": 0.5401005744934082,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.6394916772842407,
+          "similarity": 0.6394916772842407,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5440600514411926,
+          "similarity": 0.5440600514411926,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.5401005744934082,
+          "similarity": 0.5401005744934082,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.48979341983795166,
+          "similarity": 0.48979341983795166,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.6197628890899181,
+          "similarity": 0.6394916772842407,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5848407481653348,
+          "similarity": 0.5440600514411926,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5535344433205207,
+          "similarity": 0.48979341983795166,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.5228501265558606,
+          "similarity": 0.5401005744934082,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.6198909981041668,
+          "similarity": 0.6394916772842407,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5845759384463467,
+          "similarity": 0.5440600514411926,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5531205405706339,
+          "similarity": 0.48979341983795166,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.5229621424515589,
+          "similarity": 0.5401005744934082,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.48968718602107125,
+          "similarity": 0.6394916772842407,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.43096003165611857,
+          "similarity": 0.5440600514411926,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.428523430457482,
+          "similarity": 0.5401005744934082,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.3975651814387395,
+          "similarity": 0.48979341983795166,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.5472195104286718,
+          "similarity": 0.6394916772842407,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5149596916234005,
+          "similarity": 0.5440600514411926,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4882746244076616,
+          "similarity": 0.48979341983795166,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.4695122760973704,
+          "similarity": 0.5401005744934082,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

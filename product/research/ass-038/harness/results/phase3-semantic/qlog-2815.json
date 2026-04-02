@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2815",
+  "query": "its now time to begin delivery protocol for col-026.  design has been completed",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.4747643201376549,
+          "similarity": 0.42813271284103394,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4659582854490154,
+          "similarity": 0.38675999641418457,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.4121348490787784,
+          "similarity": 0.39451736211776733,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.41126427793762066,
+          "similarity": 0.41260600090026855,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.4093676563887825,
+          "similarity": 0.3892596960067749,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.4747643201376549,
+          "similarity": 0.42813271284103394,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4659582854490154,
+          "similarity": 0.38675999641418457,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.4121348490787784,
+          "similarity": 0.39451736211776733,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.41126427793762066,
+          "similarity": 0.41260600090026855,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.4093676563887825,
+          "similarity": 0.3892596960067749,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

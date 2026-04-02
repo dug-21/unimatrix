@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-16",
+  "query": "yes.. the only other aspect... Unimatrix has some predefined categories... is displaying the types of knowledge it considered useful... also is actionalable (maybe their agent instructions have gaps in some areas).. Unimatrix should help humans improve over time",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.509364423329117,
+          "similarity": 0.46651655435562134,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.4984550464864316,
+          "similarity": 0.4916790723800659,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.46430109037866396,
+          "similarity": 0.4315817952156067,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.46082695891496617,
+          "similarity": 0.40986573696136475,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.45631041802737105,
+          "similarity": 0.4132380485534668,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.509364423329117,
+          "similarity": 0.46651655435562134,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.4984550464864316,
+          "similarity": 0.4916790723800659,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.46430109037866396,
+          "similarity": 0.4315817952156067,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.46082695891496617,
+          "similarity": 0.40986573696136475,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.45631041802737105,
+          "similarity": 0.4132380485534668,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

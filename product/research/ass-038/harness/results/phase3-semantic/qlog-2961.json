@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2961",
+  "query": "now rebuild for local deployment (cargo install)",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.47067846805939784,
+          "similarity": 0.4345836043357849,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 349,
+          "title": "Optional Cargo features require explicit flags in build commands",
+          "category": "lesson-learned",
+          "final_score": 0.4566754762832099,
+          "similarity": 0.41789960861206055,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.4521111174139488,
+          "similarity": 0.37039268016815186,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.4487637889498183,
+          "similarity": 0.4197927713394165,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.42398436240009585,
+          "similarity": 0.3691973090171814,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.47067846805939784,
+          "similarity": 0.4345836043357849,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 349,
+          "title": "Optional Cargo features require explicit flags in build commands",
+          "category": "lesson-learned",
+          "final_score": 0.4566754762832099,
+          "similarity": 0.41789960861206055,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.4521111174139488,
+          "similarity": 0.37039268016815186,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.4487637889498183,
+          "similarity": 0.4197927713394165,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.42398436240009585,
+          "similarity": 0.3691973090171814,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

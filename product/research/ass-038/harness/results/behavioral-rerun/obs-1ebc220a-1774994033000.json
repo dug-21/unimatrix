@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-1ebc220a-1774994033000",
+  "query": "feature_cycle guard informs detection trust boundary input validation",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.5345940663488231,
+          "similarity": 0.5338439345359802,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.5214319902877617,
+          "similarity": 0.49447065591812134,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1041,
+          "title": "ADR-004: Configurable Noisy Trust Sources (crt-018)",
+          "category": "decision",
+          "final_score": 0.5168353226392505,
+          "similarity": 0.5322033166885376,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.507950397676852,
+          "similarity": 0.49951672554016113,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.5,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.5345940663488231,
+          "similarity": 0.5338439345359802,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.5214319902877617,
+          "similarity": 0.49447065591812134,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1041,
+          "title": "ADR-004: Configurable Noisy Trust Sources (crt-018)",
+          "category": "decision",
+          "final_score": 0.5168353226392505,
+          "similarity": 0.5322033166885376,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.507950397676852,
+          "similarity": 0.49951672554016113,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.5,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

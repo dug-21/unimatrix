@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1053",
+  "query": "so... we had to change the number of writers to 1 in order to pass.. I thought the async nature of sqlx, that was one of the benefits of doing this.. was to enable more?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5178724799525586,
+          "similarity": 0.5156524777412415,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.49898483249235726,
+          "similarity": 0.5232255458831787,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.49406234722724174,
+          "similarity": 0.5142291784286499,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4916074884306093,
+          "similarity": 0.49962401390075684,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.49086376447762403,
+          "similarity": 0.5141518712043762,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5178724799525586,
+          "similarity": 0.5156524777412415,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.49898483249235726,
+          "similarity": 0.5232255458831787,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.49406234722724174,
+          "similarity": 0.5142291784286499,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4916074884306093,
+          "similarity": 0.49962401390075684,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.49086376447762403,
+          "similarity": 0.5141518712043762,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1291",
+  "query": "lets merge",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.40615746963068244,
+          "similarity": 0.30322062969207764,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 366,
+          "title": "How to merge cfg-split shared modules after backend removal",
+          "category": "procedure",
+          "final_score": 0.39156476577217203,
+          "similarity": 0.28263938426971436,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 339,
+          "title": "ADR-002: Flatten-and-merge strategy for shared modules",
+          "category": "decision",
+          "final_score": 0.38499049573113675,
+          "similarity": 0.29705172777175903,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.381078632814165,
+          "similarity": 0.26434391736984253,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3905,
+          "title": "merge_configs: per-file validation does not cover cross-level invariant violations; always re-validate the merged result",
+          "category": "lesson-learned",
+          "final_score": 0.3780693253705547,
+          "similarity": 0.26329779624938965,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.40615746963068244,
+          "similarity": 0.30322062969207764,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 366,
+          "title": "How to merge cfg-split shared modules after backend removal",
+          "category": "procedure",
+          "final_score": 0.39156476577217203,
+          "similarity": 0.28263938426971436,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 339,
+          "title": "ADR-002: Flatten-and-merge strategy for shared modules",
+          "category": "decision",
+          "final_score": 0.38499049573113675,
+          "similarity": 0.29705172777175903,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.381078632814165,
+          "similarity": 0.26434391736984253,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3905,
+          "title": "merge_configs: per-file validation does not cover cross-level invariant violations; always re-validate the merged result",
+          "category": "lesson-learned",
+          "final_score": 0.3780693253705547,
+          "similarity": 0.26329779624938965,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

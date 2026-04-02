@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-edf4842f-1774826975000",
+  "query": "outcome rework retrospective cycle review",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5352746989188369,
+          "similarity": 0.5166833400726318,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4835905873916415,
+          "similarity": 0.42003917694091797,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.4768050124638179,
+          "similarity": 0.4481242895126343,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.4680177935479145,
+          "similarity": 0.4266699552536011,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.46726371740861783,
+          "similarity": 0.4320172667503357,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5352746989188369,
+          "similarity": 0.5166833400726318,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4835905873916415,
+          "similarity": 0.42003917694091797,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.4768050124638179,
+          "similarity": 0.4481242895126343,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.4680177935479145,
+          "similarity": 0.4266699552536011,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.46726371740861783,
+          "similarity": 0.4320172667503357,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

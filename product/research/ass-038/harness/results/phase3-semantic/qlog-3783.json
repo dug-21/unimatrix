@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3783",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Edit(/workspaces/unimatrix/product/features/crt-029/agents/crt-029-agent-1-architect-report.md) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.45444405463155746,
+          "similarity": 0.36673879623413086,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.4300713684421007,
+          "similarity": 0.37290167808532715,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.42477854211733335,
+          "similarity": 0.3665400743484497,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.4236507881379329,
+          "similarity": 0.3579035997390747,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.4061807176285259,
+          "similarity": 0.3596144914627075,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.45444405463155746,
+          "similarity": 0.36673879623413086,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.4300713684421007,
+          "similarity": 0.37290167808532715,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.42477854211733335,
+          "similarity": 0.3665400743484497,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.4236507881379329,
+          "similarity": 0.3579035997390747,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.4061807176285259,
+          "similarity": 0.3596144914627075,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

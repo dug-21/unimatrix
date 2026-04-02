@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4856",
+  "query": "#337 — The single-line fix is right, but the regression test is           \n  non-negotiable. Without it, a future config change can silently\n  reintroduce the invalid merged weight sum and nothing catches it. The     \n  specific test case (w_sim=0.6 + w_nli=0.6 → Err) is exactly the right\n  boundary condition.\n\n  #345 — The architect finding two additional sites the investigator missed \n  is the process working correctly. The four-change scope is the right\n  scope. One thing to verify: confirm search.rs:1040 and session.rs:406 use \n  the same u32 type — the saturating fold only makes sense if the \n  accumulator type matches.\n\n  #346 — Tight and correct. The \"no legitimate caller broken\" argument is   \n  solid given SessionRegister already enforces the same guard. No concerns.\n                                                                            \n  #378+#379 — This is the one that needs attention before delivery starts.  \n  The REWORK verdict means the delivery agent must work from the architect's\n   revised table, not the investigator's original report. Twelve call sites \n  with two distinct helpers. One thing to verify: the             \n  render_knowledge_reuse:1013-1017 row in the table shows a truncated\n  function name (.replace('|'...) — confirm the full escape_md_cell call is\n  in the revised design doc, not just the table summary.\n\n  The leading-# rule is critical and easy to get wrong. A global            \n  replace('#', \"\\\\#\") would corrupt every issue reference in every cycle\n  review output. The \"only when string starts with #\" constraint must be    \n  explicit in the implementation note.                            \n\n  #380 — Flag this clearly to the delivery agent: this is a behavior change,\n   not just a comment fix. as i64 wrapping → try_from().unwrap_or(i64::MAX)\n  saturating is a semantic difference that affects far-future timestamps.   \n  The comment correction is secondary. The test coverage question is: is\n  there an existing test that exercises this path with a large obs.ts? If\n  not, add one.\n\n  Ready to deliver. The REWORK on #378+#379 is the only gate — confirm the  \n  revised design doc is authoritative before the delivery agent picks it up.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5228874066934416,
+          "similarity": 0.5204222202301025,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3905,
+          "title": "merge_configs: per-file validation does not cover cross-level invariant violations; always re-validate the merged result",
+          "category": "lesson-learned",
+          "final_score": 0.5154077127092934,
+          "similarity": 0.5242407321929932,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.5130751804781625,
+          "similarity": 0.545602560043335,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2984,
+          "title": "Test plan expected values copied from a different input set silently fail when inputs differ",
+          "category": "pattern",
+          "final_score": 0.5039572401847143,
+          "similarity": 0.5326731204986572,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.48663136096545,
+          "similarity": 0.5258549451828003,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5228874066934416,
+          "similarity": 0.5204222202301025,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3905,
+          "title": "merge_configs: per-file validation does not cover cross-level invariant violations; always re-validate the merged result",
+          "category": "lesson-learned",
+          "final_score": 0.5154077127092934,
+          "similarity": 0.5242407321929932,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.5130751804781625,
+          "similarity": 0.545602560043335,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2984,
+          "title": "Test plan expected values copied from a different input set silently fail when inputs differ",
+          "category": "pattern",
+          "final_score": 0.5039572401847143,
+          "similarity": 0.5326731204986572,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1496,
+          "title": "Numeric constant mismatch across SPEC / pseudocode / test-plan causes latent test-vs-implementation conflict",
+          "category": "lesson-learned",
+          "final_score": 0.48663136096545,
+          "similarity": 0.5258549451828003,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

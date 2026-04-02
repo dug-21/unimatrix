@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-50273e07-1774564795000",
+  "query": "context_status health metrics lambda coherence",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.589498591232775,
+          "similarity": 0.5523906946182251,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.5388702955600686,
+          "similarity": 0.500442624092102,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.4740320472779711,
+          "similarity": 0.39039677381515503,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 354,
+          "title": "ADR: OBSERVATION_METRICS Normalization Out of Scope for nxs-008",
+          "category": "decision",
+          "final_score": 0.4638713555362347,
+          "similarity": 0.39061814546585083,
+          "confidence": 0.5696815478601226,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.4457200049384974,
+          "similarity": 0.38985544443130493,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.4360865813035231,
+          "similarity": 0.5523906946182251,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.40411853790283203,
+          "similarity": 0.500442624092102,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 354,
+          "title": "ADR: OBSERVATION_METRICS Normalization Out of Scope for nxs-008",
+          "category": "decision",
+          "final_score": 0.3365342433636005,
+          "similarity": 0.39061814546585083,
+          "confidence": 0.5696815478601226,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.33639801465548,
+          "similarity": 0.39039677381515503,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.33606488888080305,
+          "similarity": 0.38985544443130493,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5191250132119167,
+          "similarity": 0.5523906946182251,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.4785343916835238,
+          "similarity": 0.500442624092102,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.4236499529248558,
+          "similarity": 0.39039677381515503,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 354,
+          "title": "ADR: OBSERVATION_METRICS Normalization Out of Scope for nxs-008",
+          "category": "decision",
+          "final_score": 0.41621353709096215,
+          "similarity": 0.39061814546585083,
+          "confidence": 0.5696815478601226,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.40285169991698516,
+          "similarity": 0.38985544443130493,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5523906946182251,
+          "similarity": 0.5523906946182251,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.500442624092102,
+          "similarity": 0.500442624092102,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 354,
+          "title": "ADR: OBSERVATION_METRICS Normalization Out of Scope for nxs-008",
+          "category": "decision",
+          "final_score": 0.39061814546585083,
+          "similarity": 0.39061814546585083,
+          "confidence": 0.5696815478601226,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.39039677381515503,
+          "similarity": 0.39039677381515503,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.38985544443130493,
+          "similarity": 0.38985544443130493,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5897411265047656,
+          "similarity": 0.5523906946182251,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.5391214568114933,
+          "similarity": 0.500442624092102,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.47457868305223794,
+          "similarity": 0.39039677381515503,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 354,
+          "title": "ADR: OBSERVATION_METRICS Normalization Out of Scope for nxs-008",
+          "category": "decision",
+          "final_score": 0.4643501346870216,
+          "similarity": 0.39061814546585083,
+          "confidence": 0.5696815478601226,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.44608513278494966,
+          "similarity": 0.38985544443130493,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5191250132119167,
+          "similarity": 0.5523906946182251,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.4785343916835238,
+          "similarity": 0.500442624092102,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.4236499529248558,
+          "similarity": 0.39039677381515503,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 354,
+          "title": "ADR: OBSERVATION_METRICS Normalization Out of Scope for nxs-008",
+          "category": "decision",
+          "final_score": 0.41621353709096215,
+          "similarity": 0.39061814546585083,
+          "confidence": 0.5696815478601226,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.40285169991698516,
+          "similarity": 0.38985544443130493,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

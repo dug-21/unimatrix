@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-f540711e-1774789465000",
+  "query": "vector index HNSW invariant maintenance security input validation config",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.48862555489892845,
+          "similarity": 0.49139177799224854,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.4746688165247081,
+          "similarity": 0.4668375253677368,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.4312026194020773,
+          "similarity": 0.44655728340148926,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.430206756987442,
+          "similarity": 0.4515896439552307,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.42702139378174886,
+          "similarity": 0.40760719776153564,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.49139177799224854,
+          "similarity": 0.49139177799224854,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.4668375253677368,
+          "similarity": 0.4668375253677368,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.4515896439552307,
+          "similarity": 0.4515896439552307,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.44655728340148926,
+          "similarity": 0.44655728340148926,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.40760719776153564,
+          "similarity": 0.40760719776153564,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5534537768628798,
+          "similarity": 0.49139177799224854,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.5366540656820804,
+          "similarity": 0.4668375253677368,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.4792256370572427,
+          "similarity": 0.44655728340148926,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.47741015553239996,
+          "similarity": 0.4515896439552307,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.4770648826331543,
+          "similarity": 0.40760719776153564,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.48862555489892845,
+          "similarity": 0.49139177799224854,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.4746688165247081,
+          "similarity": 0.4668375253677368,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.4312026194020773,
+          "similarity": 0.44655728340148926,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.430206756987442,
+          "similarity": 0.4515896439552307,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.42702139378174886,
+          "similarity": 0.40760719776153564,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5538594108424264,
+          "similarity": 0.49139177799224854,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.5371103829390369,
+          "similarity": 0.4668375253677368,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.4794391557085875,
+          "similarity": 0.44655728340148926,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.4775789170459762,
+          "similarity": 0.4515896439552307,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.4775188544297009,
+          "similarity": 0.40760719776153564,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.39854878645676833,
+          "similarity": 0.49139177799224854,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.3834384771493765,
+          "similarity": 0.4668375253677368,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.3740551655109112,
+          "similarity": 0.4515896439552307,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.3709583282470703,
+          "similarity": 0.44655728340148926,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.34698904477632964,
+          "similarity": 0.40760719776153564,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

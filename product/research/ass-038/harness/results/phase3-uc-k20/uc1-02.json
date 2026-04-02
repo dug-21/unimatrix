@@ -1,0 +1,414 @@
+{
+  "scenario_id": "uc1-02",
+  "query": "How should background fire-and-forget writes to the database be structured to avoid saturating the tokio blocking pool?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.5929204625320742,
+          "similarity": 0.6267758011817932,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5388914655070743,
+          "similarity": 0.5298690795898438,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5358591187084393,
+          "similarity": 0.5456933379173279,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5293787051101145,
+          "similarity": 0.5090054273605347,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5241208814373759,
+          "similarity": 0.5161548852920532,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5222129911121568,
+          "similarity": 0.48440468311309814,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.5160134935982421,
+          "similarity": 0.5058239102363586,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5129229013712405,
+          "similarity": 0.46969276666641235,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2130,
+          "title": "sqlx write_pool: set max_connections=1 to prevent SQLITE_BUSY_SNAPSHOT with fire-and-forget writes",
+          "category": "lesson-learned",
+          "final_score": 0.49273481060035307,
+          "similarity": 0.4660559892654419,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.49124453053848904,
+          "similarity": 0.4720519781112671,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.4900592565333022,
+          "similarity": 0.5062669515609741,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.48145773752825505,
+          "similarity": 0.443794846534729,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.4751708717162376,
+          "similarity": 0.44484609365463257,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4732129303773417,
+          "similarity": 0.46467435359954834,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.46722645803605745,
+          "similarity": 0.4899219274520874,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4627821885663722,
+          "similarity": 0.44924700260162354,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.45321396374238543,
+          "similarity": 0.4878121614456177,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.45186828881077046,
+          "similarity": 0.4852517247200012,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.45082982283375517,
+          "similarity": 0.44628214836120605,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.05263157894736842,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9551311954514641
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.5929204625320742,
+          "similarity": 0.6267758011817932,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5388914655070743,
+          "similarity": 0.5298690795898438,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5358591187084393,
+          "similarity": 0.5456933379173279,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5293787051101145,
+          "similarity": 0.5090054273605347,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5241208814373759,
+          "similarity": 0.5161548852920532,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5222129911121568,
+          "similarity": 0.48440468311309814,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.5160134935982421,
+          "similarity": 0.5058239102363586,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5129229013712405,
+          "similarity": 0.46969276666641235,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2130,
+          "title": "sqlx write_pool: set max_connections=1 to prevent SQLITE_BUSY_SNAPSHOT with fire-and-forget writes",
+          "category": "lesson-learned",
+          "final_score": 0.49273481060035307,
+          "similarity": 0.4660559892654419,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.49124453053848904,
+          "similarity": 0.4720519781112671,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.4900592565333022,
+          "similarity": 0.5062669515609741,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.48145773752825505,
+          "similarity": 0.443794846534729,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.4751708717162376,
+          "similarity": 0.44484609365463257,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4732129303773417,
+          "similarity": 0.46467435359954834,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.46722645803605745,
+          "similarity": 0.4899219274520874,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4627821885663722,
+          "similarity": 0.44924700260162354,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.45321396374238543,
+          "similarity": 0.4878121614456177,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.45186828881077046,
+          "similarity": 0.4852517247200012,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.45082982283375517,
+          "similarity": 0.44628214836120605,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.05263157894736842,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9551311954514641
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

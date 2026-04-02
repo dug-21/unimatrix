@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-edf4842f-1774830636000",
+  "query": "schema version cascade migration test files == N assertions",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.699159562587738,
+          "similarity": 0.699159562587738,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.6452369093894958,
+          "similarity": 0.6452369093894958,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.6193282604217529,
+          "similarity": 0.6193282604217529,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.5720539093017578,
+          "similarity": 0.5720539093017578,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.5367075800895691,
+          "similarity": 0.5367075800895691,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.6450587286116083,
+          "similarity": 0.699159562587738,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.6290215152096756,
+          "similarity": 0.6452369093894958,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.6063565068905625,
+          "similarity": 0.6193282604217529,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.5627200223122544,
+          "similarity": 0.5367075800895691,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.5418436584746746,
+          "similarity": 0.5720539093017578,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5696537051543621,
+          "similarity": 0.699159562587738,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5542982384463954,
+          "similarity": 0.6452369093894958,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5359499890811962,
+          "similarity": 0.6193282604217529,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.4984418550349579,
+          "similarity": 0.5367075800895691,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.4854889435015452,
+          "similarity": 0.5720539093017578,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.6447051283895422,
+          "similarity": 0.699159562587738,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.6289155322411802,
+          "similarity": 0.6452369093894958,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.6062717241877444,
+          "similarity": 0.6193282604217529,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.5628900382744942,
+          "similarity": 0.5367075800895691,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.5416462058548898,
+          "similarity": 0.5720539093017578,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5696537051543621,
+          "similarity": 0.699159562587738,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5542982384463954,
+          "similarity": 0.6452369093894958,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5359499890811962,
+          "similarity": 0.6193282604217529,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.4984418550349579,
+          "similarity": 0.5367075800895691,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.4854889435015452,
+          "similarity": 0.5720539093017578,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5264058846693773,
+          "similarity": 0.699159562587738,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.493222713470459,
+          "similarity": 0.6452369093894958,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.47727892949030953,
+          "similarity": 0.6193282604217529,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.44818702110877406,
+          "similarity": 0.5720539093017578,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.4264354339012733,
+          "similarity": 0.5367075800895691,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 376,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3809,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

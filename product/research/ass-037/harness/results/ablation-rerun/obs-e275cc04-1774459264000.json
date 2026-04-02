@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-e275cc04-1774459264000",
+  "query": "testing procedures gate verification integration test",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.46401386994581956,
+          "similarity": 0.5977725386619568,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1258,
+          "title": "Workflow-Only Scope: Markdown-Only Delivery Pattern",
+          "category": "pattern",
+          "final_score": 0.4242674387418307,
+          "similarity": 0.5331845879554749,
+          "confidence": 0.5760139329814498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.41422528486985427,
+          "similarity": 0.5168660879135132,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.41344624299269456,
+          "similarity": 0.5156001448631287,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.4132510698758639,
+          "similarity": 0.5152829885482788,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5263056533050724,
+          "similarity": 0.5977725386619568,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5024286171820882,
+          "similarity": 0.5168660879135132,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.48973616693884997,
+          "similarity": 0.5156001448631287,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1258,
+          "title": "Workflow-Only Scope: Markdown-Only Delivery Pattern",
+          "category": "pattern",
+          "final_score": 0.48939647387217233,
+          "similarity": 0.5331845879554749,
+          "confidence": 0.5760139329814498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.48347740698529873,
+          "similarity": 0.5152829885482788,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5951477066283388,
+          "similarity": 0.5977725386619568,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5703073090819335,
+          "similarity": 0.5168660879135132,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.5530104110079188,
+          "similarity": 0.5156001448631287,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1258,
+          "title": "Workflow-Only Scope: Markdown-Only Delivery Pattern",
+          "category": "pattern",
+          "final_score": 0.5508202006132292,
+          "similarity": 0.5331845879554749,
+          "confidence": 0.5760139329814498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.544451049926069,
+          "similarity": 0.5152829885482788,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5263056533050724,
+          "similarity": 0.5977725386619568,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5024286171820882,
+          "similarity": 0.5168660879135132,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.48973616693884997,
+          "similarity": 0.5156001448631287,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1258,
+          "title": "Workflow-Only Scope: Markdown-Only Delivery Pattern",
+          "category": "pattern",
+          "final_score": 0.48939647387217233,
+          "similarity": 0.5331845879554749,
+          "confidence": 0.5760139329814498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.48347740698529873,
+          "similarity": 0.5152829885482788,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5977725386619568,
+          "similarity": 0.5977725386619568,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1258,
+          "title": "Workflow-Only Scope: Markdown-Only Delivery Pattern",
+          "category": "pattern",
+          "final_score": 0.5331845879554749,
+          "similarity": 0.5331845879554749,
+          "confidence": 0.5760139329814498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5168660879135132,
+          "similarity": 0.5168660879135132,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.5156001448631287,
+          "similarity": 0.5156001448631287,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.5152829885482788,
+          "similarity": 0.5152829885482788,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5951647509921933,
+          "similarity": 0.5977725386619568,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5699602881652553,
+          "similarity": 0.5168660879135132,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.5527674872017837,
+          "similarity": 0.5156001448631287,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1258,
+          "title": "Workflow-Only Scope: Markdown-Only Delivery Pattern",
+          "category": "pattern",
+          "final_score": 0.550705683647919,
+          "similarity": 0.5331845879554749,
+          "confidence": 0.5760139329814498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.5442616469301093,
+          "similarity": 0.5152829885482788,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 1258,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 729,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3579,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4745",
+  "query": "should staleness be wrapped into 409 and based on cycles not time?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.469549048455579,
+          "similarity": 0.4236646294593811,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.4623723836700677,
+          "similarity": 0.437968373298645,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.448213369198579,
+          "similarity": 0.416259765625,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3930,
+          "title": "list_purgeable_cycles includes already-purged cycles (raw_signals_available=0 not filtered)",
+          "category": "pattern",
+          "final_score": 0.4456064647169923,
+          "similarity": 0.40500664710998535,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.4450396101446479,
+          "similarity": 0.3871862292289734,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.469549048455579,
+          "similarity": 0.4236646294593811,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.4623723836700677,
+          "similarity": 0.437968373298645,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.448213369198579,
+          "similarity": 0.416259765625,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3930,
+          "title": "list_purgeable_cycles includes already-purged cycles (raw_signals_available=0 not filtered)",
+          "category": "pattern",
+          "final_score": 0.4456064647169923,
+          "similarity": 0.40500664710998535,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.4450396101446479,
+          "similarity": 0.3871862292289734,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

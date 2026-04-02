@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-45c89139-1774116144000",
+  "query": "implementation deviation from pseudocode not escalated gate failure",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.4464828417851375,
+          "similarity": 0.5692846179008484,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.43219834107619065,
+          "similarity": 0.5460723042488098,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.431636773622953,
+          "similarity": 0.5451597571372986,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.416932802933913,
+          "similarity": 0.5212658047676086,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.4088583726149339,
+          "similarity": 0.5081448554992676,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5120616929245182,
+          "similarity": 0.5692846179008484,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.4964269078116175,
+          "similarity": 0.5081448554992676,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.4954221186764039,
+          "similarity": 0.5460723042488098,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.48008889720271314,
+          "similarity": 0.5451597571372986,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4795061878504629,
+          "similarity": 0.5212658047676086,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5783309796333567,
+          "similarity": 0.5692846179008484,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5625689783340905,
+          "similarity": 0.5081448554992676,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.5577508614452044,
+          "similarity": 0.5460723042488098,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.5383024557263032,
+          "similarity": 0.5212658047676086,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.536924881900309,
+          "similarity": 0.5451597571372986,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5692846179008484,
+          "similarity": 0.5692846179008484,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.5460723042488098,
+          "similarity": 0.5460723042488098,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.5451597571372986,
+          "similarity": 0.5451597571372986,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.5212658047676086,
+          "similarity": 0.5212658047676086,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5081448554992676,
+          "similarity": 0.5081448554992676,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.578390106180628,
+          "similarity": 0.5692846179008484,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5629246915552331,
+          "similarity": 0.5081448554992676,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.5578271918843967,
+          "similarity": 0.5460723042488098,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.5384138063861639,
+          "similarity": 0.5212658047676086,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.5368710591863417,
+          "similarity": 0.5451597571372986,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5120616929245182,
+          "similarity": 0.5692846179008484,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.4964269078116175,
+          "similarity": 0.5081448554992676,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.4954221186764039,
+          "similarity": 0.5460723042488098,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.48008889720271314,
+          "similarity": 0.5451597571372986,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4795061878504629,
+          "similarity": 0.5212658047676086,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 1204,
+        "from_rank": 2,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3644,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2958,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

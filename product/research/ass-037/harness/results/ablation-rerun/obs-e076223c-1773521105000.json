@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-e076223c-1773521105000",
+  "query": "outcome rework confidence scoring search ranking",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5747839439502045,
+          "similarity": 0.5347826480865479,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5453568904963382,
+          "similarity": 0.4948490858078003,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.5252142316574512,
+          "similarity": 0.4705876111984253,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.5219922457023073,
+          "similarity": 0.4570584297180176,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.4947607630335998,
+          "similarity": 0.4333862066268921,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5071604021025866,
+          "similarity": 0.5347826480865479,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.48291832541783475,
+          "similarity": 0.4948490858078003,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.46652961062869264,
+          "similarity": 0.4705876111984253,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.4632648754962266,
+          "similarity": 0.4570584297180176,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.4417169733330993,
+          "similarity": 0.4333862066268921,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5750453903283985,
+          "similarity": 0.5347826480865479,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5456870068668516,
+          "similarity": 0.4948490858078003,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.5255712683924776,
+          "similarity": 0.4705876111984253,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.5224166497283484,
+          "similarity": 0.4570584297180176,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.4951619039251469,
+          "similarity": 0.4333862066268921,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.42525086036095255,
+          "similarity": 0.5347826480865479,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.40067636049710786,
+          "similarity": 0.4948490858078003,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.385746222275954,
+          "similarity": 0.4705876111984253,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.3774205721341647,
+          "similarity": 0.4570584297180176,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.3628530502319336,
+          "similarity": 0.4333862066268921,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5347826480865479,
+          "similarity": 0.5347826480865479,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.4948490858078003,
+          "similarity": 0.4948490858078003,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.4705876111984253,
+          "similarity": 0.4705876111984253,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.4570584297180176,
+          "similarity": 0.4570584297180176,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.4333862066268921,
+          "similarity": 0.4333862066268921,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5071604021025866,
+          "similarity": 0.5347826480865479,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.48291832541783475,
+          "similarity": 0.4948490858078003,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.46652961062869264,
+          "similarity": 0.4705876111984253,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.4632648754962266,
+          "similarity": 0.4570584297180176,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.4417169733330993,
+          "similarity": 0.4333862066268921,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774263717000",
+  "query": "SQL query read layer store pattern existence check",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.5159677542604095,
+          "similarity": 0.456939697265625,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.5064725487862879,
+          "similarity": 0.4677863121032715,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.47310864890923676,
+          "similarity": 0.37461090087890625,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.4555458781945382,
+          "similarity": 0.3587225079536438,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.4446795057972893,
+          "similarity": 0.3759160041809082,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.45855791362298587,
+          "similarity": 0.456939697265625,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.45241473640881485,
+          "similarity": 0.4677863121032715,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4214513656966515,
+          "similarity": 0.37461090087890625,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.40752074753842377,
+          "similarity": 0.3587225079536438,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.40083192595094713,
+          "similarity": 0.3759160041809082,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.3840223459097055,
+          "similarity": 0.4677863121032715,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.3773475060096154,
+          "similarity": 0.456939697265625,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.32748677180363583,
+          "similarity": 0.3759160041809082,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.32668363131009615,
+          "similarity": 0.37461090087890625,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.3169061587407039,
+          "similarity": 0.3587225079536438,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.45855791362298587,
+          "similarity": 0.456939697265625,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.45241473640881485,
+          "similarity": 0.4677863121032715,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4214513656966515,
+          "similarity": 0.37461090087890625,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.40752074753842377,
+          "similarity": 0.3587225079536438,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.40083192595094713,
+          "similarity": 0.3759160041809082,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.5155844551890147,
+          "similarity": 0.456939697265625,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.5062213394571773,
+          "similarity": 0.4677863121032715,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.47246905314280596,
+          "similarity": 0.37461090087890625,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.4549171550111557,
+          "similarity": 0.3587225079536438,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.4442329895530271,
+          "similarity": 0.3759160041809082,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.4677863121032715,
+          "similarity": 0.4677863121032715,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.456939697265625,
+          "similarity": 0.456939697265625,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.3759160041809082,
+          "similarity": 0.3759160041809082,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.37461090087890625,
+          "similarity": 0.37461090087890625,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.3587225079536438,
+          "similarity": 0.3587225079536438,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

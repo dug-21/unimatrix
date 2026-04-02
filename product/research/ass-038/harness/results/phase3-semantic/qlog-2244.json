@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2244",
+  "query": "well.. if we looked around in unimatrax, I'm thinking we'll find things that don't belong, and likely are not being accessed frequently.  (cause for that is actually me playing around with different use cases... I explored putting all workflow rules in it... and decided not to pursue that... some of those things are still their)... maybe context_status surfaces the least utilized entries, and give the human/agent an ability to curate??  The 'staleness' factor... trying to think if this is actually relevant in the new context at all.. what if we just didn't have a 'staleness' factor?  I do think, howeer, having a category of never 'used' and/or do we feel the need to retain quarantined items permenantly??  Just thinking out loud about the different alternatives to content efficacy",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5050575282180881,
+          "similarity": 0.4583941698074341,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4738022286577326,
+          "similarity": 0.448971688747406,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.4712656594172855,
+          "similarity": 0.42091572284698486,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.4627600283384443,
+          "similarity": 0.45078396797180176,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.4543753539640162,
+          "similarity": 0.4227740168571472,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5050575282180881,
+          "similarity": 0.4583941698074341,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4738022286577326,
+          "similarity": 0.448971688747406,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.4712656594172855,
+          "similarity": 0.42091572284698486,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.4627600283384443,
+          "similarity": 0.45078396797180176,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.4543753539640162,
+          "similarity": 0.4227740168571472,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

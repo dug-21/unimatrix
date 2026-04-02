@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3136",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] **Step 1: Verify gate results** — already confirmed during Gate 3 (PASS, 11/11 checks, report at `product/features/col-025/reports/gate-bugfix-391-report.md`). Proceeding to security review.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5417160937390544,
+          "similarity": 0.5233751535415649,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5178096570054255,
+          "similarity": 0.5015222430229187,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.48917291011184594,
+          "similarity": 0.477194607257843,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.48791291952474636,
+          "similarity": 0.4829968810081482,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.4682408811247196,
+          "similarity": 0.4909130334854126,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5417160937390544,
+          "similarity": 0.5233751535415649,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5178096570054255,
+          "similarity": 0.5015222430229187,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.48917291011184594,
+          "similarity": 0.477194607257843,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.48791291952474636,
+          "similarity": 0.4829968810081482,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.4682408811247196,
+          "similarity": 0.4909130334854126,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

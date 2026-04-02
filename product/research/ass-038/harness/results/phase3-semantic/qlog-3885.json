@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3885",
+  "query": "going back to evaluate the goals in scope: I just want to confirm, these are the right goals  \nfor col-031, (mapping to 414 in our roadmap): ##     \nGoals                                                \n                                                     \n1. Implement `PhaseFreqTable` — an in-memory struct  \nholding                                              \n   `HashMap<(phase: String, category: String),       \nVec<(entry_id, f32)>>` sorted by                     \n   descending frequency, rebuilt each background     \ntick from `query_log`.                               \n2. Implement `PhaseFreqTableHandle =                 \nArc<RwLock<PhaseFreqTable>>` following the           \n   `TypedGraphStateHandle` /                         \n`EffectivenessStateHandle` pattern.                  \n3. Wire the handle into `ServiceLayer` and thread it \n to `SearchService` and the                          \n   background tick.                                  \n4. Activate `w_phase_explicit` in fused scoring:     \ncompute `phase_explicit_norm` from                   \n   the frequency table at query time; raise the      \ndefault from `0.0` to `0.05` in                      \n   `InferenceConfig`.                                \n5. Wire the frequency table into PPR personalization \n vector (#398): when PPR is                          \n   called, scale each seed entry's HNSW score by     \n`phase_affinity_score(entry, phase)`                 \n   derived from the frequency table before           \nnormalization.                                       \n6. Expose `query_log_retention_cycles` in            \n`InferenceConfig` to govern the lookback             \n   window for the frequency table SQL query (aligns  \nwith #409 retention framework                        \n   without blocking on it).                          \n7. Cold-start degrades gracefully: empty table       \nproduces `phase_explicit_norm = 0.0`                 \n   for all candidates — score bit-for-bit identical  \nto pre-col-031.                                      \n\n● Goals 1–4, 6–7 are correct. Two issues with Goal 5.\n\n  Goal 5 scope: PPR (#398) doesn't exist yet. \"Wire  \n  the frequency table into PPR personalization vector\n   (#398): when PPR is called\" implies PPR code to   \n  wire into, which isn't there. Col-031's job is to\n  expose phase_affinity_score(entry_id: u64, phase:\n  &str) -> f32 as a method on the handle — the\n  function #398 will call. The wiring from frequency\n  table into the actual PPR scoring loop is #398's\n  implementation responsibility. If the delivery\n  agent reads Goal 5 literally, they may try to\n  scaffold PPR internals in col-031, which is out of\n  scope.\n\n  Goal 5 cold-start conflicts with Goal 7: Goal 7    \n  says empty table → phase_explicit_norm = 0.0 →\n  bit-for-bit identical. That's correct for fused    \n  scoring: 0.05 × 0.0 = 0.0 contribution, no effect.\n\n  But for PPR personalization, phase_affinity_score  \n  is used as a multiplier on HNSW scores to build the\n   personalization vector: seed_weight = hnsw_score ×\n   phase_affinity_score. If phase_affinity_score   \n  returns 0.0 on cold start, the entire\n  personalization vector collapses to zero — PPR has\n  no seeds and degenerates into a uniform random\n  walk. Cold start for the PPR path must return 1.0\n  (neutral multiplier: hnsw_score × 1.0 =\n  hnsw_score), not 0.0.\n\n  Two different cold-start behaviors are needed from\n  two different methods:\n  - phase_explicit_norm(entry, phase) → 0.0 on cold\n  start (fused scoring, Goal 7 correct)              \n  - phase_affinity_score(entry, phase) → 1.0 on cold\n  start (PPR personalization multiplier)             \n                                                   \n  Goal 5 needs to make this distinction explicit.\n  Otherwise the delivery agent will implement one    \n  cold-start behavior and break the other.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.5888531636988296,
+          "similarity": 0.6834753751754761,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.5643842818603354,
+          "similarity": 0.6273999214172363,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.5628829977484077,
+          "similarity": 0.6173886656761169,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.5565983368836267,
+          "similarity": 0.6181075572967529,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5326304825813164,
+          "similarity": 0.6143629550933838,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.5888531636988296,
+          "similarity": 0.6834753751754761,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3687,
+          "title": "ADR-003 col-031: Two Cold-Start Contracts from One phase_affinity_score Method",
+          "category": "decision",
+          "final_score": 0.5643842818603354,
+          "similarity": 0.6273999214172363,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.5628829977484077,
+          "similarity": 0.6173886656761169,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.5565983368836267,
+          "similarity": 0.6181075572967529,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5326304825813164,
+          "similarity": 0.6143629550933838,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

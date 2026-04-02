@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4382",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Clean alignment — 5 pass, 1 warning. The `merge_configs` addition (FR-17) is correct and follows the `boosted_categories` pattern exactly. Proceeding to Phase 2c — synthesizer with a fresh context window.\n[tool: Agent(Phase 2b: Vision alignment check for crt-031) → **Report path:** `product/features/crt-031/ALIGNMENT-REPORT.md`\n\n**Variance summary:**\n\n| Classification | Count |\n|---------------|-------|\n| PASS | 5 |\n| WARN | 1 |\n| VARIANCE | 0 |\n| FAIL | 0 |\n\n**One item for human attention:**\n\n**WARN-01 — FR-17 `merge_configs` not in SCOPE.md.** The SPECIFIC]\n[Assistant] Phase 2b — vision alignment check.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5425828231790171,
+          "similarity": 0.5342024564743042,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5365150715766128,
+          "similarity": 0.519040048122406,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.5231809431837485,
+          "similarity": 0.5187935829162598,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5189066599462785,
+          "similarity": 0.4873619079589844,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5009222970074699,
+          "similarity": 0.485004186630249,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.6,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5425828231790171,
+          "similarity": 0.5342024564743042,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5365150715766128,
+          "similarity": 0.519040048122406,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.5231809431837485,
+          "similarity": 0.5187935829162598,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5189066599462785,
+          "similarity": 0.4873619079589844,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5009222970074699,
+          "similarity": 0.485004186630249,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.6,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

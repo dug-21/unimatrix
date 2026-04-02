@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-469",
+  "query": "checkout main now",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.3609433725035023,
+          "similarity": 0.18050801753997803,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.3533978743905588,
+          "similarity": 0.19685423374176025,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.34522161704668486,
+          "similarity": 0.1643427610397339,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.32241799644435387,
+          "similarity": 0.16800391674041748,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 666,
+          "title": "Functions named retry/ensure/validate must implement promised behavior",
+          "category": "lesson-learned",
+          "final_score": 0.3199718438703273,
+          "similarity": 0.17790734767913818,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.3609433725035023,
+          "similarity": 0.18050801753997803,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.3533978743905588,
+          "similarity": 0.19685423374176025,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.34522161704668486,
+          "similarity": 0.1643427610397339,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.32241799644435387,
+          "similarity": 0.16800391674041748,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 666,
+          "title": "Functions named retry/ensure/validate must implement promised behavior",
+          "category": "lesson-learned",
+          "final_score": 0.3199718438703273,
+          "similarity": 0.17790734767913818,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

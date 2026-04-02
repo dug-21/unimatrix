@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2830",
+  "query": "I saw this in the log: 2026-03-25T02:33:26.948200Z  WARN serve_inner: rmcp::service: response error id=17 error=ErrorData { code: ErrorCode(-32602), message: \"failed to deserialize parameters: invalid type: string \\\"[\\\\\\\"unimatrix-observe\\\\\\\", \\\\\\\"unimatrix-server\\\\\\\", \\\\\\\"struct-extension\\\\\\\", \\\\\\\"construction-sites\\\\\\\", \\\\\\\"serde\\\\\\\", \\\\\\\"backward-compatibility\\\\\\\", \\\\\\\"col-026\\\\\\\"]\\\", expected a sequence\", data: None }",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.5388666433773713,
+          "similarity": 0.5751127004623413,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.5144647768345293,
+          "similarity": 0.567188560962677,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.5128908146385618,
+          "similarity": 0.5757479071617126,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1609,
+          "title": "ServiceError variant names must be verified against error.rs -- no ServiceError::Internal exists",
+          "category": "lesson-learned",
+          "final_score": 0.5032006001224153,
+          "similarity": 0.5260419845581055,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3818,
+          "title": "Navigating dependency source code (rmcp) to resolve dispatch behaviour adds significant file breadth",
+          "category": "lesson-learned",
+          "final_score": 0.47252158942975486,
+          "similarity": 0.5187910199165344,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.5388666433773713,
+          "similarity": 0.5751127004623413,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.5144647768345293,
+          "similarity": 0.567188560962677,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.5128908146385618,
+          "similarity": 0.5757479071617126,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1609,
+          "title": "ServiceError variant names must be verified against error.rs -- no ServiceError::Internal exists",
+          "category": "lesson-learned",
+          "final_score": 0.5032006001224153,
+          "similarity": 0.5260419845581055,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3818,
+          "title": "Navigating dependency source code (rmcp) to resolve dispatch behaviour adds significant file breadth",
+          "category": "lesson-learned",
+          "final_score": 0.47252158942975486,
+          "similarity": 0.5187910199165344,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -18,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

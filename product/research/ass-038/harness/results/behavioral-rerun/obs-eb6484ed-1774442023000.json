@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-eb6484ed-1774442023000",
+  "query": "io error kind broken pipe unexpected eof handling unimatrix-server",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.49672577166290144,
+          "similarity": 0.49410486221313477,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4893033732948162,
+          "similarity": 0.46589261293411255,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4877643327126002,
+          "similarity": 0.46102750301361084,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.4807642227012354,
+          "similarity": 0.47078514099121094,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.45774147706282764,
+          "similarity": 0.46830880641937256,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.49672577166290144,
+          "similarity": 0.49410486221313477,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4893033732948162,
+          "similarity": 0.46589261293411255,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4877643327126002,
+          "similarity": 0.46102750301361084,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.4807642227012354,
+          "similarity": 0.47078514099121094,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.45774147706282764,
+          "similarity": 0.46830880641937256,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

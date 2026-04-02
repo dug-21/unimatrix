@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-d4042945-1774306392000",
+  "query": "MCP tool handler pipeline 6-step",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.6244423508994131,
+          "similarity": 0.6799148917198181,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5505307252261821,
+          "similarity": 0.5607613325119019,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.5388835584962463,
+          "similarity": 0.5617386102676392,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.5307781114849531,
+          "similarity": 0.5250948667526245,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.5193876753056634,
+          "similarity": 0.5319845080375671,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.6244423508994131,
+          "similarity": 0.6799148917198181,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.5505307252261821,
+          "similarity": 0.5607613325119019,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.5388835584962463,
+          "similarity": 0.5617386102676392,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.5307781114849531,
+          "similarity": 0.5250948667526245,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.5193876753056634,
+          "similarity": 0.5319845080375671,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

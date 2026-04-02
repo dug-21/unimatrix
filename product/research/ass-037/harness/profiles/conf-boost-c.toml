@@ -1,0 +1,12 @@
+[profile]
+name = "conf-boost-c"
+description = "Q4 boost: NLI+util+prov zeroed, w_sim=0.50 w_conf=0.35. Confidence share raised 2.3x from baseline."
+distribution_change = false
+
+[inference]
+w_nli  = 0.0
+w_sim  = 0.50
+w_conf = 0.35
+w_coac = 0.0
+w_util = 0.0
+w_prov = 0.0

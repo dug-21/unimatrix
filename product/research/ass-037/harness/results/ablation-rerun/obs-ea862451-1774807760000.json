@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-ea862451-1774807760000",
+  "query": "Default impl serde default split test rewrite silent failure",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5884000800343313,
+          "similarity": 0.5910462141036987,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5758244596920955,
+          "similarity": 0.5734713673591614,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.5172901865560436,
+          "similarity": 0.45270204544067383,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.5104946521202967,
+          "similarity": 0.47717607021331787,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.5004717691215376,
+          "similarity": 0.49148833751678467,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.45987459329458386,
+          "similarity": 0.5910462141036987,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.44905930299025315,
+          "similarity": 0.5734713673591614,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.3986082077026367,
+          "similarity": 0.49148833751678467,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.389800658592811,
+          "similarity": 0.47717607021331787,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.3747397202711839,
+          "similarity": 0.45270204544067383,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5910462141036987,
+          "similarity": 0.5910462141036987,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5734713673591614,
+          "similarity": 0.5734713673591614,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.49148833751678467,
+          "similarity": 0.49148833751678467,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.47717607021331787,
+          "similarity": 0.47717607021331787,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.45270204544067383,
+          "similarity": 0.45270204544067383,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5209090736038484,
+          "similarity": 0.5910462141036987,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5104914897298954,
+          "similarity": 0.5734713673591614,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.45921871059373703,
+          "similarity": 0.45270204544067383,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.45601582298859594,
+          "similarity": 0.47717607021331787,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.4497357416111763,
+          "similarity": 0.49148833751678467,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5884172627230934,
+          "similarity": 0.5910462141036987,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5758091798717517,
+          "similarity": 0.5734713673591614,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.5168707830423074,
+          "similarity": 0.45270204544067383,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.5102782976923291,
+          "similarity": 0.47717607021331787,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.5004134351500781,
+          "similarity": 0.49148833751678467,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5209090736038484,
+          "similarity": 0.5910462141036987,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5104914897298954,
+          "similarity": 0.5734713673591614,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.45921871059373703,
+          "similarity": 0.45270204544067383,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.45601582298859594,
+          "similarity": 0.47717607021331787,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.4497357416111763,
+          "similarity": 0.49148833751678467,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 3778,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2928,
+        "from_rank": 3,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

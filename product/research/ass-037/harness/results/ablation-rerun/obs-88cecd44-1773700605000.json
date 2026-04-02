@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-88cecd44-1773700605000",
+  "query": "GNN graph neural network training ONNX weight vector learning",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4729710166732822,
+          "similarity": 0.4188070297241211,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.45522929476943375,
+          "similarity": 0.3847486972808838,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.4513535831942504,
+          "similarity": 0.33487212657928467,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.422766581330961,
+          "similarity": 0.3275591731071472,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.40171938342686,
+          "similarity": 0.3164623975753784,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.3538812490609976,
+          "similarity": 0.4188070297241211,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.33292227524977464,
+          "similarity": 0.3847486972808838,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.3022290009718675,
+          "similarity": 0.33487212657928467,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.2977287219120906,
+          "similarity": 0.3275591731071472,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.29089993696946365,
+          "similarity": 0.3164623975753784,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.47332502965987805,
+          "similarity": 0.4188070297241211,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.455689952269359,
+          "similarity": 0.3847486972808838,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.45211489990415216,
+          "similarity": 0.33487212657928467,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.42338885197294673,
+          "similarity": 0.3275591731071472,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.40227661862850367,
+          "similarity": 0.3164623975753784,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.42476588087534833,
+          "similarity": 0.4188070297241211,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.40948472931631036,
+          "similarity": 0.3847486972808838,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.40331743611440257,
+          "similarity": 0.33487212657928467,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.38186610451651454,
+          "similarity": 0.3275591731071472,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.36569170768472253,
+          "similarity": 0.3164623975753784,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4188070297241211,
+          "similarity": 0.4188070297241211,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.3847486972808838,
+          "similarity": 0.3847486972808838,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.33487212657928467,
+          "similarity": 0.33487212657928467,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.3275591731071472,
+          "similarity": 0.3275591731071472,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.3164623975753784,
+          "similarity": 0.3164623975753784,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.42476588087534833,
+          "similarity": 0.4188070297241211,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.40948472931631036,
+          "similarity": 0.3847486972808838,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.40331743611440257,
+          "similarity": 0.33487212657928467,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.38186610451651454,
+          "similarity": 0.3275591731071472,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.36569170768472253,
+          "similarity": 0.3164623975753784,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

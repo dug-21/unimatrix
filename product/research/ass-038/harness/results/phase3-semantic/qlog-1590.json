@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1590",
+  "query": "we'd likely need to use the target/release binary because we have not merged/installed the new one",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.47972784754395037,
+          "similarity": 0.44891905784606934,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1197,
+          "title": "Tag-Triggered Release Pipeline Pattern (Rust + npm via GitHub Actions)",
+          "category": "pattern",
+          "final_score": 0.45154162269861586,
+          "similarity": 0.41634005308151245,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 349,
+          "title": "Optional Cargo features require explicit flags in build commands",
+          "category": "lesson-learned",
+          "final_score": 0.4372579456712682,
+          "similarity": 0.38100630044937134,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.4343367514651707,
+          "similarity": 0.4178962707519531,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1202,
+          "title": "ADR-005: Cargo.toml Workspace Version as Single Source of Truth",
+          "category": "decision",
+          "final_score": 0.3934087810113951,
+          "similarity": 0.3547661304473877,
+          "confidence": 0.489586504963233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.47972784754395037,
+          "similarity": 0.44891905784606934,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1197,
+          "title": "Tag-Triggered Release Pipeline Pattern (Rust + npm via GitHub Actions)",
+          "category": "pattern",
+          "final_score": 0.45154162269861586,
+          "similarity": 0.41634005308151245,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 349,
+          "title": "Optional Cargo features require explicit flags in build commands",
+          "category": "lesson-learned",
+          "final_score": 0.4372579456712682,
+          "similarity": 0.38100630044937134,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.4343367514651707,
+          "similarity": 0.4178962707519531,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1202,
+          "title": "ADR-005: Cargo.toml Workspace Version as Single Source of Truth",
+          "category": "decision",
+          "final_score": 0.3934087810113951,
+          "similarity": 0.3547661304473877,
+          "confidence": 0.489586504963233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7574e07c-1774445910000",
+  "query": "response formatter render section pattern unimatrix-server",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.45948610400384726,
+          "similarity": 0.4522290825843811,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.4466829503197872,
+          "similarity": 0.3949458599090576,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.4373817475085985,
+          "similarity": 0.3732200860977173,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.42938941755189075,
+          "similarity": 0.3702322840690613,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4172509342450961,
+          "similarity": 0.3752858638763428,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.45948610400384726,
+          "similarity": 0.4522290825843811,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.4466829503197872,
+          "similarity": 0.3949458599090576,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.4373817475085985,
+          "similarity": 0.3732200860977173,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.42938941755189075,
+          "similarity": 0.3702322840690613,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4172509342450961,
+          "similarity": 0.3752858638763428,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

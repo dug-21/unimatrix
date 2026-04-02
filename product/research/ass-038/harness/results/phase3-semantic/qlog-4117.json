@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4117",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] **Revised Fix Plan — Ready for Approval**\n\nBoth gaps are now resolved:\n\n---\n\n**Gap 1 — `dead_knowledge.rs`:** The `ExtractionRule` impl was already removed in GH #351. No removal needed. The fix adds `compute_dead_knowledge_recommendations(observations, store) -> Vec<String>` — a thin wrapper over the existing `detect_dead_knowledge_candidates()` that formats results as strings without any store writes. Capped at 20 strings to avoid flooding `context_status`.\n\n**Gap 2 — Bridging mechanism:** `TickMetadata` is already an `Arc<Mutex<TickMetadata>>` shared between the tick loop and `context_status`. Adding `friction_signals: Vec<String>` and `dead_knowledge_signals: Vec<String>` fields to it follows the exact same pattern as `extraction_stats`. No new synchronization primitive needed. `Arc<RwLock<_>>` was considered but rejected as over-engineered — `context_status` is occasional, `Mutex` is adequate.\n\n---\n\n**Files Changed:**\n\n| File | Change |\n|------|--------|\n| `recurring_friction.rs` | Remove `ExtractionRule` impl, add `compute_friction_recommendations()` |\n| `dead_knowledge.rs` | Add `compute_dead_knowledge_recommendations()` |\n| `extraction/mod.rs` | Remove `RecurringFrictionRule` (4→3 rules), update tests |\n| `background.rs` | Add two fields to `TickMetadata`, update `extraction_tick` return type, add one-shot quarantine migration |\n| `mcp/tools.rs` | Append both signal vecs to `maintenance_recommendations` |\n\n**New test:** `test_extraction_tick_does_not_write_recurring_friction_to_entries` — verifies zero ENTRIES written, `friction_signals` non-empty.\n\n---\n\nDo you approve this revised plan? Reply **approve** to proceed with implementation.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5466975162101743,
+          "similarity": 0.5611754059791565,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5433029523072542,
+          "similarity": 0.5541419386863708,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.5375344855034005,
+          "similarity": 0.5627252459526062,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5305103874785358,
+          "similarity": 0.5377642512321472,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.507881009281722,
+          "similarity": 0.5370664596557617,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5466975162101743,
+          "similarity": 0.5611754059791565,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5433029523072542,
+          "similarity": 0.5541419386863708,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.5375344855034005,
+          "similarity": 0.5627252459526062,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5305103874785358,
+          "similarity": 0.5377642512321472,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.507881009281722,
+          "similarity": 0.5370664596557617,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

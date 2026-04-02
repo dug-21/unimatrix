@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3545",
+  "query": "so.. there seems to be some files left on the main branch from this design session (they look like the old files), but they shouldn't be there.  Please make sure the most recent files are in the worktree, and continue to only be placed on the worktree",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.5065861429743665,
+          "similarity": 0.5120989680290222,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.5041265895359615,
+          "similarity": 0.500035285949707,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.49438885512401964,
+          "similarity": 0.4784895181655884,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.4910257470976015,
+          "similarity": 0.498518705368042,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 588,
+          "title": "Git worktrees use .git file not directory — check both in project root detection",
+          "category": "lesson-learned",
+          "final_score": 0.45322725645339434,
+          "similarity": 0.43628615140914917,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.5065861429743665,
+          "similarity": 0.5120989680290222,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.5041265895359615,
+          "similarity": 0.500035285949707,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.49438885512401964,
+          "similarity": 0.4784895181655884,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.4910257470976015,
+          "similarity": 0.498518705368042,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 588,
+          "title": "Git worktrees use .git file not directory — check both in project root detection",
+          "category": "lesson-learned",
+          "final_score": 0.45322725645339434,
+          "similarity": 0.43628615140914917,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

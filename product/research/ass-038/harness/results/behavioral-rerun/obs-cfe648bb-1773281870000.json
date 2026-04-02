@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cfe648bb-1773281870000",
+  "query": "unimatrix-server crate patterns conventions gotchas",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.531242769386982,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5312108543819939,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5311540762275778,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5304076558994472,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5303508659384284,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.531242769386982,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5312108543819939,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5311540762275778,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5304076558994472,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5303508659384284,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

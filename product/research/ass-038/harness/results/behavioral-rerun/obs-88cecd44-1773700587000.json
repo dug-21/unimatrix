@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-88cecd44-1773700587000",
+  "query": "security token authentication RBAC authorization client",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.42242944447953545,
+          "similarity": 0.3841266632080078,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.3868825511419829,
+          "similarity": 0.27414870262145996,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 83,
+          "title": "ADR-007: Enforcement Point Architecture for Security",
+          "category": "decision",
+          "final_score": 0.38300085072324186,
+          "similarity": 0.26336669921875,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.38260167363709696,
+          "similarity": 0.3527531027793884,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 196,
+          "title": "ASS-014: Authentication Architecture — Layered Local Auth, AuthContext Unification",
+          "category": "decision",
+          "final_score": 0.37198484664941855,
+          "similarity": 0.31823235750198364,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.42242944447953545,
+          "similarity": 0.3841266632080078,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.3868825511419829,
+          "similarity": 0.27414870262145996,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 83,
+          "title": "ADR-007: Enforcement Point Architecture for Security",
+          "category": "decision",
+          "final_score": 0.38300085072324186,
+          "similarity": 0.26336669921875,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.38260167363709696,
+          "similarity": 0.3527531027793884,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 196,
+          "title": "ASS-014: Authentication Architecture — Layered Local Auth, AuthContext Unification",
+          "category": "decision",
+          "final_score": 0.37198484664941855,
+          "similarity": 0.31823235750198364,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

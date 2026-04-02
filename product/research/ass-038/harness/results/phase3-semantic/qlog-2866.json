@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2866",
+  "query": "we have more than 53 entries in our database... and this is only 1 repository this is deployed in... my goal is to find the absolute best possible knowledge pipeline for this use case.  I agree, I don't think we have the right metrics being reviewed in our test eval harness.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4982376207404119,
+          "similarity": 0.529127299785614,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4967108736133188,
+          "similarity": 0.45205938816070557,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.48842274818729947,
+          "similarity": 0.4534856677055359,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.48369125535709623,
+          "similarity": 0.44880515336990356,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.47269055242585256,
+          "similarity": 0.4811694622039795,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4982376207404119,
+          "similarity": 0.529127299785614,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4967108736133188,
+          "similarity": 0.45205938816070557,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.48842274818729947,
+          "similarity": 0.4534856677055359,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.48369125535709623,
+          "similarity": 0.44880515336990356,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.47269055242585256,
+          "similarity": 0.4811694622039795,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

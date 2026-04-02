@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2022",
+  "query": " ---                                                                                                                                                                                  \n  WA-5 Decisions                                                                                                                                                                       \n                \n  D-1: Transcript restoration is the primary compaction output.                                                                                                                        \n  The hook reads input.transcript_path locally before sending the CompactPayload request. No server round-trip for transcript content.                                                 \n                                                                                                                                                                                       \n  D-2: Type-aware extraction, not verbatim replay.                                                                                                                                     \n  - User turns: text blocks verbatim, tool_result blocks skipped                                                                                                                       \n  - Assistant turns: text blocks verbatim + each tool_use (name + key param) paired with its tool_result truncated to ~300 bytes                                                       \n  - Most recent turns first, fills budget in priority order                                                                     \n                                                                                                                                                                                       \n  D-3: Compact tool results, not omitted.                                                                                                                                              \n  The truncated result snippet (~300 bytes) gives the agent enough context to decide whether it needs to re-fetch. Grep/Glob results are compact enough to survive whole.              \n                                                                                                                                                                                       \n  D-4: Separate byte budget for PreCompact.                                                                                                                                            \n  A new MAX_PRECOMPACT_BYTES constant for the transcript block — distinct from MAX_INJECTION_BYTES (1400) used on other hook paths. Recommended ~3000 bytes.                           \n                                                                                                                                                                                       \n  D-5: Transcript block prepends the server response.                                                                                                                                  \n  Task/work continuity comes before knowledge context in the compaction output.                                                                                                        \n                                                                                                                                                                                       \n  D-6: Graceful degradation on all transcript read failures.                                                                                                                           \n  Missing path, unreadable file, malformed JSONL — all produce silent skip. Hook never fails (FR-03.7).                                                                                \n                                                                                                                                                                                       \n  D-7: All transcript extraction logic lives in hook.rs.                                                                                                                               \n  No server changes required for WA-5.                                                                                                                                                 \n                                                                                                                                                                                       \n  D-8: The Unimatrix knowledge component should move to index format.                                                                                                                  \n  Full-content briefing is no longer needed at compaction time — transcript restoration handles continuity. This depends on WA-4 delivering index mode on the CompactPayload path.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.6386956937160825,
+          "similarity": 0.7580208778381348,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5991017186593092,
+          "similarity": 0.6680877804756165,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.5606513358484462,
+          "similarity": 0.6072589755058289,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.5316460123017717,
+          "similarity": 0.5352925062179565,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.4927973842185275,
+          "similarity": 0.503835916519165,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.6386956937160825,
+          "similarity": 0.7580208778381348,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5991017186593092,
+          "similarity": 0.6680877804756165,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.5606513358484462,
+          "similarity": 0.6072589755058289,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.5316460123017717,
+          "similarity": 0.5352925062179565,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.4927973842185275,
+          "similarity": 0.503835916519165,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

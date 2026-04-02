@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-e99a5b01-1773963022000",
+  "query": "Unix domain socket framing wire protocol Python client integration test",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5671121563413604,
+          "similarity": 0.5971273183822632,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.5336552895819099,
+          "similarity": 0.5083554983139038,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.5093400759118636,
+          "similarity": 0.4420572519302368,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.49632301390164035,
+          "similarity": 0.47332465648651123,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.4687260152913998,
+          "similarity": 0.4384390115737915,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5971273183822632,
+          "similarity": 0.5971273183822632,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.5083554983139038,
+          "similarity": 0.5083554983139038,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.47332465648651123,
+          "similarity": 0.47332465648651123,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.4420572519302368,
+          "similarity": 0.4420572519302368,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.4384390115737915,
+          "similarity": 0.4384390115737915,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.463616811312162,
+          "similarity": 0.5971273183822632,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.40898799896240234,
+          "similarity": 0.5083554983139038,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.3874305578378531,
+          "similarity": 0.47332465648651123,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.36818907811091495,
+          "similarity": 0.4420572519302368,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.3659624686607948,
+          "similarity": 0.4384390115737915,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5056907358758153,
+          "similarity": 0.5971273183822632,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.4752375789143275,
+          "similarity": 0.5083554983139038,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.4529865391307158,
+          "similarity": 0.4420572519302368,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.44552518729363705,
+          "similarity": 0.47332465648651123,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.42296167865194595,
+          "similarity": 0.4384390115737915,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5669159788116813,
+          "similarity": 0.5971273183822632,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.5338206476947727,
+          "similarity": 0.5083554983139038,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.5097798329313513,
+          "similarity": 0.4420572519302368,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4964733299631772,
+          "similarity": 0.47332465648651123,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.4689239695640639,
+          "similarity": 0.4384390115737915,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5056907358758153,
+          "similarity": 0.5971273183822632,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.4752375789143275,
+          "similarity": 0.5083554983139038,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.4529865391307158,
+          "similarity": 0.4420572519302368,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.44552518729363705,
+          "similarity": 0.47332465648651123,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.42296167865194595,
+          "similarity": 0.4384390115737915,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

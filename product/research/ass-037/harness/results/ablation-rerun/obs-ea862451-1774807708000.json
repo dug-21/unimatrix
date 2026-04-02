@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-ea862451-1774807708000",
+  "query": "outcome rework config hardcoded categories allowlist",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.4906729459762573,
+          "similarity": 0.4906729459762573,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4865120053291321,
+          "similarity": 0.4865120053291321,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.4834563732147217,
+          "similarity": 0.4834563732147217,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4371161460876465,
+          "similarity": 0.4371161460876465,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.4322596788406372,
+          "similarity": 0.4322596788406372,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5362768609113981,
+          "similarity": 0.4906729459762573,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.5310955211168009,
+          "similarity": 0.4834563732147217,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5119196426679946,
+          "similarity": 0.4865120053291321,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.49877572176558316,
+          "similarity": 0.4322596788406372,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4954155427008833,
+          "similarity": 0.4371161460876465,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.4757640662337513,
+          "similarity": 0.4906729459762573,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.47147362061472076,
+          "similarity": 0.4834563732147217,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.45772088289590546,
+          "similarity": 0.4865120053291321,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.4442694314892561,
+          "similarity": 0.4322596788406372,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4421681915454754,
+          "similarity": 0.4371161460876465,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5359807315936373,
+          "similarity": 0.4906729459762573,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.5307861760005537,
+          "similarity": 0.4834563732147217,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5117546580099499,
+          "similarity": 0.4865120053291321,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.49834379940892753,
+          "similarity": 0.4322596788406372,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4950369751904077,
+          "similarity": 0.4371161460876465,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.4757640662337513,
+          "similarity": 0.4906729459762573,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.47147362061472076,
+          "similarity": 0.4834563732147217,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.45772088289590546,
+          "similarity": 0.4865120053291321,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.4442694314892561,
+          "similarity": 0.4322596788406372,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4421681915454754,
+          "similarity": 0.4371161460876465,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.39810642829308146,
+          "similarity": 0.4906729459762573,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.39554584943331206,
+          "similarity": 0.4865120053291321,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.39366546043982875,
+          "similarity": 0.4834563732147217,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.36514839759239787,
+          "similarity": 0.4371161460876465,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.36215980236346906,
+          "similarity": 0.4322596788406372,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3775,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3770,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 86,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3523,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

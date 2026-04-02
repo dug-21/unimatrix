@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1344",
+  "query": "please confirm the spec was updated for : 2. WARN: SPECIFICATION.md FR-06 and NFR-04 carry the old pool floor (2), conflicting with ARCHITECTURE.md (4)",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.49053604461562816,
+          "similarity": 0.4589546322822571,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.4774698962076339,
+          "similarity": 0.4246680736541748,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.46503586990849854,
+          "similarity": 0.4092520475387573,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4438794293206594,
+          "similarity": 0.4069260358810425,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.4390534821985559,
+          "similarity": 0.4239071011543274,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.49053604461562816,
+          "similarity": 0.4589546322822571,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.4774698962076339,
+          "similarity": 0.4246680736541748,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.46503586990849854,
+          "similarity": 0.4092520475387573,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4438794293206594,
+          "similarity": 0.4069260358810425,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.4390534821985559,
+          "similarity": 0.4239071011543274,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

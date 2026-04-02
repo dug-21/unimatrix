@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-f612daf8-1774526469000",
+  "query": "serde serialization null optional fields JSONL wire format",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5560718208992136,
+          "similarity": 0.6059461832046509,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.5546001194640381,
+          "similarity": 0.5987063050270081,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5486455982952491,
+          "similarity": 0.5552887916564941,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.517836333391134,
+          "similarity": 0.5548997521400452,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.509522841682419,
+          "similarity": 0.49868738651275635,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5560718208992136,
+          "similarity": 0.6059461832046509,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.5546001194640381,
+          "similarity": 0.5987063050270081,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5486455982952491,
+          "similarity": 0.5552887916564941,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.517836333391134,
+          "similarity": 0.5548997521400452,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.509522841682419,
+          "similarity": 0.49868738651275635,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

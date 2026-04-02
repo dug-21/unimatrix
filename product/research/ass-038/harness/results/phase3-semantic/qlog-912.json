@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-912",
+  "query": "well, even if just for my collection of projects... SaaS model might be interesting, but obviusly only when we're containerizing it",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.44817575249868835,
+          "similarity": 0.3598426580429077,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 6,
+          "title": "Roadmap milestones 7-9: Multi-Project, Thin-Shell, Build",
+          "category": "decision",
+          "final_score": 0.41628603964640365,
+          "similarity": 0.31756967306137085,
+          "confidence": 0.6048197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.4023033573407433,
+          "similarity": 0.2789262533187866,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3,
+          "title": "Roadmap milestones 1-2: Foundation and MCP Server",
+          "category": "decision",
+          "final_score": 0.39699366850157825,
+          "similarity": 0.2899530529975891,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.36440613401313204,
+          "similarity": 0.2806748151779175,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.44817575249868835,
+          "similarity": 0.3598426580429077,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 6,
+          "title": "Roadmap milestones 7-9: Multi-Project, Thin-Shell, Build",
+          "category": "decision",
+          "final_score": 0.41628603964640365,
+          "similarity": 0.31756967306137085,
+          "confidence": 0.6048197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.4023033573407433,
+          "similarity": 0.2789262533187866,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3,
+          "title": "Roadmap milestones 1-2: Foundation and MCP Server",
+          "category": "decision",
+          "final_score": 0.39699366850157825,
+          "similarity": 0.2899530529975891,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.36440613401313204,
+          "similarity": 0.2806748151779175,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

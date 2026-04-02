@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3216",
+  "query": "yes, please start design protocol for nan-008",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 59,
+          "title": "ADR-002: bincode v2 Serialization with serde default for Schema Evolution",
+          "category": "decision",
+          "final_score": 0.44986905958833534,
+          "similarity": 0.37193238735198975,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.4476591599812956,
+          "similarity": 0.3730025291442871,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 77,
+          "title": "ADR-001: rmcp 0.16 with stdio Transport",
+          "category": "decision",
+          "final_score": 0.4476468742933859,
+          "similarity": 0.3705006241798401,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.44708014532696905,
+          "similarity": 0.4121991991996765,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.4156161367840493,
+          "similarity": 0.401131808757782,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 59,
+          "title": "ADR-002: bincode v2 Serialization with serde default for Schema Evolution",
+          "category": "decision",
+          "final_score": 0.44986905958833534,
+          "similarity": 0.37193238735198975,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.4476591599812956,
+          "similarity": 0.3730025291442871,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 77,
+          "title": "ADR-001: rmcp 0.16 with stdio Transport",
+          "category": "decision",
+          "final_score": 0.4476468742933859,
+          "similarity": 0.3705006241798401,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.44708014532696905,
+          "similarity": 0.4121991991996765,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.4156161367840493,
+          "similarity": 0.401131808757782,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3102",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] **Stewardship result:** 2 entries found — #3486 kept (good quality lesson), #3484 deprecated (duplicate, miscategorized as pattern).\n\n**Phase 2: Spawn architect.**\n\nRetrospective briefing:\n\n```\nRETROSPECTIVE BRIEFING for bugfix-389\n======================================\nSessions: 1 | Records: 721 | Tool calls: 345 | Duration: 87m\n\nHOTSPOTS (10 detected):\n- [warning] context_load: 194 KB loaded before first write (discovery phase, 2 clusters)\n- [warning] lifespan: rust-dev agent ran 51–59 minutes (fix phase)\n- [warning] compile_cycles: 37 compile/check cycles (fix phase, 16 clusters)\n- [warning] file_breadth: 22 distinct files accessed (discovery phase)\n- [warning] tool_failure_hotspot: mcp__unimatrix__context_get failed 4 times (discovery phase)\n- [info] edit_bloat: avg Edit response 194.9 KB (3.9× typical)\n- [info] output_parsing_struggle: cargo clippy piped through 3 filters in 3 min\n- [info] reread_rate: 20 files re-read multiple times\n- [info] search_via_bash: 11.1% of Bash calls are search commands\n- [info] sleep_workarounds: 4 sleep workarounds detected\n\nBASELINE OUTLIERS:\n- edit_bloat_ratio: 0.6 vs mean 0.2 (1.5σ) — Outlier\n- agent_hotspot_count: 7.0 vs mean 3.6 (1.5σ) — Outlier\n\nRECOMMENDATIONS:\n- [sleep_workarounds] Use run_in_background + TaskOutput instead of sleep polling\n- [compile_cycles] Batch field additions before compiling\n\nREWORK SIGNALS: None — no gate failures, single pass through all phases.\n\nWHAT WENT WELL:\n- permission_friction_events: 1.0 vs mean 18.1 (low friction)\n- bash_for_search_count: 122 vs mean 150.7 (Grep/Glob used correctly)\n- coordinator_respawn_count: 0 vs mean 1.4 (no SM context loss)\n- post_completion_work_pct: 0 vs mean 5.6 (clean stop)\n\nNOTE: \"No goal recorded for this cycle\" — expected; cycle_start was called\nbefore the fix was deployed. This is the irony of the bug: the session that\nfixed goal-not-persisting also couldn't persist its own goal.\n\nSTEWARDSHIP: #3486 stored (lesson, good quality). #3484 deprecated (duplicate/miscategorized).\n```\n[tool: mcp__unimatrix__context_deprecate(Duplicate of #3486 (lesson-learned). Miscategorized as pattern — this is a gotcha/lesson about payload construction om) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.576917496063516,
+          "similarity": 0.621654212474823,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 979,
+          "title": "Retrospective findings: nxs-009",
+          "category": "lesson-learned",
+          "final_score": 0.5731457285621883,
+          "similarity": 0.6153466701507568,
+          "confidence": 0.6051860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3840,
+          "title": "Retrospective findings: bugfix-367",
+          "category": "lesson-learned",
+          "final_score": 0.5349656626550774,
+          "similarity": 0.6150347590446472,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3760,
+          "title": "context_store failures during heavy compilation phases — contention or timing issue",
+          "category": "lesson-learned",
+          "final_score": 0.5348242652368435,
+          "similarity": 0.6185306906700134,
+          "confidence": 0.4966220189714134,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.5312828485087343,
+          "similarity": 0.6080374121665955,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.576917496063516,
+          "similarity": 0.621654212474823,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 979,
+          "title": "Retrospective findings: nxs-009",
+          "category": "lesson-learned",
+          "final_score": 0.5731457285621883,
+          "similarity": 0.6153466701507568,
+          "confidence": 0.6051860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3840,
+          "title": "Retrospective findings: bugfix-367",
+          "category": "lesson-learned",
+          "final_score": 0.5349656626550774,
+          "similarity": 0.6150347590446472,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3760,
+          "title": "context_store failures during heavy compilation phases — contention or timing issue",
+          "category": "lesson-learned",
+          "final_score": 0.5348242652368435,
+          "similarity": 0.6185306906700134,
+          "confidence": 0.4966220189714134,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.5312828485087343,
+          "similarity": 0.6080374121665955,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 40,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

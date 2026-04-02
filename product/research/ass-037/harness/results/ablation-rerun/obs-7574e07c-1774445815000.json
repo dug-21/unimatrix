@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-7574e07c-1774445815000",
+  "query": "bugfix-384 goal section retrospective formatter",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5667743682861328,
+          "similarity": 0.5667743682861328,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.5208296775817871,
+          "similarity": 0.5208296775817871,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.5127597451210022,
+          "similarity": 0.5127597451210022,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.44509899616241455,
+          "similarity": 0.44509899616241455,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.4329230785369873,
+          "similarity": 0.4329230785369873,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5806893372245461,
+          "similarity": 0.5667743682861328,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.574478009814699,
+          "similarity": 0.5208296775817871,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.5343337378826667,
+          "similarity": 0.5127597451210022,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5219839990760063,
+          "similarity": 0.44509899616241455,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.4830335297009716,
+          "similarity": 0.4329230785369873,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5805989802833875,
+          "similarity": 0.5667743682861328,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.5741296440209787,
+          "similarity": 0.5208296775817871,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.5341936470205779,
+          "similarity": 0.5127597451210022,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5214847458103337,
+          "similarity": 0.44509899616241455,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.4827081371609456,
+          "similarity": 0.4329230785369873,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5135575434268931,
+          "similarity": 0.5667743682861328,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.505750384120837,
+          "similarity": 0.5208296775817871,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.47592599082315734,
+          "similarity": 0.5127597451210022,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4620954133384057,
+          "similarity": 0.44509899616241455,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.43284750582049264,
+          "similarity": 0.4329230785369873,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.44493807279146635,
+          "similarity": 0.5667743682861328,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.41666441697340745,
+          "similarity": 0.5208296775817871,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.4116983046898475,
+          "similarity": 0.5127597451210022,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.37006092071533203,
+          "similarity": 0.44509899616241455,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.36256804833045375,
+          "similarity": 0.4329230785369873,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5135575434268931,
+          "similarity": 0.5667743682861328,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.505750384120837,
+          "similarity": 0.5208296775817871,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.47592599082315734,
+          "similarity": 0.5127597451210022,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4620954133384057,
+          "similarity": 0.44509899616241455,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.43284750582049264,
+          "similarity": 0.4329230785369873,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

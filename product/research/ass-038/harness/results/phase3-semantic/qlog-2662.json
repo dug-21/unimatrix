@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2662",
+  "query": "there is only 1 other schema change being comtemplated right now... and that is related to OQ-01 from @product/research/ass-031/OPEN-QUESTIONS.md",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.5297055602475503,
+          "similarity": 0.5325210690498352,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5250795182830695,
+          "similarity": 0.5237315893173218,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 375,
+          "title": "Database init ordering: migration before DDL in Store::open()",
+          "category": "procedure",
+          "final_score": 0.5166243921676048,
+          "similarity": 0.5108950734138489,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5165361304459872,
+          "similarity": 0.5200849771499634,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.4975168652286165,
+          "similarity": 0.4984428882598877,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 248,
+          "title": "ADR-007: No Schema v4 Migration in col-006",
+          "category": "decision",
+          "final_score": 0.5297055602475503,
+          "similarity": 0.5325210690498352,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5250795182830695,
+          "similarity": 0.5237315893173218,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 375,
+          "title": "Database init ordering: migration before DDL in Store::open()",
+          "category": "procedure",
+          "final_score": 0.5166243921676048,
+          "similarity": 0.5108950734138489,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5165361304459872,
+          "similarity": 0.5200849771499634,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.4975168652286165,
+          "similarity": 0.4984428882598877,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-5f33a80a-1774491431000",
+  "query": "session state testing patterns UsageDedup integration tests",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.5535295464799221,
+          "similarity": 0.5315390825271606,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.548219370408334,
+          "similarity": 0.5062149167060852,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5200862269815612,
+          "similarity": 0.5004605054855347,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.5199279365979776,
+          "similarity": 0.47319453954696655,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.5076001074558488,
+          "similarity": 0.4961087107658386,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.5536732750024892,
+          "similarity": 0.5315390825271606,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5484939093214207,
+          "similarity": 0.5062149167060852,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.5202333836375269,
+          "similarity": 0.47319453954696655,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5202144996710777,
+          "similarity": 0.5004605054855347,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.5076752146237574,
+          "similarity": 0.4961087107658386,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.5315390825271606,
+          "similarity": 0.5315390825271606,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5062149167060852,
+          "similarity": 0.5062149167060852,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5004605054855347,
+          "similarity": 0.5004605054855347,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.4961087107658386,
+          "similarity": 0.4961087107658386,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.47319453954696655,
+          "similarity": 0.47319453954696655,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.49135760625375363,
+          "similarity": 0.5315390825271606,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.485775199413184,
+          "similarity": 0.5062149167060852,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.4647606001521805,
+          "similarity": 0.5004605054855347,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.46282678947498146,
+          "similarity": 0.47319453954696655,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.45531399285201174,
+          "similarity": 0.4961087107658386,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.4232548200167143,
+          "similarity": 0.5315390825271606,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.4076707179729755,
+          "similarity": 0.5062149167060852,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.40412954183725214,
+          "similarity": 0.5004605054855347,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.40145151431743914,
+          "similarity": 0.4961087107658386,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.3873504858750563,
+          "similarity": 0.47319453954696655,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.49135760625375363,
+          "similarity": 0.5315390825271606,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.485775199413184,
+          "similarity": 0.5062149167060852,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.4647606001521805,
+          "similarity": 0.5004605054855347,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.46282678947498146,
+          "similarity": 0.47319453954696655,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.45531399285201174,
+          "similarity": 0.4961087107658386,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3210,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3513,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

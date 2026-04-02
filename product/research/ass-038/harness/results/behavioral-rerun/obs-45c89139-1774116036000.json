@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-45c89139-1774116036000",
+  "query": "col-023 observation pipeline generalization domain pack",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5334142581132763,
+          "similarity": 0.5505388379096985,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.49750778469064727,
+          "similarity": 0.4619492292404175,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.4869038200763707,
+          "similarity": 0.4603787660598755,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 425,
+          "title": "Three-Slot Model Registry (Production/Shadow/Previous)",
+          "category": "pattern",
+          "final_score": 0.4814426324785521,
+          "similarity": 0.4361412525177002,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.4762254908273402,
+          "similarity": 0.42906761169433594,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5334142581132763,
+          "similarity": 0.5505388379096985,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.49750778469064727,
+          "similarity": 0.4619492292404175,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.4869038200763707,
+          "similarity": 0.4603787660598755,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 425,
+          "title": "Three-Slot Model Registry (Production/Shadow/Previous)",
+          "category": "pattern",
+          "final_score": 0.4814426324785521,
+          "similarity": 0.4361412525177002,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.4762254908273402,
+          "similarity": 0.42906761169433594,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

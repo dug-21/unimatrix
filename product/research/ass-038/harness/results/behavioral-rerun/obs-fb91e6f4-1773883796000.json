@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773883796000",
+  "query": "GRAPH_EDGES compaction orphan tick rebuild TypedRelationGraph TypedGraphState background",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5633045308201107,
+          "similarity": 0.6152446866035461,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5563209465351519,
+          "similarity": 0.6467152833938599,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5450197052696467,
+          "similarity": 0.590607225894928,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5365807425085037,
+          "similarity": 0.5707694888114929,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.5241146767758659,
+          "similarity": 0.5445876717567444,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5633045308201107,
+          "similarity": 0.6152446866035461,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5563209465351519,
+          "similarity": 0.6467152833938599,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5450197052696467,
+          "similarity": 0.590607225894928,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5365807425085037,
+          "similarity": 0.5707694888114929,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.5241146767758659,
+          "similarity": 0.5445876717567444,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

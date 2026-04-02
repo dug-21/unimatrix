@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-18f5d7e9-1774716252000",
+  "query": "check inputs still in scope before proposing call site function design review",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3720,
+          "title": "Verify inputs are still in scope at the proposed call site before finalising a fix plan",
+          "category": "lesson-learned",
+          "final_score": 0.5315296973394683,
+          "similarity": 0.600504457950592,
+          "confidence": 0.5134313814205683,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.4700568981829,
+          "similarity": 0.4076579809188843,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4556065432683055,
+          "similarity": 0.42161476612091064,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.43868576181076313,
+          "similarity": 0.3632974624633789,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.4226517980052771,
+          "similarity": 0.4042937755584717,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3720,
+          "title": "Verify inputs are still in scope at the proposed call site before finalising a fix plan",
+          "category": "lesson-learned",
+          "final_score": 0.5315296973394683,
+          "similarity": 0.600504457950592,
+          "confidence": 0.5134313814205683,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.4700568981829,
+          "similarity": 0.4076579809188843,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4556065432683055,
+          "similarity": 0.42161476612091064,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.43868576181076313,
+          "similarity": 0.3632974624633789,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.4226517980052771,
+          "similarity": 0.4042937755584717,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

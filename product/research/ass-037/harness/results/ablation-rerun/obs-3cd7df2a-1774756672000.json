@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774756672000",
+  "query": "security quarantine bypass search results injection trust boundary",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.5254632027213968,
+          "similarity": 0.4742972254753113,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5165149321345042,
+          "similarity": 0.45445573329925537,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.5125361854899412,
+          "similarity": 0.4435030221939087,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.5112170107620178,
+          "similarity": 0.4217105507850647,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.5090419148071395,
+          "similarity": 0.45739269256591797,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.3880290618309608,
+          "similarity": 0.4742972254753113,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.37762627234825724,
+          "similarity": 0.45739269256591797,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.37581891279954177,
+          "similarity": 0.45445573329925537,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.3690787828885592,
+          "similarity": 0.4435030221939087,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.3556680312523475,
+          "similarity": 0.4217105507850647,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.4742972254753113,
+          "similarity": 0.4742972254753113,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.45739269256591797,
+          "similarity": 0.45739269256591797,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.45445573329925537,
+          "similarity": 0.45445573329925537,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.4435030221939087,
+          "similarity": 0.4435030221939087,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.4217105507850647,
+          "similarity": 0.4217105507850647,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.4667158495166827,
+          "similarity": 0.4742972254753113,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.45877914579079987,
+          "similarity": 0.45445573329925537,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.45509800815652207,
+          "similarity": 0.4435030221939087,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.4535443016856243,
+          "similarity": 0.45739269256591797,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.45258029003983175,
+          "similarity": 0.4217105507850647,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.4667158495166827,
+          "similarity": 0.4742972254753113,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.45877914579079987,
+          "similarity": 0.45445573329925537,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.45509800815652207,
+          "similarity": 0.4435030221939087,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.4535443016856243,
+          "similarity": 0.45739269256591797,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.45258029003983175,
+          "similarity": 0.4217105507850647,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.5251309561159025,
+          "similarity": 0.4742972254753113,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5161119503238857,
+          "similarity": 0.45445573329925537,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.5120879181958111,
+          "similarity": 0.4435030221939087,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.5106357999829465,
+          "similarity": 0.4217105507850647,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.5087065302471314,
+          "similarity": 0.45739269256591797,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 252,
+        "from_rank": 5,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 270,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2716,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 314,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

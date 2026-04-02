@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774575792000",
+  "query": "design agents write to wrong directory worktree path prompt working directory file leak",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.5559869671863594,
+          "similarity": 0.6219450235366821,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.5331184815935421,
+          "similarity": 0.5364196300506592,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 251,
+          "title": "Tests must not write to fixed paths outside their tempdir",
+          "category": "lesson-learned",
+          "final_score": 0.5265512790375958,
+          "similarity": 0.5333975553512573,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.4860492274372372,
+          "similarity": 0.4792596101760864,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.48050026414743796,
+          "similarity": 0.47760486602783203,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.5559869671863594,
+          "similarity": 0.6219450235366821,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.5331184815935421,
+          "similarity": 0.5364196300506592,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 251,
+          "title": "Tests must not write to fixed paths outside their tempdir",
+          "category": "lesson-learned",
+          "final_score": 0.5265512790375958,
+          "similarity": 0.5333975553512573,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.4860492274372372,
+          "similarity": 0.4792596101760864,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.48050026414743796,
+          "similarity": 0.47760486602783203,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

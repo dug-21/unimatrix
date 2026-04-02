@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2511",
+  "query": "now double check there are not more entries that have been deprecated today, then undeprecate all of them",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.43444793865570575,
+          "similarity": 0.3668608069419861,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.42158518873746753,
+          "similarity": 0.34176623821258545,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 484,
+          "title": "ADR-004: Co-Access Deprecated Exclusion via ID Set",
+          "category": "decision",
+          "final_score": 0.41775210905549975,
+          "similarity": 0.3688833713531494,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3910,
+          "title": "Multi-pass cleanup: all passes on the same reference table must apply identical status filters",
+          "category": "pattern",
+          "final_score": 0.4147123924715591,
+          "similarity": 0.3589642643928528,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.41158655434094227,
+          "similarity": 0.3470134735107422,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.43444793865570575,
+          "similarity": 0.3668608069419861,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.42158518873746753,
+          "similarity": 0.34176623821258545,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 484,
+          "title": "ADR-004: Co-Access Deprecated Exclusion via ID Set",
+          "category": "decision",
+          "final_score": 0.41775210905549975,
+          "similarity": 0.3688833713531494,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3910,
+          "title": "Multi-pass cleanup: all passes on the same reference table must apply identical status filters",
+          "category": "pattern",
+          "final_score": 0.4147123924715591,
+          "similarity": 0.3589642643928528,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.41158655434094227,
+          "similarity": 0.3470134735107422,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-e275cc04-1774459612000",
+  "query": "two-site atomicity coupled test same function pattern",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.6136036261624065,
+          "similarity": 0.6995185017585754,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4633478001972048,
+          "similarity": 0.4190271496772766,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.45727847646236086,
+          "similarity": 0.40835994482040405,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.45256613262180023,
+          "similarity": 0.42597150802612305,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.44287639953590274,
+          "similarity": 0.4239441156387329,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.6136036261624065,
+          "similarity": 0.6995185017585754,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4633478001972048,
+          "similarity": 0.4190271496772766,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.45727847646236086,
+          "similarity": 0.40835994482040405,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.45256613262180023,
+          "similarity": 0.42597150802612305,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.44287639953590274,
+          "similarity": 0.4239441156387329,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

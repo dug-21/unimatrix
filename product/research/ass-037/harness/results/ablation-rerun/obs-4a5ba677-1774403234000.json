@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-4a5ba677-1774403234000",
+  "query": "lesson-learned failures gate rejection retrospective formatter",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.555278437231754,
+          "similarity": 0.5116572380065918,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5170269134175141,
+          "similarity": 0.45854824781417847,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.5134946896469148,
+          "similarity": 0.47976958751678467,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.5132463527833906,
+          "similarity": 0.4842848777770996,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.512063949488048,
+          "similarity": 0.45897650718688965,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4110198387732873,
+          "similarity": 0.5116572380065918,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.3941753094012921,
+          "similarity": 0.4842848777770996,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.3913966692410983,
+          "similarity": 0.47976958751678467,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.37860092749962443,
+          "similarity": 0.45897650718688965,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.37833738327026367,
+          "similarity": 0.45854824781417847,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5116572380065918,
+          "similarity": 0.5116572380065918,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.4842848777770996,
+          "similarity": 0.4842848777770996,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.47976958751678467,
+          "similarity": 0.47976958751678467,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.45897650718688965,
+          "similarity": 0.45897650718688965,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.45854824781417847,
+          "similarity": 0.45854824781417847,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4911069498407487,
+          "similarity": 0.5116572380065918,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.45944448319091585,
+          "similarity": 0.45854824781417847,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.4585284054405488,
+          "similarity": 0.4842848777770996,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.45838681585109403,
+          "similarity": 0.47976958751678467,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.45585919942606995,
+          "similarity": 0.45897650718688965,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5549951826913309,
+          "similarity": 0.5116572380065918,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5166471818226872,
+          "similarity": 0.45854824781417847,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.5132756954772386,
+          "similarity": 0.47976958751678467,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.5130582912573757,
+          "similarity": 0.4842848777770996,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.5117192258367418,
+          "similarity": 0.45897650718688965,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4911069498407487,
+          "similarity": 0.5116572380065918,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.45944448319091585,
+          "similarity": 0.45854824781417847,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.4585284054405488,
+          "similarity": 0.4842848777770996,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.45838681585109403,
+          "similarity": 0.47976958751678467,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.45585919942606995,
+          "similarity": 0.45897650718688965,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 952,
+        "from_rank": 2,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3435,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1095,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

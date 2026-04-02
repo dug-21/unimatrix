@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-503",
+  "query": "OK.. I now want to run /release Since this would be the very first on, on this one, do not bump the version number... this will be the first official trial of our release workflow",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.4887798794625263,
+          "similarity": 0.4661179184913635,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1197,
+          "title": "Tag-Triggered Release Pipeline Pattern (Rust + npm via GitHub Actions)",
+          "category": "pattern",
+          "final_score": 0.4447771856756537,
+          "similarity": 0.4034876227378845,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.41863622414436064,
+          "similarity": 0.3620232939720154,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.41002646251478325,
+          "similarity": 0.3673534393310547,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1202,
+          "title": "ADR-005: Cargo.toml Workspace Version as Single Source of Truth",
+          "category": "decision",
+          "final_score": 0.4008385940952446,
+          "similarity": 0.36888277530670166,
+          "confidence": 0.489586504963233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.4887798794625263,
+          "similarity": 0.4661179184913635,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1197,
+          "title": "Tag-Triggered Release Pipeline Pattern (Rust + npm via GitHub Actions)",
+          "category": "pattern",
+          "final_score": 0.4447771856756537,
+          "similarity": 0.4034876227378845,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.41863622414436064,
+          "similarity": 0.3620232939720154,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.41002646251478325,
+          "similarity": 0.3673534393310547,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1202,
+          "title": "ADR-005: Cargo.toml Workspace Version as Single Source of Truth",
+          "category": "decision",
+          "final_score": 0.4008385940952446,
+          "similarity": 0.36888277530670166,
+          "confidence": 0.489586504963233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

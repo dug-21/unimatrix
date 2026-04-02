@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4318",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(gh issue comment 444 --body \"## Verification — Complete\n\n- Summary: Full test suite clean, all 10 new tests pass\n- Tes) → https://github.com/dug-21/unimatrix/issues/444#issuecomment-4150108650]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 750,
+          "title": "Adding Pipeline Validation Tests",
+          "category": "procedure",
+          "final_score": 0.5313448160672646,
+          "similarity": 0.5148817896842957,
+          "confidence": 0.6352476583478676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5154712817339955,
+          "similarity": 0.5440497994422913,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.5107284261523518,
+          "similarity": 0.5082438588142395,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.5051092876950264,
+          "similarity": 0.5126747488975525,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.4961276336548678,
+          "similarity": 0.5154978632926941,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 750,
+          "title": "Adding Pipeline Validation Tests",
+          "category": "procedure",
+          "final_score": 0.5313448160672646,
+          "similarity": 0.5148817896842957,
+          "confidence": 0.6352476583478676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5154712817339955,
+          "similarity": 0.5440497994422913,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.5107284261523518,
+          "similarity": 0.5082438588142395,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.5051092876950264,
+          "similarity": 0.5126747488975525,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.4961276336548678,
+          "similarity": 0.5154978632926941,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

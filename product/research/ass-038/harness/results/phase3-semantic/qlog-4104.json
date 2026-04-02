@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4104",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] I need a subagent with write permissions to save the report and post the GH comment. Let me spawn one:\n[tool: Bash(gh issue view 437) → This command requires approval]\n[tool: Bash(gh issue view 437 2>&1 | head -10) → This Bash command contains multiple operations. The following part requires approval: gh issue view 437 2 >& 1]\n[tool: Bash(gh issue view 437 --repo $(git remote get-url origin | sed 's/.*github.com[:/]\\(.*\\)\\.git/\\1/') 2>/dev/null | head -5 ||) → Command contains $() command substitution]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.43425299302445775,
+          "similarity": 0.3730168342590332,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4277150996095429,
+          "similarity": 0.4093153476715088,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.42688064390266556,
+          "similarity": 0.3478196859359741,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.40902044260347403,
+          "similarity": 0.34757471084594727,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.4046981637222664,
+          "similarity": 0.3714495897293091,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.43425299302445775,
+          "similarity": 0.3730168342590332,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4277150996095429,
+          "similarity": 0.4093153476715088,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.42688064390266556,
+          "similarity": 0.3478196859359741,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.40902044260347403,
+          "similarity": 0.34757471084594727,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.4046981637222664,
+          "similarity": 0.3714495897293091,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

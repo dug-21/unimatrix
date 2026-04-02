@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2930",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Gate report confirmed PASS. Spawning the security reviewer.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.485633832502964,
+          "similarity": 0.41681885719299316,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4761242389266517,
+          "similarity": 0.4223199486732483,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.45626364855893486,
+          "similarity": 0.414667010307312,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.4549214840133262,
+          "similarity": 0.38680094480514526,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.4509765935011305,
+          "similarity": 0.39887696504592896,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.485633832502964,
+          "similarity": 0.41681885719299316,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4761242389266517,
+          "similarity": 0.4223199486732483,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2958,
+          "title": "Intentional Pseudocode Deviations Must Surface as Explicit DEVIATION Block in Agent Report, Not as Design Notes",
+          "category": "lesson-learned",
+          "final_score": 0.45626364855893486,
+          "similarity": 0.414667010307312,
+          "confidence": 0.5746198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.4549214840133262,
+          "similarity": 0.38680094480514526,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.4509765935011305,
+          "similarity": 0.39887696504592896,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

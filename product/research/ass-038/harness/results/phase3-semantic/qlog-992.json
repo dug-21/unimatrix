@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-992",
+  "query": "<task-notification>\n<task-id>a28bab29b5e617323</task-id>\n<tool-use-id>toolu_01GpPiK8gKZ3yMLnht6GyQnx</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/cb586d22-fc66-424e-b213-15972d7a54a8/tasks/a28bab29b5e617323.output</output-file>\n<status>completed</status>\n<summary>Agent \"vnc-005 README documentation update\" completed</summary>\n<result>Sections modified and commit details:\n\n**Sections modified:**\n\n1. **CLI Reference — Default Mode (no subcommand)**: Updated description from \"Starts the MCP server over stdio\" to bridge mode behavior (connects to daemon, auto-starts if absent, 5-second wait). Clarifies `.mcp.json` is unchanged.\n\n2. **CLI Reference — Subcommands table**: Added three new rows: `serve --daemon` (detached background daemon, Linux/macOS only, exclusivity enforcement), `serve --stdio` (foreground stdio, pre-daemon behavior), and `stop` (SIGTERM + wait, 10-second timeout, exit codes).\n\n3. **Architecture Overview — MCP Transport**: Replaced single-line stdio description with a full paragraph covering daemon mode (UDS, 0600 permissions, bridge process, session survival, 32-session cap), stdio mode (explicit `serve --stdio`), and the two-socket separation (hook IPC on `unimatrix.sock`, MCP sessions on `unimatrix-mcp.sock`).\n\n4. **Architecture Overview — Data Layout**: Added `unimatrix-mcp.sock` (MCP session socket) and `unimatrix.log` (daemon append-mode log) to the file listing.\n\n5. **Tips for Maximum Value**: Added tip 8 about daemon log file not being rotated and the need for manual management.\n\n**Commit hash:** `b9e1bc4`</result>\n<usage><total_tokens>42197</total_tokens><tool_uses>10</tool_uses><duration_ms>161200</duration_ms></usage>\n</task-notification>\nFull transcript available at: /tmp/claude-1000/-workspaces-unimatrix/cb586d22-fc66-424e-b213-15972d7a54a8/tasks/a28bab29b5e617323.output",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3811,
+          "title": "Retrospective findings: vnc-012",
+          "category": "lesson-learned",
+          "final_score": 0.5509626740986897,
+          "similarity": 0.6256844401359558,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.5407957536372723,
+          "similarity": 0.5349064469337463,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 310,
+          "title": "Retrospective findings: vnc-008",
+          "category": "lesson-learned",
+          "final_score": 0.5333514980236576,
+          "similarity": 0.5243276953697205,
+          "confidence": 0.6272002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 977,
+          "title": "Retrospective findings: vnc-010",
+          "category": "lesson-learned",
+          "final_score": 0.5152052492540284,
+          "similarity": 0.5847431421279907,
+          "confidence": 0.4916383306495191,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.4940848163383106,
+          "similarity": 0.5176165103912354,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3811,
+          "title": "Retrospective findings: vnc-012",
+          "category": "lesson-learned",
+          "final_score": 0.5509626740986897,
+          "similarity": 0.6256844401359558,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.5407957536372723,
+          "similarity": 0.5349064469337463,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 310,
+          "title": "Retrospective findings: vnc-008",
+          "category": "lesson-learned",
+          "final_score": 0.5333514980236576,
+          "similarity": 0.5243276953697205,
+          "confidence": 0.6272002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 977,
+          "title": "Retrospective findings: vnc-010",
+          "category": "lesson-learned",
+          "final_score": 0.5152052492540284,
+          "similarity": 0.5847431421279907,
+          "confidence": 0.4916383306495191,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.4940848163383106,
+          "similarity": 0.5176165103912354,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

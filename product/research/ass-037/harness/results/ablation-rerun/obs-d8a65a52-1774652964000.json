@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-d8a65a52-1774652964000",
+  "query": "TypedGraphStateHandle Arc RwLock pattern background tick ServiceLayer wiring",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5579257396908549,
+          "similarity": 0.4842919111251831,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5444268627098597,
+          "similarity": 0.48980414867401123,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.509447810805301,
+          "similarity": 0.45760416984558105,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.493188017770807,
+          "similarity": 0.4083940386772156,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.42952464707162286,
+          "similarity": 0.3829629421234131,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5584070065442253,
+          "similarity": 0.4842919111251831,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5447838739127084,
+          "similarity": 0.48980414867401123,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.5097866581318351,
+          "similarity": 0.45760416984558105,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4937422267844907,
+          "similarity": 0.4083940386772156,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.42982897194056546,
+          "similarity": 0.3829629421234131,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.49143166984830583,
+          "similarity": 0.4842919111251831,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.48189997589883127,
+          "similarity": 0.48980414867401123,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.4541020059135928,
+          "similarity": 0.45760416984558105,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.43889748227707287,
+          "similarity": 0.4083940386772156,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.3905156039940843,
+          "similarity": 0.3829629421234131,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.3975717837993915,
+          "similarity": 0.48980414867401123,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.3941796376154973,
+          "similarity": 0.4842919111251831,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.37775641221266526,
+          "similarity": 0.45760416984558105,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.3474732545705942,
+          "similarity": 0.4083940386772156,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.33182334899902344,
+          "similarity": 0.3829629421234131,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.48980414867401123,
+          "similarity": 0.48980414867401123,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.4842919111251831,
+          "similarity": 0.4842919111251831,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.45760416984558105,
+          "similarity": 0.45760416984558105,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4083940386772156,
+          "similarity": 0.4083940386772156,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.3829629421234131,
+          "similarity": 0.3829629421234131,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.49143166984830583,
+          "similarity": 0.4842919111251831,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.48189997589883127,
+          "similarity": 0.48980414867401123,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.4541020059135928,
+          "similarity": 0.45760416984558105,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.43889748227707287,
+          "similarity": 0.4083940386772156,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3779,
+          "title": "When threading a new Arc into spawn_background_tick, check for pre-existing moves of that Arc into UnimatrixServer::new between construction and the tick call",
+          "category": "pattern",
+          "final_score": 0.3905156039940843,
+          "similarity": 0.3829629421234131,
+          "confidence": 0.49678044310792596,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

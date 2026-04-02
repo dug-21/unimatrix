@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bd98afa6-1773804590000",
+  "query": "SQLite connection pool async storage pattern unimatrix-store",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5646914718604424,
+          "similarity": 0.6072083115577698,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5641600667670373,
+          "similarity": 0.6035988926887512,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5490132548801998,
+          "similarity": 0.5958199501037598,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.5413860113748888,
+          "similarity": 0.5925942659378052,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.5413359313139607,
+          "similarity": 0.6126686334609985,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5646914718604424,
+          "similarity": 0.6072083115577698,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5641600667670373,
+          "similarity": 0.6035988926887512,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.5490132548801998,
+          "similarity": 0.5958199501037598,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.5413860113748888,
+          "similarity": 0.5925942659378052,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.5413359313139607,
+          "similarity": 0.6126686334609985,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774751927000",
+  "query": "search.rs tracing qualified logging gotcha pattern",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5368303943147873,
+          "similarity": 0.5858661532402039,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.5053649651712775,
+          "similarity": 0.505332887172699,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.4731896362603144,
+          "similarity": 0.47421467304229736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.47019939928659593,
+          "similarity": 0.4541826844215393,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.4616940355961896,
+          "similarity": 0.4587293863296509,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5368303943147873,
+          "similarity": 0.5858661532402039,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.5053649651712775,
+          "similarity": 0.505332887172699,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.4731896362603144,
+          "similarity": 0.47421467304229736,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.47019939928659593,
+          "similarity": 0.4541826844215393,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.4616940355961896,
+          "similarity": 0.4587293863296509,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

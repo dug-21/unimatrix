@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-891",
+  "query": "find me the entry in unimatrix that says redb exists currently in this architecutre",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 330,
+          "title": "ADR-004: Cargo Feature Flag for Backend Selection",
+          "category": "decision",
+          "final_score": 0.4731779273351473,
+          "similarity": 0.46993064880371094,
+          "confidence": 0.5415820187615271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.46237785876451154,
+          "similarity": 0.4424787759780884,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.45117581911638216,
+          "similarity": 0.3744264841079712,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.4419025547056239,
+          "similarity": 0.37674105167388916,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.4023935784440552,
+          "similarity": 0.370891809463501,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 330,
+          "title": "ADR-004: Cargo Feature Flag for Backend Selection",
+          "category": "decision",
+          "final_score": 0.4731779273351473,
+          "similarity": 0.46993064880371094,
+          "confidence": 0.5415820187615271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.46237785876451154,
+          "similarity": 0.4424787759780884,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.45117581911638216,
+          "similarity": 0.3744264841079712,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.4419025547056239,
+          "similarity": 0.37674105167388916,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.4023935784440552,
+          "similarity": 0.370891809463501,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

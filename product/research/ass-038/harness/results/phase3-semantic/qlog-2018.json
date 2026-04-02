@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2018",
+  "query": "well... this is the part we need to work out.  but I'm wondering, since this is so close int he codebase... wondering if I should collapes these decisions for the precompact, and combine it with WA-4, so we can design it all in 1 feature.  If you agree.. write our decisions around the precompact process, and let me take it to that session, and see where we go",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.47653580870937085,
+          "similarity": 0.430583119392395,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3245,
+          "title": "ADR-004 crt-027: CompactPayload Migrated to Flat Index Format",
+          "category": "decision",
+          "final_score": 0.46731893359893284,
+          "similarity": 0.3992866277694702,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.4597780077497836,
+          "similarity": 0.39385348558425903,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.45610610724167,
+          "similarity": 0.3946230411529541,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.4405500689126426,
+          "similarity": 0.386014461517334,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.47653580870937085,
+          "similarity": 0.430583119392395,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3245,
+          "title": "ADR-004 crt-027: CompactPayload Migrated to Flat Index Format",
+          "category": "decision",
+          "final_score": 0.46731893359893284,
+          "similarity": 0.3992866277694702,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.4597780077497836,
+          "similarity": 0.39385348558425903,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.45610610724167,
+          "similarity": 0.3946230411529541,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.4405500689126426,
+          "similarity": 0.386014461517334,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-623",
+  "query": "now.. there are a couple of straggling files that didn't make it into the PR. . Commit them and force to main",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.4832701600281317,
+          "similarity": 0.42195838689804077,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.44304363160302396,
+          "similarity": 0.4073526859283447,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.44229527232439525,
+          "similarity": 0.3954308032989502,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.4393338047567338,
+          "similarity": 0.3905003070831299,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.4301055555728436,
+          "similarity": 0.39536648988723755,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.4832701600281317,
+          "similarity": 0.42195838689804077,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.44304363160302396,
+          "similarity": 0.4073526859283447,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.44229527232439525,
+          "similarity": 0.3954308032989502,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.4393338047567338,
+          "similarity": 0.3905003070831299,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.4301055555728436,
+          "similarity": 0.39536648988723755,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

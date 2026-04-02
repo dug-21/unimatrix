@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-af1f3351-1774269606000",
+  "query": "query derivation priority task session signals topic fallback",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5488210172949163,
+          "similarity": 0.6147521138191223,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.5318736951596051,
+          "similarity": 0.6214980483055115,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.49526946822973134,
+          "similarity": 0.533613920211792,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.4922579550292265,
+          "similarity": 0.5349476337432861,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.47289276294130583,
+          "similarity": 0.492159366607666,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.624386483167618,
+          "similarity": 0.6147521138191223,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.600464086659702,
+          "similarity": 0.6214980483055115,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5588390818631811,
+          "similarity": 0.533613920211792,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.5545748761437141,
+          "similarity": 0.5349476337432861,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5321901288794721,
+          "similarity": 0.492159366607666,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5488210172949163,
+          "similarity": 0.6147521138191223,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.5318736951596051,
+          "similarity": 0.6214980483055115,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.49526946822973134,
+          "similarity": 0.533613920211792,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.4922579550292265,
+          "similarity": 0.5349476337432861,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.47289276294130583,
+          "similarity": 0.492159366607666,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.6243239223276927,
+          "similarity": 0.6147521138191223,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.6006006708262331,
+          "similarity": 0.6214980483055115,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.558675282112198,
+          "similarity": 0.533613920211792,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.5544474265177373,
+          "similarity": 0.5349476337432861,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5319301888647201,
+          "similarity": 0.492159366607666,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.4786141835726225,
+          "similarity": 0.6214980483055115,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.47446283927330607,
+          "similarity": 0.6147521138191223,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.4253523899958684,
+          "similarity": 0.5349476337432861,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.4245316432072566,
+          "similarity": 0.533613920211792,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.3990211486816406,
+          "similarity": 0.492159366607666,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.6214980483055115,
+          "similarity": 0.6214980483055115,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.6147521138191223,
+          "similarity": 0.6147521138191223,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.5349476337432861,
+          "similarity": 0.5349476337432861,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.533613920211792,
+          "similarity": 0.533613920211792,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.492159366607666,
+          "similarity": 0.492159366607666,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

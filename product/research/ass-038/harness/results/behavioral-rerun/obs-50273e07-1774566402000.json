@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774566402000",
+  "query": "cache handle pattern Arc RwLock background tick read compute_report",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.6010857142900164,
+          "similarity": 0.6270628571510315,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4993147529440005,
+          "similarity": 0.4677302837371826,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4985576019585566,
+          "similarity": 0.5164138078689575,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.4921746661656001,
+          "similarity": 0.4773266315460205,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.4869757244802152,
+          "similarity": 0.46405166387557983,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.6010857142900164,
+          "similarity": 0.6270628571510315,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4993147529440005,
+          "similarity": 0.4677302837371826,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4985576019585566,
+          "similarity": 0.5164138078689575,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.4921746661656001,
+          "similarity": 0.4773266315460205,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.4869757244802152,
+          "similarity": 0.46405166387557983,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

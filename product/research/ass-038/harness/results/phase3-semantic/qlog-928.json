@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-928",
+  "query": "update the scope and continue",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.41863639059333657,
+          "similarity": 0.32520365715026855,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.4127502995839678,
+          "similarity": 0.34887993335723877,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1118,
+          "title": "Versioned Sentinel Markers for Idempotent File Mutation",
+          "category": "pattern",
+          "final_score": 0.38851352360386304,
+          "similarity": 0.29639875888824463,
+          "confidence": 0.5596813370844217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.38251256128536826,
+          "similarity": 0.3093292713165283,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.36665238722542437,
+          "similarity": 0.2978948950767517,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.41863639059333657,
+          "similarity": 0.32520365715026855,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.4127502995839678,
+          "similarity": 0.34887993335723877,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1118,
+          "title": "Versioned Sentinel Markers for Idempotent File Mutation",
+          "category": "pattern",
+          "final_score": 0.38851352360386304,
+          "similarity": 0.29639875888824463,
+          "confidence": 0.5596813370844217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.38251256128536826,
+          "similarity": 0.3093292713165283,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.36665238722542437,
+          "similarity": 0.2978948950767517,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-840",
+  "query": "we aligned on a Vision/Story for what we think Unimatrix will become:  This needs to be integrated into the @product/research/ass-022/06-roadmap-to-ubiquity.md : Vision:\n  ▎ Unimatrix is a self-learning knowledge integrity engine. It captures knowledge that emerges from doing work — in any domain — and makes it trustworthy, correctable, and\n  ever-improving. It delivers the right knowledge at the right time.\n\n  ---\n  Story:\n\n  Unimatrix began in agentic software delivery, where the problem was specific: AI agents forget, contradict each other, and confidently repeat mistakes. We built a knowledge engine\n  where nothing is merely stored — everything is attributed, hash-chained for integrity, scored by real usage, and correctable with full provenance. Agents stopped relitigating\n  decisions. Knowledge started improving with every delivery.\n\n  That foundation became a platform. A typed knowledge graph formalizes relationships — not just what agents retrieve together, but why: support, contradiction, supersession,\n  dependency. A confidence system learns from actual usage rather than manual calibration, adapting weights and decay rates to each domain's signal patterns. Contradiction detection\n  is semantic. Any event source — hooks, webhooks, automated pipelines — feeds the learning layer without agent cooperation. Any knowledge-intensive domain — environmental monitoring,\n   SRE operations, scientific research, regulatory compliance — runs on the same engine, configured not rebuilt. Secured with OAuth, containerized, serving any number of repositories\n  from a single instance. The integrity chain runs through all of it: hash-chained corrections, immutable audit log, trust-attributed provenance — tamper-evident from first write to\n  last.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5797664012000048,
+          "similarity": 0.6098648905754089,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5736476968118577,
+          "similarity": 0.5864804983139038,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5504702332937488,
+          "similarity": 0.5446175932884216,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5351968285526103,
+          "similarity": 0.5282546281814575,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5241111443000881,
+          "similarity": 0.5404256582260132,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5797664012000048,
+          "similarity": 0.6098648905754089,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5736476968118577,
+          "similarity": 0.5864804983139038,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5504702332937488,
+          "similarity": 0.5446175932884216,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5351968285526103,
+          "similarity": 0.5282546281814575,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5241111443000881,
+          "similarity": 0.5404256582260132,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

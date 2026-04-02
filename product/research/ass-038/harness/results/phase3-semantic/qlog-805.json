@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-805",
+  "query": "choose the right feature prefix... I could go either way.. and I just want to make sure this gets captured.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.48350507656247765,
+          "similarity": 0.43458008766174316,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.44476786708634086,
+          "similarity": 0.3598119020462036,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.43732281369552106,
+          "similarity": 0.34579724073410034,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.43571932003664626,
+          "similarity": 0.33845043182373047,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.42255198225098356,
+          "similarity": 0.3646148443222046,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.48350507656247765,
+          "similarity": 0.43458008766174316,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.44476786708634086,
+          "similarity": 0.3598119020462036,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.43732281369552106,
+          "similarity": 0.34579724073410034,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.43571932003664626,
+          "similarity": 0.33845043182373047,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.42255198225098356,
+          "similarity": 0.3646148443222046,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

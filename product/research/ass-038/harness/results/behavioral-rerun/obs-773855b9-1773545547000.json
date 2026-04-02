@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-773855b9-1773545547000",
+  "query": "background tick error handling consecutive counter",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.6510141134718387,
+          "similarity": 0.7268359065055847,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.5079093842757374,
+          "similarity": 0.46802783012390137,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.46990138631831346,
+          "similarity": 0.42813777923583984,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.4667559512288947,
+          "similarity": 0.3790363073348999,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.44117571715331194,
+          "similarity": 0.3976947069168091,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.6510141134718387,
+          "similarity": 0.7268359065055847,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.5079093842757374,
+          "similarity": 0.46802783012390137,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.46990138631831346,
+          "similarity": 0.42813777923583984,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.4667559512288947,
+          "similarity": 0.3790363073348999,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.44117571715331194,
+          "similarity": 0.3976947069168091,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

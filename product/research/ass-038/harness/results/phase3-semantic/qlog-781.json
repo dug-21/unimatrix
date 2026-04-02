@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-781",
+  "query": "approve",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.37174643101625693,
+          "similarity": 0.20775747299194336,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.36056268844576356,
+          "similarity": 0.20751923322677612,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.35466096669186264,
+          "similarity": 0.25580263137817383,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.32677017376770356,
+          "similarity": 0.1912992000579834,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.31844643235692605,
+          "similarity": 0.1947537064552307,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.37174643101625693,
+          "similarity": 0.20775747299194336,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.36056268844576356,
+          "similarity": 0.20751923322677612,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.35466096669186264,
+          "similarity": 0.25580263137817383,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.32677017376770356,
+          "similarity": 0.1912992000579834,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.31844643235692605,
+          "similarity": 0.1947537064552307,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

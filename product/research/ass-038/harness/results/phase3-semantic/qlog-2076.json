@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2076",
+  "query": "confirm this change will enable the background tick to begin actually deprecating entries. Also confirm this change will include validating this activity through test enhancements... possibly in one of the integration level tests",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.504511386515421,
+          "similarity": 0.4484807252883911,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.4853182128983077,
+          "similarity": 0.4635143280029297,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.47410650560866696,
+          "similarity": 0.41983461380004883,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4656868987405739,
+          "similarity": 0.42013025283813477,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.446154641331854,
+          "similarity": 0.41684818267822266,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.504511386515421,
+          "similarity": 0.4484807252883911,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.4853182128983077,
+          "similarity": 0.4635143280029297,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.47410650560866696,
+          "similarity": 0.41983461380004883,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4656868987405739,
+          "similarity": 0.42013025283813477,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.446154641331854,
+          "similarity": 0.41684818267822266,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

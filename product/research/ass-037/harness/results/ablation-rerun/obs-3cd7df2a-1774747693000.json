@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774747693000",
+  "query": "graph traversal PPR PageRank power iteration search pipeline",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5010762214660645,
+          "similarity": 0.6579988598823547,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.45233139624962443,
+          "similarity": 0.5787885189056396,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4312847944406363,
+          "similarity": 0.5445877909660339,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.42748432893019456,
+          "similarity": 0.5384120345115662,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.40475639930138224,
+          "similarity": 0.5014791488647461,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.6353436792991001,
+          "similarity": 0.6579988598823547,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5882287421791492,
+          "similarity": 0.5787885189056396,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.566631377076354,
+          "similarity": 0.5384120345115662,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5665924396219375,
+          "similarity": 0.5445877909660339,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5386710355577786,
+          "similarity": 0.5014791488647461,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5597852888114971,
+          "similarity": 0.6579988598823547,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5199536455250855,
+          "similarity": 0.5787885189056396,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5018069751204898,
+          "similarity": 0.5445877909660339,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5014238121567641,
+          "similarity": 0.5384120345115662,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.4784573693333541,
+          "similarity": 0.5014791488647461,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5597852888114971,
+          "similarity": 0.6579988598823547,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5199536455250855,
+          "similarity": 0.5787885189056396,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5018069751204898,
+          "similarity": 0.5445877909660339,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5014238121567641,
+          "similarity": 0.5384120345115662,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.4784573693333541,
+          "similarity": 0.5014791488647461,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.6351956062233926,
+          "similarity": 0.6579988598823547,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5882904429848586,
+          "similarity": 0.5787885189056396,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5668158172238364,
+          "similarity": 0.5384120345115662,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5667362608549826,
+          "similarity": 0.5445877909660339,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5389141197845305,
+          "similarity": 0.5014791488647461,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.6579988598823547,
+          "similarity": 0.6579988598823547,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5787885189056396,
+          "similarity": 0.5787885189056396,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5445877909660339,
+          "similarity": 0.5445877909660339,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5384120345115662,
+          "similarity": 0.5384120345115662,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5014791488647461,
+          "similarity": 0.5014791488647461,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3730,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3731,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": -0.08333333333333331,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

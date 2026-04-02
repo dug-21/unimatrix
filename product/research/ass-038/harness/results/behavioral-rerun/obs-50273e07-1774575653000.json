@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774575653000",
+  "query": "StatusReport struct literal test mod.rs field additions compile trap unimatrix-server",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.6007678015064654,
+          "similarity": 0.7007058262825012,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.5330037103502464,
+          "similarity": 0.5659174919128418,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5223477559757486,
+          "similarity": 0.5162360072135925,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5209162051266835,
+          "similarity": 0.5556291937828064,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3181,
+          "title": "FusionWeights effective() — three return paths all require new fields; test literal sites require mass-update",
+          "category": "pattern",
+          "final_score": 0.5204351036583996,
+          "similarity": 0.5496305227279663,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.6007678015064654,
+          "similarity": 0.7007058262825012,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.5330037103502464,
+          "similarity": 0.5659174919128418,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5223477559757486,
+          "similarity": 0.5162360072135925,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5209162051266835,
+          "similarity": 0.5556291937828064,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3181,
+          "title": "FusionWeights effective() — three return paths all require new fields; test literal sites require mass-update",
+          "category": "pattern",
+          "final_score": 0.5204351036583996,
+          "similarity": 0.5496305227279663,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

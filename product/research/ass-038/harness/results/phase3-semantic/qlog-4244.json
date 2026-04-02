@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4244",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Stage 3a — spawning pseudocode and test plan agents in parallel.\n[tool: mcp__unimatrix__context_cycle(start) → Acknowledged: cycle_started for topic 'crt-030'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[Assistant] Three components, clear dependency order:\n- **Wave 1** (parallel): `graph_ppr.rs` + `config.rs` (independent of each other)\n- **Wave 2** (sequential after Wave 1): `search.rs` Step 6d (depends on both)\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5602468492766021,
+          "similarity": 0.6668338775634766,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5477205239625961,
+          "similarity": 0.5439640879631042,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5301090660020977,
+          "similarity": 0.5248735547065735,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5068486949678167,
+          "similarity": 0.5445232391357422,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.49374478878023953,
+          "similarity": 0.5404801368713379,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5602468492766021,
+          "similarity": 0.6668338775634766,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5477205239625961,
+          "similarity": 0.5439640879631042,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5301090660020977,
+          "similarity": 0.5248735547065735,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5068486949678167,
+          "similarity": 0.5445232391357422,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.49374478878023953,
+          "similarity": 0.5404801368713379,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

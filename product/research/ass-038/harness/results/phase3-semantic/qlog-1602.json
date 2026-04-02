@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1602",
+  "query": "just a question.. We now have confidence weights, coaccess boost, graph traversal, and now NLI models... are they ALL utilized to uncover/find the best results?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.4615805067313977,
+          "similarity": 0.4020838737487793,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.45452839542955303,
+          "similarity": 0.3708094358444214,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4398802798739878,
+          "similarity": 0.3637939691543579,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.43487747030756074,
+          "similarity": 0.3788717985153198,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4237518213694875,
+          "similarity": 0.3816591501235962,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.4615805067313977,
+          "similarity": 0.4020838737487793,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.45452839542955303,
+          "similarity": 0.3708094358444214,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4398802798739878,
+          "similarity": 0.3637939691543579,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.43487747030756074,
+          "similarity": 0.3788717985153198,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4237518213694875,
+          "similarity": 0.3816591501235962,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

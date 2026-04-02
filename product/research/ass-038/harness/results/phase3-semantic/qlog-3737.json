@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-3737",
+  "query": "Open questions when scoping #412.  Your job is to ensure all of our decisions align with our goals: Open questions requiring your input before proceeding:\n\n  1. OQ-2 (Prerequisite scope): Should crt-029 implement Prerequisite edges via asymmetric\n  entailment (as spec'd in #412), or defer to W3-1? The \"category prerequisite-of relationship\"\n  referenced in the spec doesn't exist yet — the researcher proposes using purely asymmetric\n  entailment scores as the signal.\n  2. OQ-4 (pair deduplication): Should the tick skip pairs that already have a Supports edge\n  (one extra DB read, avoids wasted NLI calls as graph fills)? Or rely on INSERT OR IGNORE and\n  accept the wasted NLI work?\n  3. OQ-3 (K neighbours config): Reuse nli_post_store_k for the tick path, or add a separate\n  graph_inference_k field?\n  4. OQ-1 (tick interval): Run every tick (fast convergence) or every N-th tick like\n  CONTRADICTION_SCAN_INTERVAL_TICKS=4?\n  5. OQ-5 (embedding access): EntryRecord doesn't carry the embedding. HNSW search() needs the\n  embedding per entry. Implementation will need vector_index.get_embedding(id) per entry or a\n  batch API — do you know if that exists?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5707733213596405,
+          "similarity": 0.6134944558143616,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5706797144968675,
+          "similarity": 0.6046176552772522,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.563319791663039,
+          "similarity": 0.5864577293395996,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5486281567549504,
+          "similarity": 0.5642598271369934,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5707733213596405,
+          "similarity": 0.6134944558143616,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5706797144968675,
+          "similarity": 0.6046176552772522,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.563319791663039,
+          "similarity": 0.5864577293395996,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5486281567549504,
+          "similarity": 0.5642598271369934,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

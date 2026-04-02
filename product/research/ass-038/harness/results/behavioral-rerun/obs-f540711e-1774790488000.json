@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-f540711e-1774790488000",
+  "query": "ADR-004 graph compaction build-new-then-swap VECTOR_MAP ordering",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5461224225157787,
+          "similarity": 0.5467332005500793,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.5219335636769886,
+          "similarity": 0.5227999687194824,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.5067409264844132,
+          "similarity": 0.49993395805358887,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5061144987901225,
+          "similarity": 0.5166873335838318,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.48042563812232475,
+          "similarity": 0.4640747904777527,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5461224225157787,
+          "similarity": 0.5467332005500793,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1601,
+          "title": "ADR-001 (crt-014): petgraph with stable_graph feature only",
+          "category": "decision",
+          "final_score": 0.5219335636769886,
+          "similarity": 0.5227999687194824,
+          "confidence": 0.5983911460954232,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.5067409264844132,
+          "similarity": 0.49993395805358887,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5061144987901225,
+          "similarity": 0.5166873335838318,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.48042563812232475,
+          "similarity": 0.4640747904777527,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

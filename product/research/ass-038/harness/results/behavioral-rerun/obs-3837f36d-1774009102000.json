@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3837f36d-1774009102000",
+  "query": "protocol constraints agent behavior rules workflow governance",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.5577601005058307,
+          "similarity": 0.624815046787262,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.4993813175975461,
+          "similarity": 0.49464964866638184,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.4871393944285741,
+          "similarity": 0.4480149745941162,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 552,
+          "title": "Skill File as Single Source of Truth with Protocol References",
+          "category": "pattern",
+          "final_score": 0.4807184557802455,
+          "similarity": 0.4499714970588684,
+          "confidence": 0.5905622413194261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.4389852758304188,
+          "similarity": 0.45738375186920166,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.5577601005058307,
+          "similarity": 0.624815046787262,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.4993813175975461,
+          "similarity": 0.49464964866638184,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.4871393944285741,
+          "similarity": 0.4480149745941162,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 552,
+          "title": "Skill File as Single Source of Truth with Protocol References",
+          "category": "pattern",
+          "final_score": 0.4807184557802455,
+          "similarity": 0.4499714970588684,
+          "confidence": 0.5905622413194261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.4389852758304188,
+          "similarity": 0.45738375186920166,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

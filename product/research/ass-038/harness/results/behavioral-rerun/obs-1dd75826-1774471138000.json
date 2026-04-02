@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-1dd75826-1774471138000",
+  "query": "permission_friction_events metric naming",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.6189185003673657,
+          "similarity": 0.7135347127914429,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.5367370174756175,
+          "similarity": 0.573868453502655,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.5190031394131036,
+          "similarity": 0.5398902893066406,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5122238145054597,
+          "similarity": 0.515161395072937,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.4760216578494608,
+          "similarity": 0.4955217242240906,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.6189185003673657,
+          "similarity": 0.7135347127914429,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.5367370174756175,
+          "similarity": 0.573868453502655,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.5190031394131036,
+          "similarity": 0.5398902893066406,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5122238145054597,
+          "similarity": 0.515161395072937,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.4760216578494608,
+          "similarity": 0.4955217242240906,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

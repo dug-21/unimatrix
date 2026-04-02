@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-1ccf6f33-1773193900000",
+  "query": "session attribution hook listener",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.46180431827550283,
+          "similarity": 0.4131396412849426,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4395648650100732,
+          "similarity": 0.3520132899284363,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.43672550902939034,
+          "similarity": 0.36336594820022583,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.4239830539383943,
+          "similarity": 0.3477381467819214,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.4237081454244296,
+          "similarity": 0.35787034034729004,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 866,
+          "title": "ADR-003 col-020: Attribution Metadata on Report",
+          "category": "decision",
+          "final_score": 0.46180431827550283,
+          "similarity": 0.4131396412849426,
+          "confidence": 0.5918408049121613,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4395648650100732,
+          "similarity": 0.3520132899284363,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.43672550902939034,
+          "similarity": 0.36336594820022583,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.4239830539383943,
+          "similarity": 0.3477381467819214,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1067,
+          "title": "One session = one feature: eager attribution is immutable by design",
+          "category": "lesson-learned",
+          "final_score": 0.4237081454244296,
+          "similarity": 0.35787034034729004,
+          "confidence": 0.5673930513701804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

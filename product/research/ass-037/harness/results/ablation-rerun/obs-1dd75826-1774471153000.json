@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-1dd75826-1774471153000",
+  "query": "ToolFailureRule ADR-005 col-027 PostToolUseFailure",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5712234060544779,
+          "similarity": 0.5630159378051758,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5040076762758857,
+          "similarity": 0.484306275844574,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.4938262947381081,
+          "similarity": 0.45702558755874634,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.462420208787438,
+          "similarity": 0.3739742040634155,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.4585165041823651,
+          "similarity": 0.4205586314201355,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5711701108061057,
+          "similarity": 0.5630159378051758,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5038797451042538,
+          "similarity": 0.484306275844574,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.4935873291070732,
+          "similarity": 0.45702558755874634,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.4618458840814378,
+          "similarity": 0.3739742040634155,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.45827002448910387,
+          "similarity": 0.4205586314201355,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.4426251924954928,
+          "similarity": 0.5630159378051758,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.39418847744281477,
+          "similarity": 0.484306275844574,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.37740036157461315,
+          "similarity": 0.45702558755874634,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.3549591577970065,
+          "similarity": 0.4205586314201355,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.3262918178851788,
+          "similarity": 0.3739742040634155,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5630159378051758,
+          "similarity": 0.5630159378051758,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.484306275844574,
+          "similarity": 0.484306275844574,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.45702558755874634,
+          "similarity": 0.45702558755874634,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.4205586314201355,
+          "similarity": 0.4205586314201355,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.3739742040634155,
+          "similarity": 0.3739742040634155,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5063924771114893,
+          "similarity": 0.5630159378051758,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.4517988981327577,
+          "similarity": 0.484306275844574,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.4424324138491035,
+          "similarity": 0.45702558755874634,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.41410192672001855,
+          "similarity": 0.4205586314201355,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.4136185952639488,
+          "similarity": 0.3739742040634155,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5063924771114893,
+          "similarity": 0.5630159378051758,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.4517988981327577,
+          "similarity": 0.484306275844574,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.4424324138491035,
+          "similarity": 0.45702558755874634,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.41410192672001855,
+          "similarity": 0.4205586314201355,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.4136185952639488,
+          "similarity": 0.3739742040634155,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

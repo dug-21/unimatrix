@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4360",
+  "query": "Q1 — Option A. from_categories_with_policy(cats, adaptive) as the new constructor,              \n  from_categories delegates with the default. No callsite breakage, clean API. The              \n  boosted_categories precedent confirms this is the established pattern in this codebase — follow \n  it exactly.                                                     \n                                                                                                  \n  Q2 — Option B. Summary text shows only adaptive categories; JSON includes all. Operators care\n  about what deviates from the default. Printing \"decision: pinned, pattern: pinned, convention:\n  pinned...\" is noise that obscures the signal. \"adaptive: [lesson-learned]\" is the signal. JSON  \n  gets the full picture for tooling. This matches how context_status handles everything else —\n  surfaces anomalies and notable states, not a recitation of defaults.                            \n                                                                  \n  Q3 — Yes, pinned is the correct default for runtime add_category. Domain packs define what\n  categories exist for a domain; whether those categories participate in retention is a deployment\n   decision, not a domain definition decision. If a domain pack could silently opt its categories \n  into adaptive behavior, a misconfigured pack could enable retention processing the operator\n  never intended. Pinned is the safe default. Operators who want adaptive behavior for a domain   \n  pack category add it to adaptive_categories in their config — one explicit line, intentional\n  opt-in. \\\nApproved to continue",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.61261176164095,
+          "similarity": 0.7302109599113464,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5463416773958307,
+          "similarity": 0.5867966413497925,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5272765358294013,
+          "similarity": 0.5361663699150085,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5120279245754574,
+          "similarity": 0.5177627801895142,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3517,
+          "title": "ADR-005 col-028: confirmed_entries Semantic Contract — Explicit Fetch Only, Shipped Without Consumer",
+          "category": "decision",
+          "final_score": 0.4819152704455887,
+          "similarity": 0.4992847442626953,
+          "confidence": 0.5233632422627477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.61261176164095,
+          "similarity": 0.7302109599113464,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5463416773958307,
+          "similarity": 0.5867966413497925,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5272765358294013,
+          "similarity": 0.5361663699150085,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5120279245754574,
+          "similarity": 0.5177627801895142,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3517,
+          "title": "ADR-005 col-028: confirmed_entries Semantic Contract — Explicit Fetch Only, Shipped Without Consumer",
+          "category": "decision",
+          "final_score": 0.4819152704455887,
+          "similarity": 0.4992847442626953,
+          "confidence": 0.5233632422627477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

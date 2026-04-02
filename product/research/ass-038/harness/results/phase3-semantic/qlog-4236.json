@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4236",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Update spec - defer Rayon offload) → ]\n[tool: Agent(Update architect artifacts - defer Rayon offload) → ]\n[Assistant] Sending the correction back to all three agents in parallel.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.49972013406408156,
+          "similarity": 0.4827200770378113,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.4766051674822085,
+          "similarity": 0.45348596572875977,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3334,
+          "title": "ADR-002 crt-028: Tool-Use/Tool-Result Pairing via Adjacent-Record Scan",
+          "category": "decision",
+          "final_score": 0.457672981852133,
+          "similarity": 0.42498838901519775,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.45219555347075335,
+          "similarity": 0.4488770365715027,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.4222597105725935,
+          "similarity": 0.4256051778793335,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.49972013406408156,
+          "similarity": 0.4827200770378113,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.4766051674822085,
+          "similarity": 0.45348596572875977,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3334,
+          "title": "ADR-002 crt-028: Tool-Use/Tool-Result Pairing via Adjacent-Record Scan",
+          "category": "decision",
+          "final_score": 0.457672981852133,
+          "similarity": 0.42498838901519775,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.45219555347075335,
+          "similarity": 0.4488770365715027,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.4222597105725935,
+          "similarity": 0.4256051778793335,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

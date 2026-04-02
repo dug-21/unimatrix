@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ea862451-1774812014000",
+  "query": "StatusReport struct initializers test helpers mod.rs break on new field",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.5319074594872241,
+          "similarity": 0.6288837790489197,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.49922743129718666,
+          "similarity": 0.5331193804740906,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.47820338870356455,
+          "similarity": 0.5056348443031311,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.4609413052415989,
+          "similarity": 0.48037099838256836,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.45123169679347236,
+          "similarity": 0.47216713428497314,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.6288837790489197,
+          "similarity": 0.6288837790489197,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5331193804740906,
+          "similarity": 0.5331193804740906,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5056348443031311,
+          "similarity": 0.5056348443031311,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.48037099838256836,
+          "similarity": 0.48037099838256836,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.47216713428497314,
+          "similarity": 0.47216713428497314,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.48315924864548904,
+          "similarity": 0.6288837790489197,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.42422731106097883,
+          "similarity": 0.5331193804740906,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.40731375034038836,
+          "similarity": 0.5056348443031311,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.39176676823542667,
+          "similarity": 0.48037099838256836,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.3867182364830604,
+          "similarity": 0.47216713428497314,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.5997863386051192,
+          "similarity": 0.6288837790489197,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5643200644790709,
+          "similarity": 0.5331193804740906,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5381580977987033,
+          "similarity": 0.5056348443031311,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.5169418897058643,
+          "similarity": 0.48037099838256836,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.5044192765513373,
+          "similarity": 0.47216713428497314,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.5999752830235854,
+          "similarity": 0.6288837790489197,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.5641174626348826,
+          "similarity": 0.5331193804740906,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5379469078409398,
+          "similarity": 0.5056348443031311,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.5167044163855832,
+          "similarity": 0.48037099838256836,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.5042098470561011,
+          "similarity": 0.47216713428497314,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.5319074594872241,
+          "similarity": 0.6288837790489197,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3180,
+          "title": "SessionState field additions require updating make_state_with_rework test helper; FusedScoreInputs/FusionWeights benefit from Default derive",
+          "category": "pattern",
+          "final_score": 0.49922743129718666,
+          "similarity": 0.5331193804740906,
+          "confidence": 0.6088924702004713,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.47820338870356455,
+          "similarity": 0.5056348443031311,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.4609413052415989,
+          "similarity": 0.48037099838256836,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.45123169679347236,
+          "similarity": 0.47216713428497314,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

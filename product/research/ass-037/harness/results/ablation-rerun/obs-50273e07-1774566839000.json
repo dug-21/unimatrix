@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-50273e07-1774566839000",
+  "query": "lesson-learned failures gate rejection SQL aggregate",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4578580484735612,
+          "similarity": 0.4451594352722168,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.4487636456379147,
+          "similarity": 0.4486449956893921,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.430793554662604,
+          "similarity": 0.42849278450012207,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.4195928079575654,
+          "similarity": 0.4178893566131592,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.41671307598875845,
+          "similarity": 0.39520591497421265,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.37224307427039516,
+          "similarity": 0.4486449956893921,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.3700981140136719,
+          "similarity": 0.4451594352722168,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.35984171353853667,
+          "similarity": 0.42849278450012207,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.3533165271465595,
+          "similarity": 0.4178893566131592,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.339357486137977,
+          "similarity": 0.39520591497421265,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5161620826821216,
+          "similarity": 0.4451594352722168,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.5033378473766092,
+          "similarity": 0.4486449956893921,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.480648723605523,
+          "similarity": 0.42849278450012207,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.4663147014502702,
+          "similarity": 0.4178893566131592,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.4645859949870986,
+          "similarity": 0.39520591497421265,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.4486449956893921,
+          "similarity": 0.4486449956893921,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4451594352722168,
+          "similarity": 0.4451594352722168,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.42849278450012207,
+          "similarity": 0.42849278450012207,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.4178893566131592,
+          "similarity": 0.4178893566131592,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.39520591497421265,
+          "similarity": 0.39520591497421265,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5157010265301092,
+          "similarity": 0.4451594352722168,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.5029826989890298,
+          "similarity": 0.4486449956893921,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.4803100486762671,
+          "similarity": 0.42849278450012207,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.46600025115912014,
+          "similarity": 0.4178893566131592,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.4641354749870149,
+          "similarity": 0.39520591497421265,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4578580484735612,
+          "similarity": 0.4451594352722168,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.4487636456379147,
+          "similarity": 0.4486449956893921,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.430793554662604,
+          "similarity": 0.42849278450012207,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3384,
+          "title": "Count pre-check to distinguish \"no rows\" from \"rows exist but no match\" without changing return type",
+          "category": "pattern",
+          "final_score": 0.4195928079575654,
+          "similarity": 0.4178893566131592,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.41671307598875845,
+          "similarity": 0.39520591497421265,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

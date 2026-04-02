@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1632",
+  "query": "within the context of this analysis.. there are a number of things to think about (added a comment on 329 with some).  One of the fundamental things I was wondering when reviewing the statistics was whether we needed to keep some session entries in memory, and use them to add to context for searches... Precompact could play back previous calls, also thinking about setting minimum context for ANY injection (if there's 1 word, why inject?), these are things that surround these results",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4964224571912288,
+          "similarity": 0.46004271507263184,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.4925454135603954,
+          "similarity": 0.4524104595184326,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.4761054353121954,
+          "similarity": 0.4654041528701782,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.47445118869875635,
+          "similarity": 0.4402550458908081,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.4573582657512416,
+          "similarity": 0.4366855025291443,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4964224571912288,
+          "similarity": 0.46004271507263184,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.4925454135603954,
+          "similarity": 0.4524104595184326,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.4761054353121954,
+          "similarity": 0.4654041528701782,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.47445118869875635,
+          "similarity": 0.4402550458908081,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.4573582657512416,
+          "similarity": 0.4366855025291443,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

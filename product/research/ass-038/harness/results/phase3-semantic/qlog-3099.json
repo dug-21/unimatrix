@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3099",
+  "query": "bring branch back to main, build local binary, kill unimatrix server processes",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5645401948244168,
+          "similarity": 0.6148211359977722,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 80,
+          "title": "ADR-004: Project Isolation via Path Hash",
+          "category": "decision",
+          "final_score": 0.5223797707890822,
+          "similarity": 0.5322377681732178,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5159212965832733,
+          "similarity": 0.5161452293395996,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.5113477720251843,
+          "similarity": 0.564217209815979,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.48737136664264835,
+          "similarity": 0.5209894776344299,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5645401948244168,
+          "similarity": 0.6148211359977722,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 80,
+          "title": "ADR-004: Project Isolation via Path Hash",
+          "category": "decision",
+          "final_score": 0.5223797707890822,
+          "similarity": 0.5322377681732178,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5159212965832733,
+          "similarity": 0.5161452293395996,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.5113477720251843,
+          "similarity": 0.564217209815979,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.48737136664264835,
+          "similarity": 0.5209894776344299,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

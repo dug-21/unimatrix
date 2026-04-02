@@ -1,0 +1,434 @@
+{
+  "scenario_id": "uc4-02",
+  "query": "What is the connection pool configuration for unimatrix-store SQLite write pool, and why is max_connections=1 required?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.6034346853936791,
+          "similarity": 0.7306562662124634,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2270,
+          "title": "SqlxStore dual-pool WAL architecture: read_pool=N, write_pool=1, PRAGMAs per-connection via SqliteConnectOptions",
+          "category": "pattern",
+          "final_score": 0.5769460206861582,
+          "similarity": 0.6364919543266296,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5766773393020468,
+          "similarity": 0.661256730556488,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5665099183549631,
+          "similarity": 0.5938441157341003,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.565317243889053,
+          "similarity": 0.605797529220581,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.558789545974528,
+          "similarity": 0.6143949031829834,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5494907279770135,
+          "similarity": 0.613993227481842,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.545056366141236,
+          "similarity": 0.5868731737136841,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5403939380804811,
+          "similarity": 0.6082592010498047,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.5350766926475408,
+          "similarity": 0.5366172790527344,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5342758176780084,
+          "similarity": 0.549418568611145,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5305517336272413,
+          "similarity": 0.6093036532402039,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5273545101865775,
+          "similarity": 0.5771279335021973,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5251670872778976,
+          "similarity": 0.5028425455093384,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.5101087563667936,
+          "similarity": 0.5331674814224243,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.5020883239949514,
+          "similarity": 0.5179286599159241,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.49894059957176073,
+          "similarity": 0.5231415033340454,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2378,
+          "title": "PoolConnection not dropped after COMMIT starves subsequent pool acquires (import pipeline)",
+          "category": "lesson-learned",
+          "final_score": 0.49481033344503833,
+          "similarity": 0.529845118522644,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.49460662036667946,
+          "similarity": 0.5149069428443909,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.49312703758011944,
+          "similarity": 0.5015957355499268,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.0627375681569962
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.6034346853936791,
+          "similarity": 0.7306562662124634,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2270,
+          "title": "SqlxStore dual-pool WAL architecture: read_pool=N, write_pool=1, PRAGMAs per-connection via SqliteConnectOptions",
+          "category": "pattern",
+          "final_score": 0.5769460206861582,
+          "similarity": 0.6364919543266296,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5766773393020468,
+          "similarity": 0.661256730556488,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5665099183549631,
+          "similarity": 0.5938441157341003,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.565317243889053,
+          "similarity": 0.605797529220581,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2744,
+          "title": "Use write_pool_server() not write_pool() for direct DB writes in unimatrix-server tests",
+          "category": "pattern",
+          "final_score": 0.558789545974528,
+          "similarity": 0.6143949031829834,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5494907279770135,
+          "similarity": 0.613993227481842,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.545056366141236,
+          "similarity": 0.5868731737136841,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5403939380804811,
+          "similarity": 0.6082592010498047,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.5350766926475408,
+          "similarity": 0.5366172790527344,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5342758176780084,
+          "similarity": 0.549418568611145,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5305517336272413,
+          "similarity": 0.6093036532402039,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5273545101865775,
+          "similarity": 0.5771279335021973,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5251670872778976,
+          "similarity": 0.5028425455093384,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.5101087563667936,
+          "similarity": 0.5331674814224243,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.5020883239949514,
+          "similarity": 0.5179286599159241,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.49894059957176073,
+          "similarity": 0.5231415033340454,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2378,
+          "title": "PoolConnection not dropped after COMMIT starves subsequent pool acquires (import pipeline)",
+          "category": "lesson-learned",
+          "final_score": 0.49481033344503833,
+          "similarity": 0.529845118522644,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.49460662036667946,
+          "similarity": 0.5149069428443909,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.49312703758011944,
+          "similarity": 0.5015957355499268,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.0627375681569962
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

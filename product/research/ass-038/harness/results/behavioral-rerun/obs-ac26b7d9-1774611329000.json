@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774611329000",
+  "query": "parallel agent spawn interface contract function signature mismatch",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.49864313260507165,
+          "similarity": 0.5299009084701538,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.48964218296838524,
+          "similarity": 0.5118308663368225,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.47737623723265465,
+          "similarity": 0.4885255694389343,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.4747928917538766,
+          "similarity": 0.41052818298339844,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.46577475255959466,
+          "similarity": 0.43290817737579346,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.49864313260507165,
+          "similarity": 0.5299009084701538,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.48964218296838524,
+          "similarity": 0.5118308663368225,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.47737623723265465,
+          "similarity": 0.4885255694389343,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.4747928917538766,
+          "similarity": 0.41052818298339844,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.46577475255959466,
+          "similarity": 0.43290817737579346,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

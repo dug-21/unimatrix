@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002096000",
+  "query": "evaluation pre-ship procedure offline test harness",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.505851737825494,
+          "similarity": 0.4641183018684387,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.49690868068397,
+          "similarity": 0.4581860303878784,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.4507894734564163,
+          "similarity": 0.3819824457168579,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4506227639702478,
+          "similarity": 0.43865907192230225,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.41086206687092763,
+          "similarity": 0.4058033227920532,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.505851737825494,
+          "similarity": 0.4641183018684387,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.49690868068397,
+          "similarity": 0.4581860303878784,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.4507894734564163,
+          "similarity": 0.3819824457168579,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4506227639702478,
+          "similarity": 0.43865907192230225,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.41086206687092763,
+          "similarity": 0.4058033227920532,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-e275cc04-1774456928000",
+  "query": "PermissionRetriesRule pre-post differential observation",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.6176821273008799,
+          "similarity": 0.6376491785049438,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.5712452589424218,
+          "similarity": 0.5751850605010986,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5559137076130285,
+          "similarity": 0.5369894504547119,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5557328413882956,
+          "similarity": 0.531492292881012,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.5346099324575295,
+          "similarity": 0.549917459487915,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.6376491785049438,
+          "similarity": 0.6376491785049438,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.5751850605010986,
+          "similarity": 0.5751850605010986,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.549917459487915,
+          "similarity": 0.549917459487915,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5369894504547119,
+          "similarity": 0.5369894504547119,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.531492292881012,
+          "similarity": 0.531492292881012,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.488553340618427,
+          "similarity": 0.6376491785049438,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.45011388338529146,
+          "similarity": 0.5751850605010986,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.43456459045410156,
+          "similarity": 0.549917459487915,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.42660889258751505,
+          "similarity": 0.5369894504547119,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.4232260263883151,
+          "similarity": 0.531492292881012,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.5455719197838514,
+          "similarity": 0.6376491785049438,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.5072776215509859,
+          "similarity": 0.5751850605010986,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.4933792334362573,
+          "similarity": 0.5369894504547119,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.4928548053601162,
+          "similarity": 0.531492292881012,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.4787813407539083,
+          "similarity": 0.549917459487915,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.5455719197838514,
+          "similarity": 0.6376491785049438,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.5072776215509859,
+          "similarity": 0.5751850605010986,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.4933792334362573,
+          "similarity": 0.5369894504547119,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.4928548053601162,
+          "similarity": 0.531492292881012,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.4787813407539083,
+          "similarity": 0.549917459487915,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.6178117834775296,
+          "similarity": 0.6376491785049438,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.5712708420694262,
+          "similarity": 0.5751850605010986,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.5557908228262861,
+          "similarity": 0.5369894504547119,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5555754352291573,
+          "similarity": 0.531492292881012,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.5347093319837009,
+          "similarity": 0.549917459487915,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3490,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 1279,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3477,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

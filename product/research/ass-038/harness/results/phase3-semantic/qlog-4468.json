@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4468",
+  "query": "back to ppr.... ran another eval: Done. Results confirmed stable across both runs:\n\n  4,467 scenarios — post-crt-031 (2026-03-29)                    \n  \n  ┌────────┬────────┬─────────────┬──────────────────────────┐   \n  │ Metric │ Value  │    Gate     │          Result          │ \n  ├────────┼────────┼─────────────┼──────────────────────────┤   \n  │ CC@5   │ 0.4252 │ ≥ 0.3659    │ PASSED                   │ \n  ├────────┼────────┼─────────────┼──────────────────────────┤\n  │ ICD    │ 0.6376 │ ≥ 0.5341    │ PASSED                   │   \n  ├────────┼────────┼─────────────┼──────────────────────────┤\n  │ MRR    │ 0.005  │ ≥ 0.35      │ nominal FAIL (soft-GT    │   \n  │        │        │ (floor)     │ artifact)                │   \n  └────────┴────────┴─────────────┴──────────────────────────┘\n                                                                 \n  New finding this run: Section 5.2 surfaces 5 specific queries  \n  where disabling PPR drops MRR from 1.0 to 0.33–0.5 — PPR is\n  doing real work at the per-query level for                     \n  security/retrospective/HNSW queries, just not visible in     \n  aggregate distribution stats. That's actually good news for\n  Phase 2.\n\n  Side note: The <task-notification> XML queries polluting the   \n  corpus (qlog-1049–1184) are the --retrieval-mode filter that's\n  waiting on #326.               ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5682958303472339,
+          "similarity": 0.6131219267845154,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5297717409480057,
+          "similarity": 0.5562067627906799,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.5271030193748447,
+          "similarity": 0.5436905026435852,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.511059765780872,
+          "similarity": 0.5249589681625366,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.505459745227222,
+          "similarity": 0.5262633562088013,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5682958303472339,
+          "similarity": 0.6131219267845154,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5297717409480057,
+          "similarity": 0.5562067627906799,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.5271030193748447,
+          "similarity": 0.5436905026435852,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.511059765780872,
+          "similarity": 0.5249589681625366,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.505459745227222,
+          "similarity": 0.5262633562088013,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-d8a65a52-1774667398000",
+  "query": "string handling display truncation convention",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.44156873284042664,
+          "similarity": 0.3331976532936096,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.3894052886698848,
+          "similarity": 0.2941328287124634,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.3815805211616624,
+          "similarity": 0.2896573543548584,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.37996555202885673,
+          "similarity": 0.3429345488548279,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.3758963801108137,
+          "similarity": 0.2710317373275757,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.44156873284042664,
+          "similarity": 0.3331976532936096,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.3894052886698848,
+          "similarity": 0.2941328287124634,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.3815805211616624,
+          "similarity": 0.2896573543548584,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.37996555202885673,
+          "similarity": 0.3429345488548279,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.3758963801108137,
+          "similarity": 0.2710317373275757,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

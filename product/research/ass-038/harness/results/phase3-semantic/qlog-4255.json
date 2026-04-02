@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4255",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Implement graph_ppr.rs for crt-030) → ]\n[Assistant] Stage 3b — Wave 1: `graph_ppr.rs` and `config.rs` in parallel.\n[tool: Bash(git add product/features/crt-030/ && git commit -m \"$(cat <<'EOF'\npseudocode: crt-030 component design + test plans (#39) → [feature/crt-030 0ce8202] pseudocode: crt-030 component design + test plans (#398)\n 14 files changed, 2523 insertions(+), 6 deletions(-)\n create mode 100644 product/features/crt-030/agents/crt-030-agent-1-pseudocode-report.md\n create mode 100644 product/features/crt-030/agents/crt-030-agent-2-testpl]\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'crt-030'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[Assistant] Gate 3a PASS. Committing Stage 3a artifacts and proceeding to Stage 3b.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5232925476089875,
+          "similarity": 0.5275076627731323,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5155141907899848,
+          "similarity": 0.5818418264389038,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5097311348460657,
+          "similarity": 0.5331435203552246,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3026,
+          "title": "Isolating hook.rs unit tests from in-progress swarm agent compilation failures",
+          "category": "pattern",
+          "final_score": 0.49272902306973254,
+          "similarity": 0.5080567002296448,
+          "confidence": 0.5401834908612104,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4916880207142349,
+          "similarity": 0.536572277545929,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5232925476089875,
+          "similarity": 0.5275076627731323,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5155141907899848,
+          "similarity": 0.5818418264389038,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5097311348460657,
+          "similarity": 0.5331435203552246,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3026,
+          "title": "Isolating hook.rs unit tests from in-progress swarm agent compilation failures",
+          "category": "pattern",
+          "final_score": 0.49272902306973254,
+          "similarity": 0.5080567002296448,
+          "confidence": 0.5401834908612104,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4916880207142349,
+          "similarity": 0.536572277545929,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

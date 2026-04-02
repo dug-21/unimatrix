@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-e275cc04-1774458249000",
+  "query": "risk pattern observation pipeline hook dispatch detection rule",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.5139883272271407,
+          "similarity": 0.4855778217315674,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.4883757724645318,
+          "similarity": 0.4631754755973816,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.48525778775021944,
+          "similarity": 0.4471548795700073,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.4780220326452981,
+          "similarity": 0.4810972213745117,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.45678598323621245,
+          "similarity": 0.4664933681488037,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.5139883272271407,
+          "similarity": 0.4855778217315674,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.4883757724645318,
+          "similarity": 0.4631754755973816,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.48525778775021944,
+          "similarity": 0.4471548795700073,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.4780220326452981,
+          "similarity": 0.4810972213745117,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.45678598323621245,
+          "similarity": 0.4664933681488037,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

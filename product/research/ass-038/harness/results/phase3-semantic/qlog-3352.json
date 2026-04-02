@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3352",
+  "query": "OK.. lets go back to our key ordered steps on our self learning journey.. just completed 399, 394/397.  so lets talk about next steps: The updated sequence with eval woven in:\n\n  #399  (CC@k + ICD metrics — no deps, start now)\n  #394 + #397  (phase signal capture — together)\n  #400  (phase in scenarios — immediately after #397)\n  #395  (Contradicts suppression)\n  #401  (hand-authored graph scenarios — authored before\n   #398 ships)\n  #396 → #398  (Supports → PPR)\n  #402  (distribution gate — after #399)",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5212278870603724,
+          "similarity": 0.525658130645752,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.4923951750040225,
+          "similarity": 0.4805169105529785,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.48885539545526313,
+          "similarity": 0.473734974861145,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.4801500374317068,
+          "similarity": 0.4666624069213867,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.4777329217120536,
+          "similarity": 0.46826326847076416,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5212278870603724,
+          "similarity": 0.525658130645752,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.4923951750040225,
+          "similarity": 0.4805169105529785,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.48885539545526313,
+          "similarity": 0.473734974861145,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.4801500374317068,
+          "similarity": 0.4666624069213867,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.4777329217120536,
+          "similarity": 0.46826326847076416,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

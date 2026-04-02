@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-e275cc04-1774456923000",
+  "query": "detection rules event_type filtering observation",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.605681715170771,
+          "similarity": 0.6048334240913391,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5517807498605563,
+          "similarity": 0.5127006769180298,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5412921017236398,
+          "similarity": 0.5039710998535156,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2905,
+          "title": "ADR-003 col-023: Rule Evaluator DSL for Data-Driven Detection Rules",
+          "category": "decision",
+          "final_score": 0.5402207331177084,
+          "similarity": 0.5009052753448486,
+          "confidence": 0.5970097276785059,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.5121262205202765,
+          "similarity": 0.46535050868988037,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.6056872595569112,
+          "similarity": 0.6048334240913391,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5520361751739061,
+          "similarity": 0.5127006769180298,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5415360298404381,
+          "similarity": 0.5039710998535156,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2905,
+          "title": "ADR-003 col-023: Rule Evaluator DSL for Data-Driven Detection Rules",
+          "category": "decision",
+          "final_score": 0.5404776968940017,
+          "similarity": 0.5009052753448486,
+          "confidence": 0.5970097276785059,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.5124319441270111,
+          "similarity": 0.46535050868988037,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.46835903021005487,
+          "similarity": 0.6048334240913391,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.4116619550264799,
+          "similarity": 0.5127006769180298,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.4062899076021635,
+          "similarity": 0.5039710998535156,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2905,
+          "title": "ADR-003 col-023: Rule Evaluator DSL for Data-Driven Detection Rules",
+          "category": "decision",
+          "final_score": 0.40440324636606073,
+          "similarity": 0.5009052753448486,
+          "confidence": 0.5970097276785059,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.38252338996300334,
+          "similarity": 0.46535050868988037,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.5344888193979881,
+          "similarity": 0.6048334240913391,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.4888192616922766,
+          "similarity": 0.5127006769180298,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.4805456145875702,
+          "similarity": 0.5039710998535156,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2905,
+          "title": "ADR-003 col-023: Rule Evaluator DSL for Data-Driven Detection Rules",
+          "category": "decision",
+          "final_score": 0.47955555597597604,
+          "similarity": 0.5009052753448486,
+          "confidence": 0.5970097276785059,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.45658259562752807,
+          "similarity": 0.46535050868988037,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.5344888193979881,
+          "similarity": 0.6048334240913391,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.4888192616922766,
+          "similarity": 0.5127006769180298,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.4805456145875702,
+          "similarity": 0.5039710998535156,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2905,
+          "title": "ADR-003 col-023: Rule Evaluator DSL for Data-Driven Detection Rules",
+          "category": "decision",
+          "final_score": 0.47955555597597604,
+          "similarity": 0.5009052753448486,
+          "confidence": 0.5970097276785059,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.45658259562752807,
+          "similarity": 0.46535050868988037,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.6048334240913391,
+          "similarity": 0.6048334240913391,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5127006769180298,
+          "similarity": 0.5127006769180298,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5039710998535156,
+          "similarity": 0.5039710998535156,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2905,
+          "title": "ADR-003 col-023: Rule Evaluator DSL for Data-Driven Detection Rules",
+          "category": "decision",
+          "final_score": 0.5009052753448486,
+          "similarity": 0.5009052753448486,
+          "confidence": 0.5970097276785059,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.46535050868988037,
+          "similarity": 0.46535050868988037,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

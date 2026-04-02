@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3d9b719e-1774201790000",
+  "query": "acceptance criteria pattern specification FusionWeights InferenceConfig scoring pipeline invariant",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.514840712428534,
+          "similarity": 0.5062187910079956,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.500442667053198,
+          "similarity": 0.4760061502456665,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.49824110761249285,
+          "similarity": 0.4721405506134033,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.487613153569453,
+          "similarity": 0.464881956577301,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.4767427571573868,
+          "similarity": 0.46525251865386963,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.514840712428534,
+          "similarity": 0.5062187910079956,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.500442667053198,
+          "similarity": 0.4760061502456665,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.49824110761249285,
+          "similarity": 0.4721405506134033,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.487613153569453,
+          "similarity": 0.464881956577301,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.4767427571573868,
+          "similarity": 0.46525251865386963,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

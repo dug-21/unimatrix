@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-45c89139-1774116149000",
+  "query": "Arc startup registry not threaded into request handlers wiring",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.6118562714382472,
+          "similarity": 0.6411658525466919,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5677626215049614,
+          "similarity": 0.5288680195808411,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5542274074709925,
+          "similarity": 0.5112188458442688,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5390114761389695,
+          "similarity": 0.5329707264900208,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2936,
+          "title": "SqlObservationSource::new_default() vs new(store, registry) — wiring gap",
+          "category": "pattern",
+          "final_score": 0.5263644277514792,
+          "similarity": 0.48851317167282104,
+          "confidence": 0.5804376507209906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.5415785586583438,
+          "similarity": 0.6411658525466919,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5014319113522462,
+          "similarity": 0.5288680195808411,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4903098858605995,
+          "similarity": 0.5112188458442688,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.48077769879339355,
+          "similarity": 0.5329707264900208,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2936,
+          "title": "SqlObservationSource::new_default() vs new(store, registry) — wiring gap",
+          "category": "pattern",
+          "final_score": 0.46838788105270773,
+          "similarity": 0.48851317167282104,
+          "confidence": 0.5804376507209906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.6411658525466919,
+          "similarity": 0.6411658525466919,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5329707264900208,
+          "similarity": 0.5329707264900208,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5288680195808411,
+          "similarity": 0.5288680195808411,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5112188458442688,
+          "similarity": 0.5112188458442688,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2936,
+          "title": "SqlObservationSource::new_default() vs new(store, registry) — wiring gap",
+          "category": "pattern",
+          "final_score": 0.48851317167282104,
+          "similarity": 0.48851317167282104,
+          "confidence": 0.5804376507209906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.5415785586583438,
+          "similarity": 0.6411658525466919,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5014319113522462,
+          "similarity": 0.5288680195808411,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4903098858605995,
+          "similarity": 0.5112188458442688,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.48077769879339355,
+          "similarity": 0.5329707264900208,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2936,
+          "title": "SqlObservationSource::new_default() vs new(store, registry) — wiring gap",
+          "category": "pattern",
+          "final_score": 0.46838788105270773,
+          "similarity": 0.48851317167282104,
+          "confidence": 0.5804376507209906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.6120465933934967,
+          "similarity": 0.6411658525466919,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5675100591548047,
+          "similarity": 0.5288680195808411,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5539481310967931,
+          "similarity": 0.5112188458442688,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5389722504918983,
+          "similarity": 0.5329707264900208,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2936,
+          "title": "SqlObservationSource::new_default() vs new(store, registry) — wiring gap",
+          "category": "pattern",
+          "final_score": 0.5261186403743449,
+          "similarity": 0.48851317167282104,
+          "confidence": 0.5804376507209906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.4907174477210412,
+          "similarity": 0.6411658525466919,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.42413583168616664,
+          "similarity": 0.5329707264900208,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.4216110889728253,
+          "similarity": 0.5288680195808411,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4107500589810885,
+          "similarity": 0.5112188458442688,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2936,
+          "title": "SqlObservationSource::new_default() vs new(store, registry) — wiring gap",
+          "category": "pattern",
+          "final_score": 0.3967773364140437,
+          "similarity": 0.48851317167282104,
+          "confidence": 0.5804376507209906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

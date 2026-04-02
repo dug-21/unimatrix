@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bc8a7b89-1774222708000",
+  "query": "spawn agents one message batch file operations parallel",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.5138609565864694,
+          "similarity": 0.5242719650268555,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5047621245794243,
+          "similarity": 0.5405587553977966,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.4965881831443598,
+          "similarity": 0.533223032951355,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.4894312175637985,
+          "similarity": 0.43589460849761963,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.4850598816340316,
+          "similarity": 0.44447362422943115,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.5138609565864694,
+          "similarity": 0.5242719650268555,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5047621245794243,
+          "similarity": 0.5405587553977966,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.4965881831443598,
+          "similarity": 0.533223032951355,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.4894312175637985,
+          "similarity": 0.43589460849761963,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.4850598816340316,
+          "similarity": 0.44447362422943115,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

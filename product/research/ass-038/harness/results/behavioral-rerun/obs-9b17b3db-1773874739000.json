@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9b17b3db-1773874739000",
+  "query": "tokio runtime nesting block_on async handler spawn_blocking",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6490734235917884,
+          "similarity": 0.753564715385437,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.605974249925178,
+          "similarity": 0.6545369625091553,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5851023066840296,
+          "similarity": 0.6068336367607117,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.5296633203234208,
+          "similarity": 0.633065938949585,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5095627615754381,
+          "similarity": 0.5948712229728699,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6490734235917884,
+          "similarity": 0.753564715385437,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.605974249925178,
+          "similarity": 0.6545369625091553,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5851023066840296,
+          "similarity": 0.6068336367607117,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.5296633203234208,
+          "similarity": 0.633065938949585,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5095627615754381,
+          "similarity": 0.5948712229728699,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

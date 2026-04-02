@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-2184",
+  "query": "Please create a gh issue for this error in our log: 2026-03-23T13:01:49.593549Z  INFO unimatrix_server::background: maintenance tick complete\nPANIC at crates/unimatrix-server/src/infra/contradiction.rs:254:5: there is no reactor running, must be called from the context of a Tokio 1.x runtime\n2026-03-23T13:01:49.635283Z ERROR unimatrix_server::background: contradiction scan rayon task cancelled; cache retained error=rayon worker cancelled (panic or pool shutdown) tick=92\n2026-03-23T13:01:49.640248Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-23T13:01:49.640479Z  INFO unimatrix_server::background: background tick complete duration_secs=0.  Then begin a bugfix for that issue in a worktree, since there is active development going on right now.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5687610268333674,
+          "similarity": 0.6462157368659973,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.5522100718138683,
+          "similarity": 0.614768922328949,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2543,
+          "title": "Rayon panic_handler required to prevent SIGABRT in test harness",
+          "category": "pattern",
+          "final_score": 0.5387342985418229,
+          "similarity": 0.6034345030784607,
+          "confidence": 0.528800948787147,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5109267040730932,
+          "similarity": 0.5974627137184143,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5687610268333674,
+          "similarity": 0.6462157368659973,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.5522100718138683,
+          "similarity": 0.614768922328949,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2543,
+          "title": "Rayon panic_handler required to prevent SIGABRT in test harness",
+          "category": "pattern",
+          "final_score": 0.5387342985418229,
+          "similarity": 0.6034345030784607,
+          "confidence": 0.528800948787147,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5109267040730932,
+          "similarity": 0.5974627137184143,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

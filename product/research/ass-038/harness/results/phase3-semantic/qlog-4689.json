@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4689",
+  "query": "search unimatrix for this bidirectional context... The spec when written ensured the graph could be traversed in both directions, but the METHOD of doing so was always ::Outgoing",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5397484928670853,
+          "similarity": 0.5704882144927979,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5281544494082555,
+          "similarity": 0.5223585367202759,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.524023440218131,
+          "similarity": 0.5191390514373779,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.5173769937729914,
+          "similarity": 0.5090566873550415,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5059539885066492,
+          "similarity": 0.5259669423103333,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5397484928670853,
+          "similarity": 0.5704882144927979,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5281544494082555,
+          "similarity": 0.5223585367202759,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.524023440218131,
+          "similarity": 0.5191390514373779,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.5173769937729914,
+          "similarity": 0.5090566873550415,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5059539885066492,
+          "similarity": 0.5259669423103333,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

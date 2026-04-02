@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-edf4842f-1774829259000",
+  "query": "sqlx store module patterns read_pool write_pool",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5768747984513647,
+          "similarity": 0.5623819231987,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5719545005055227,
+          "similarity": 0.5735887289047241,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5648050146654734,
+          "similarity": 0.5757383108139038,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5577410320397138,
+          "similarity": 0.5681205987930298,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5550767486974433,
+          "similarity": 0.575141191482544,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5757383108139038,
+          "similarity": 0.5757383108139038,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.575141191482544,
+          "similarity": 0.575141191482544,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5735887289047241,
+          "similarity": 0.5735887289047241,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5681205987930298,
+          "similarity": 0.5681205987930298,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5623819231987,
+          "similarity": 0.5623819231987,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4504543451162485,
+          "similarity": 0.5757383108139038,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4500868870661809,
+          "similarity": 0.575141191482544,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.44913152547983026,
+          "similarity": 0.5735887289047241,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4457665223341722,
+          "similarity": 0.5681205987930298,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.44223502966073847,
+          "similarity": 0.5623819231987,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5104646333859014,
+          "similarity": 0.5623819231987,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5076803310043612,
+          "similarity": 0.5735887289047241,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5026249614572667,
+          "similarity": 0.5757383108139038,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4969342232570079,
+          "similarity": 0.5681205987930298,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.49549457344260467,
+          "similarity": 0.575141191482544,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5767806888718019,
+          "similarity": 0.5623819231987,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5719651123782448,
+          "similarity": 0.5735887289047241,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5648760100950085,
+          "similarity": 0.5757383108139038,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5578084318238262,
+          "similarity": 0.5681205987930298,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5552070372869569,
+          "similarity": 0.575141191482544,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5104646333859014,
+          "similarity": 0.5623819231987,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5076803310043612,
+          "similarity": 0.5735887289047241,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5026249614572667,
+          "similarity": 0.5757383108139038,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.4969342232570079,
+          "similarity": 0.5681205987930298,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.49549457344260467,
+          "similarity": 0.575141191482544,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": -0.4,
+    "rank_changes": [
+      {
+        "entry_id": 3799,
+        "from_rank": 1,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2151,
+        "from_rank": 5,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 2153,
+        "from_rank": 3,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 2152,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

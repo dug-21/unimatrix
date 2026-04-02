@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774746982000",
+  "query": "search pipeline graph traversal edges_of_type PPR candidate expansion use_fallback InferenceConfig",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5359759988842879,
+          "similarity": 0.6075164079666138,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5046140375145,
+          "similarity": 0.5476563572883606,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.49596729945558804,
+          "similarity": 0.5329084396362305,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.49025877968526355,
+          "similarity": 0.5309702157974243,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.48175633291620507,
+          "similarity": 0.5188865065574646,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.607465448667982,
+          "similarity": 0.6075164079666138,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5702882517563371,
+          "similarity": 0.5476563572883606,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5598660541903924,
+          "similarity": 0.5329084396362305,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5522208529212025,
+          "similarity": 0.5309702157974243,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.54173550532053,
+          "similarity": 0.5188865065574646,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.6075164079666138,
+          "similarity": 0.6075164079666138,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5476563572883606,
+          "similarity": 0.5476563572883606,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5329084396362305,
+          "similarity": 0.5329084396362305,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5309702157974243,
+          "similarity": 0.5309702157974243,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.5188865065574646,
+          "similarity": 0.5188865065574646,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5359759988842879,
+          "similarity": 0.6075164079666138,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5046140375145,
+          "similarity": 0.5476563572883606,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.49596729945558804,
+          "similarity": 0.5329084396362305,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.49025877968526355,
+          "similarity": 0.5309702157974243,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.48175633291620507,
+          "similarity": 0.5188865065574646,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.6074657795725186,
+          "similarity": 0.6075164079666138,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5701412914026489,
+          "similarity": 0.5476563572883606,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5596910047452355,
+          "similarity": 0.5329084396362305,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.552082861771048,
+          "similarity": 0.5309702157974243,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.541587135198692,
+          "similarity": 0.5188865065574646,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.47001009721022385,
+          "similarity": 0.6075164079666138,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.43317314294668346,
+          "similarity": 0.5476563572883606,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4240975013146034,
+          "similarity": 0.5329084396362305,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.42290474818303037,
+          "similarity": 0.5309702157974243,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.4154686194199782,
+          "similarity": 0.5188865065574646,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

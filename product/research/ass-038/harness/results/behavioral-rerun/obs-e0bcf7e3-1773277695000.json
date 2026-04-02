@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-e0bcf7e3-1773277695000",
+  "query": "nan-003 onboarding skills unimatrix-init unimatrix-seed",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5951878823850504,
+          "similarity": 0.6667517423629761,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.5477486637653777,
+          "similarity": 0.5791902542114258,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5430824870895874,
+          "similarity": 0.576471209526062,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.5362068014841503,
+          "similarity": 0.6007397174835205,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.4983673587299843,
+          "similarity": 0.5376337766647339,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5951878823850504,
+          "similarity": 0.6667517423629761,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.5477486637653777,
+          "similarity": 0.5791902542114258,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5430824870895874,
+          "similarity": 0.576471209526062,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.5362068014841503,
+          "similarity": 0.6007397174835205,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.4983673587299843,
+          "similarity": 0.5376337766647339,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

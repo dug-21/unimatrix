@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4990",
+  "query": "OK.. write this up as the next issue, include the details/requirements we discussed with a link back to FINDINGS.md.  Then... before we start on that, and before we merge #409, I want to go back and revalidate scope that coaccess table is not being pruned by the 409 work.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3245,
+          "title": "ADR-004 crt-027: CompactPayload Migrated to Flat Index Format",
+          "category": "decision",
+          "final_score": 0.5095628471992522,
+          "similarity": 0.4795500636100769,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.49625104167840717,
+          "similarity": 0.46895748376846313,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.47738859641596076,
+          "similarity": 0.43855977058410645,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.475023639385483,
+          "similarity": 0.4323394298553467,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.43998884417676654,
+          "similarity": 0.43723416328430176,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3245,
+          "title": "ADR-004 crt-027: CompactPayload Migrated to Flat Index Format",
+          "category": "decision",
+          "final_score": 0.5095628471992522,
+          "similarity": 0.4795500636100769,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.49625104167840717,
+          "similarity": 0.46895748376846313,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.47738859641596076,
+          "similarity": 0.43855977058410645,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.475023639385483,
+          "similarity": 0.4323394298553467,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.43998884417676654,
+          "similarity": 0.43723416328430176,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1109",
+  "query": "umm.. create the gh issue, follow bugfix protocol... but.. you could also attempt to store something to see if we're still getting the same error",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4840246020526331,
+          "similarity": 0.5011574625968933,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.4802188433895419,
+          "similarity": 0.4875701665878296,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.4770219546291363,
+          "similarity": 0.4960471987724304,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.476127911215515,
+          "similarity": 0.47021281719207764,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.46231061854346556,
+          "similarity": 0.46809566020965576,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4840246020526331,
+          "similarity": 0.5011574625968933,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.4802188433895419,
+          "similarity": 0.4875701665878296,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.4770219546291363,
+          "similarity": 0.4960471987724304,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.476127911215515,
+          "similarity": 0.47021281719207764,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.46231061854346556,
+          "similarity": 0.46809566020965576,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-50273e07-1774566492000",
+  "query": "ContradictionScanCacheHandle Arc RwLock background tick compute_report",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.516404901964785,
+          "similarity": 0.6063706874847412,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.4985372576063329,
+          "similarity": 0.5027108788490295,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.49417342131526004,
+          "similarity": 0.5092187523841858,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.48034521114937206,
+          "similarity": 0.49128949642181396,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.47310301319814196,
+          "similarity": 0.49665868282318115,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.46930503845214844,
+          "similarity": 0.6063706874847412,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.40951923223642206,
+          "similarity": 0.5092187523841858,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.4055143869840182,
+          "similarity": 0.5027108788490295,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.40178995866041917,
+          "similarity": 0.49665868282318115,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.3984858439518855,
+          "similarity": 0.49128949642181396,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5807154843159067,
+          "similarity": 0.6063706874847412,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5663539929058462,
+          "similarity": 0.5027108788490295,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5597263868656328,
+          "similarity": 0.5092187523841858,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5425042607519015,
+          "similarity": 0.49128949642181396,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.5320375982304713,
+          "similarity": 0.49665868282318115,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.6063706874847412,
+          "similarity": 0.6063706874847412,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5092187523841858,
+          "similarity": 0.5092187523841858,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5027108788490295,
+          "similarity": 0.5027108788490295,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.49665868282318115,
+          "similarity": 0.49665868282318115,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.49128949642181396,
+          "similarity": 0.49128949642181396,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.516404901964785,
+          "similarity": 0.6063706874847412,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.4985372576063329,
+          "similarity": 0.5027108788490295,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.49417342131526004,
+          "similarity": 0.5092187523841858,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.48034521114937206,
+          "similarity": 0.49128949642181396,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.47310301319814196,
+          "similarity": 0.49665868282318115,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5808820765442757,
+          "similarity": 0.6063706874847412,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5659407259314513,
+          "similarity": 0.5027108788490295,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5593984152131559,
+          "similarity": 0.5092187523841858,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5421716973471606,
+          "similarity": 0.49128949642181396,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.5318078650135407,
+          "similarity": 0.49665868282318115,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

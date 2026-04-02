@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-ea4a711a-1774638925000",
+  "query": "compile cycles type errors in-memory before build",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5049524108783628,
+          "similarity": 0.5240639448165894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5048518725501365,
+          "similarity": 0.46296364068984985,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.4953460630414167,
+          "similarity": 0.5163118839263916,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.4783690072101632,
+          "similarity": 0.4639708995819092,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5049524108783628,
+          "similarity": 0.5240639448165894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5048518725501365,
+          "similarity": 0.46296364068984985,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.4953460630414167,
+          "similarity": 0.5163118839263916,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.4783690072101632,
+          "similarity": 0.4639708995819092,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

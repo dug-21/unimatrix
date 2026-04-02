@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1636",
+  "query": "well, my question, can we make this more concrete: The graph already has category relationships encoded in it — as edges. CoAccess edges between a \"decision\" entry and a \"pattern\" entry are a category relationship. NLI Supports\n  edges crossing category boundaries are a category relationship. They're implicit in the topology, not a separate concept.\\\n\\\nunimatrix has metadata categories, that have relationships - Cycle_start, design , development, potentially reworkable fails, or fails, outcome, retro... (in a sdlc context)",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.541910692595346,
+          "similarity": 0.5283544659614563,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5254059390820899,
+          "similarity": 0.508386492729187,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.5104080049208204,
+          "similarity": 0.4850839376449585,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4854821022350162,
+          "similarity": 0.45669126510620117,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4736408152205347,
+          "similarity": 0.45532727241516113,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.541910692595346,
+          "similarity": 0.5283544659614563,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5254059390820899,
+          "similarity": 0.508386492729187,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.5104080049208204,
+          "similarity": 0.4850839376449585,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.4854821022350162,
+          "similarity": 0.45669126510620117,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4736408152205347,
+          "similarity": 0.45532727241516113,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -13,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

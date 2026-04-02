@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3503",
+  "query": "back to issue 402 questions: Both architect and spec writer are done. Four open    \n  questions surfaced that need your input before the    \n  risk strategist runs:                               \n                                                        \n  ---                                                   \n  From the architect:                                   \n                                                        \n  OQ-A1 — Should the Distribution Gate table include a  \n  \"Baseline MRR (reference)\" row showing the baseline   \n  profile's MRR alongside the floor? This would help  \n  users calibrate mrr_floor values. If yes, the render  \n  function needs the baseline's AggregateStats as a   \n  second parameter.\n\n  OQ-A2 — Multi-candidate Section 5 heading format:     \n  single-candidate runs use ## 5. (existing format);\n  multi-candidate runs use ### 5.N — {profile_name}     \n  sub-blocks. Acceptable?                             \n\n  ---\n  From the spec writer:\n                                                        \n  OQ-S1 — What happens when a baseline profile has\n  distribution_change = true? The scope says it never   \n  should, but doesn't specify the error path. Options:\n  reject with ConfigInvariant at parse time, or silently\n   ignore (treat baseline distribution_change as always\n  false)?\n\n  OQ-S2 — What does eval report do with a corrupt       \n  (non-JSON) profile-meta.json? Options: surface as an\n  error and abort the report, or fall back silently to  \n  zero-regression mode?    ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5599201394783109,
+          "similarity": 0.5993011593818665,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5479124374454316,
+          "similarity": 0.6085379719734192,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5436971795927187,
+          "similarity": 0.5985944271087646,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.5416432499537376,
+          "similarity": 0.6062114834785461,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.5409800476788389,
+          "similarity": 0.619502067565918,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5599201394783109,
+          "similarity": 0.5993011593818665,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5479124374454316,
+          "similarity": 0.6085379719734192,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5436971795927187,
+          "similarity": 0.5985944271087646,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.5416432499537376,
+          "similarity": 0.6062114834785461,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.5409800476788389,
+          "similarity": 0.619502067565918,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

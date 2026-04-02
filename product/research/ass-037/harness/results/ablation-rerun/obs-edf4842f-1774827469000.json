@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-edf4842f-1774827469000",
+  "query": "write_pool_server analytics queue fire-and-forget correctness risk",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.6180222269025761,
+          "similarity": 0.6296629309654236,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.611730966594958,
+          "similarity": 0.5949677228927612,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.5989683539802209,
+          "similarity": 0.6102676391601562,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5792824710911914,
+          "similarity": 0.5623412132263184,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.5467698263789533,
+          "similarity": 0.5701490044593811,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.483638726747953,
+          "similarity": 0.6296629309654236,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.47170316256009615,
+          "similarity": 0.6102676391601562,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.46228782947246844,
+          "similarity": 0.5949677228927612,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4470147719750038,
+          "similarity": 0.5701490044593811,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.4422099773700421,
+          "similarity": 0.5623412132263184,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.5452492603836928,
+          "similarity": 0.6296629309654236,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5381873987258095,
+          "similarity": 0.5949677228927612,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.5299817749827435,
+          "similarity": 0.6102676391601562,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5122158870254622,
+          "similarity": 0.5623412132263184,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4890858023946218,
+          "similarity": 0.5701490044593811,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.6180978158899971,
+          "similarity": 0.6296629309654236,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.6116221143631255,
+          "similarity": 0.5949677228927612,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.5990417259619086,
+          "similarity": 0.6102676391601562,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5791724629232375,
+          "similarity": 0.5623412132263184,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.5469216392236314,
+          "similarity": 0.5701490044593811,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.5452492603836928,
+          "similarity": 0.6296629309654236,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5381873987258095,
+          "similarity": 0.5949677228927612,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.5299817749827435,
+          "similarity": 0.6102676391601562,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5122158870254622,
+          "similarity": 0.5623412132263184,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4890858023946218,
+          "similarity": 0.5701490044593811,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.6296629309654236,
+          "similarity": 0.6296629309654236,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.6102676391601562,
+          "similarity": 0.6102676391601562,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5949677228927612,
+          "similarity": 0.5949677228927612,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.5701490044593811,
+          "similarity": 0.5701490044593811,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5623412132263184,
+          "similarity": 0.5623412132263184,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 2148,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 2266,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2125,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2299,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

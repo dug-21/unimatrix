@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1875",
+  "query": "if you use SQL, you had better be sure you are 100% emulating exactly what context_quarantine method does.  Since vector search is outside the database... I'm not sure if quarantine method impacts vector search.. I'm guessing it does.  Safer to just use the method",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.4854402540847046,
+          "similarity": 0.4673025608062744,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.45338046216333383,
+          "similarity": 0.4182058572769165,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.4470241603774435,
+          "similarity": 0.43905138969421387,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.4409216136012005,
+          "similarity": 0.4203430414199829,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.42927729333680975,
+          "similarity": 0.41789311170578003,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.4854402540847046,
+          "similarity": 0.4673025608062744,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.45338046216333383,
+          "similarity": 0.4182058572769165,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.4470241603774435,
+          "similarity": 0.43905138969421387,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.4409216136012005,
+          "similarity": 0.4203430414199829,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.42927729333680975,
+          "similarity": 0.41789311170578003,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

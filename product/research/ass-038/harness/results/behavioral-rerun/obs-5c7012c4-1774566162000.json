@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5c7012c4-1774566162000",
+  "query": "outcome rework eval harness",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5491869639386762,
+          "similarity": 0.5894632339477539,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5128695190981101,
+          "similarity": 0.5099049806594849,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5034186999863381,
+          "similarity": 0.47055506706237793,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4997840536008974,
+          "similarity": 0.5151594877243042,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.4924725560324442,
+          "similarity": 0.4854327440261841,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5491869639386762,
+          "similarity": 0.5894632339477539,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5128695190981101,
+          "similarity": 0.5099049806594849,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5034186999863381,
+          "similarity": 0.47055506706237793,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4997840536008974,
+          "similarity": 0.5151594877243042,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.4924725560324442,
+          "similarity": 0.4854327440261841,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

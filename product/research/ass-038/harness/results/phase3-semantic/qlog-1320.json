@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1320",
+  "query": "Yes... lets update our @product/PRODUCT-VISION.md .  We can lose the crt-022a/b framing, as they will simply be new features.  But Lets update the roadmap first.  Include a 1-2 sentence 'business outcome' line in each section not yet compelted that articulates briefly the expected business improvement outcome its shooting for.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4399497346992298,
+          "similarity": 0.37432146072387695,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.43916675976857544,
+          "similarity": 0.3286339044570923,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.412422297517122,
+          "similarity": 0.36615777015686035,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.4057997423851144,
+          "similarity": 0.31592923402786255,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.402436527451142,
+          "similarity": 0.3267645835876465,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4399497346992298,
+          "similarity": 0.37432146072387695,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.43916675976857544,
+          "similarity": 0.3286339044570923,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.412422297517122,
+          "similarity": 0.36615777015686035,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.4057997423851144,
+          "similarity": 0.31592923402786255,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.402436527451142,
+          "similarity": 0.3267645835876465,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

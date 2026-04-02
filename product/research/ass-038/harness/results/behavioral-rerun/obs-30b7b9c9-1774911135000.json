@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-30b7b9c9-1774911135000",
+  "query": "infallible bidirectional tick write helper extraction promotion",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.5203763927663136,
+          "similarity": 0.5481759905815125,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.47722658460488543,
+          "similarity": 0.43968063592910767,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.45055146393108914,
+          "similarity": 0.3632392883300781,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.44045206544150006,
+          "similarity": 0.3881250023841858,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.43252047326705634,
+          "similarity": 0.36669862270355225,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.5203763927663136,
+          "similarity": 0.5481759905815125,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.47722658460488543,
+          "similarity": 0.43968063592910767,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.45055146393108914,
+          "similarity": 0.3632392883300781,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.44045206544150006,
+          "similarity": 0.3881250023841858,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.43252047326705634,
+          "similarity": 0.36669862270355225,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

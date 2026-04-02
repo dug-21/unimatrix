@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3192",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(rm -rf /workspaces/unimatrix/product/features/col-028/architecture /workspaces/unimatrix/product/features/col-028/specif) → ]\n[Assistant] Got it. Issue #397 adds `phase TEXT` to `query_log` — persistent phase capture to complement #394's in-memory signal work. They're tightly coupled: same problem domain, same session-state snapshot pattern, same downstream consumers (frequency table, gap detection).\n\nCleaning up the partial design artifacts, then relaunching the researcher with both issues combined.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.5417039593306173,
+          "similarity": 0.5429090857505798,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5130523056529505,
+          "similarity": 0.5394537448883057,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3864,
+          "title": "Retrospective findings: col-028",
+          "category": "lesson-learned",
+          "final_score": 0.5012350804680271,
+          "similarity": 0.5509466528892517,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.5003893533003957,
+          "similarity": 0.549339771270752,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.4974753135881925,
+          "similarity": 0.5438030958175659,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.5417039593306173,
+          "similarity": 0.5429090857505798,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5130523056529505,
+          "similarity": 0.5394537448883057,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3864,
+          "title": "Retrospective findings: col-028",
+          "category": "lesson-learned",
+          "final_score": 0.5012350804680271,
+          "similarity": 0.5509466528892517,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.5003893533003957,
+          "similarity": 0.549339771270752,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.4974753135881925,
+          "similarity": 0.5438030958175659,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

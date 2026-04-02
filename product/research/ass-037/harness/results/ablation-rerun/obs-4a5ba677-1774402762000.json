@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-4a5ba677-1774402762000",
+  "query": "serde backward compatibility new fields option skip_serializing_if",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5792699480478457,
+          "similarity": 0.6825341582298279,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5598050772225406,
+          "similarity": 0.6762470602989197,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.5338658807531697,
+          "similarity": 0.6188027858734131,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.5126518462829479,
+          "similarity": 0.5780834555625916,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.5040449345807846,
+          "similarity": 0.5875961780548096,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5792699480478457,
+          "similarity": 0.6825341582298279,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5598050772225406,
+          "similarity": 0.6762470602989197,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.5338658807531697,
+          "similarity": 0.6188027858734131,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.5126518462829479,
+          "similarity": 0.5780834555625916,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.5040449345807846,
+          "similarity": 0.5875961780548096,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.659683187498896,
+          "similarity": 0.6825341582298279,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.6337117361853807,
+          "similarity": 0.6762470602989197,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.6035623114021937,
+          "similarity": 0.6188027858734131,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.5783358398801479,
+          "similarity": 0.5780834555625916,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.5657343491506326,
+          "similarity": 0.5875961780548096,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.6825341582298279,
+          "similarity": 0.6825341582298279,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.6762470602989197,
+          "similarity": 0.6762470602989197,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.6188027858734131,
+          "similarity": 0.6188027858734131,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.5875961780548096,
+          "similarity": 0.5875961780548096,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.5780834555625916,
+          "similarity": 0.5780834555625916,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5161748666029711,
+          "similarity": 0.6825341582298279,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5123058832608737,
+          "similarity": 0.6762470602989197,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.476955560537485,
+          "similarity": 0.6188027858734131,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.45775149418757516,
+          "similarity": 0.5875961780548096,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.45189751111544096,
+          "similarity": 0.5780834555625916,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.6595338347490207,
+          "similarity": 0.6825341582298279,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.633433727531044,
+          "similarity": 0.6762470602989197,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.6034627004579375,
+          "similarity": 0.6188027858734131,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.578337489450851,
+          "similarity": 0.5780834555625916,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.565591461380017,
+          "similarity": 0.5875961780548096,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

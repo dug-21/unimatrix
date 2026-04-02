@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1108",
+  "query": "so... we're getting a strange message from unimatrix when trying to store information... this is after we completed nxs-011, and as we began working on alc-003.  (Note: after we completed design on alc-003, we decided NOT to implement it at this time, so nothing should have been changed for it).   Error: MCP error -32603: Internal storage error. The operation was not completed.  We need to create a gh issue, and begin to investigate",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.6083847010845244,
+          "similarity": 0.6921471357345581,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5695130561645882,
+          "similarity": 0.6179695725440979,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5216720034363648,
+          "similarity": 0.5254520773887634,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.5042665108748962,
+          "similarity": 0.5108011364936829,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.47035001322452363,
+          "similarity": 0.5166457891464233,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.6083847010845244,
+          "similarity": 0.6921471357345581,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5695130561645882,
+          "similarity": 0.6179695725440979,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5216720034363648,
+          "similarity": 0.5254520773887634,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.5042665108748962,
+          "similarity": 0.5108011364936829,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.47035001322452363,
+          "similarity": 0.5166457891464233,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

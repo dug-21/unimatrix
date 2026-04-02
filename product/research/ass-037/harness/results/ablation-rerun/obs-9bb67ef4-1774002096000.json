@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002096000",
+  "query": "evaluation pre-ship procedure offline test harness",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.5359519422755521,
+          "similarity": 0.4641183018684387,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5259567607644371,
+          "similarity": 0.4581860303878784,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.4744117644512889,
+          "similarity": 0.3819824457168579,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.47422544208439465,
+          "similarity": 0.43865907192230225,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.42978701591456625,
+          "similarity": 0.4058033227920532,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.5354854900651163,
+          "similarity": 0.4641183018684387,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5255166910866673,
+          "similarity": 0.4581860303878784,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4739944916287966,
+          "similarity": 0.43865907192230225,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.4738115740698965,
+          "similarity": 0.3819824457168579,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.42963127764753684,
+          "similarity": 0.4058033227920532,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.47363057950564785,
+          "similarity": 0.4641183018684387,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.46592464215608126,
+          "similarity": 0.4581860303878784,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4268398986559377,
+          "similarity": 0.43865907192230225,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.4229273173657146,
+          "similarity": 0.3819824457168579,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.39211649179433056,
+          "similarity": 0.4058033227920532,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.47363057950564785,
+          "similarity": 0.4641183018684387,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.46592464215608126,
+          "similarity": 0.4581860303878784,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4268398986559377,
+          "similarity": 0.43865907192230225,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.4229273173657146,
+          "similarity": 0.3819824457168579,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.39211649179433056,
+          "similarity": 0.4058033227920532,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.3817651088421161,
+          "similarity": 0.4641183018684387,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.37811448023869443,
+          "similarity": 0.4581860303878784,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.3660978904137245,
+          "similarity": 0.43865907192230225,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.34587896787203276,
+          "similarity": 0.4058033227920532,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.3312199665949895,
+          "similarity": 0.3819824457168579,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.4641183018684387,
+          "similarity": 0.4641183018684387,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.4581860303878784,
+          "similarity": 0.4581860303878784,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.43865907192230225,
+          "similarity": 0.43865907192230225,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.4058033227920532,
+          "similarity": 0.4058033227920532,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.3819824457168579,
+          "similarity": 0.3819824457168579,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2660,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 729,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-d4042945-1774306393000",
+  "query": "optional field validation validate_briefing_params if let Some",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.4985282024357214,
+          "similarity": 0.44240766763687134,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4925803881173225,
+          "similarity": 0.4248228073120117,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.491561931908673,
+          "similarity": 0.4161268472671509,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.4749931416836311,
+          "similarity": 0.4118807315826416,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.467090867131997,
+          "similarity": 0.4024088382720947,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.368404718545767,
+          "similarity": 0.44240766763687134,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.35758326603816104,
+          "similarity": 0.4248228073120117,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.3522319060105544,
+          "similarity": 0.4161268472671509,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.34961891174316406,
+          "similarity": 0.4118807315826416,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.34379005432128906,
+          "similarity": 0.4024088382720947,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.44240766763687134,
+          "similarity": 0.44240766763687134,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4248228073120117,
+          "similarity": 0.4248228073120117,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.4161268472671509,
+          "similarity": 0.4161268472671509,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.4118807315826416,
+          "similarity": 0.4118807315826416,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.4024088382720947,
+          "similarity": 0.4024088382720947,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.4981637833785859,
+          "similarity": 0.44240766763687134,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4921404038263789,
+          "similarity": 0.4248228073120117,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.491072093696715,
+          "similarity": 0.4161268472671509,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.47458332083881943,
+          "similarity": 0.4118807315826416,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.466670853957582,
+          "similarity": 0.4024088382720947,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.4448139523200878,
+          "similarity": 0.44240766763687134,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4392244832934787,
+          "similarity": 0.4248228073120117,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.43786132519540105,
+          "similarity": 0.4161268472671509,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.42548648405397704,
+          "similarity": 0.4118807315826416,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.4190525487870332,
+          "similarity": 0.4024088382720947,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.4448139523200878,
+          "similarity": 0.44240766763687134,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4392244832934787,
+          "similarity": 0.4248228073120117,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.43786132519540105,
+          "similarity": 0.4161268472671509,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.42548648405397704,
+          "similarity": 0.4118807315826416,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.4190525487870332,
+          "similarity": 0.4024088382720947,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

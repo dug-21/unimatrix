@@ -1,0 +1,74 @@
+{
+  "scenario_id": "qlog-2090",
+  "query": "<task-notification>\n<task-id>bcvg0ta7g</task-id>\n<tool-use-id>toolu_01Cpaz53p8GR8fUVxcutnQh1</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/cdbdd4fc-46b2-4d12-afa9-e7fd9015ef8f/tasks/bcvg0ta7g.output</output-file>\n<status>killed</status>\n<summary>Background command \"Sum total passed/failed unit tests using grep\" was stopped</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/cdbdd4fc-46b2-4d12-afa9-e7fd9015ef8f/tasks/bcvg0ta7g.output",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5173597681647852,
+          "similarity": 0.581583559513092,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5170878455011467,
+          "similarity": 0.581066906452179,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5173597681647852,
+          "similarity": 0.581583559513092,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5170878455011467,
+          "similarity": 0.581066906452179,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

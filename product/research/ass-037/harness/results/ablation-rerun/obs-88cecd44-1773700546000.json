@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-88cecd44-1773700546000",
+  "query": "contradiction detection shadow evaluation",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.5027044292560972,
+          "similarity": 0.4577021598815918,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.482811127370686,
+          "similarity": 0.452625036239624,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4590658357203573,
+          "similarity": 0.39124780893325806,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.44145183451612274,
+          "similarity": 0.360795259475708,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.4382753908377284,
+          "similarity": 0.35435497760772705,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.5029985617356691,
+          "similarity": 0.4577021598815918,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.48300842208396094,
+          "similarity": 0.452625036239624,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4595090907973972,
+          "similarity": 0.39124780893325806,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.44197900167324966,
+          "similarity": 0.360795259475708,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.43882389027060426,
+          "similarity": 0.35435497760772705,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.3778167137732873,
+          "similarity": 0.4577021598815918,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.3746923299936148,
+          "similarity": 0.452625036239624,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.3369217285743127,
+          "similarity": 0.39124780893325806,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.31818169813889724,
+          "similarity": 0.360795259475708,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.3142184477586013,
+          "similarity": 0.35435497760772705,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.449163392113244,
+          "similarity": 0.4577021598815918,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.4342364958211447,
+          "similarity": 0.452625036239624,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4127314667904793,
+          "similarity": 0.39124780893325806,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.3977843626102039,
+          "similarity": 0.360795259475708,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.39502561845484935,
+          "similarity": 0.35435497760772705,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.4577021598815918,
+          "similarity": 0.4577021598815918,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.452625036239624,
+          "similarity": 0.452625036239624,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.39124780893325806,
+          "similarity": 0.39124780893325806,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.360795259475708,
+          "similarity": 0.360795259475708,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.35435497760772705,
+          "similarity": 0.35435497760772705,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.449163392113244,
+          "similarity": 0.4577021598815918,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.4342364958211447,
+          "similarity": 0.452625036239624,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4127314667904793,
+          "similarity": 0.39124780893325806,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.3977843626102039,
+          "similarity": 0.360795259475708,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.39502561845484935,
+          "similarity": 0.35435497760772705,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

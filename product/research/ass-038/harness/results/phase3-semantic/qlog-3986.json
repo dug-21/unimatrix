@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3986",
+  "query": "is this issue 428?  if not, it should be: Finding 1 (informational, pre-existing): latent IEEE 754 divide-by-zero exposure in freshness_score\n\nfreshness_score computes (-age_hours / params.freshness_half_life_hours).exp(). If freshness_half_life_hours were 0.0, IEEE 754 produces f64::NEG_INFINITY.exp() == 0.0 — no panic, but a wrong score. The config-layer validator in infra/config.rs:1254 already rejects v <= 0.0, NaN, and Inf before the value reaches the engine. The compiled constant (8760.0) and all named presets are positive. Not introduced by this PR. No action required.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.5377843118765285,
+          "similarity": 0.5864445567131042,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2284,
+          "title": "ADR-001 dsn-001: ConfidenceParams Struct for Engine API",
+          "category": "decision",
+          "final_score": 0.5350505543721397,
+          "similarity": 0.5210971236228943,
+          "confidence": 0.6364270424059589,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.5225716945751226,
+          "similarity": 0.5523470640182495,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3923,
+          "title": "config.rs: cross-level custom preset prohibition enforced at per-file validation, not at merge",
+          "category": "pattern",
+          "final_score": 0.4620715462534051,
+          "similarity": 0.4989359378814697,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2608,
+          "title": "ConfidenceWeights fields are base/usage/fresh/help/corr/trust — pseudocode had wrong names",
+          "category": "pattern",
+          "final_score": 0.4586781396118149,
+          "similarity": 0.49678313732147217,
+          "confidence": 0.4638647542013946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.5377843118765285,
+          "similarity": 0.5864445567131042,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2284,
+          "title": "ADR-001 dsn-001: ConfidenceParams Struct for Engine API",
+          "category": "decision",
+          "final_score": 0.5350505543721397,
+          "similarity": 0.5210971236228943,
+          "confidence": 0.6364270424059589,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.5225716945751226,
+          "similarity": 0.5523470640182495,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3923,
+          "title": "config.rs: cross-level custom preset prohibition enforced at per-file validation, not at merge",
+          "category": "pattern",
+          "final_score": 0.4620715462534051,
+          "similarity": 0.4989359378814697,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2608,
+          "title": "ConfidenceWeights fields are base/usage/fresh/help/corr/trust — pseudocode had wrong names",
+          "category": "pattern",
+          "final_score": 0.4586781396118149,
+          "similarity": 0.49678313732147217,
+          "confidence": 0.4638647542013946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

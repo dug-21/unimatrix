@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-364cb76e-1774450026000",
+  "query": "MCP tools settings.json allowlist permissions",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.40963337971613956,
+          "similarity": 0.5094042420387268,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.37195484454815203,
+          "similarity": 0.44817662239074707,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.37094541696401745,
+          "similarity": 0.4465363025665283,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.36995198176457333,
+          "similarity": 0.44492197036743164,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.36410507789024943,
+          "similarity": 0.4354207515716553,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.5094042420387268,
+          "similarity": 0.5094042420387268,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.44817662239074707,
+          "similarity": 0.44817662239074707,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.4465363025665283,
+          "similarity": 0.4465363025665283,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.44492197036743164,
+          "similarity": 0.44492197036743164,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.4354207515716553,
+          "similarity": 0.4354207515716553,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.4503768102028744,
+          "similarity": 0.4465363025665283,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.44485322215372275,
+          "similarity": 0.5094042420387268,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4443150441771646,
+          "similarity": 0.44492197036743164,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.43628264110946674,
+          "similarity": 0.44817662239074707,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.4217017209732064,
+          "similarity": 0.4354207515716553,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5057587294385993,
+          "similarity": 0.4465363025665283,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4975969262855758,
+          "similarity": 0.44492197036743164,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.4920138105993521,
+          "similarity": 0.5094042420387268,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.48625297579821447,
+          "similarity": 0.44817662239074707,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.4674905237307093,
+          "similarity": 0.4354207515716553,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.4503768102028744,
+          "similarity": 0.4465363025665283,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.44485322215372275,
+          "similarity": 0.5094042420387268,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4443150441771646,
+          "similarity": 0.44492197036743164,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.43628264110946674,
+          "similarity": 0.44817662239074707,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.4217017209732064,
+          "similarity": 0.4354207515716553,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5053741682251442,
+          "similarity": 0.4465363025665283,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4972548811172761,
+          "similarity": 0.44492197036743164,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.4921267354788285,
+          "similarity": 0.5094042420387268,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.486005726750114,
+          "similarity": 0.44817662239074707,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.46728227845694914,
+          "similarity": 0.4354207515716553,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 3330,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3425,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 1279,
+        "from_rank": 1,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3578,
+        "from_rank": 3,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

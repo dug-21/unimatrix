@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1060",
+  "query": "that needs to be a gh issue pls.  I don't run into this often, as nxs-011 was one of the largest features we've implemented",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.507489691541758,
+          "similarity": 0.500446617603302,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 67,
+          "title": "ADR-001: Mutex Session for ONNX Inference Concurrency",
+          "category": "decision",
+          "final_score": 0.5027843378223151,
+          "similarity": 0.4724714159965515,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.4544575340326965,
+          "similarity": 0.39913439750671387,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.4306072894047692,
+          "similarity": 0.42242830991744995,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4169502153791276,
+          "similarity": 0.39782488346099854,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.507489691541758,
+          "similarity": 0.500446617603302,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 67,
+          "title": "ADR-001: Mutex Session for ONNX Inference Concurrency",
+          "category": "decision",
+          "final_score": 0.5027843378223151,
+          "similarity": 0.4724714159965515,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.4544575340326965,
+          "similarity": 0.39913439750671387,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.4306072894047692,
+          "similarity": 0.42242830991744995,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4169502153791276,
+          "similarity": 0.39782488346099854,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

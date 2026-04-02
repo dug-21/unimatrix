@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-02b88d42-1773947777000",
+  "query": "AppState ServiceLayer startup wiring Arc pool distribution server architecture",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.5048019950542315,
+          "similarity": 0.5101339817047119,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4987644436397404,
+          "similarity": 0.451651930809021,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.49451464835328385,
+          "similarity": 0.45324939489364624,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.4807893895734602,
+          "similarity": 0.48015105724334717,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2575,
+          "title": "ADR-004: Arc<RayonPool> Distributed via AppState, Not as Discrete Parameters",
+          "category": "decision",
+          "final_score": 0.4502577285429996,
+          "similarity": 0.4493039846420288,
+          "confidence": 0.5088367136995294,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.5048019950542315,
+          "similarity": 0.5101339817047119,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4987644436397404,
+          "similarity": 0.451651930809021,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.49451464835328385,
+          "similarity": 0.45324939489364624,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.4807893895734602,
+          "similarity": 0.48015105724334717,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2575,
+          "title": "ADR-004: Arc<RayonPool> Distributed via AppState, Not as Discrete Parameters",
+          "category": "decision",
+          "final_score": 0.4502577285429996,
+          "similarity": 0.4493039846420288,
+          "confidence": 0.5088367136995294,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

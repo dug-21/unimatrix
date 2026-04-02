@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2829",
+  "query": "OK.. so we have implemented a new index based context briefing as well as should be pulling the project goal in to USD injector (especially for subagent spawns)... how do I know its working?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5420964610807719,
+          "similarity": 0.5547012090682983,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5328829644927037,
+          "similarity": 0.5523027777671814,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.5204986774638559,
+          "similarity": 0.5242472887039185,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.5058776742002513,
+          "similarity": 0.5092220902442932,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.4959782036296565,
+          "similarity": 0.466164231300354,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5420964610807719,
+          "similarity": 0.5547012090682983,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5328829644927037,
+          "similarity": 0.5523027777671814,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.5204986774638559,
+          "similarity": 0.5242472887039185,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.5058776742002513,
+          "similarity": 0.5092220902442932,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.4959782036296565,
+          "similarity": 0.466164231300354,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

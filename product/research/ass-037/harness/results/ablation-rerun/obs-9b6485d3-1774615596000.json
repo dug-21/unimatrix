@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-9b6485d3-1774615596000",
+  "query": "InferenceConfig validation threshold ordering config field",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5768343947437219,
+          "similarity": 0.5323891043663025,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.5323368365569741,
+          "similarity": 0.5040566325187683,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5218168220479862,
+          "similarity": 0.49573278427124023,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.49087207036731795,
+          "similarity": 0.4662666320800781,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4798915050223055,
+          "similarity": 0.45578885078430176,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.577124886837692,
+          "similarity": 0.5323891043663025,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.5325216744918643,
+          "similarity": 0.5040566325187683,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5219873059550237,
+          "similarity": 0.49573278427124023,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.49103289022540453,
+          "similarity": 0.4662666320800781,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4800490387101357,
+          "similarity": 0.45578885078430176,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.4237779103792631,
+          "similarity": 0.5323891043663025,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.40634254308847284,
+          "similarity": 0.5040566325187683,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.40122017493614787,
+          "similarity": 0.49573278427124023,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.383087158203125,
+          "similarity": 0.4662666320800781,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.37663929279033953,
+          "similarity": 0.45578885078430176,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.508504496436483,
+          "similarity": 0.5323891043663025,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.47398412230969883,
+          "similarity": 0.5040566325187683,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.46571452178660594,
+          "similarity": 0.49573278427124023,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.44105729374137176,
+          "similarity": 0.4662666320800781,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4323063604019775,
+          "similarity": 0.45578885078430176,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5323891043663025,
+          "similarity": 0.5323891043663025,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.5040566325187683,
+          "similarity": 0.5040566325187683,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.49573278427124023,
+          "similarity": 0.49573278427124023,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.4662666320800781,
+          "similarity": 0.4662666320800781,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.45578885078430176,
+          "similarity": 0.45578885078430176,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.508504496436483,
+          "similarity": 0.5323891043663025,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.47398412230969883,
+          "similarity": 0.5040566325187683,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.46571452178660594,
+          "similarity": 0.49573278427124023,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.44105729374137176,
+          "similarity": 0.4662666320800781,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4323063604019775,
+          "similarity": 0.45578885078430176,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

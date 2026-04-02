@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1324",
+  "query": "as far as naming goes, I like descriptive.  I'd suggest ensuring the architect makes the proper call on Q2 to ensure we don't cause issues for the MCP server or interface. Approved",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4642719131939913,
+          "similarity": 0.38355588912963867,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.45776126580840437,
+          "similarity": 0.3856668472290039,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.4448907531727385,
+          "similarity": 0.3510165810585022,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.43374405577137487,
+          "similarity": 0.3607773780822754,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4312411630459164,
+          "similarity": 0.3567943572998047,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4642719131939913,
+          "similarity": 0.38355588912963867,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.45776126580840437,
+          "similarity": 0.3856668472290039,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.4448907531727385,
+          "similarity": 0.3510165810585022,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.43374405577137487,
+          "similarity": 0.3607773780822754,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4312411630459164,
+          "similarity": 0.3567943572998047,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

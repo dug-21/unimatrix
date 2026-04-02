@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-107",
+  "query": "just run mcp call to unimatrix context_retrospective",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.583080234037497,
+          "similarity": 0.6437472105026245,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5270057266719075,
+          "similarity": 0.5375270843505859,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.4991817535530222,
+          "similarity": 0.49038147926330566,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.46506226674695916,
+          "similarity": 0.4661273956298828,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.45134912045782405,
+          "similarity": 0.4618302583694458,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.583080234037497,
+          "similarity": 0.6437472105026245,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5270057266719075,
+          "similarity": 0.5375270843505859,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.4991817535530222,
+          "similarity": 0.49038147926330566,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.46506226674695916,
+          "similarity": 0.4661273956298828,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.45134912045782405,
+          "similarity": 0.4618302583694458,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

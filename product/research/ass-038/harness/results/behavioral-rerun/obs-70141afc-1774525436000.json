@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-70141afc-1774525436000",
+  "query": "co-access signal retention signal decay boosting crt-004",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 702,
+          "title": "ADR-002: Two-Mechanism Co-Access Architecture (crt-013)",
+          "category": "decision",
+          "final_score": 0.49590869546449046,
+          "similarity": 0.46409285068511963,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.48952091354949046,
+          "similarity": 0.4750558137893677,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.4854525315252579,
+          "similarity": 0.4582545757293701,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.47606128646735546,
+          "similarity": 0.4416426420211792,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.4723032294466317,
+          "similarity": 0.4462062120437622,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 702,
+          "title": "ADR-002: Two-Mechanism Co-Access Architecture (crt-013)",
+          "category": "decision",
+          "final_score": 0.49590869546449046,
+          "similarity": 0.46409285068511963,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.48952091354949046,
+          "similarity": 0.4750558137893677,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.4854525315252579,
+          "similarity": 0.4582545757293701,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.47606128646735546,
+          "similarity": 0.4416426420211792,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.4723032294466317,
+          "similarity": 0.4462062120437622,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

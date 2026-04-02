@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-b0be618b-1774523351000",
+  "query": "eval harness pattern procedure lesson Shannon entropy dual copy",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.3419645749605619,
+          "similarity": 0.3994424343109131,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.33943719130295974,
+          "similarity": 0.39533543586730957,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.3356241446274978,
+          "similarity": 0.38913923501968384,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.3341918358435998,
+          "similarity": 0.3868117332458496,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.3340953313387357,
+          "similarity": 0.38665491342544556,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.3994424343109131,
+          "similarity": 0.3994424343109131,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.39533543586730957,
+          "similarity": 0.39533543586730957,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.38913923501968384,
+          "similarity": 0.38913923501968384,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.3868117332458496,
+          "similarity": 0.3868117332458496,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.38665491342544556,
+          "similarity": 0.38665491342544556,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.4840501827573437,
+          "similarity": 0.39533543586730957,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.478482939363019,
+          "similarity": 0.3994424343109131,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.46654778385612633,
+          "similarity": 0.38913923501968384,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.45522833777940697,
+          "similarity": 0.38665491342544556,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.41861551537768504,
+          "similarity": 0.3868117332458496,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.4309033785708725,
+          "similarity": 0.39533543586730957,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.4271406011295505,
+          "similarity": 0.3994424343109131,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.41770904502515516,
+          "similarity": 0.38913923501968384,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.4092845684839569,
+          "similarity": 0.38665491342544556,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.3826207135784455,
+          "similarity": 0.3868117332458496,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.48347411297234344,
+          "similarity": 0.39533543586730957,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.477969689330213,
+          "similarity": 0.3994424343109131,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.46604513094160394,
+          "similarity": 0.38913923501968384,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.4547830558030825,
+          "similarity": 0.38665491342544556,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.4184089973118939,
+          "similarity": 0.3868117332458496,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.4309033785708725,
+          "similarity": 0.39533543586730957,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.4271406011295505,
+          "similarity": 0.3994424343109131,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.41770904502515516,
+          "similarity": 0.38913923501968384,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.4092845684839569,
+          "similarity": 0.38665491342544556,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.3826207135784455,
+          "similarity": 0.3868117332458496,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 2802,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3525,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 3583,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2651,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.5,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

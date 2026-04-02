@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-778",
+  "query": "I do want to go back to something you said earlier about a topic level in memory pool that could be available for any agent.  This can do a number of things potentially:  It could capture keywords from context_start (or any other attribute from subsequent calls)  I'm thinking through how that topic (akd feature_cycle) in memory could help create topic level memory IN UNIMATRIX... instead of simply being transactional... Interesting thoughts there.    No to adding categories to context_cycle.  #1 - I'm not bringing role back, so hardwaring category to role is not an option.  The farthest you could get me, is have categories be able to be a keyword, and if its included, recognize it against the defined categories and use it as a boost instead of semantic query attribute.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.49374063424453196,
+          "similarity": 0.43683135509490967,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4839721404054079,
+          "similarity": 0.456673264503479,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.47422952376535255,
+          "similarity": 0.42741644382476807,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.4610768590056268,
+          "similarity": 0.4218769073486328,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4550144770729665,
+          "similarity": 0.43077611923217773,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.49374063424453196,
+          "similarity": 0.43683135509490967,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4839721404054079,
+          "similarity": 0.456673264503479,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.47422952376535255,
+          "similarity": 0.42741644382476807,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.4610768590056268,
+          "similarity": 0.4218769073486328,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4550144770729665,
+          "similarity": 0.43077611923217773,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

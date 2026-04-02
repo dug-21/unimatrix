@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5f33a80a-1774489860000",
+  "query": "confirmed_entries SessionState HashSet dedup slot access_weight briefing",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.5431201892902526,
+          "similarity": 0.5996331572532654,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.5294895835894503,
+          "similarity": 0.5918707251548767,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.5236893120305752,
+          "similarity": 0.5605794787406921,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.5216508186444554,
+          "similarity": 0.5632325410842896,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.4966503684474768,
+          "similarity": 0.5448910593986511,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.5431201892902526,
+          "similarity": 0.5996331572532654,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.5294895835894503,
+          "similarity": 0.5918707251548767,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.5236893120305752,
+          "similarity": 0.5605794787406921,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.5216508186444554,
+          "similarity": 0.5632325410842896,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.4966503684474768,
+          "similarity": 0.5448910593986511,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

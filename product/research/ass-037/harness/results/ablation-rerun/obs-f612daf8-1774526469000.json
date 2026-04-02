@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-f612daf8-1774526469000",
+  "query": "serde serialization null optional fields JSONL wire format",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.46904380504901594,
+          "similarity": 0.6059461832046509,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.46458849540123576,
+          "similarity": 0.5987063050270081,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.4378700256347656,
+          "similarity": 0.5552887916564941,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.4376306167015663,
+          "similarity": 0.5548997521400452,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.40303839170015776,
+          "similarity": 0.49868738651275635,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5246546386754062,
+          "similarity": 0.6059461832046509,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.522939119065503,
+          "similarity": 0.5987063050270081,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5149891865873096,
+          "similarity": 0.5552887916564941,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.4898738537713552,
+          "similarity": 0.5548997521400452,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.4790891272637381,
+          "similarity": 0.49868738651275635,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5921703088114946,
+          "similarity": 0.6059461832046509,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.5904891346323216,
+          "similarity": 0.5987063050270081,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5835953642866498,
+          "similarity": 0.5552887916564941,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.549382550402753,
+          "similarity": 0.5548997521400452,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.5397863202221196,
+          "similarity": 0.49868738651275635,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5920802704167681,
+          "similarity": 0.6059461832046509,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.5904354276362779,
+          "similarity": 0.5987063050270081,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5837803745652784,
+          "similarity": 0.5552887916564941,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.5493464902606793,
+          "similarity": 0.5548997521400452,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.5400549407038802,
+          "similarity": 0.49868738651275635,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5246546386754062,
+          "similarity": 0.6059461832046509,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.522939119065503,
+          "similarity": 0.5987063050270081,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5149891865873096,
+          "similarity": 0.5552887916564941,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.4898738537713552,
+          "similarity": 0.5548997521400452,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.4790891272637381,
+          "similarity": 0.49868738651275635,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.6059461832046509,
+          "similarity": 0.6059461832046509,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.5987063050270081,
+          "similarity": 0.5987063050270081,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5552887916564941,
+          "similarity": 0.5552887916564941,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.5548997521400452,
+          "similarity": 0.5548997521400452,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.49868738651275635,
+          "similarity": 0.49868738651275635,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

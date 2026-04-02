@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-355",
+  "query": "now commit submit separate pr, and merge the settings.json",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1195,
+          "title": "Prefix-Match Settings Merge Pattern for Shared JSON Config Files",
+          "category": "pattern",
+          "final_score": 0.4580176237508786,
+          "similarity": 0.4477713704109192,
+          "confidence": 0.5320887353082149,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.45173811901716066,
+          "similarity": 0.4287382960319519,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.4326907595902386,
+          "similarity": 0.3536338806152344,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.41085615965257627,
+          "similarity": 0.36452412605285645,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.40670486614662227,
+          "similarity": 0.350905179977417,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1195,
+          "title": "Prefix-Match Settings Merge Pattern for Shared JSON Config Files",
+          "category": "pattern",
+          "final_score": 0.4580176237508786,
+          "similarity": 0.4477713704109192,
+          "confidence": 0.5320887353082149,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.45173811901716066,
+          "similarity": 0.4287382960319519,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.4326907595902386,
+          "similarity": 0.3536338806152344,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1201,
+          "title": "ADR-004: Prefix-Match Identification for settings.json Hook Merge",
+          "category": "decision",
+          "final_score": 0.41085615965257627,
+          "similarity": 0.36452412605285645,
+          "confidence": 0.5230036818386264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.40670486614662227,
+          "similarity": 0.350905179977417,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

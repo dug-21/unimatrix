@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a02f1841-1774916916000",
+  "query": "saturating arithmetic integer overflow u32 counter",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.503987521967902,
+          "similarity": 0.5694634318351746,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.43898625652996764,
+          "similarity": 0.4056129455566406,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4341841340398929,
+          "similarity": 0.4244566559791565,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.4038176596290864,
+          "similarity": 0.3748633861541748,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.39047174251276145,
+          "similarity": 0.3377499580383301,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5694634318351746,
+          "similarity": 0.5694634318351746,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4244566559791565,
+          "similarity": 0.4244566559791565,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.4056129455566406,
+          "similarity": 0.4056129455566406,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.3748633861541748,
+          "similarity": 0.3748633861541748,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.3377499580383301,
+          "similarity": 0.3377499580383301,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.503987521967902,
+          "similarity": 0.5694634318351746,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.43898625652996764,
+          "similarity": 0.4056129455566406,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4341841340398929,
+          "similarity": 0.4244566559791565,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.4038176596290864,
+          "similarity": 0.3748633861541748,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.39047174251276145,
+          "similarity": 0.3377499580383301,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5673044906984868,
+          "similarity": 0.5694634318351746,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.49356190021753404,
+          "similarity": 0.4056129455566406,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.485300486783567,
+          "similarity": 0.4244566559791565,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.44840013711655646,
+          "similarity": 0.3748633861541748,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.4335751072411901,
+          "similarity": 0.3377499580383301,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5672903799721032,
+          "similarity": 0.5694634318351746,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.49413672998655955,
+          "similarity": 0.4056129455566406,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4856981588803279,
+          "similarity": 0.4244566559791565,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.44888076947578776,
+          "similarity": 0.3748633861541748,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.4342014154059147,
+          "similarity": 0.3377499580383301,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.4465928811293382,
+          "similarity": 0.5694634318351746,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.3573579421410194,
+          "similarity": 0.4244566559791565,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.3457618126502404,
+          "similarity": 0.4056129455566406,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.3268390068641076,
+          "similarity": 0.3748633861541748,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.3039999741774339,
+          "similarity": 0.3377499580383301,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

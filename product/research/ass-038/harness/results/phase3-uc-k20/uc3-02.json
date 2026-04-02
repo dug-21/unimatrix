@@ -1,0 +1,434 @@
+{
+  "scenario_id": "uc3-02",
+  "query": "How should the is_in_progress status field be typed on RetrospectiveReport to correctly represent cycles with no event data?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.6366851518110836,
+          "similarity": 0.7539179921150208,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5503613279673255,
+          "similarity": 0.5831226706504822,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5268916507107007,
+          "similarity": 0.5007555484771729,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4670840364490002,
+          "similarity": 0.386244535446167,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3040,
+          "title": "infra-001: seeding CYCLE_EVENTS for phase_narrative tests — UDS-only write path constraint",
+          "category": "pattern",
+          "final_score": 0.4650357019400878,
+          "similarity": 0.432977557182312,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.46300281078705896,
+          "similarity": 0.41399985551834106,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3375,
+          "title": "ADR-005 col-024: Open-Ended Window Capped at unix_now_secs(), No Additional Max-Age Limit",
+          "category": "decision",
+          "final_score": 0.4628157292721735,
+          "similarity": 0.43045878410339355,
+          "confidence": 0.569844430733909,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.46264052947456447,
+          "similarity": 0.39668333530426025,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.46025405156381183,
+          "similarity": 0.4288750886917114,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.45781617339104286,
+          "similarity": 0.4034382104873657,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.45636319195514863,
+          "similarity": 0.4221598505973816,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.45187733398523233,
+          "similarity": 0.36629313230514526,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.44759543435450966,
+          "similarity": 0.37051182985305786,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.4465322311808809,
+          "similarity": 0.4308466911315918,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.4455400475108946,
+          "similarity": 0.42803680896759033,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.4410342031782689,
+          "similarity": 0.3974258303642273,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 865,
+          "title": "ADR-002 col-020: Idempotent Counter Updates via Absolute-Set",
+          "category": "decision",
+          "final_score": 0.4360535063576011,
+          "similarity": 0.36973822116851807,
+          "confidence": 0.5839477727298916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3795,
+          "title": "ADR-003 crt-033: Direct serde derives on RetrospectiveReport — no DTO shim required",
+          "category": "decision",
+          "final_score": 0.42428984451409446,
+          "similarity": 0.37169772386550903,
+          "confidence": 0.5492185438732436,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 600,
+          "title": "ADR-001: pre_quarantine_status stored as Option<u8>",
+          "category": "decision",
+          "final_score": 0.42363597114338825,
+          "similarity": 0.36667442321777344,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.40684199870591975,
+          "similarity": 0.3640786409378052,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.05,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9433483923290393
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.6366851518110836,
+          "similarity": 0.7539179921150208,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5503613279673255,
+          "similarity": 0.5831226706504822,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5268916507107007,
+          "similarity": 0.5007555484771729,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4670840364490002,
+          "similarity": 0.386244535446167,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3040,
+          "title": "infra-001: seeding CYCLE_EVENTS for phase_narrative tests — UDS-only write path constraint",
+          "category": "pattern",
+          "final_score": 0.4650357019400878,
+          "similarity": 0.432977557182312,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.46300281078705896,
+          "similarity": 0.41399985551834106,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3375,
+          "title": "ADR-005 col-024: Open-Ended Window Capped at unix_now_secs(), No Additional Max-Age Limit",
+          "category": "decision",
+          "final_score": 0.4628157292721735,
+          "similarity": 0.43045878410339355,
+          "confidence": 0.569844430733909,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.46264052947456447,
+          "similarity": 0.39668333530426025,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.46025405156381183,
+          "similarity": 0.4288750886917114,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.45781617339104286,
+          "similarity": 0.4034382104873657,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.45636319195514863,
+          "similarity": 0.4221598505973816,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.45187733398523233,
+          "similarity": 0.36629313230514526,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.44759543435450966,
+          "similarity": 0.37051182985305786,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.4465322311808809,
+          "similarity": 0.4308466911315918,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.4455400475108946,
+          "similarity": 0.42803680896759033,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.4410342031782689,
+          "similarity": 0.3974258303642273,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 865,
+          "title": "ADR-002 col-020: Idempotent Counter Updates via Absolute-Set",
+          "category": "decision",
+          "final_score": 0.4360535063576011,
+          "similarity": 0.36973822116851807,
+          "confidence": 0.5839477727298916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3795,
+          "title": "ADR-003 crt-033: Direct serde derives on RetrospectiveReport — no DTO shim required",
+          "category": "decision",
+          "final_score": 0.42428984451409446,
+          "similarity": 0.37169772386550903,
+          "confidence": 0.5492185438732436,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 600,
+          "title": "ADR-001: pre_quarantine_status stored as Option<u8>",
+          "category": "decision",
+          "final_score": 0.42363597114338825,
+          "similarity": 0.36667442321777344,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.40684199870591975,
+          "similarity": 0.3640786409378052,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.05,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9433483923290391
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 2.220446049250313e-16
+  },
+  "phase": null
+}

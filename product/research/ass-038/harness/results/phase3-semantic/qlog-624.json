@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-624",
+  "query": "then lets continue to delivery",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.3795133470234118,
+          "similarity": 0.23007535934448242,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.35158866645175846,
+          "similarity": 0.22342818975448608,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.329310651459633,
+          "similarity": 0.16771167516708374,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.31184794721336495,
+          "similarity": 0.1822165846824646,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.29286824688894764,
+          "similarity": 0.16791081428527832,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.3795133470234118,
+          "similarity": 0.23007535934448242,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.35158866645175846,
+          "similarity": 0.22342818975448608,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.329310651459633,
+          "similarity": 0.16771167516708374,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3819,
+          "title": "Task tool unavailable — Delivery Leader executes specialist roles directly, knowledge stewardship gaps result",
+          "category": "lesson-learned",
+          "final_score": 0.31184794721336495,
+          "similarity": 0.1822165846824646,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.29286824688894764,
+          "similarity": 0.16791081428527832,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

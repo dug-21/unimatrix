@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-364cb76e-1774444272000",
+  "query": "UDS listener injection observation hot path",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5329874179703848,
+          "similarity": 0.5828319787979126,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5058470359727408,
+          "similarity": 0.5958461165428162,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.4859767674952374,
+          "similarity": 0.5085543990135193,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.4698824122466848,
+          "similarity": 0.48029279708862305,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.4582174207657929,
+          "similarity": 0.48613858222961426,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5329874179703848,
+          "similarity": 0.5828319787979126,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5058470359727408,
+          "similarity": 0.5958461165428162,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.4859767674952374,
+          "similarity": 0.5085543990135193,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.4698824122466848,
+          "similarity": 0.48029279708862305,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.4582174207657929,
+          "similarity": 0.48613858222961426,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.6057835169399486,
+          "similarity": 0.5828319787979126,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5672561163799563,
+          "similarity": 0.5958461165428162,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.5485412103842946,
+          "similarity": 0.5085543990135193,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.529221664153428,
+          "similarity": 0.48029279708862305,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5126377753423026,
+          "similarity": 0.48613858222961426,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5958461165428162,
+          "similarity": 0.5958461165428162,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5828319787979126,
+          "similarity": 0.5828319787979126,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.5085543990135193,
+          "similarity": 0.5085543990135193,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.48613858222961426,
+          "similarity": 0.48613858222961426,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.48029279708862305,
+          "similarity": 0.48029279708862305,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.46282837941096383,
+          "similarity": 0.5958461165428162,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.4548196792602539,
+          "similarity": 0.5828319787979126,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.409110399392935,
+          "similarity": 0.5085543990135193,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.39531605060283953,
+          "similarity": 0.48613858222961426,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.3917186443622296,
+          "similarity": 0.48029279708862305,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.6056344809779872,
+          "similarity": 0.5828319787979126,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.567441765731663,
+          "similarity": 0.5958461165428162,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.5482815557650038,
+          "similarity": 0.5085543990135193,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.5289039442374226,
+          "similarity": 0.48029279708862305,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5124657026597527,
+          "similarity": 0.48613858222961426,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

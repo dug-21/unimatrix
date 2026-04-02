@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bd98afa6-1773804591000",
+  "query": "analytics queue drain task bounded channel mpsc shed counter",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.5652309127560331,
+          "similarity": 0.6645790338516235,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5087919182915283,
+          "similarity": 0.50296550989151,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.4970261540323643,
+          "similarity": 0.4643212556838989,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.49605116633714896,
+          "similarity": 0.4732457399368286,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.4820441844911135,
+          "similarity": 0.44490909576416016,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.5652309127560331,
+          "similarity": 0.6645790338516235,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5087919182915283,
+          "similarity": 0.50296550989151,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3000,
+          "title": "ADR-003 crt-025: CYCLE_EVENTS Uses Direct Write Pool, Not Analytics Drain",
+          "category": "decision",
+          "final_score": 0.4970261540323643,
+          "similarity": 0.4643212556838989,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.49605116633714896,
+          "similarity": 0.4732457399368286,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.4820441844911135,
+          "similarity": 0.44490909576416016,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4717",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] All three gates confirmed PASS. Spawning security reviewer.\n[tool: Bash(grep -i \"pass\\|fail\" product/features/crt-034/reports/gate-3a-report.md | head -3; grep -i \"pass\\|fail\" product/features) → > Result: PASS\n| Architecture alignment | PASS | All 4 components match architecture decomposition; interface contracts correct |\n| Specification coverage | PASS | All 17 FRs and 15 ACs addressed in pseudocode; f64 type correction applied per ADR-003 |\n> Result: PASS\n| Pseudocode fidelity | PASS | A]\n[tool: Bash(grep \"GATE RESULT\" product/features/crt-034/reports/gate-3a-report.md product/features/crt-034/reports/gate-3b-report.md) → Exit code 1]\n[tool: Bash(grep -l \"GATE RESULT: PASS\" product/features/crt-034/reports/gate-3a-report.md product/features/crt-034/reports/gate-3b-) → Exit code 1]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5726137299016617,
+          "similarity": 0.5820806622505188,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.5327308753951238,
+          "similarity": 0.5681509971618652,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5321136269395312,
+          "similarity": 0.5408104062080383,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5297528592751303,
+          "similarity": 0.5242143273353577,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3946,
+          "title": "AC-22-style CI grep gates must exclude test code — domain strings in test helpers cause false failures",
+          "category": "lesson-learned",
+          "final_score": 0.5210764022629022,
+          "similarity": 0.5495060086250305,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5726137299016617,
+          "similarity": 0.5820806622505188,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.5327308753951238,
+          "similarity": 0.5681509971618652,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5321136269395312,
+          "similarity": 0.5408104062080383,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5297528592751303,
+          "similarity": 0.5242143273353577,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3946,
+          "title": "AC-22-style CI grep gates must exclude test code — domain strings in test helpers cause false failures",
+          "category": "lesson-learned",
+          "final_score": 0.5210764022629022,
+          "similarity": 0.5495060086250305,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

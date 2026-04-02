@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a02f1841-1774917157000",
+  "query": "InferenceConfig fusion weight sum constraint validate",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.5945431455895133,
+          "similarity": 0.6693481802940369,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5389770486547464,
+          "similarity": 0.5520778298377991,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5149823553100638,
+          "similarity": 0.4987417459487915,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3905,
+          "title": "merge_configs: per-file validation does not cover cross-level invariant violations; always re-validate the merged result",
+          "category": "lesson-learned",
+          "final_score": 0.5142382068370689,
+          "similarity": 0.5220186710357666,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.5050846412048178,
+          "similarity": 0.5192306041717529,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.5945431455895133,
+          "similarity": 0.6693481802940369,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5389770486547464,
+          "similarity": 0.5520778298377991,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5149823553100638,
+          "similarity": 0.4987417459487915,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3905,
+          "title": "merge_configs: per-file validation does not cover cross-level invariant violations; always re-validate the merged result",
+          "category": "lesson-learned",
+          "final_score": 0.5142382068370689,
+          "similarity": 0.5220186710357666,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.5050846412048178,
+          "similarity": 0.5192306041717529,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

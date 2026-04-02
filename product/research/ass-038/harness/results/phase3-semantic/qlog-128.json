@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-128",
+  "query": "I'm not sure about that.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.38943766414131875,
+          "similarity": 0.24761545658111572,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.37953617576325505,
+          "similarity": 0.22376036643981934,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.3661130166526313,
+          "similarity": 0.2289745807647705,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.3597439829102105,
+          "similarity": 0.22063976526260376,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.35504929769125104,
+          "similarity": 0.2204188108444214,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.38943766414131875,
+          "similarity": 0.24761545658111572,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.37953617576325505,
+          "similarity": 0.22376036643981934,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.3661130166526313,
+          "similarity": 0.2289745807647705,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.3597439829102105,
+          "similarity": 0.22063976526260376,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.35504929769125104,
+          "similarity": 0.2204188108444214,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

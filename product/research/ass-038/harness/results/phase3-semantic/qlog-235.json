@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-235",
+  "query": "You are compiling the implementation brief for nan-003.\nYour agent ID: nan-003-synthesizer\n\nRead these artifacts:\n- product/features/nan-003/SCOPE.md\n- product/features/nan-003/SCOPE-RISK-ASSESSMENT.md\n- product/features/nan-003/specification/SPECIFICATION.md\n- product/features/nan-003/architecture/ARCHITECTURE.md\n- product/features/nan-003/architecture/ADR-001-hard-stop-gates-seed-state-machine.md\n- product/features/nan-003/architecture/ADR-002-versioned-sentinel-idempotency.md\n- product/features/nan-003/architecture/ADR-003-context-status-preflight.md\n- product/features/nan-003/architecture/ADR-004-terminal-only-recommendation-output.md\n- product/features/nan-003/architecture/ADR-005-claude-md-block-unimatrix-skills-only.md\n- product/features/nan-003/architecture/ADR-006-seed-entry-categories-and-quality-gate.md\n- product/features/nan-003/RISK-TEST-STRATEGY.md\n- product/features/nan-003/ALIGNMENT-REPORT.md\n\nADR file paths from architect:\n- ADR-001-hard-stop-gates-seed-state-machine.md\n- ADR-002-versioned-sentinel-idempotency.md\n- ADR-003-context-status-preflight.md\n- ADR-004-terminal-only-recommendation-output.md\n- ADR-005-claude-md-block-unimatrix-skills-only.md\n- ADR-006-seed-entry-categories-and-quality-gate.md\n\nVision variances from vision guardian:\n- VARIANCE 1: PRODUCT-VISION.md describes nan-003 as full project init (schema, ONNX, npx), but actual scope is onboarding skills only. nan-004 handles the rest. Vision needs updating to reflect split. Recommendation: update PRODUCT-VISION.md.\n- WARN 1: outcome category in FR-05(c) not in SCOPE.md/ARCHITECTURE.md category list\n- WARN 2: Spec still lists ADR-002 sentinel fallback as open question (should absorb decision)\n- WARN 3: >=3 entries threshold not locked in spec\n\nProduce: IMPLEMENTATION-BRIEF.md, ACCEPTANCE-MAP.md, and create a GH Issue.\n\nWrite IMPLEMENTATION-BRIEF.md to product/features/nan-003/IMPLEMENTATION-BRIEF.md\nWrite ACCEPTANCE-MAP.md to product/features/nan-003/ACCEPTANCE-MAP.md\n\nFor the GH Issue, use: gh issue create --title \"[nan-003] Unimatrix Onboarding Skills\" --label \"nanoprobes\" --body \"...\"\nThe issue should summarize the feature, list ACs, and link to the design artifacts.\n\nReturn: file paths + GH Issue URL.\n",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5620500527048585,
+          "similarity": 0.6037898659706116,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.5534095051048905,
+          "similarity": 0.5899458527565002,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1091,
+          "title": "ADR-002 nan-003: Versioned Sentinel + Head-Check Fallback for Init Idempotency",
+          "category": "decision",
+          "final_score": 0.5440532493681449,
+          "similarity": 0.5930995941162109,
+          "confidence": 0.5580022566903781,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5378416123571429,
+          "similarity": 0.5846459865570068,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5302931122732357,
+          "similarity": 0.5982927083969116,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5620500527048585,
+          "similarity": 0.6037898659706116,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.5534095051048905,
+          "similarity": 0.5899458527565002,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1091,
+          "title": "ADR-002 nan-003: Versioned Sentinel + Head-Check Fallback for Init Idempotency",
+          "category": "decision",
+          "final_score": 0.5440532493681449,
+          "similarity": 0.5930995941162109,
+          "confidence": 0.5580022566903781,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5378416123571429,
+          "similarity": 0.5846459865570068,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5302931122732357,
+          "similarity": 0.5982927083969116,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -13,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

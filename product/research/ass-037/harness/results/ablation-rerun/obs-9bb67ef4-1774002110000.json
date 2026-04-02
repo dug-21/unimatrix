@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002110000",
+  "query": "two-socket dual framing integration test pattern hook IPC MCP",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.6117161512374878,
+          "similarity": 0.6117161512374878,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.5239079594612122,
+          "similarity": 0.5239079594612122,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4777160882949829,
+          "similarity": 0.4777160882949829,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.46704065799713135,
+          "similarity": 0.46704065799713135,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4643746614456177,
+          "similarity": 0.4643746614456177,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5129851523034276,
+          "similarity": 0.6117161512374878,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.4800161653179074,
+          "similarity": 0.5239079594612122,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.46925613402804567,
+          "similarity": 0.46704065799713135,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4575611533454404,
+          "similarity": 0.4643746614456177,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4477209031978729,
+          "similarity": 0.4777160882949829,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5757328303012659,
+          "similarity": 0.6117161512374878,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.538757683664309,
+          "similarity": 0.5239079594612122,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.5292546684021412,
+          "similarity": 0.46704065799713135,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5135493307941807,
+          "similarity": 0.4643746614456177,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.49891795087937363,
+          "similarity": 0.4777160882949829,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5754976451971076,
+          "similarity": 0.6117161512374878,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.5388547406852443,
+          "similarity": 0.5239079594612122,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.5296612959211282,
+          "similarity": 0.46704065799713135,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5138707338618185,
+          "similarity": 0.4643746614456177,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4990565251446311,
+          "similarity": 0.4777160882949829,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.4725945546076848,
+          "similarity": 0.6117161512374878,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.4185587442838229,
+          "similarity": 0.5239079594612122,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.3901329774122972,
+          "similarity": 0.4777160882949829,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.38356348184438854,
+          "similarity": 0.46704065799713135,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.3819228685819186,
+          "similarity": 0.4643746614456177,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5129851523034276,
+          "similarity": 0.6117161512374878,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.4800161653179074,
+          "similarity": 0.5239079594612122,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.46925613402804567,
+          "similarity": 0.46704065799713135,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4575611533454404,
+          "similarity": 0.4643746614456177,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4477209031978729,
+          "similarity": 0.4777160882949829,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 2582,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 1897,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 1265,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

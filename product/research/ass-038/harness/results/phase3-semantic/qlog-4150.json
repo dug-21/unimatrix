@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4150",
+  "query": "<task-notification>\n<task-id>ad05cf9c8b4d2fbd3</task-id>\n<tool-use-id>toolu_01KsRkMBeapgP4YofsFw9L2D</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/2b5b67be-896b-42f6-aa6e-10e234340f13/tasks/ad05cf9c8b4d2fbd3.output</output-file>\n<status>completed</status>\n<summary>Agent \"Quarantine 2186 background-tick entries\" completed</summary>\n<result>All IDs have been processed. Here is the final report for this session:\n\n**Bulk quarantine complete — GH #437 cleanup**\n\n- Total IDs in the full list: 2186\n- IDs processed this session (2541–3717): 614\n- Success rate this session: 100% (614/614)\n- Failures: 0\n\n**Across all sessions combined:**\n- Total attempted: 2186\n- Total succeeded: 2186\n- Failures: 0\n\nAll telemetry artifacts injected by the RecurringFrictionRule background-tick extraction rule have been quarantined. They are excluded from search and lookup but remain accessible via `context_get` if needed for audit purposes.</result>\n<usage><total_tokens>278022</total_tokens><tool_uses>2189</tool_uses><duration_ms>2328069</duration_ms></usage>\n</task-notification>",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5647720499622806,
+          "similarity": 0.5798830986022949,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5333546463895319,
+          "similarity": 0.5922291874885559,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.5187464263393224,
+          "similarity": 0.564473569393158,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5100926130194412,
+          "similarity": 0.5677759647369385,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.505475009817826,
+          "similarity": 0.5590025186538696,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5647720499622806,
+          "similarity": 0.5798830986022949,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5333546463895319,
+          "similarity": 0.5922291874885559,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.5187464263393224,
+          "similarity": 0.564473569393158,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5100926130194412,
+          "similarity": 0.5677759647369385,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.505475009817826,
+          "similarity": 0.5590025186538696,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

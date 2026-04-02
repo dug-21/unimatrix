@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5046",
+  "query": "Feecback: The one critical instruction:                                                       \n                                                                                      \n  The architecture (Component D) defines NliCandidatePair as a flat struct with Option\n   fields and a PairOrigin discriminator. The spec (FR-10) defines it as a tagged     \n  union where misrouting is a compile-time error. Follow the spec model. The flat\n  struct allows an Informs-origin pair to have source_created_at: None — the Phase 8b \n  guard must then handle that defensively. The tagged union makes it impossible:\n\n  // Spec model — correct\n  enum NliCandidatePair {                                                             \n      SupportsContradict { source_id, target_id, cosine, nli_scores },                \n      Informs { candidate: InformsCandidate, nli_scores },                            \n  }                                                                                   \n  // InformsCandidate carries all fields as required (no Option)                      \n                                                                                      \n  The architecture's flat struct is the design intent. The spec's tagged union is the \n  implementation. Both documents agree on what to do — they disagree on how to model  \n  it in Rust. The spec is right.    \\\nOQ-S1 is resolved. No CHECK constraint on relation_type. The DDL is plain TEXT NOT  \n  NULL with only the UNIQUE(source_id, target_id, relation_type) index. \"Informs\"\n  writes without restriction. This gate clears. \\\nOQ-S2: CLOSED. NliScores in cross_encoder.rs lines 32–42:                           \n  \n  /// Sum of three fields ≈ 1.0 (within 1e-4). Produced by softmax over the           \n  /// 3-element ONNX logit output of the cross-encoder model.               \n  pub struct NliScores {                                                              \n      pub entailment: f32,    // P(premise entails hypothesis)              \n      pub neutral: f32,       // P(premise and hypothesis are unrelated)              \n      pub contradiction: f32, // P(premise contradicts hypothesis)          \n      // INVARIANT: entailment + neutral + contradiction ≈ 1.0 (within 1e-4)          \n  }                                                                                   \n  \n  It's a true 3-class softmax — not residual. neutral > 0.5 means the model explicitly\n   assigns >50% probability to \"unrelated\" as a first-class output. The threshold is\n  correctly calibrated. The \"P(unrelated)\" label is semantically exact for what       \n  Informs captures.                                                         \n\n  One minor observation for the delivery agent: format_nli_metadata currently         \n  serializes only entailment and contradiction in the GRAPH_EDGES metadata JSON. For\n  Informs edges, neutral is the decision criterion. Adding \"nli_neutral\":             \n  scores.neutral to the metadata write for Informs edges would make future debugging\n  and score distribution monitoring much easier. Not blocking — but worth doing while\n  touching that code path.\\\nIt looks like architecture needs to be updated to match spec",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.5830993684390633,
+          "similarity": 0.6975942850112915,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5500150970739287,
+          "similarity": 0.6462840437889099,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5177836596134896,
+          "similarity": 0.5484433174133301,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.49334362823880074,
+          "similarity": 0.5386082530021667,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 38,
+      "p_at_k": 0.25,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.5830993684390633,
+          "similarity": 0.6975942850112915,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5500150970739287,
+          "similarity": 0.6462840437889099,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5177836596134896,
+          "similarity": 0.5484433174133301,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.49334362823880074,
+          "similarity": 0.5386082530021667,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.25,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

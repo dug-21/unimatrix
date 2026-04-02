@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5becb974-1774975696000",
+  "query": "NLI inference graph edge testing patterns PPR discriminator routing",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5017740515587787,
+          "similarity": 0.48450684547424316,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5015809195787504,
+          "similarity": 0.48169851303100586,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4932622492364631,
+          "similarity": 0.4590646028518677,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.47691932789832403,
+          "similarity": 0.4483414888381958,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.46516207542392396,
+          "similarity": 0.4484623074531555,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5017740515587787,
+          "similarity": 0.48450684547424316,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5015809195787504,
+          "similarity": 0.48169851303100586,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4932622492364631,
+          "similarity": 0.4590646028518677,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.47691932789832403,
+          "similarity": 0.4483414888381958,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.46516207542392396,
+          "similarity": 0.4484623074531555,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

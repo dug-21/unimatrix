@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4063",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Spawning Phase 2 rust-dev.\n[tool: Bash(git checkout -b bugfix/434-lower-supports-edge-threshold) → Switched to a new branch 'bugfix/434-lower-supports-edge-threshold']\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'bugfix-434'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[Assistant] No named constants exist for any threshold in this file — the established pattern throughout `config.rs` is:\n- `default_*()` free function (required by serde's `#[serde(default = \"...\")]` attribute)\n- Literal in `InferenceConfig::default()` body\n\nThere are no `const` values for `nli_entailment_threshold` (0.6), `supports_candidate_threshold` (0.5), or any other threshold. Introducing one here would be inconsistent with the file's pattern.\n\n**No** is the right answer. The `default_supports_edge_threshold()` function is the canonical home for this value — it's what serde calls, and it's what `default()` should mirror. A separate `const` would create a third source of truth for the same value with no payoff.\n\nAre you happy to proceed with the fix as described?\n[tool: Grep(^const.*f32|^pub const.*f32) → No matches found]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.549364122431307,
+          "similarity": 0.6474695801734924,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5340707002932014,
+          "similarity": 0.5623961091041565,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5266419067644169,
+          "similarity": 0.5667154788970947,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.5161948487054335,
+          "similarity": 0.570475697517395,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.5084566689225553,
+          "similarity": 0.5567539930343628,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.549364122431307,
+          "similarity": 0.6474695801734924,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5340707002932014,
+          "similarity": 0.5623961091041565,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5266419067644169,
+          "similarity": 0.5667154788970947,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.5161948487054335,
+          "similarity": 0.570475697517395,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.5084566689225553,
+          "similarity": 0.5567539930343628,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

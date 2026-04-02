@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-5c7012c4-1774566913000",
+  "query": "outcome rework eval harness nan-008 nan-009 regression",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.40912349407489484,
+          "similarity": 0.5085756778717041,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.3741135964026818,
+          "similarity": 0.4516845941543579,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.3730479020338792,
+          "similarity": 0.4499528408050537,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.37044004293588495,
+          "similarity": 0.445715069770813,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.35721896244929385,
+          "similarity": 0.42423081398010254,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5085756778717041,
+          "similarity": 0.5085756778717041,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.4516845941543579,
+          "similarity": 0.4516845941543579,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.4499528408050537,
+          "similarity": 0.4499528408050537,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.445715069770813,
+          "similarity": 0.445715069770813,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.42423081398010254,
+          "similarity": 0.42423081398010254,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.4774272664511653,
+          "similarity": 0.5085756778717041,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4388231392803628,
+          "similarity": 0.445715069770813,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.4380024527934287,
+          "similarity": 0.4516845941543579,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.4255764204025268,
+          "similarity": 0.4499528408050537,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.42276353664103705,
+          "similarity": 0.42423081398010254,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.53680451494555,
+          "similarity": 0.5085756778717041,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4899812627602222,
+          "similarity": 0.445715069770813,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.48826958283859256,
+          "similarity": 0.4516845941543579,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.47138402400297275,
+          "similarity": 0.4499528408050537,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.47004497048964866,
+          "similarity": 0.42423081398010254,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.4774272664511653,
+          "similarity": 0.5085756778717041,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4388231392803628,
+          "similarity": 0.445715069770813,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.4380024527934287,
+          "similarity": 0.4516845941543579,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.4255764204025268,
+          "similarity": 0.4499528408050537,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.42276353664103705,
+          "similarity": 0.42423081398010254,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.5366212108087068,
+          "similarity": 0.5085756778717041,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4896938199486026,
+          "similarity": 0.445715069770813,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.48803201797700657,
+          "similarity": 0.4516845941543579,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.4712448604757135,
+          "similarity": 0.4499528408050537,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3624,
+          "title": "Zero-regression eval gate validates no-op path only — suppression/filter features need mandatory positive integration tests",
+          "category": "pattern",
+          "final_score": 0.4697474759668594,
+          "similarity": 0.42423081398010254,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3586,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3876,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3590,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

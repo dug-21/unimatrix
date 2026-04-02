@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-531f376f-1773534365000",
+  "query": "ConfidenceState ConfidenceStateHandle crt-019 background tick writer pattern",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.44340616044253295,
+          "similarity": 0.45251011848449707,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4432205099383069,
+          "similarity": 0.40731292963027954,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.42653993924630734,
+          "similarity": 0.40190374851226807,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.40689865253698954,
+          "similarity": 0.3873581886291504,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.40655643860327145,
+          "similarity": 0.40428900718688965,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.45251011848449707,
+          "similarity": 0.45251011848449707,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.40731292963027954,
+          "similarity": 0.40731292963027954,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.40428900718688965,
+          "similarity": 0.40428900718688965,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.40190374851226807,
+          "similarity": 0.40190374851226807,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.3873581886291504,
+          "similarity": 0.3873581886291504,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.49978178524568795,
+          "similarity": 0.40731292963027954,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.4956055027167612,
+          "similarity": 0.45251011848449707,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.4774171961701995,
+          "similarity": 0.40190374851226807,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4518846026361474,
+          "similarity": 0.3873581886291504,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.4497550130645991,
+          "similarity": 0.40428900718688965,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.44340616044253295,
+          "similarity": 0.45251011848449707,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.4432205099383069,
+          "similarity": 0.40731292963027954,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.42653993924630734,
+          "similarity": 0.40190374851226807,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.40689865253698954,
+          "similarity": 0.3873581886291504,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.40655643860327145,
+          "similarity": 0.40428900718688965,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.3746216113750751,
+          "similarity": 0.45251011848449707,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.34680795669555664,
+          "similarity": 0.40731292963027954,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.34494708134577823,
+          "similarity": 0.40428900718688965,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.34347922985370344,
+          "similarity": 0.40190374851226807,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.3345281160794772,
+          "similarity": 0.3873581886291504,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.49918133813130217,
+          "similarity": 0.40731292963027954,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.4953256625594088,
+          "similarity": 0.45251011848449707,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.4769268491074856,
+          "similarity": 0.40190374851226807,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.45146559994779023,
+          "similarity": 0.3873581886291504,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.44945977926019837,
+          "similarity": 0.40428900718688965,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3822,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1615,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

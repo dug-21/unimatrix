@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2012",
+  "query": "So... wait... lets make sure we're talking the same thing.  I'm thinking, that we're going to replay the last k messages from the transcript log almost verbatim... to restore that that agent was doing prior to the compaction..  are we talking about the same thing?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.47739592546898,
+          "similarity": 0.45155131816864014,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.46918367040298725,
+          "similarity": 0.42124348878860474,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.4553572204242997,
+          "similarity": 0.37020301818847656,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.45134779558239524,
+          "similarity": 0.38272589445114136,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.4418432579424023,
+          "similarity": 0.37308967113494873,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.47739592546898,
+          "similarity": 0.45155131816864014,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.46918367040298725,
+          "similarity": 0.42124348878860474,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.4553572204242997,
+          "similarity": 0.37020301818847656,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.45134779558239524,
+          "similarity": 0.38272589445114136,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.4418432579424023,
+          "similarity": 0.37308967113494873,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

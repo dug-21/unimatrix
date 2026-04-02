@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5becb974-1774967125000",
+  "query": "PPR Direction::Outgoing reverse walk edge type addition",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5556384753977431,
+          "similarity": 0.6203674674034119,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5518564022082252,
+          "similarity": 0.5772219300270081,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5274557250412057,
+          "similarity": 0.5471319556236267,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.49927404469759684,
+          "similarity": 0.48203688859939575,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.47302521427529054,
+          "similarity": 0.46340227127075195,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5556384753977431,
+          "similarity": 0.6203674674034119,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5518564022082252,
+          "similarity": 0.5772219300270081,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5274557250412057,
+          "similarity": 0.5471319556236267,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.49927404469759684,
+          "similarity": 0.48203688859939575,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.47302521427529054,
+          "similarity": 0.46340227127075195,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

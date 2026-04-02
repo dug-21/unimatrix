@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1003",
+  "query": "so.. one more strategic question... can I package postgres the same way we package sqllite, within the confines of the rust deployable?  Is that a strategic shift now that makes a conversion to truly scalable platform later simply swapping the backend infrastructure?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.46536699131379256,
+          "similarity": 0.4475651979446411,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2088,
+          "title": "rusqlite + sqlx cannot coexist — libsqlite3-sys links conflict blocks simultaneous Cargo dependency",
+          "category": "pattern",
+          "final_score": 0.45626244511080927,
+          "similarity": 0.49293053150177,
+          "confidence": 0.4628115917268109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.4540995549313478,
+          "similarity": 0.3932607173919678,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.4479233864947155,
+          "similarity": 0.40293610095977783,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.430928580600363,
+          "similarity": 0.42510831356048584,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.46536699131379256,
+          "similarity": 0.4475651979446411,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2088,
+          "title": "rusqlite + sqlx cannot coexist — libsqlite3-sys links conflict blocks simultaneous Cargo dependency",
+          "category": "pattern",
+          "final_score": 0.45626244511080927,
+          "similarity": 0.49293053150177,
+          "confidence": 0.4628115917268109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.4540995549313478,
+          "similarity": 0.3932607173919678,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.4479233864947155,
+          "similarity": 0.40293610095977783,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.430928580600363,
+          "similarity": 0.42510831356048584,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

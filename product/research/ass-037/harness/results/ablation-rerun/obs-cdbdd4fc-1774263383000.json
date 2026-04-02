@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774263383000",
+  "query": "topic scan full table query caching store reads extraction pipeline",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.5287223998716074,
+          "similarity": 0.48749440908432007,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.517762407182642,
+          "similarity": 0.46732228994369507,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.5164223170770881,
+          "similarity": 0.48470091819763184,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5086454259627426,
+          "similarity": 0.4315372705459595,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.5058546840921346,
+          "similarity": 0.4381192922592163,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.4700330634124797,
+          "similarity": 0.48749440908432007,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.46087203945599503,
+          "similarity": 0.48470091819763184,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4606070602290459,
+          "similarity": 0.46732228994369507,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.451408615383281,
+          "similarity": 0.4315372705459595,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.4498455049999278,
+          "similarity": 0.4381192922592163,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.5284546856457158,
+          "similarity": 0.48749440908432007,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.5174348739538176,
+          "similarity": 0.46732228994369507,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.5162163339674812,
+          "similarity": 0.48470091819763184,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5081447236548414,
+          "similarity": 0.4315372705459595,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.5054148438854273,
+          "similarity": 0.4381192922592163,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.4700330634124797,
+          "similarity": 0.48749440908432007,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.46087203945599503,
+          "similarity": 0.48470091819763184,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4606070602290459,
+          "similarity": 0.46732228994369507,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.451408615383281,
+          "similarity": 0.4315372705459595,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.4498455049999278,
+          "similarity": 0.4381192922592163,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.48749440908432007,
+          "similarity": 0.48749440908432007,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.48470091819763184,
+          "similarity": 0.48470091819763184,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.46732228994369507,
+          "similarity": 0.46732228994369507,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.4381192922592163,
+          "similarity": 0.4381192922592163,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.4315372705459595,
+          "similarity": 0.4315372705459595,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.3961504055903508,
+          "similarity": 0.48749440908432007,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.39443133427546573,
+          "similarity": 0.48470091819763184,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.38373679381150466,
+          "similarity": 0.46732228994369507,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.3657657183133639,
+          "similarity": 0.4381192922592163,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.3617152434128981,
+          "similarity": 0.4315372705459595,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 60,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3299,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

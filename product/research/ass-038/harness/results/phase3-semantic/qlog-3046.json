@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3046",
+  "query": "now prune the aged worktrees",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.4644439337205535,
+          "similarity": 0.43202877044677734,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.4498286090266552,
+          "similarity": 0.39686912298202515,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.43113727816477465,
+          "similarity": 0.3344695568084717,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.42672370789823766,
+          "similarity": 0.3420095443725586,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.3988259268813521,
+          "similarity": 0.31723010540008545,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.4644439337205535,
+          "similarity": 0.43202877044677734,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.4498286090266552,
+          "similarity": 0.39686912298202515,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.43113727816477465,
+          "similarity": 0.3344695568084717,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.42672370789823766,
+          "similarity": 0.3420095443725586,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.3988259268813521,
+          "similarity": 0.31723010540008545,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

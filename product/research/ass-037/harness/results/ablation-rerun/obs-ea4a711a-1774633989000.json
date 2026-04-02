@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ea4a711a-1774633989000",
+  "query": "rand thread_rng rng shuffle unimatrix-server",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5779626136373263,
+          "similarity": 0.5838025212287903,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.5235078234099004,
+          "similarity": 0.47807371616363525,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.4889982658046619,
+          "similarity": 0.456451416015625,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.48079950310652364,
+          "similarity": 0.4246922731399536,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.44526794941962944,
+          "similarity": 0.4092217683792114,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.45541693614079404,
+          "similarity": 0.5838025212287903,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.39035305610069865,
+          "similarity": 0.47807371616363525,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.37704702524038464,
+          "similarity": 0.456451416015625,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.35750293731689453,
+          "similarity": 0.4246922731399536,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.3479826266948993,
+          "similarity": 0.4092217683792114,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5127872271663942,
+          "similarity": 0.5838025212287903,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.4655609653531871,
+          "similarity": 0.47807371616363525,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.4388738376587983,
+          "similarity": 0.456451416015625,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.4306319432018924,
+          "similarity": 0.4246922731399536,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.40363963231853084,
+          "similarity": 0.4092217683792114,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5838025212287903,
+          "similarity": 0.5838025212287903,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.47807371616363525,
+          "similarity": 0.47807371616363525,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.456451416015625,
+          "similarity": 0.456451416015625,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.4246922731399536,
+          "similarity": 0.4246922731399536,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4092217683792114,
+          "similarity": 0.4092217683792114,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5127872271663942,
+          "similarity": 0.5838025212287903,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.4655609653531871,
+          "similarity": 0.47807371616363525,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.4388738376587983,
+          "similarity": 0.456451416015625,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.4306319432018924,
+          "similarity": 0.4246922731399536,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.40363963231853084,
+          "similarity": 0.4092217683792114,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5780005351151929,
+          "similarity": 0.5838025212287903,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.5232127967394701,
+          "similarity": 0.47807371616363525,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.4887869226242135,
+          "similarity": 0.456451416015625,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.480435170444403,
+          "similarity": 0.4246922731399536,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4450338833089773,
+          "similarity": 0.4092217683792114,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

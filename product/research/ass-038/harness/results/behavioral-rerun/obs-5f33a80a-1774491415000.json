@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5f33a80a-1774491415000",
+  "query": "phase snapshot session registry implementation patterns",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.573600977568298,
+          "similarity": 0.6729027032852173,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5699142514540371,
+          "similarity": 0.648932933807373,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5206781813366657,
+          "similarity": 0.49476534128189087,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.5167292305444703,
+          "similarity": 0.5018660426139832,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3514,
+          "title": "ADR-002 col-028: Phase Snapshot Must Be First Statement in Handler Body Before Any Await",
+          "category": "decision",
+          "final_score": 0.5078013146104331,
+          "similarity": 0.542111873626709,
+          "confidence": 0.5324437487615914,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.573600977568298,
+          "similarity": 0.6729027032852173,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5699142514540371,
+          "similarity": 0.648932933807373,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5206781813366657,
+          "similarity": 0.49476534128189087,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.5167292305444703,
+          "similarity": 0.5018660426139832,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3514,
+          "title": "ADR-002 col-028: Phase Snapshot Must Be First Statement in Handler Body Before Any Await",
+          "category": "decision",
+          "final_score": 0.5078013146104331,
+          "similarity": 0.542111873626709,
+          "confidence": 0.5324437487615914,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

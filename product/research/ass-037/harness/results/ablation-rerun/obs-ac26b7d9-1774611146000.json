@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774611146000",
+  "query": "col-030 graph suppression contradicts collision",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4160611629486084,
+          "similarity": 0.4160611629486084,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.3962310552597046,
+          "similarity": 0.3962310552597046,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.3930273652076721,
+          "similarity": 0.3930273652076721,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.3917919397354126,
+          "similarity": 0.3917919397354126,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.3894307613372803,
+          "similarity": 0.3894307613372803,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.49835063535530477,
+          "similarity": 0.4160611629486084,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.4918328510508756,
+          "similarity": 0.3962310552597046,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.4673653163771384,
+          "similarity": 0.3894307613372803,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.4672103407794548,
+          "similarity": 0.3930273652076721,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.4509632797574781,
+          "similarity": 0.3917919397354126,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4428026888266226,
+          "similarity": 0.4160611629486084,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.43663758114133105,
+          "similarity": 0.3962310552597046,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.41846948865415073,
+          "similarity": 0.3930273652076721,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.41832549917029227,
+          "similarity": 0.3894307613372803,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.4065440995186921,
+          "similarity": 0.3917919397354126,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.3521914848914513,
+          "similarity": 0.4160611629486084,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.33998834169827974,
+          "similarity": 0.3962310552597046,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.3380168401277982,
+          "similarity": 0.3930273652076721,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.33725657829871547,
+          "similarity": 0.3917919397354126,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.33580354543832636,
+          "similarity": 0.3894307613372803,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4428026888266226,
+          "similarity": 0.4160611629486084,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.43663758114133105,
+          "similarity": 0.3962310552597046,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.41846948865415073,
+          "similarity": 0.3930273652076721,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.41832549917029227,
+          "similarity": 0.3894307613372803,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.4065440995186921,
+          "similarity": 0.3917919397354126,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4978162881318846,
+          "similarity": 0.4160611629486084,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.4912120601691147,
+          "similarity": 0.3962310552597046,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.46685924783791855,
+          "similarity": 0.3894307613372803,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.46672863314587176,
+          "similarity": 0.3930273652076721,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.45057905027681533,
+          "similarity": 0.3917919397354126,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3889,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2429,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3906,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

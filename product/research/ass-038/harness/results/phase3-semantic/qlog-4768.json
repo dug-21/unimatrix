@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4768",
+  "query": "OK.. now... going to start to run some cleanup of open issues... Need to review the open issues, some should have been closed already (something int hte process did not close the ticket when merged), some are probably no longer relevant to our new PPR system.. and the rest we need to figure out order.  Take a gander, come back with some recommendations pls",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.46347896066170946,
+          "similarity": 0.41396987438201904,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.4627369020438531,
+          "similarity": 0.41949462890625,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.4624470020188396,
+          "similarity": 0.39395803213119507,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.44999464979491577,
+          "similarity": 0.38840603828430176,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.4409716976443372,
+          "similarity": 0.39325594902038574,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.46347896066170946,
+          "similarity": 0.41396987438201904,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.4627369020438531,
+          "similarity": 0.41949462890625,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.4624470020188396,
+          "similarity": 0.39395803213119507,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.44999464979491577,
+          "similarity": 0.38840603828430176,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.4409716976443372,
+          "similarity": 0.39325594902038574,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

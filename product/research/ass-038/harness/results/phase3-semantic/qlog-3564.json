@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3564",
+  "query": "lets talk about what 3 would look like.. I'm trying to figure out how anyone would actually set the threshold manually... intelligently.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.466842828257626,
+          "similarity": 0.3946852684020996,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.4308930748741495,
+          "similarity": 0.3213384747505188,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.4093865359833595,
+          "similarity": 0.3346630334854126,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1119,
+          "title": "Human-Gated State Machine for Multi-Turn Conversational Skills",
+          "category": "pattern",
+          "final_score": 0.40032338789120847,
+          "similarity": 0.35031992197036743,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.3797273793394603,
+          "similarity": 0.3111875057220459,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.466842828257626,
+          "similarity": 0.3946852684020996,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.4308930748741495,
+          "similarity": 0.3213384747505188,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3424,
+          "title": "ADR-004 col-026: Threshold Language Replacement Is Formatter-Side Post-Processing",
+          "category": "decision",
+          "final_score": 0.4093865359833595,
+          "similarity": 0.3346630334854126,
+          "confidence": 0.5616734069756723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1119,
+          "title": "Human-Gated State Machine for Multi-Turn Conversational Skills",
+          "category": "pattern",
+          "final_score": 0.40032338789120847,
+          "similarity": 0.35031992197036743,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.3797273793394603,
+          "similarity": 0.3111875057220459,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

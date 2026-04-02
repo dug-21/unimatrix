@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-briefing-a1aaf24a-1774371282000",
+  "query": "briefing:col-025:",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5156817572211646,
+          "similarity": 0.429060697555542,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.48717601499620045,
+          "similarity": 0.4295051097869873,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4817896229974149,
+          "similarity": 0.3735402226448059,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.4752453867413371,
+          "similarity": 0.38606876134872437,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.4732726882814535,
+          "similarity": 0.3728356957435608,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5162479079379334,
+          "similarity": 0.429060697555542,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.4875529490171757,
+          "similarity": 0.4295051097869873,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4824971354180202,
+          "similarity": 0.3735402226448059,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.4758282405020732,
+          "similarity": 0.38606876134872437,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.4739291392130738,
+          "similarity": 0.3728356957435608,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.4295051097869873,
+          "similarity": 0.4295051097869873,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.429060697555542,
+          "similarity": 0.429060697555542,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.38606876134872437,
+          "similarity": 0.38606876134872437,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.3735402226448059,
+          "similarity": 0.3735402226448059,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.3728356957435608,
+          "similarity": 0.3728356957435608,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.36046468294583833,
+          "similarity": 0.4295051097869873,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.3601911984957182,
+          "similarity": 0.429060697555542,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.33373462236844575,
+          "similarity": 0.38606876134872437,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.3260247523968036,
+          "similarity": 0.3735402226448059,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.3255911973806528,
+          "similarity": 0.3728356957435608,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4567706684658902,
+          "similarity": 0.429060697555542,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.43589608498301285,
+          "similarity": 0.4295051097869873,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.428215071707758,
+          "similarity": 0.3735402226448059,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.4242512010335622,
+          "similarity": 0.38606876134872437,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.42192235112263665,
+          "similarity": 0.3728356957435608,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4567706684658902,
+          "similarity": 0.429060697555542,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.43589608498301285,
+          "similarity": 0.4295051097869873,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.428215071707758,
+          "similarity": 0.3735402226448059,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.4242512010335622,
+          "similarity": 0.38606876134872437,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.42192235112263665,
+          "similarity": 0.3728356957435608,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

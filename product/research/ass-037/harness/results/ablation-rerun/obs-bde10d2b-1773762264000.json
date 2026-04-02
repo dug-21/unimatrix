@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-bde10d2b-1773762264000",
+  "query": "spawn_blocking database write queue analytics async",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5172978916253517,
+          "similarity": 0.5540031790733337,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.4973709413378765,
+          "similarity": 0.5450459718704224,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.4891147366567895,
+          "similarity": 0.523595929145813,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4875416844670705,
+          "similarity": 0.5670607686042786,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.4749952656716462,
+          "similarity": 0.5286942720413208,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4451143191410945,
+          "similarity": 0.5670607686042786,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.4370788794297438,
+          "similarity": 0.5540031790733337,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.43156675192025995,
+          "similarity": 0.5450459718704224,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.4215041674100436,
+          "similarity": 0.5286942720413208,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.4183667256281926,
+          "similarity": 0.523595929145813,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5868604723006309,
+          "similarity": 0.5540031790733337,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.5605016498361568,
+          "similarity": 0.5450459718704224,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.5511931927914573,
+          "similarity": 0.523595929145813,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.5450967725819799,
+          "similarity": 0.5670607686042786,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5314758830030338,
+          "similarity": 0.5286942720413208,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5870752258511361,
+          "similarity": 0.5540031790733337,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.5606026673392008,
+          "similarity": 0.5450459718704224,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.551373567063651,
+          "similarity": 0.523595929145813,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.5449532170524224,
+          "similarity": 0.5670607686042786,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5314940634668359,
+          "similarity": 0.5286942720413208,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.5670607686042786,
+          "similarity": 0.5670607686042786,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5540031790733337,
+          "similarity": 0.5540031790733337,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.5450459718704224,
+          "similarity": 0.5450459718704224,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5286942720413208,
+          "similarity": 0.5286942720413208,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.523595929145813,
+          "similarity": 0.523595929145813,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5172978916253517,
+          "similarity": 0.5540031790733337,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.4973709413378765,
+          "similarity": 0.5450459718704224,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2585,
+          "title": "ADR-002: EvalServiceLayer Suppresses Analytics Queue at Construction (AnalyticsMode::Suppressed)",
+          "category": "decision",
+          "final_score": 0.4891147366567895,
+          "similarity": 0.523595929145813,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.4875416844670705,
+          "similarity": 0.5670607686042786,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.4749952656716462,
+          "similarity": 0.5286942720413208,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4095",
+  "query": "why did you leave outcome in the builtin_claude_code_pack?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.44321725440938664,
+          "similarity": 0.33360064029693604,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.42872645550438093,
+          "similarity": 0.37238049507141113,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.4207257843596395,
+          "similarity": 0.3291735053062439,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.41949684295596756,
+          "similarity": 0.3548421263694763,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.40920230084156106,
+          "similarity": 0.38891327381134033,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.44321725440938664,
+          "similarity": 0.33360064029693604,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.42872645550438093,
+          "similarity": 0.37238049507141113,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.4207257843596395,
+          "similarity": 0.3291735053062439,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.41949684295596756,
+          "similarity": 0.3548421263694763,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.40920230084156106,
+          "similarity": 0.38891327381134033,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

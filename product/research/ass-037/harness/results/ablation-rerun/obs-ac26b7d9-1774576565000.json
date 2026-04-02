@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774576565000",
+  "query": "edges_of_type sole traversal boundary SR-01 direct edges_directed prohibited",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5474520537748954,
+          "similarity": 0.6253598928451538,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.48072690392121414,
+          "similarity": 0.4970182180404663,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.4798385533935823,
+          "similarity": 0.5125051736831665,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.4731670124024506,
+          "similarity": 0.5250377655029297,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.47298451491071375,
+          "similarity": 0.4888972043991089,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.6214675352944492,
+          "similarity": 0.6253598928451538,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.542466513417307,
+          "similarity": 0.4970182180404663,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5397288797869594,
+          "similarity": 0.5125051736831665,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5326358827794984,
+          "similarity": 0.4888972043991089,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5293431772677822,
+          "similarity": 0.5250377655029297,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4809907032893254,
+          "similarity": 0.6253598928451538,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.4192540095402644,
+          "similarity": 0.5250377655029297,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.4115416453434871,
+          "similarity": 0.5125051736831665,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4020112111018254,
+          "similarity": 0.4970182180404663,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.39701366424560547,
+          "similarity": 0.4888972043991089,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.6214928103434796,
+          "similarity": 0.6253598928451538,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5421713946161587,
+          "similarity": 0.4970182180404663,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5395521024745971,
+          "similarity": 0.5125051736831665,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5323518653874179,
+          "similarity": 0.4888972043991089,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5293152200485299,
+          "similarity": 0.5250377655029297,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.6253598928451538,
+          "similarity": 0.6253598928451538,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.5250377655029297,
+          "similarity": 0.5250377655029297,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5125051736831665,
+          "similarity": 0.5125051736831665,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4970182180404663,
+          "similarity": 0.4970182180404663,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.4888972043991089,
+          "similarity": 0.4888972043991089,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5474520537748954,
+          "similarity": 0.6253598928451538,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.48072690392121414,
+          "similarity": 0.4970182180404663,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.4798385533935823,
+          "similarity": 0.5125051736831665,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.4731670124024506,
+          "similarity": 0.5250377655029297,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.47298451491071375,
+          "similarity": 0.4888972043991089,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3891,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2429,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

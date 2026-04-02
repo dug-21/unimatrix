@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4314",
+  "query": "approve with one note: One non-blocking note to feed back: the 20/tick cap on the\n   heal pass should be configurable via InferenceConfig\n  (consistent with the pattern from #409). Five entries     \n  today — but a prolonged embedding service outage could  \n  leave hundreds unembedded. A hardcoded 20 means multi-day\n  recovery in that scenario. Small addition, doesn't block\n  delivery.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4899478714160982,
+          "similarity": 0.46622610092163086,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.48262617362091054,
+          "similarity": 0.4657595157623291,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.480231441046327,
+          "similarity": 0.4719005823135376,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.47256454248513136,
+          "similarity": 0.47938334941864014,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.47124699129571723,
+          "similarity": 0.4402790069580078,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4899478714160982,
+          "similarity": 0.46622610092163086,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.48262617362091054,
+          "similarity": 0.4657595157623291,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.480231441046327,
+          "similarity": 0.4719005823135376,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.47256454248513136,
+          "similarity": 0.47938334941864014,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.47124699129571723,
+          "similarity": 0.4402790069580078,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

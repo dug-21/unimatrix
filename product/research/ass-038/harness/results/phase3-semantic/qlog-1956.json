@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1956",
+  "query": "lets think about this... there are times, that delivery occurs in a differetn session... but the phase is feature scoped, but... the start is what actually attributes the session to the feature (I'm not sure if it does that on phase-end.   I feel like I need the phase-end, at the end of design (for outcome). I suppose there's no harm of keeping start in delivery?? (I'm hoping the GNN leverages these phases for surfacing relevant content",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4750925335899544,
+          "similarity": 0.4038928747177124,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.46812838805349244,
+          "similarity": 0.39844393730163574,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.45240364693594337,
+          "similarity": 0.379647433757782,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.4381813388193093,
+          "similarity": 0.37836968898773193,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.4354627586384049,
+          "similarity": 0.4104400873184204,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4750925335899544,
+          "similarity": 0.4038928747177124,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.46812838805349244,
+          "similarity": 0.39844393730163574,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.45240364693594337,
+          "similarity": 0.379647433757782,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.4381813388193093,
+          "similarity": 0.37836968898773193,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.4354627586384049,
+          "similarity": 0.4104400873184204,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

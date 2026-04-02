@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-02b88d42-1773947775000",
+  "query": "contradiction scan monopolisation rayon thread pool background task work-stealing",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.7061180472373962,
+          "similarity": 0.7061180472373962,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.5709882378578186,
+          "similarity": 0.5709882378578186,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.4653719663619995,
+          "similarity": 0.4653719663619995,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.451052188873291,
+          "similarity": 0.451052188873291,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.6447193147327671,
+          "similarity": 0.7061180472373962,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.5453964474343271,
+          "similarity": 0.5709882378578186,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.525007127786605,
+          "similarity": 0.4653719663619995,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5072857997474727,
+          "similarity": 0.451052188873291,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.5701610755365444,
+          "similarity": 0.7061180472373962,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.48814514297771106,
+          "similarity": 0.5709882378578186,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.46574604784181217,
+          "similarity": 0.4653719663619995,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.45181195330696516,
+          "similarity": 0.451052188873291,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.6451180078009788,
+          "similarity": 0.7061180472373962,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.5455626278916224,
+          "similarity": 0.5709882378578186,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.524619886478653,
+          "similarity": 0.4653719663619995,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5069206464301078,
+          "similarity": 0.451052188873291,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.5701610755365444,
+          "similarity": 0.7061180472373962,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.48814514297771106,
+          "similarity": 0.5709882378578186,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.46574604784181217,
+          "similarity": 0.4653719663619995,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.45181195330696516,
+          "similarity": 0.451052188873291,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.5306880290691669,
+          "similarity": 0.7061180472373962,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.44753122329711914,
+          "similarity": 0.5709882378578186,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.3825365946843074,
+          "similarity": 0.4653719663619995,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.37372442392202526,
+          "similarity": 0.451052188873291,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

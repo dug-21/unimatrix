@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5138",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] All green. Running the gate.\n[tool: Agent(Run full test suite verification) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4637082463404154,
+          "similarity": 0.3987295627593994,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.44444932633828316,
+          "similarity": 0.40021979808807373,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.4418434094711179,
+          "similarity": 0.3758212924003601,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.43659334958701956,
+          "similarity": 0.3941817283630371,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.42438292823825763,
+          "similarity": 0.39603304862976074,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4637082463404154,
+          "similarity": 0.3987295627593994,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.44444932633828316,
+          "similarity": 0.40021979808807373,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.4418434094711179,
+          "similarity": 0.3758212924003601,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.43659334958701956,
+          "similarity": 0.3941817283630371,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.42438292823825763,
+          "similarity": 0.39603304862976074,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

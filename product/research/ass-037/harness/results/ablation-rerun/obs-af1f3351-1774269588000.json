@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-af1f3351-1774269588000",
+  "query": "hook routing injection event type dispatch",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.4112615952124963,
+          "similarity": 0.5120500922203064,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.38107783977801984,
+          "similarity": 0.4630014896392822,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.373107726757343,
+          "similarity": 0.4500500559806824,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.36652766741239107,
+          "similarity": 0.4393574595451355,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.3432792150057279,
+          "similarity": 0.40157872438430786,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.5410539293241374,
+          "similarity": 0.5120500922203064,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5348255555660693,
+          "similarity": 0.4630014896392822,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5104459155834487,
+          "similarity": 0.4393574595451355,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4994664069438296,
+          "similarity": 0.4500500559806824,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.46876669742630583,
+          "similarity": 0.40157872438430786,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.5120500922203064,
+          "similarity": 0.5120500922203064,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.4630014896392822,
+          "similarity": 0.4630014896392822,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4500500559806824,
+          "similarity": 0.4500500559806824,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.4393574595451355,
+          "similarity": 0.4393574595451355,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.40157872438430786,
+          "similarity": 0.40157872438430786,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.4809095543190545,
+          "similarity": 0.5120500922203064,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.4730721733910696,
+          "similarity": 0.4630014896392822,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.45361750206420476,
+          "similarity": 0.4393574595451355,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4462787021575206,
+          "similarity": 0.4500500559806824,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.42053415973824476,
+          "similarity": 0.40157872438430786,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.5412434968869076,
+          "similarity": 0.5120500922203064,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5352949939054601,
+          "similarity": 0.4630014896392822,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5109105460150718,
+          "similarity": 0.4393574595451355,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4997893896298633,
+          "similarity": 0.4500500559806824,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.46920583450501174,
+          "similarity": 0.40157872438430786,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1266,
+          "title": "Specialized Event-Type Handler Before Generic RecordEvent Dispatch",
+          "category": "pattern",
+          "final_score": 0.4809095543190545,
+          "similarity": 0.5120500922203064,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.4730721733910696,
+          "similarity": 0.4630014896392822,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.45361750206420476,
+          "similarity": 0.4393574595451355,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4462787021575206,
+          "similarity": 0.4500500559806824,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.42053415973824476,
+          "similarity": 0.40157872438430786,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3471,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3230,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

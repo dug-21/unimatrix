@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4762",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] SCOPE.md approved and updated. Spawning Phase 1b scope risk assessment.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.4999713830522825,
+          "similarity": 0.4797401428222656,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.486589290554167,
+          "similarity": 0.449237585067749,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.48283601649199337,
+          "similarity": 0.4622981548309326,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4818756376720944,
+          "similarity": 0.4695091247558594,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.4599770810864069,
+          "similarity": 0.45626604557037354,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.4999713830522825,
+          "similarity": 0.4797401428222656,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.486589290554167,
+          "similarity": 0.449237585067749,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.48283601649199337,
+          "similarity": 0.4622981548309326,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4818756376720944,
+          "similarity": 0.4695091247558594,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.4599770810864069,
+          "similarity": 0.45626604557037354,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-364cb76e-1774444042000",
+  "query": "tracing-subscriber with_env_filter RUST_LOG EnvFilter initialization",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.6121744375962478,
+          "similarity": 0.8385334610939026,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.5896055881793683,
+          "similarity": 0.8018590807914734,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3468,
+          "title": "ADR: tracing-subscriber initialized with EnvFilter::try_from_default_env() at all server entry points — static &str filter forbidden",
+          "category": "decision",
+          "final_score": 0.5589516346271222,
+          "similarity": 0.7520464062690735,
+          "confidence": 0.4947465507559583,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.4259292162381686,
+          "similarity": 0.5358849763870239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.4009387309734638,
+          "similarity": 0.49527543783187866,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.8385334610939026,
+          "similarity": 0.8385334610939026,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.8018590807914734,
+          "similarity": 0.8018590807914734,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3468,
+          "title": "ADR: tracing-subscriber initialized with EnvFilter::try_from_default_env() at all server entry points — static &str filter forbidden",
+          "category": "decision",
+          "final_score": 0.7520464062690735,
+          "similarity": 0.7520464062690735,
+          "confidence": 0.4947465507559583,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5358849763870239,
+          "similarity": 0.5358849763870239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.49527543783187866,
+          "similarity": 0.49527543783187866,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.6401526970989504,
+          "similarity": 0.8385334610939026,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.6115776700467226,
+          "similarity": 0.8018590807914734,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3468,
+          "title": "ADR: tracing-subscriber initialized with EnvFilter::try_from_default_env() at all server entry points — static &str filter forbidden",
+          "category": "decision",
+          "final_score": 0.5744471683613243,
+          "similarity": 0.7520464062690735,
+          "confidence": 0.4947465507559583,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.47586646589484466,
+          "similarity": 0.5358849763870239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.4627858485669251,
+          "similarity": 0.49527543783187866,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.7285233632173047,
+          "similarity": 0.8385334610939026,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.692891451809942,
+          "similarity": 0.8018590807914734,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3468,
+          "title": "ADR: tracing-subscriber initialized with EnvFilter::try_from_default_env() at all server entry points — static &str filter forbidden",
+          "category": "decision",
+          "final_score": 0.6467873744682535,
+          "similarity": 0.7520464062690735,
+          "confidence": 0.4947465507559583,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5320101829123314,
+          "similarity": 0.5358849763870239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5178647536974543,
+          "similarity": 0.49527543783187866,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.7278043429697453,
+          "similarity": 0.8385334610939026,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.6921792450845727,
+          "similarity": 0.8018590807914734,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3468,
+          "title": "ADR: tracing-subscriber initialized with EnvFilter::try_from_default_env() at all server entry points — static &str filter forbidden",
+          "category": "decision",
+          "final_score": 0.6460994069401437,
+          "similarity": 0.7520464062690735,
+          "confidence": 0.4947465507559583,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5319848574647844,
+          "similarity": 0.5358849763870239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5180123962848111,
+          "similarity": 0.49527543783187866,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.6401526970989504,
+          "similarity": 0.8385334610939026,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3465,
+          "title": "How to initialize tracing-subscriber in a new unimatrix-server entry point (tokio_main_*)",
+          "category": "procedure",
+          "final_score": 0.6115776700467226,
+          "similarity": 0.8018590807914734,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3468,
+          "title": "ADR: tracing-subscriber initialized with EnvFilter::try_from_default_env() at all server entry points — static &str filter forbidden",
+          "category": "decision",
+          "final_score": 0.5744471683613243,
+          "similarity": 0.7520464062690735,
+          "confidence": 0.4947465507559583,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.47586646589484466,
+          "similarity": 0.5358849763870239,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.4627858485669251,
+          "similarity": 0.49527543783187866,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

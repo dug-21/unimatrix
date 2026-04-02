@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2025",
+  "query": "OQ-1: a, OQ-2 - I think it should go flat, but include a columns for topic, category, confidence ID and snippet, so the agent can pick what seems relevant, this is an example which lead us down this path.  it is more formatted, likely than the agents need, but 150 char limit on the snippet... 150-char snippet:\n\n  #    id   topic               cat             conf   snippet\n  ─────────────────────────────────────────────────────────────────────────────────────\n   1   2    product-vision      decision        0.60   Unimatrix is a self-learning context engine that serves as the knowledge backbone for multi-agent development orchestration —\n  accumulating…\n   2   4    product-vision      decision        0.61   Milestone 3 — Agent Integration (Alcove Phase, alc): Establish behavioral driving chain so agents reliably use Unimatrix without\n   manual…\n   3   241  project             convention      0.62   Unimatrix stores 8 categories of knowledge. Use the right category: decision: ADRs and architectural decisions (architect\n  authority)…\n   4   1206 architect           lesson-learned  0.57   Problem: During nan-004 delivery, the architect agent attempted to store 5 ADRs via context_store but received -32003 permission\n   errors…\n   5   556  token-budget        lesson-learned  0.56   What happened: During base-002 design, the human added a token budget constraint mid-session after reviewing initial\n  architecture output…\n   6   1011 skills              pattern         0.57   Each knowledge category (pattern, lesson, procedure, decision) should have exactly one dedicated skill that enforces a\n  category-specific…\n   7   1004 base-004            decision        0.55   12 agent definitions need Knowledge Stewardship sections. Copying the architect's gold-standard section to every agent would\n  bloat context…\n   8   317  unimatrix-server    pattern         0.62   MCP tool handlers repeat identity resolution, format parsing, and AuditContext construction (15-25 lines per handler). Reduces\n  ceremony…\n   9   864  col-020             decision        0.56   Knowledge reuse requires cross-table joins (query_log, injection_log, entries) through Store. ObservationSource trait would\n  bloat for one…\n  10   1012 agent-definitions   procedure       0.55   Classify the agent into a tier using three questions: (a) Does it discover knowledge invisible in source artifacts? → Active\n  storage…\n  11   1259 workflow-scope      procedure       0.60   Research: survey current state of all files to modify, mine retrospective data for friction patterns. Scope: write acceptance\n  criteria…\n  12   513  base-002            decision        0.56   All procedural knowledge queries added to worker agents are non-blocking. If Unimatrix is unavailable or takes longer than 5s,\n  agent proceeds…\n  13   2674 protocol-governance pattern         0.50   When evaluating a process governance framework against the Power of Ten rules: No recursive agent spawning, rework caps, session\n   resource…\n  14   220  scrum-master        duties          0.41   Dual-role swarm coordinator. Design Leader (Session 1) or Delivery Leader (Session 2). Duties: Read and execute the appropriate\n  protocol…\n, OQ-3 - if there are any keywords/topics from session histogram, or other session context??  Not sure what might be available in the different scenarios.  Think about the compaction/UDS scenario for the actual search path... some of those will need to be derived there.  OQ-4 - I'd prefer to clean it up now, while were working in this part of the codebase.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5846966725556031,
+          "similarity": 0.6074735522270203,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1009,
+          "title": "Three-Tier Agent Classification for Cross-Cutting Concerns",
+          "category": "pattern",
+          "final_score": 0.5402180339579246,
+          "similarity": 0.5492260456085205,
+          "confidence": 0.6102688841593377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.5225872710115306,
+          "similarity": 0.541744589805603,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5015390535488417,
+          "similarity": 0.497538685798645,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.4695044140734208,
+          "similarity": 0.5034872889518738,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5846966725556031,
+          "similarity": 0.6074735522270203,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1009,
+          "title": "Three-Tier Agent Classification for Cross-Cutting Concerns",
+          "category": "pattern",
+          "final_score": 0.5402180339579246,
+          "similarity": 0.5492260456085205,
+          "confidence": 0.6102688841593377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.5225872710115306,
+          "similarity": 0.541744589805603,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5015390535488417,
+          "similarity": 0.497538685798645,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.4695044140734208,
+          "similarity": 0.5034872889518738,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 13,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

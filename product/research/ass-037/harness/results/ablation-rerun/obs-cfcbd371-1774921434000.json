@@ -1,0 +1,321 @@
+{
+  "scenario_id": "obs-cfcbd371-1774921434000",
+  "query": "graph compaction SQL quarantine status security trust boundary",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.4971554908401765,
+          "similarity": 0.547139048576355,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.4879190436981811,
+          "similarity": 0.567014217376709,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.48717124123278815,
+          "similarity": 0.5440462231636047,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.4704366437576904,
+          "similarity": 0.5320494174957275,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.5600175740023902,
+          "similarity": 0.547139048576355,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.546683854120747,
+          "similarity": 0.5440462231636047,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5456155852814553,
+          "similarity": 0.567014217376709,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.5249545671699662,
+          "similarity": 0.5320494174957275,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.5601017473711879,
+          "similarity": 0.547139048576355,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5467010935387676,
+          "similarity": 0.5440462231636047,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5454757249409634,
+          "similarity": 0.567014217376709,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.5249081955992096,
+          "similarity": 0.5320494174957275,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.44508567223182094,
+          "similarity": 0.567014217376709,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.4328547991239108,
+          "similarity": 0.547139048576355,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.43095152194683367,
+          "similarity": 0.5440462231636047,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.4235688723050631,
+          "similarity": 0.5320494174957275,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.567014217376709,
+          "similarity": 0.567014217376709,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.547139048576355,
+          "similarity": 0.547139048576355,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5440462231636047,
+          "similarity": 0.5440462231636047,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.5320494174957275,
+          "similarity": 0.5320494174957275,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.4971554908401765,
+          "similarity": 0.547139048576355,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.4879190436981811,
+          "similarity": 0.567014217376709,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.48717124123278815,
+          "similarity": 0.5440462231636047,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.4704366437576904,
+          "similarity": 0.5320494174957275,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6666666666666666,
+    "rank_changes": [
+      {
+        "entry_id": 3978,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3913,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

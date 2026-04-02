@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-5becb974-1774976435000",
+  "query": "store read query directional dedup patterns",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4940699338912964,
+          "similarity": 0.4940699338912964,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.4912055730819702,
+          "similarity": 0.4912055730819702,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.4791905879974365,
+          "similarity": 0.4791905879974365,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4745979905128479,
+          "similarity": 0.4745979905128479,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.45756030082702637,
+          "similarity": 0.45756030082702637,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.40019688239464396,
+          "similarity": 0.4940699338912964,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.398434198819674,
+          "similarity": 0.4912055730819702,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.39104036184457636,
+          "similarity": 0.4791905879974365,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.38821414800790643,
+          "similarity": 0.4745979905128479,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.3777294158935547,
+          "similarity": 0.45756030082702637,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5433786683282897,
+          "similarity": 0.4940699338912964,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.5290565135144163,
+          "similarity": 0.4791905879974365,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.5004572480355555,
+          "similarity": 0.45756030082702637,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4959336893035044,
+          "similarity": 0.4745979905128479,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.482473866518806,
+          "similarity": 0.4912055730819702,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.48118088220284655,
+          "similarity": 0.4940699338912964,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.46968335898889163,
+          "similarity": 0.4791905879974365,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.4473017307706923,
+          "similarity": 0.45756030082702637,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.44522297295775665,
+          "similarity": 0.4745979905128479,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.4366027865409851,
+          "similarity": 0.4912055730819702,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.48118088220284655,
+          "similarity": 0.4940699338912964,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.46968335898889163,
+          "similarity": 0.4791905879974365,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.4473017307706923,
+          "similarity": 0.45756030082702637,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.44522297295775665,
+          "similarity": 0.4745979905128479,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.4366027865409851,
+          "similarity": 0.4912055730819702,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5430584817410364,
+          "similarity": 0.4940699338912964,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.528732708803267,
+          "similarity": 0.4791905879974365,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.5001786964303052,
+          "similarity": 0.45756030082702637,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4957951458048637,
+          "similarity": 0.4745979905128479,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.4825305659120733,
+          "similarity": 0.4912055730819702,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 3956,
+        "from_rank": 5,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3299,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 1588,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

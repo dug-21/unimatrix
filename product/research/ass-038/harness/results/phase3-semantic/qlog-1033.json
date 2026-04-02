@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1033",
+  "query": "3. I accept the variance.  Product vision has not been fully updated.  1. Send to the architect... I want the cleanest platform because there is still significant capability we'll be adding on the @product/PRODUCT-VISION.md roadmap.  2. explain this in more detail",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.49619208146284066,
+          "similarity": 0.48118191957473755,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4662134355840798,
+          "similarity": 0.39411425590515137,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.46342458544630527,
+          "similarity": 0.3964271545410156,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.4290102471816033,
+          "similarity": 0.3866593837738037,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.42688448074769414,
+          "similarity": 0.40181630849838257,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.49619208146284066,
+          "similarity": 0.48118191957473755,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.4662134355840798,
+          "similarity": 0.39411425590515137,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.46342458544630527,
+          "similarity": 0.3964271545410156,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.4290102471816033,
+          "similarity": 0.3866593837738037,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.42688448074769414,
+          "similarity": 0.40181630849838257,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

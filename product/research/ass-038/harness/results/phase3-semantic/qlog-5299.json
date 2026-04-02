@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5299",
+  "query": "yes.  One note... there is not a separate analytics.db.. that was an option thought about, but decided against.  But agree with your plan.. lets start with Q1",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4245198601598288,
+          "similarity": 0.3452540636062622,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3546,
+          "title": "How to add a nullable column to the query_log table (or any analytics table with positional binds)",
+          "category": "procedure",
+          "final_score": 0.421234159024358,
+          "similarity": 0.39113181829452515,
+          "confidence": 0.5131615483596503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4069893932817128,
+          "similarity": 0.3250995874404907,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.40251620025155244,
+          "similarity": 0.347256600856781,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.39162648712496173,
+          "similarity": 0.3347306251525879,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4245198601598288,
+          "similarity": 0.3452540636062622,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3546,
+          "title": "How to add a nullable column to the query_log table (or any analytics table with positional binds)",
+          "category": "procedure",
+          "final_score": 0.421234159024358,
+          "similarity": 0.39113181829452515,
+          "confidence": 0.5131615483596503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4069893932817128,
+          "similarity": 0.3250995874404907,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.40251620025155244,
+          "similarity": 0.347256600856781,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2148,
+          "title": "Analytics queue drain task: bounded mpsc + background commit + shed counter",
+          "category": "pattern",
+          "final_score": 0.39162648712496173,
+          "similarity": 0.3347306251525879,
+          "confidence": 0.5133710005497708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

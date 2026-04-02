@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5f33a80a-1774489782000",
+  "query": "query_log phase column analytics write positional binding",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.6245580683338626,
+          "similarity": 0.7263765335083008,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3546,
+          "title": "How to add a nullable column to the query_log table (or any analytics table with positional binds)",
+          "category": "procedure",
+          "final_score": 0.5172392035097513,
+          "similarity": 0.5735414028167725,
+          "confidence": 0.5131615483596503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3555,
+          "title": "Eval harness phase gap: scenarios SQL omits query_log.phase despite column existing since col-028",
+          "category": "pattern",
+          "final_score": 0.4997270014493701,
+          "similarity": 0.4996975064277649,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.48029487193176257,
+          "similarity": 0.478130042552948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.4772381030637477,
+          "similarity": 0.47671324014663696,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.6245580683338626,
+          "similarity": 0.7263765335083008,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3546,
+          "title": "How to add a nullable column to the query_log table (or any analytics table with positional binds)",
+          "category": "procedure",
+          "final_score": 0.5172392035097513,
+          "similarity": 0.5735414028167725,
+          "confidence": 0.5131615483596503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3555,
+          "title": "Eval harness phase gap: scenarios SQL omits query_log.phase despite column existing since col-028",
+          "category": "pattern",
+          "final_score": 0.4997270014493701,
+          "similarity": 0.4996975064277649,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.48029487193176257,
+          "similarity": 0.478130042552948,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.4772381030637477,
+          "similarity": 0.47671324014663696,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

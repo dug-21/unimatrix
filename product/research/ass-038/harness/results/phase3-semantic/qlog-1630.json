@@ -1,0 +1,74 @@
+{
+  "scenario_id": "qlog-1630",
+  "query": "<task-notification>\n<task-id>blsqglg3q</task-id>\n<tool-use-id>toolu_01SZGGYpBR5vw2zrTPyiEwNm</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/5b8553d8-acd5-4f35-876e-faa8fa092bef/tasks/blsqglg3q.output</output-file>\n<status>completed</status>\n<summary>Background command \"Start cargo install in background\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/5b8553d8-acd5-4f35-876e-faa8fa092bef/tasks/blsqglg3q.output",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.5234145062975161,
+          "similarity": 0.5288972854614258,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.47624043735704913,
+          "similarity": 0.5034568309783936,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.5234145062975161,
+          "similarity": 0.5288972854614258,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.47624043735704913,
+          "similarity": 0.5034568309783936,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

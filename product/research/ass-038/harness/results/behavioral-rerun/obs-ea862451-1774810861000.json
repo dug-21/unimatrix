@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ea862451-1774810861000",
+  "query": "Rust module split test file 500 line limit",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5781093493001676,
+          "similarity": 0.6534775495529175,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.5586169221894389,
+          "similarity": 0.652058482170105,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.5292444577928488,
+          "similarity": 0.5660255551338196,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5208077656023661,
+          "similarity": 0.5522816777229309,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.46564242915103304,
+          "similarity": 0.5057206153869629,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5781093493001676,
+          "similarity": 0.6534775495529175,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.5586169221894389,
+          "similarity": 0.652058482170105,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.5292444577928488,
+          "similarity": 0.5660255551338196,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5208077656023661,
+          "similarity": 0.5522816777229309,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.46564242915103304,
+          "similarity": 0.5057206153869629,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-88cecd44-1773700557000",
+  "query": "coherence gate lambda freshness graph embedding dimensions",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.5977852902116897,
+          "similarity": 0.6001449227333069,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5352140400041205,
+          "similarity": 0.47666454315185547,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5146179959732885,
+          "similarity": 0.4348376393318176,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.4950520820572969,
+          "similarity": 0.4371974468231201,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.4942976174059035,
+          "similarity": 0.4388580918312073,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.5977698677769079,
+          "similarity": 0.6001449227333069,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5355967164541355,
+          "similarity": 0.47666454315185547,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5151394362127752,
+          "similarity": 0.4348376393318176,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.4954302169281085,
+          "similarity": 0.4371974468231201,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.49465996724626105,
+          "similarity": 0.4388580918312073,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.5283855410041263,
+          "similarity": 0.6001449227333069,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.4742679322131455,
+          "similarity": 0.47666454315185547,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.45637570633586616,
+          "similarity": 0.4348376393318176,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.4421846899635591,
+          "similarity": 0.4371974468231201,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.4417421255530764,
+          "similarity": 0.4388580918312073,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.6001449227333069,
+          "similarity": 0.6001449227333069,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.47666454315185547,
+          "similarity": 0.47666454315185547,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.4388580918312073,
+          "similarity": 0.4388580918312073,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.4371974468231201,
+          "similarity": 0.4371974468231201,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.4348376393318176,
+          "similarity": 0.4348376393318176,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.46547379860511195,
+          "similarity": 0.6001449227333069,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.38948587270883417,
+          "similarity": 0.47666454315185547,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.36622036420381987,
+          "similarity": 0.4388580918312073,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.36519842881422776,
+          "similarity": 0.4371974468231201,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.36374623958881086,
+          "similarity": 0.4348376393318176,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.5283855410041263,
+          "similarity": 0.6001449227333069,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.4742679322131455,
+          "similarity": 0.47666454315185547,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.45637570633586616,
+          "similarity": 0.4348376393318176,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.4421846899635591,
+          "similarity": 0.4371974468231201,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.4417421255530764,
+          "similarity": 0.4388580918312073,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

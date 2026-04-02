@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002109000",
+  "query": "clap nested subcommand dispatch pre-tokio sync CLI pattern",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.5185477335486742,
+          "similarity": 0.5847839713096619,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.5179791067707368,
+          "similarity": 0.6575285196304321,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.4778268750779621,
+          "similarity": 0.4873610734939575,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1952,
+          "title": "clap top-level Cli flags must precede the subcommand in spawned child process args",
+          "category": "pattern",
+          "final_score": 0.4515112843478734,
+          "similarity": 0.49776917695999146,
+          "confidence": 0.5087556528929258,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.42059689346685036,
+          "similarity": 0.46408432722091675,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.6575285196304321,
+          "similarity": 0.6575285196304321,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.5847839713096619,
+          "similarity": 0.5847839713096619,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1952,
+          "title": "clap top-level Cli flags must precede the subcommand in spawned child process args",
+          "category": "pattern",
+          "final_score": 0.49776917695999146,
+          "similarity": 0.49776917695999146,
+          "confidence": 0.5087556528929258,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.4873610734939575,
+          "similarity": 0.4873610734939575,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.46408432722091675,
+          "similarity": 0.46408432722091675,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.5857729704286057,
+          "similarity": 0.5847839713096619,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.5778606838392042,
+          "similarity": 0.6575285196304321,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5394328605487757,
+          "similarity": 0.4873610734939575,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1952,
+          "title": "clap top-level Cli flags must precede the subcommand in spawned child process args",
+          "category": "pattern",
+          "final_score": 0.5022930199911997,
+          "similarity": 0.49776917695999146,
+          "confidence": 0.5087556528929258,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.46316393934460676,
+          "similarity": 0.46408432722091675,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.5185477335486742,
+          "similarity": 0.5847839713096619,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.5179791067707368,
+          "similarity": 0.6575285196304321,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.4778268750779621,
+          "similarity": 0.4873610734939575,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1952,
+          "title": "clap top-level Cli flags must precede the subcommand in spawned child process args",
+          "category": "pattern",
+          "final_score": 0.4515112843478734,
+          "similarity": 0.49776917695999146,
+          "confidence": 0.5087556528929258,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.42059689346685036,
+          "similarity": 0.46408432722091675,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.5857665483564046,
+          "similarity": 0.5847839713096619,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.5783780074482381,
+          "similarity": 0.6575285196304321,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5390947320614067,
+          "similarity": 0.4873610734939575,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1952,
+          "title": "clap top-level Cli flags must precede the subcommand in spawned child process args",
+          "category": "pattern",
+          "final_score": 0.5022636443871009,
+          "similarity": 0.49776917695999146,
+          "confidence": 0.5087556528929258,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.46316991588925804,
+          "similarity": 0.46408432722091675,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.5007867813110352,
+          "similarity": 0.6575285196304321,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.4560209054213304,
+          "similarity": 0.5847839713096619,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1952,
+          "title": "clap top-level Cli flags must precede the subcommand in spawned child process args",
+          "category": "pattern",
+          "final_score": 0.40247333966768706,
+          "similarity": 0.49776917695999146,
+          "confidence": 0.5087556528929258,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.3960683529193585,
+          "similarity": 0.4873610734939575,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.381744201366718,
+          "similarity": 0.46408432722091675,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2028",
+  "query": "Actually... I wanted to add 1 requirement to UserPromptSubmit injection... would that be in this scope?  The addtion to scope would be to set a minimum word count before we injected anything.  So... for example, I was about to type 'approve'  there is nothing Unimatrix can do with that... so don't create noise.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.4562743896086935,
+          "similarity": 0.3775050640106201,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.441494203288502,
+          "similarity": 0.3686988353729248,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4399771407634534,
+          "similarity": 0.36067450046539307,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4304144160524672,
+          "similarity": 0.3667945861816406,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.42576917865412944,
+          "similarity": 0.36840271949768066,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.4562743896086935,
+          "similarity": 0.3775050640106201,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.441494203288502,
+          "similarity": 0.3686988353729248,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4399771407634534,
+          "similarity": 0.36067450046539307,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4304144160524672,
+          "similarity": 0.3667945861816406,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1256,
+          "title": "ADR-003 nan-005: Documentation Step Trigger Criteria -- Mandatory for User-Visible Changes",
+          "category": "decision",
+          "final_score": 0.42576917865412944,
+          "similarity": 0.36840271949768066,
+          "confidence": 0.5579410284930933,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

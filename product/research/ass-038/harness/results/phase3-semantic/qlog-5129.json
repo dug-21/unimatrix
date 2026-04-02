@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5129",
+  "query": "Please correct the proposed fix documentation with the following, then proceed: Site 2 collapse — combining the two if blocks into one predicate is the right  \n  call. The current code has an implicit ordering dependency (empty check before\n  equality check) that obscures the intent. The single predicate !src.is_empty() \n  && !tgt.is_empty() && src == tgt makes the semantics explicit.  \n\n  Site 3 — the architect's note — the subtle point is right but slightly         \n  mis-stated. Both-empty pairs don't \"pass Site 3 today\" — they'd be blocked by\n  it (\"\" != \"\" is false → guard returns false → edge blocked). The accurate      \n  framing is: both-empty pairs never reach Site 3 today because Sites 1 and 2\n  filter them first. After Sites 1 and 2 are relaxed, Site 3 will see both-empty\n  for the first time. That's why the fix is needed there — it's a newly-reachable\n   code path, not a correction to existing behavior. The implementer needs to\n  understand this or the Site 3 change will look unnecessary.\n\n  The 4 test variants — correct coverage. The both-empty case is the most        \n  important new one to add since it's the newly-reachable path through Site 3.\n  Make sure the existing same-non-empty-blocked test is preserved and still      \n  passes after the refactor.                                      \n\n  One thing missing from the fix description: the source_feature_cycle field     \n  comment on InformsCandidate (line 83) should be updated to say \"empty string\n  means pre-attribution entry; Informs detection allows this\" rather than        \n  implying a non-empty invariant. Otherwise a future agent reading that struct\n  definition will re-introduce the old guard.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5699737675663622,
+          "similarity": 0.6173611283302307,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5411387565969922,
+          "similarity": 0.5470287203788757,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.5034258461080712,
+          "similarity": 0.5067253112792969,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3910,
+          "title": "Multi-pass cleanup: all passes on the same reference table must apply identical status filters",
+          "category": "pattern",
+          "final_score": 0.48688210418685574,
+          "similarity": 0.4960867166519165,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5699737675663622,
+          "similarity": 0.6173611283302307,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5411387565969922,
+          "similarity": 0.5470287203788757,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.5034258461080712,
+          "similarity": 0.5067253112792969,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3910,
+          "title": "Multi-pass cleanup: all passes on the same reference table must apply identical status filters",
+          "category": "pattern",
+          "final_score": 0.48688210418685574,
+          "similarity": 0.4960867166519165,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

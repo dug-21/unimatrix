@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2487",
+  "query": "1. create a gh issue to capture this event.  The goal is to set the session count to 1000, yes 1000, immediately.   We need to take this action first, before we undeprecate all of the entries it deprecated since the merge.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5071975243112782,
+          "similarity": 0.4691520929336548,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.4952375815119716,
+          "similarity": 0.5422067642211914,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4902782912771717,
+          "similarity": 0.4327458143234253,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.47868447651056134,
+          "similarity": 0.4328092336654663,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.4756846502049924,
+          "similarity": 0.45621180534362793,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3396,
+          "title": "ADR-001 col-025: Goal Stored on cycle_events Start Row, Not sessions Table",
+          "category": "decision",
+          "final_score": 0.5071975243112782,
+          "similarity": 0.4691520929336548,
+          "confidence": 0.6350331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.4952375815119716,
+          "similarity": 0.5422067642211914,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.4902782912771717,
+          "similarity": 0.4327458143234253,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.47868447651056134,
+          "similarity": 0.4328092336654663,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.4756846502049924,
+          "similarity": 0.45621180534362793,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

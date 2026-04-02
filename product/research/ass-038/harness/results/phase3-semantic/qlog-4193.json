@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4193",
+  "query": "well, we only have solid phase data from likely around 5 bugfix cycles so far... most of the corpus does not have phase details included... not sure if that is an impact",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.49133628800928464,
+          "similarity": 0.4332003593444824,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.4799510427512792,
+          "similarity": 0.4568730592727661,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4688048402815699,
+          "similarity": 0.4218653440475464,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.4670284429809073,
+          "similarity": 0.4380902051925659,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.45285831312058833,
+          "similarity": 0.40262556076049805,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.49133628800928464,
+          "similarity": 0.4332003593444824,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.4799510427512792,
+          "similarity": 0.4568730592727661,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4688048402815699,
+          "similarity": 0.4218653440475464,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.4670284429809073,
+          "similarity": 0.4380902051925659,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.45285831312058833,
+          "similarity": 0.40262556076049805,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

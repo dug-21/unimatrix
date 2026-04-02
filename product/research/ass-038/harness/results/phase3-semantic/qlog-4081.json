@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4081",
+  "query": "1st tick post setting to .6: 2026-03-28T13:58:50.562517Z  INFO unimatrix_server::background: background tick starting\n2026-03-28T13:58:50.715768Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.5976 confidence_weight=0.2500\n2026-03-28T13:58:50.716346Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-28T13:58:50.717048Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-28T13:58:50.764844Z DEBUG unimatrix_server::background: typed graph state rebuilt (3714 entries)\n2026-03-28T13:58:50.767657Z DEBUG unimatrix_server::background: PhaseFreqTable rebuilt successfully\n2026-03-28T13:58:50.805108Z DEBUG unimatrix_server::background: contradiction scan starting tick=0\n2026-03-28T13:59:20.370782Z DEBUG unimatrix_server::background: contradiction scan complete; cache updated tick=0 pairs=0\n2026-03-28T13:59:20.393843Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-28T13:59:23.974650Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 pairs_scored=100 source_candidates=100\n2026-03-28T13:59:23.975277Z  INFO unimatrix_server::background: background tick complete duration_secs=33",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.540451943204966,
+          "similarity": 0.5336748957633972,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5199094802191554,
+          "similarity": 0.539094090461731,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5184250997038697,
+          "similarity": 0.5496620535850525,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5034348839004222,
+          "similarity": 0.5316806435585022,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5000378812054599,
+          "similarity": 0.5326641201972961,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.540451943204966,
+          "similarity": 0.5336748957633972,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5199094802191554,
+          "similarity": 0.539094090461731,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5184250997038697,
+          "similarity": 0.5496620535850525,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5034348839004222,
+          "similarity": 0.5316806435585022,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5000378812054599,
+          "similarity": 0.5326641201972961,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

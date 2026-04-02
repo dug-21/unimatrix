@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5244",
+  "query": "research #1 to see if you can determine where the issue might be.. then write a gh issue",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4656341222119027,
+          "similarity": 0.4662155508995056,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.4653021205949107,
+          "similarity": 0.40958499908447266,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.463048755453196,
+          "similarity": 0.3866088390350342,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.44845207739351245,
+          "similarity": 0.42721331119537354,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.4370944030082514,
+          "similarity": 0.420184850692749,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4656341222119027,
+          "similarity": 0.4662155508995056,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.4653021205949107,
+          "similarity": 0.40958499908447266,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.463048755453196,
+          "similarity": 0.3866088390350342,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.44845207739351245,
+          "similarity": 0.42721331119537354,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3463,
+          "title": "Design corrections made interactively must be explicitly reflected in the rust-dev spawn prompt — GH issue comment updates are not enough",
+          "category": "lesson-learned",
+          "final_score": 0.4370944030082514,
+          "similarity": 0.420184850692749,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

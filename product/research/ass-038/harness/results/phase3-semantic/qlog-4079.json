@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4079",
+  "query": "now commit the protocol/claude changes.  Then, the IDE is seeing >255 other files changed in untracked changes... looks like cargo fmt that was not committed??  analyze and let me know what that actually is",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.5253400093116283,
+          "similarity": 0.5652875900268555,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2934,
+          "title": "cargo fmt on a partially-broken workspace silently reverts all file changes",
+          "category": "pattern",
+          "final_score": 0.5169861365044649,
+          "similarity": 0.5743628144264221,
+          "confidence": 0.5113012070458018,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.5147487335196885,
+          "similarity": 0.5330923795700073,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3015,
+          "title": "Edit Tool Re-Read Required After Cargo Fmt in Parallel Swarm: Edits May Not Persist",
+          "category": "pattern",
+          "final_score": 0.48228919713456475,
+          "similarity": 0.4978601932525635,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.5253400093116283,
+          "similarity": 0.5652875900268555,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2934,
+          "title": "cargo fmt on a partially-broken workspace silently reverts all file changes",
+          "category": "pattern",
+          "final_score": 0.5169861365044649,
+          "similarity": 0.5743628144264221,
+          "confidence": 0.5113012070458018,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.5147487335196885,
+          "similarity": 0.5330923795700073,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3015,
+          "title": "Edit Tool Re-Read Required After Cargo Fmt in Parallel Swarm: Edits May Not Persist",
+          "category": "pattern",
+          "final_score": 0.48228919713456475,
+          "similarity": 0.4978601932525635,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4483",
+  "query": "your thoughts on 448 scope? SCOPE.md for vnc-012 — product/features/vnc-012/SCOPE.md                                            \n                                                                                                      \n  Problem: Agents emit \"3770\" (string) where rmcp expects 3770 (integer), causing invalid type: string\n   \"3770\", expected i64 failures on 9 fields across 5 param structs.                                  \n                                                                  \n  Approach: Create crates/unimatrix-server/src/mcp/serde_util.rs with 3 helpers                       \n  (deserialize_i64_or_string, deserialize_opt_i64_or_string, deserialize_opt_usize_or_string), apply\n  #[serde(deserialize_with)] + #[schemars(with = \"i64\")] to all 9 affected fields, add unit tests.    \n                                                                  \n  12 acceptance criteria covering: string inputs accepted, integer inputs unchanged, non-numeric      \n  strings rejected, JSON Schema stays type: integer.\n                                                                                                      \n  Two open questions for you:                                                                         \n   \n  1. Q2: Should the helpers live in a new mcp/serde_util.rs submodule (researcher recommends this,    \n  consistent with existing response/ submodule pattern), or as private helpers inline in tools.rs?\n  2. Q3: For evidence_limit: Option<usize> on 32-bit targets — silently truncate values > u32::MAX, or\n   defensively reject them? (production is 64-bit, so this is mostly academic)  ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.5538114341357796,
+          "similarity": 0.6419472098350525,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 78,
+          "title": "ADR-002: Binary Crate in Workspace",
+          "category": "decision",
+          "final_score": 0.548839965388368,
+          "similarity": 0.5757460594177246,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.5470067381020849,
+          "similarity": 0.5735880732536316,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.5295049810146202,
+          "similarity": 0.557325541973114,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.49956042405973966,
+          "similarity": 0.5504201650619507,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.5538114341357796,
+          "similarity": 0.6419472098350525,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 78,
+          "title": "ADR-002: Binary Crate in Workspace",
+          "category": "decision",
+          "final_score": 0.548839965388368,
+          "similarity": 0.5757460594177246,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.5470067381020849,
+          "similarity": 0.5735880732536316,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.5295049810146202,
+          "similarity": 0.557325541973114,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.49956042405973966,
+          "similarity": 0.5504201650619507,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

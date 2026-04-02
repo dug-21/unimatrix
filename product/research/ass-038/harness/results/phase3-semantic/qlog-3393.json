@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3393",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Three artifacts updated. The key change across all of them:\n\n- **\"closed-but-evolvable\"** → removed entirely\n- **Governance mechanism made explicit**: vocabulary changes = `query_log` data migration, not schema changes, not code changes\n- **Documentation framing**: known values are a \"snapshot at time of writing,\" not an allowlist\n- **No hardcoded values** anywhere in the harness — new phase strings appear in the per-phase table row automatically\n\nReady to proceed to vision guardian and synthesizer when you are.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.5802143067267472,
+          "similarity": 0.6531433463096619,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5446689242401549,
+          "similarity": 0.534532368183136,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5411654874679896,
+          "similarity": 0.531509518623352,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5334856133909924,
+          "similarity": 0.5360727906227112,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.528846905113126,
+          "similarity": 0.5506342649459839,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.5802143067267472,
+          "similarity": 0.6531433463096619,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5446689242401549,
+          "similarity": 0.534532368183136,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5411654874679896,
+          "similarity": 0.531509518623352,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5334856133909924,
+          "similarity": 0.5360727906227112,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.528846905113126,
+          "similarity": 0.5506342649459839,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

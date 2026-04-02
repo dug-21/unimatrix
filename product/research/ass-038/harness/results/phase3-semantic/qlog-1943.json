@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1943",
+  "query": "I like the new decision.  Update ADR-004, ensure there is nothing in the specification or the rest of the architecture, implementation brief or any other artifact that needs to be updated on account of this change.  only when you are absolutely sure all of the design artifacts are complete, then you may continue to the delivery",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.54569803226797,
+          "similarity": 0.6193816661834717,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.5073560607384717,
+          "similarity": 0.5042710304260254,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 185,
+          "title": "ADR-003: Independent Adaptation State Persistence",
+          "category": "decision",
+          "final_score": 0.48118482034960997,
+          "similarity": 0.4760172367095947,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4763795451716436,
+          "similarity": 0.49342429637908936,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.47467445060008273,
+          "similarity": 0.477972149848938,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.54569803226797,
+          "similarity": 0.6193816661834717,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.5073560607384717,
+          "similarity": 0.5042710304260254,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 185,
+          "title": "ADR-003: Independent Adaptation State Persistence",
+          "category": "decision",
+          "final_score": 0.48118482034960997,
+          "similarity": 0.4760172367095947,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4763795451716436,
+          "similarity": 0.49342429637908936,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.47467445060008273,
+          "similarity": 0.477972149848938,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

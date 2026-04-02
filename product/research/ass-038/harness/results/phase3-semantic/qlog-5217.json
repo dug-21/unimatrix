@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5217",
+  "query": "when deprecating entries with a replacement... DON\"T create a new item and separately deprecate the old one with no supersession... this breaks the chain.  There is a proper way to depreccate with supercession... you need to follow that precisely.  Please address this prior to merge: Finding 1 (low, non-blocking): ADR-002 crt-037 not formally superseded\n\nUnimatrix entry #3955 (ADR-002 crt-037: Combined Cap with Informs Second-Priority Ordering) still describes the removed combined-cap design as the current approach. The fix-agent noted it is superseded but did not deprecate or correct the entry. Future agents receiving a briefing may act on stale design intent.\n\nRecommendation: deprecate or correct entry #3955 to reference the new independent-cap design. The pattern anti-pattern entry #3969 captures the fix lesson, but the original ADR-002 needs to be retired.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.5530273527644617,
+          "similarity": 0.615406334400177,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.5140006054904923,
+          "similarity": 0.5000956654548645,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4894831353391059,
+          "similarity": 0.48396337032318115,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.4732595977173334,
+          "similarity": 0.48174864053726196,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.5530273527644617,
+          "similarity": 0.615406334400177,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.5140006054904923,
+          "similarity": 0.5000956654548645,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.4894831353391059,
+          "similarity": 0.48396337032318115,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.4732595977173334,
+          "similarity": 0.48174864053726196,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5045",
+  "query": "you answered 1 of thse.. other thoughts from the summary?  Vision alignment: PASS. Two WARNs (no blocking):                                                                                                               \n  - WARN 1: Implement NliCandidatePair as tagged union (spec form), not flat struct (arch form)\n  - WARN 2: Confirm NliScores.neutral computation before Phase C                                                                                                 \n                                                                            \n  Pre-delivery gates (must resolve before Session 2):                                                                                                            \n  - OQ-S1 (blocking): DDL inspection — GRAPH_EDGES.relation_type must have no CHECK constraint. If it does, the feature silently delivers zero Informs edges.    \n  - OQ-S2: Confirm whether NliScores.neutral is a direct cross-encoder logit or residual (1 - entailment - contradiction). Affects threshold precision.          \n                                                                                                                                                                 \n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5783964089414758,
+          "similarity": 0.6207783222198486,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5587017774700339,
+          "similarity": 0.5974281430244446,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.547057812045909,
+          "similarity": 0.5629043579101562,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5424161775559939,
+          "similarity": 0.5659158825874329,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5397557260191288,
+          "similarity": 0.62679123878479,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5783964089414758,
+          "similarity": 0.6207783222198486,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5587017774700339,
+          "similarity": 0.5974281430244446,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.547057812045909,
+          "similarity": 0.5629043579101562,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5424161775559939,
+          "similarity": 0.5659158825874329,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5397557260191288,
+          "similarity": 0.62679123878479,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

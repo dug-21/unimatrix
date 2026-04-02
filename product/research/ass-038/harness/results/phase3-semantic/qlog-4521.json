@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4521",
+  "query": "so... I see this work all going on under context_cycle_review... analyze the cycle info, if not stored, store the summary... structured fields",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5545020593430795,
+          "similarity": 0.5532153248786926,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.52817199014389,
+          "similarity": 0.5629876255989075,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5275354669964277,
+          "similarity": 0.5573871731758118,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.509070268011846,
+          "similarity": 0.5130643844604492,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.504489205160381,
+          "similarity": 0.5177764892578125,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5545020593430795,
+          "similarity": 0.5532153248786926,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.52817199014389,
+          "similarity": 0.5629876255989075,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5275354669964277,
+          "similarity": 0.5573871731758118,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.509070268011846,
+          "similarity": 0.5130643844604492,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.504489205160381,
+          "similarity": 0.5177764892578125,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

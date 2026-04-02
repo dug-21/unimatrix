@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-4a5ba677-1774403533000",
+  "query": "scope addition milestone discipline retrospective formatter",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.40117498544546276,
+          "similarity": 0.49565935134887695,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.38278440328744745,
+          "similarity": 0.46577465534210205,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.361450562110314,
+          "similarity": 0.43110716342926025,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.3376289514394907,
+          "similarity": 0.39239704608917236,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.3252420425415039,
+          "similarity": 0.37226831912994385,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.538856974320278,
+          "similarity": 0.49565935134887695,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5378443536947335,
+          "similarity": 0.46577465534210205,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5184975007661288,
+          "similarity": 0.43110716342926025,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.45919468708460986,
+          "similarity": 0.39239704608917236,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.43807385513250074,
+          "similarity": 0.37226831912994385,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.5385764702750091,
+          "similarity": 0.49565935134887695,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.5373763686404955,
+          "similarity": 0.46577465534210205,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.517930031043162,
+          "similarity": 0.43110716342926025,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.458760936169055,
+          "similarity": 0.39239704608917236,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.4376465464571594,
+          "similarity": 0.37226831912994385,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.4780000349582651,
+          "similarity": 0.49565935134887695,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.47512764735917024,
+          "similarity": 0.46577465534210205,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4585558336602695,
+          "similarity": 0.43110716342926025,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.41258448959658517,
+          "similarity": 0.39239704608917236,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.3957586886772465,
+          "similarity": 0.37226831912994385,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.49565935134887695,
+          "similarity": 0.49565935134887695,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.46577465534210205,
+          "similarity": 0.46577465534210205,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.43110716342926025,
+          "similarity": 0.43110716342926025,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.39239704608917236,
+          "similarity": 0.39239704608917236,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.37226831912994385,
+          "similarity": 0.37226831912994385,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.4780000349582651,
+          "similarity": 0.49565935134887695,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.47512764735917024,
+          "similarity": 0.46577465534210205,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4585558336602695,
+          "similarity": 0.43110716342926025,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3435,
+          "title": "format_claim_with_baseline: formatter-owned post-processing to replace threshold language with baseline framing",
+          "category": "pattern",
+          "final_score": 0.41258448959658517,
+          "similarity": 0.39239704608917236,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 764,
+          "title": "Read Sibling Feature Artifacts Before Design",
+          "category": "procedure",
+          "final_score": 0.3957586886772465,
+          "similarity": 0.37226831912994385,
+          "confidence": 0.532081763707582,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

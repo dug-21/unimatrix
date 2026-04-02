@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9b6485d3-1774615806000",
+  "query": "write_edges_with_cap circuit breaker cap testable unit extraction",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2800,
+          "title": "Circuit breaker / cap logic must be extracted as a testable unit function from the start",
+          "category": "lesson-learned",
+          "final_score": 0.640871467359161,
+          "similarity": 0.7296059131622314,
+          "confidence": 0.6257855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5062220726586455,
+          "similarity": 0.4971470832824707,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.44026218685202767,
+          "similarity": 0.37102437019348145,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3930,
+          "title": "list_purgeable_cycles includes already-purged cycles (raw_signals_available=0 not filtered)",
+          "category": "pattern",
+          "final_score": 0.4363765913609261,
+          "similarity": 0.3874698877334595,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4360569352025534,
+          "similarity": 0.36717450618743896,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2800,
+          "title": "Circuit breaker / cap logic must be extracted as a testable unit function from the start",
+          "category": "lesson-learned",
+          "final_score": 0.640871467359161,
+          "similarity": 0.7296059131622314,
+          "confidence": 0.6257855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5062220726586455,
+          "similarity": 0.4971470832824707,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.44026218685202767,
+          "similarity": 0.37102437019348145,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3930,
+          "title": "list_purgeable_cycles includes already-purged cycles (raw_signals_available=0 not filtered)",
+          "category": "pattern",
+          "final_score": 0.4363765913609261,
+          "similarity": 0.3874698877334595,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.4360569352025534,
+          "similarity": 0.36717450618743896,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

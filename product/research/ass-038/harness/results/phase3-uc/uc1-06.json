@@ -1,0 +1,94 @@
+{
+  "scenario_id": "uc1-06",
+  "query": "How should the co_access promotion SELECT be written to correctly exclude quarantined entries from being promoted?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.537065323006209,
+          "similarity": 0.5850784778594971,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5105864280824574,
+          "similarity": 0.5598196983337402,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.5099643438161963,
+          "similarity": 0.5586377382278442,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.537065323006209,
+          "similarity": 0.5850784778594971,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5105864280824574,
+          "similarity": 0.5598196983337402,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.5099643438161963,
+          "similarity": 0.5586377382278442,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

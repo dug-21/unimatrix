@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-584",
+  "query": "no.  merge these changes to main",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.43713852092510963,
+          "similarity": 0.36208462715148926,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 305,
+          "title": "Module Reorganization Reveals Hidden Coupling in Flat Layouts",
+          "category": "lesson-learned",
+          "final_score": 0.43449504630726665,
+          "similarity": 0.3626667857170105,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.4277765819224896,
+          "similarity": 0.3530700206756592,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 366,
+          "title": "How to merge cfg-split shared modules after backend removal",
+          "category": "procedure",
+          "final_score": 0.41526526656161356,
+          "similarity": 0.3276703357696533,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 339,
+          "title": "ADR-002: Flatten-and-merge strategy for shared modules",
+          "category": "decision",
+          "final_score": 0.41012379806838173,
+          "similarity": 0.3448050022125244,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2286,
+          "title": "ADR-003 dsn-001: Two-Level Config Merge — Replace Semantics",
+          "category": "decision",
+          "final_score": 0.43713852092510963,
+          "similarity": 0.36208462715148926,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 305,
+          "title": "Module Reorganization Reveals Hidden Coupling in Flat Layouts",
+          "category": "lesson-learned",
+          "final_score": 0.43449504630726665,
+          "similarity": 0.3626667857170105,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.4277765819224896,
+          "similarity": 0.3530700206756592,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 366,
+          "title": "How to merge cfg-split shared modules after backend removal",
+          "category": "procedure",
+          "final_score": 0.41526526656161356,
+          "similarity": 0.3276703357696533,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 339,
+          "title": "ADR-002: Flatten-and-merge strategy for shared modules",
+          "category": "decision",
+          "final_score": 0.41012379806838173,
+          "similarity": 0.3448050022125244,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

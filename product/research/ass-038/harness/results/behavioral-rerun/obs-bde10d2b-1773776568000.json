@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bde10d2b-1773776568000",
+  "query": "sqlx pool acquire timeout structured error PoolTimeout",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5436765502085228,
+          "similarity": 0.5605464577674866,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.5342340469156874,
+          "similarity": 0.5901990532875061,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2159,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.5255421452569768,
+          "similarity": 0.5631844401359558,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2378,
+          "title": "PoolConnection not dropped after COMMIT starves subsequent pool acquires (import pipeline)",
+          "category": "lesson-learned",
+          "final_score": 0.5220033213387953,
+          "similarity": 0.5815117955207825,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5195703945458369,
+          "similarity": 0.56233811378479,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5436765502085228,
+          "similarity": 0.5605464577674866,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.5342340469156874,
+          "similarity": 0.5901990532875061,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2159,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.5255421452569768,
+          "similarity": 0.5631844401359558,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2378,
+          "title": "PoolConnection not dropped after COMMIT starves subsequent pool acquires (import pipeline)",
+          "category": "lesson-learned",
+          "final_score": 0.5220033213387953,
+          "similarity": 0.5815117955207825,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5195703945458369,
+          "similarity": 0.56233811378479,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

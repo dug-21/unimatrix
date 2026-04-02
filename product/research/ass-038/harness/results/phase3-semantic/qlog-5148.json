@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5148",
+  "query": "OK.. issue 469 complete. Summary: BUG FIX COMPLETE — PR ready for review.\n\n  PR: https://github.com/dug-21/unimatrix/pull/470\n  Branch: bugfix/469-informs-empty-feature-cycle\n\n  Fix Summary:\n  - Root cause: Three guard sites used is_empty() || — blocking any Informs candidate\n  where either entry lacked a feature_cycle, which was never the design intent\n  - Site 1 (~line 293): pre-filter removed entirely\n  - Site 2 (~line 770): two-block guard collapsed to single explicit predicate\n  !src.is_empty() && !tgt.is_empty() && src == tgt\n  - Site 3 (~line 801): updated to handle newly-reachable both-empty path (the\n  critical correctness fix after Sites 1 & 2 relaxed)\n  - Comments updated at lines 83 and 747 to prevent re-introduction\n  - Impact: All 16 convention entries and 71 decision entries without feature_cycle\n  now eligible for Informs detection\n\n  New tests: 4 AC-15 variants added — source-empty, target-empty, both-empty (Site 3\n  path), same-non-empty-blocked (preserved)\n\n  Tests: 4262 unit pass, 22/22 smoke pass, 13/13 contradiction suite pass\n\n  Gate: Bugfix Validation — PASS\n  Security Review: low risk — no blocking findings\\\nSec review: Security Review — PASS\n\nSummary: low risk — no blocking findings\nMerge readiness: READY\nFindings (non-blocking):\n\nPhase 8 cap-break ordering dependency — implicit ordering invariant not commented at break site\ndebug_assert! for weight finitude elided in release — belt-and-suspenders guard suggested\nVerified clean: SQL injection (none), async contamination (none), domain vocab isolation (AC-22 pass), FR-11 mutual exclusion (closed), config validation correct, no new dependencies, no secrets.\n\n",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5646703031285764,
+          "similarity": 0.6072845458984375,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5361365613013039,
+          "similarity": 0.5915148258209229,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.5230986602180882,
+          "similarity": 0.5924874544143677,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.5077872421866968,
+          "similarity": 0.5857957601547241,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5646703031285764,
+          "similarity": 0.6072845458984375,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5361365613013039,
+          "similarity": 0.5915148258209229,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.5230986602180882,
+          "similarity": 0.5924874544143677,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.5077872421866968,
+          "similarity": 0.5857957601547241,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

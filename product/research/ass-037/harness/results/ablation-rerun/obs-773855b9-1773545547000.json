@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-773855b9-1773545547000",
+  "query": "background tick error handling consecutive counter",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.6983782422739611,
+          "similarity": 0.7268359065055847,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.5377956658524351,
+          "similarity": 0.46802783012390137,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.49533295350433404,
+          "similarity": 0.42813777923583984,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.491521454334259,
+          "similarity": 0.3790363073348999,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.4632385866242412,
+          "similarity": 0.3976947069168091,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.6981922444685258,
+          "similarity": 0.7268359065055847,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.5382516647787654,
+          "similarity": 0.46802783012390137,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4957721376498798,
+          "similarity": 0.42813777923583984,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.4922566513734705,
+          "similarity": 0.3790363073348999,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.4636669779948781,
+          "similarity": 0.3976947069168091,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.7268359065055847,
+          "similarity": 0.7268359065055847,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.46802783012390137,
+          "similarity": 0.46802783012390137,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.42813777923583984,
+          "similarity": 0.42813777923583984,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.3976947069168091,
+          "similarity": 0.3976947069168091,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.3790363073348999,
+          "similarity": 0.3790363073348999,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5434374809265137,
+          "similarity": 0.7268359065055847,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.3841709723839393,
+          "similarity": 0.46802783012390137,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.3596232487605168,
+          "similarity": 0.42813777923583984,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.34088905041034406,
+          "similarity": 0.3976947069168091,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.3294069583599384,
+          "similarity": 0.3790363073348999,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.6105997714346105,
+          "similarity": 0.7268359065055847,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4755853436333792,
+          "similarity": 0.46802783012390137,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.44178668451890096,
+          "similarity": 0.42813777923583984,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.43571815366745,
+          "similarity": 0.3790363073348999,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.4162212773188975,
+          "similarity": 0.3976947069168091,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.6105997714346105,
+          "similarity": 0.7268359065055847,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4755853436333792,
+          "similarity": 0.46802783012390137,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.44178668451890096,
+          "similarity": 0.42813777923583984,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.43571815366745,
+          "similarity": 0.3790363073348999,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.4162212773188975,
+          "similarity": 0.3976947069168091,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

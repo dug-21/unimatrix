@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1006",
+  "query": "I'm assuming our @product/test/infra-001/USAGE-PROTOCOL.md environment is the backstop... this should not be changed, and everything should still work...",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.4602702682385813,
+          "similarity": 0.4221752882003784,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.4596885669217301,
+          "similarity": 0.4252130389213562,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.451950648432046,
+          "similarity": 0.40997231006622314,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4322716771335047,
+          "similarity": 0.4028269052505493,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.4181391930910635,
+          "similarity": 0.39571982622146606,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.4602702682385813,
+          "similarity": 0.4221752882003784,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.4596885669217301,
+          "similarity": 0.4252130389213562,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.451950648432046,
+          "similarity": 0.40997231006622314,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4322716771335047,
+          "similarity": 0.4028269052505493,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.4181391930910635,
+          "similarity": 0.39571982622146606,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

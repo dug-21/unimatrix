@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ea862451-1774802658000",
+  "query": "risk pattern",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.37220993841192335,
+          "similarity": 0.30482423305511475,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.35900509575435086,
+          "similarity": 0.23486733436584473,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.3578961366764875,
+          "similarity": 0.270587682723999,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.3514531035481368,
+          "similarity": 0.24747061729431152,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.34122265922354544,
+          "similarity": 0.23522508144378662,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.4123642063442953,
+          "similarity": 0.30482423305511475,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4010984319799086,
+          "similarity": 0.23486733436584473,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.3960743363477281,
+          "similarity": 0.270587682723999,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.3894973365078043,
+          "similarity": 0.24747061729431152,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.37665609291037744,
+          "similarity": 0.23522508144378662,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.2837379895723783,
+          "similarity": 0.30482423305511475,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.26266934321476865,
+          "similarity": 0.270587682723999,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.2484434567964994,
+          "similarity": 0.24747061729431152,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.24090774242694563,
+          "similarity": 0.23522508144378662,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.24068759037898138,
+          "similarity": 0.23486733436584473,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.30482423305511475,
+          "similarity": 0.30482423305511475,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.270587682723999,
+          "similarity": 0.270587682723999,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.24747061729431152,
+          "similarity": 0.24747061729431152,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.23522508144378662,
+          "similarity": 0.23522508144378662,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.23486733436584473,
+          "similarity": 0.23486733436584473,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.37220993841192335,
+          "similarity": 0.30482423305511475,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.35900509575435086,
+          "similarity": 0.23486733436584473,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.3578961366764875,
+          "similarity": 0.270587682723999,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.3514531035481368,
+          "similarity": 0.24747061729431152,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.34122265922354544,
+          "similarity": 0.23522508144378662,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.4116658948294305,
+          "similarity": 0.30482423305511475,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.40001900926812894,
+          "similarity": 0.23486733436584473,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.39525948794757404,
+          "similarity": 0.270587682723999,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.38857508508434,
+          "similarity": 0.24747061729431152,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.3757377097190359,
+          "similarity": 0.23522508144378662,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

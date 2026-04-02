@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3366",
+  "query": "1. Section ordering — Phase-Stratified Metrics before Distribution Analysis (section 6).\n    Distribution Analysis is aggregate/statistical; phase stratification answers \"which phase\n    improved.\" Reviewers will read phase first to understand where a change had effect, then go\n    to Distribution Analysis for the what. Chronological reading order matters in a shipping gate\n     document.\n\n    2. Table granularity — One row per phase for the first iteration. The per-(phase × profile)\n    table is the right eventual target but it doubles the row count and makes the diff hard to\n    read when you have 3 phases × 2-3 profiles. Ship the simpler form. The delta columns\n    (candidate − baseline) give you the cross-profile signal without multiplying rows. You can\n    add the cross-product view in a later iteration once the format is validated.\n\n    3. Phase vocabulary — From the codebase and protocol context visible in this conversation,\n    the known values are design, delivery, and bugfix. These are the three session types defined\n    in CLAUDE.md and the routing protocol. There are no other phase values in production — the\n    phase strings come from context_cycle calls which follow the protocol-defined vocabulary.\n    Document exactly those three plus a (none) bucket for pre-#397 rows and sessions that never\n    set a phase. Don't use \"etc.\" or open-ended wording — the vocabulary is closed and bounded by\n     the domain pack configuration.  One point worth discussing: vocabulary.  It is possible for design, delivery, bugfix to evolve with the project (not often, but we cannot exclude this)",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.5393163283457004,
+          "similarity": 0.5494508147239685,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5142980676538994,
+          "similarity": 0.4768277406692505,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.4893320169562103,
+          "similarity": 0.49030154943466187,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.48584498127358156,
+          "similarity": 0.4877598285675049,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4740799930050771,
+          "similarity": 0.503117024898529,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.5393163283457004,
+          "similarity": 0.5494508147239685,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5142980676538994,
+          "similarity": 0.4768277406692505,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.4893320169562103,
+          "similarity": 0.49030154943466187,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.48584498127358156,
+          "similarity": 0.4877598285675049,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4740799930050771,
+          "similarity": 0.503117024898529,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

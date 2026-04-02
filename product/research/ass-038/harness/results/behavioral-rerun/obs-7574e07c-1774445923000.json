@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7574e07c-1774445923000",
+  "query": "settings.json allowlist permission tool approval build commands",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.5382890040149692,
+          "similarity": 0.5717563033103943,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5049302910833232,
+          "similarity": 0.49611401557922363,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.49849754250089773,
+          "similarity": 0.4847348928451538,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.4814706411792685,
+          "similarity": 0.45673036575317383,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.4808291275104726,
+          "similarity": 0.4851219058036804,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.5382890040149692,
+          "similarity": 0.5717563033103943,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5049302910833232,
+          "similarity": 0.49611401557922363,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.49849754250089773,
+          "similarity": 0.4847348928451538,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3477,
+          "title": "ADR-005 col-027: ToolFailureRule — Detection Rule for Per-Tool Failure Counts",
+          "category": "decision",
+          "final_score": 0.4814706411792685,
+          "similarity": 0.45673036575317383,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.4808291275104726,
+          "similarity": 0.4851219058036804,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

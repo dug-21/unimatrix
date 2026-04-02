@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-f612daf8-1774531954000",
+  "query": "eval harness round-trip dual-type serde testing patterns",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.6250903628507614,
+          "similarity": 0.6615231037139893,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.6182249612460764,
+          "similarity": 0.615041971206665,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.5901014628351082,
+          "similarity": 0.5838987231254578,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.5215129700248345,
+          "similarity": 0.47610288858413696,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.512940348568169,
+          "similarity": 0.48756837844848633,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5526746289136968,
+          "similarity": 0.6615231037139893,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5443526125654746,
+          "similarity": 0.615041971206665,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.521638117431683,
+          "similarity": 0.5838987231254578,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.46396679877410346,
+          "similarity": 0.47610288858413696,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.45853999527455785,
+          "similarity": 0.48756837844848633,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5032449869009165,
+          "similarity": 0.6615231037139893,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.4746412130502554,
+          "similarity": 0.615041971206665,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.45547613730797404,
+          "similarity": 0.5838987231254578,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.39619592519906854,
+          "similarity": 0.48756837844848633,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.38914023912869966,
+          "similarity": 0.47610288858413696,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5526746289136968,
+          "similarity": 0.6615231037139893,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5443526125654746,
+          "similarity": 0.615041971206665,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.521638117431683,
+          "similarity": 0.5838987231254578,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.46396679877410346,
+          "similarity": 0.47610288858413696,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.45853999527455785,
+          "similarity": 0.48756837844848633,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.6615231037139893,
+          "similarity": 0.6615231037139893,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.615041971206665,
+          "similarity": 0.615041971206665,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.5838987231254578,
+          "similarity": 0.5838987231254578,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.48756837844848633,
+          "similarity": 0.48756837844848633,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.47610288858413696,
+          "similarity": 0.47610288858413696,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.6253269390901328,
+          "similarity": 0.6615231037139893,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.6182042924795866,
+          "similarity": 0.615041971206665,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.590061185304526,
+          "similarity": 0.5838987231254578,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.5212180993661286,
+          "similarity": 0.47610288858413696,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5127755955154437,
+          "similarity": 0.48756837844848633,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

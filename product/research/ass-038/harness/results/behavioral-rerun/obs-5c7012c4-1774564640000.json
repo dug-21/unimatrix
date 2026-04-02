@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5c7012c4-1774564640000",
+  "query": "eval harness metrics CC@k ICD distribution",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4792457254391579,
+          "similarity": 0.4547830820083618,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.4664531318962897,
+          "similarity": 0.4087110757827759,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.4622569775872615,
+          "similarity": 0.4242962598800659,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.46149566403312137,
+          "similarity": 0.4131026268005371,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4465056889676383,
+          "similarity": 0.41393059492111206,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4792457254391579,
+          "similarity": 0.4547830820083618,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.4664531318962897,
+          "similarity": 0.4087110757827759,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3585,
+          "title": "Eval harness sidecar files must be written atomically to avoid silent backward-compat fallback on partial run",
+          "category": "pattern",
+          "final_score": 0.4622569775872615,
+          "similarity": 0.4242962598800659,
+          "confidence": 0.5771314250510442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.46149566403312137,
+          "similarity": 0.4131026268005371,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4465056889676383,
+          "similarity": 0.41393059492111206,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

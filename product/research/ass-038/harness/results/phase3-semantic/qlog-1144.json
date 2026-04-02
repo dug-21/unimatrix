@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1144",
+  "query": "the complication is that only focuses on 1 dimension... I'm going back and forth.  LEGAL implies settings across a number of thee dimensions, freshness is only 1 of 6",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4009697132925335,
+          "similarity": 0.31058990955352783,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.40032793871200034,
+          "similarity": 0.3252774477005005,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.39711221571849753,
+          "similarity": 0.30334198474884033,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.39161887831463427,
+          "similarity": 0.30353671312332153,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.38694828107475854,
+          "similarity": 0.29274654388427734,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4009697132925335,
+          "similarity": 0.31058990955352783,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.40032793871200034,
+          "similarity": 0.3252774477005005,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.39711221571849753,
+          "similarity": 0.30334198474884033,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.39161887831463427,
+          "similarity": 0.30353671312332153,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.38694828107475854,
+          "similarity": 0.29274654388427734,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

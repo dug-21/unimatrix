@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cb586d22-1773712729000",
+  "query": "graceful shutdown LifecycleHandles Arc drop ordering",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.5176843059038934,
+          "similarity": 0.508998453617096,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.49193169525286906,
+          "similarity": 0.5119514465332031,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.48826646303589094,
+          "similarity": 0.47353142499923706,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 81,
+          "title": "ADR-005: Shutdown via Arc::try_unwrap",
+          "category": "decision",
+          "final_score": 0.4795426727678258,
+          "similarity": 0.4613472819328308,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.43059053970514294,
+          "similarity": 0.3693881034851074,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.5176843059038934,
+          "similarity": 0.508998453617096,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.49193169525286906,
+          "similarity": 0.5119514465332031,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.48826646303589094,
+          "similarity": 0.47353142499923706,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 81,
+          "title": "ADR-005: Shutdown via Arc::try_unwrap",
+          "category": "decision",
+          "final_score": 0.4795426727678258,
+          "similarity": 0.4613472819328308,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3827,
+          "title": "ADR-005 crt-034: Tick Insertion Anchor Comment + SR-05 Early-Run Detectability",
+          "category": "decision",
+          "final_score": 0.43059053970514294,
+          "similarity": 0.3693881034851074,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

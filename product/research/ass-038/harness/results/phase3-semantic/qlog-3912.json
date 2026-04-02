@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3912",
+  "query": "back to col-031.  from the new scope, here are the updates from architect and their identified risks: | Simplification | AC-16 scope (extract.rs vs. replay.rs) | SCOPE.md states \"modify `extract.rs` to select `query_log.phase` and populate `current_phase`.\" ARCHITECTURE.md and SPECIFICATION.md both clarify that `extract.rs` and `output.rs` already select and propagate `phase` — the actual fix is a one-line change in `replay.rs` only. The scope description is technically incorrect; the source docs correct it with evidence. The fix is narrower than scoped. See VARIANCE-1 below. |\n| Simplification | `validate()` range check for `query_log_lookback_days` | SCOPE.md is silent on `validate()` changes. ARCHITECTURE.md adds `[1, 3650]` range check to `validate()`. RISK-TEST-STRATEGY R-08 identifies absence of this validation as a Medium risk. This is a small positive addition over SCOPE.md scope that closes a named risk. Acceptable and beneficial. |\\\n  Critical risks for delivery:\n  1. R-01 — 7 SearchService construction sites must all receive\n  PhaseFreqTableHandle as a required non-optional parameter (lesson #3216)\n  2. R-02 — AC-16 (replay.rs fix) is a hard gate prerequisite for AC-12 —\n  gate 3b must reject AC-12 PASS without evidence of non-null\n  current_phase in scenario output\n  3. R-05 — CAST(json_each.value AS INTEGER) omission returns zero rows\n  silently — AC-08 TestDb integration test is the gate\n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.5788682997505502,
+          "similarity": 0.6537951827049255,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5564921677822173,
+          "similarity": 0.5970513224601746,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5557270941052751,
+          "similarity": 0.6017066240310669,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.549736434778849,
+          "similarity": 0.5756353735923767,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.5334155874637776,
+          "similarity": 0.5957992076873779,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.5788682997505502,
+          "similarity": 0.6537951827049255,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5564921677822173,
+          "similarity": 0.5970513224601746,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5557270941052751,
+          "similarity": 0.6017066240310669,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.549736434778849,
+          "similarity": 0.5756353735923767,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3158,
+          "title": "Deferred scope resolution leaves AC references live — spec ambiguity risk pattern",
+          "category": "pattern",
+          "final_score": 0.5334155874637776,
+          "similarity": 0.5957992076873779,
+          "confidence": 0.5252720121339995,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

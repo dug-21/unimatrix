@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1729",
+  "query": "run retro",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.37809557976150243,
+          "similarity": 0.26057636737823486,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.34588020516940554,
+          "similarity": 0.1926252841949463,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.33346271540115957,
+          "similarity": 0.2051190733909607,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.3324424844641497,
+          "similarity": 0.21994388103485107,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.3312003633256658,
+          "similarity": 0.21079140901565552,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.37809557976150243,
+          "similarity": 0.26057636737823486,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.34588020516940554,
+          "similarity": 0.1926252841949463,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.33346271540115957,
+          "similarity": 0.2051190733909607,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.3324424844641497,
+          "similarity": 0.21994388103485107,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.3312003633256658,
+          "similarity": 0.21079140901565552,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

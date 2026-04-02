@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-edf4842f-1774829156000",
+  "query": "sqlx integration test migration fixture patterns",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.554588174862716,
+          "similarity": 0.592383861541748,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.516923402412736,
+          "similarity": 0.515748918056488,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.5109383239822977,
+          "similarity": 0.5005773305892944,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5101078981249243,
+          "similarity": 0.4952855110168457,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5027690069301641,
+          "similarity": 0.5084219574928284,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.554588174862716,
+          "similarity": 0.592383861541748,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.516923402412736,
+          "similarity": 0.515748918056488,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.5109383239822977,
+          "similarity": 0.5005773305892944,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.5101078981249243,
+          "similarity": 0.4952855110168457,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.5027690069301641,
+          "similarity": 0.5084219574928284,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

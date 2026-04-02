@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-d8a65a52-1774657727000",
+  "query": "two cold-start contracts guarded caller direct caller testing pattern",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.4730501075759464,
+          "similarity": 0.5383489727973938,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.457253751788592,
+          "similarity": 0.42979854345321655,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.44439648107358726,
+          "similarity": 0.3985491991043091,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.42342247884892176,
+          "similarity": 0.40909838676452637,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.41461554032819065,
+          "similarity": 0.40017038583755493,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.527945694621982,
+          "similarity": 0.5383489727973938,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5162734303068786,
+          "similarity": 0.42979854345321655,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.5015816379090454,
+          "similarity": 0.3985491991043091,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4720217087244818,
+          "similarity": 0.40909838676452637,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.4608238835532095,
+          "similarity": 0.40017038583755493,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.5383489727973938,
+          "similarity": 0.5383489727973938,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.42979854345321655,
+          "similarity": 0.42979854345321655,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.40909838676452637,
+          "similarity": 0.40909838676452637,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.40017038583755493,
+          "similarity": 0.40017038583755493,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.3985491991043091,
+          "similarity": 0.3985491991043091,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.4730501075759464,
+          "similarity": 0.5383489727973938,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.457253751788592,
+          "similarity": 0.42979854345321655,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.44439648107358726,
+          "similarity": 0.3985491991043091,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.42342247884892176,
+          "similarity": 0.40909838676452637,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.41461554032819065,
+          "similarity": 0.40017038583755493,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.5278776993397898,
+          "similarity": 0.5383489727973938,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5168386256457913,
+          "similarity": 0.42979854345321655,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.5022550525417561,
+          "similarity": 0.3985491991043091,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4724329722667038,
+          "similarity": 0.40909838676452637,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.4612203116428544,
+          "similarity": 0.40017038583755493,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3691,
+          "title": "Two Cold-Start Contracts on One Method: Test Pattern for Guarded vs. Direct Callers",
+          "category": "pattern",
+          "final_score": 0.4274455217214731,
+          "similarity": 0.5383489727973938,
+          "confidence": 0.5129187372574984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.36064525750967175,
+          "similarity": 0.42979854345321655,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.34790669954740083,
+          "similarity": 0.40909838676452637,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.34241254513080305,
+          "similarity": 0.40017038583755493,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.34141489175649786,
+          "similarity": 0.3985491991043091,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

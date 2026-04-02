@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4641",
+  "query": "so... Our production db is in ~/.unimatrix/{hash}/  What are the table sizes we have currently... we maybe focused on the wrong table",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.49080511346576106,
+          "similarity": 0.4690946936607361,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.45728271043857505,
+          "similarity": 0.42153191566467285,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4483687595068918,
+          "similarity": 0.41586148738861084,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2661,
+          "title": "Snapshot commands must copy all storage artifacts, not just the primary database",
+          "category": "lesson-learned",
+          "final_score": 0.4463229146553147,
+          "similarity": 0.41716790199279785,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.44542852408343325,
+          "similarity": 0.4278249144554138,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.49080511346576106,
+          "similarity": 0.4690946936607361,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.45728271043857505,
+          "similarity": 0.42153191566467285,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4483687595068918,
+          "similarity": 0.41586148738861084,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2661,
+          "title": "Snapshot commands must copy all storage artifacts, not just the primary database",
+          "category": "lesson-learned",
+          "final_score": 0.4463229146553147,
+          "similarity": 0.41716790199279785,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.44542852408343325,
+          "similarity": 0.4278249144554138,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,434 @@
+{
+  "scenario_id": "uc1-03",
+  "query": "What is the correct SqlxStore dual-pool write architecture to prevent SQLITE_BUSY_SNAPSHOT under concurrent reads?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6494673909375712,
+          "similarity": 0.7852541208267212,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6293815857226561,
+          "similarity": 0.7613947987556458,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2270,
+          "title": "SqlxStore dual-pool WAL architecture: read_pool=N, write_pool=1, PRAGMAs per-connection via SqliteConnectOptions",
+          "category": "pattern",
+          "final_score": 0.623476951305649,
+          "similarity": 0.7249007225036621,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6139349561995091,
+          "similarity": 0.7364372611045837,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2130,
+          "title": "sqlx write_pool: set max_connections=1 to prevent SQLITE_BUSY_SNAPSHOT with fire-and-forget writes",
+          "category": "lesson-learned",
+          "final_score": 0.6129136167547045,
+          "similarity": 0.6943957209587097,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5991131088014349,
+          "similarity": 0.7198256254196167,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5842915636945246,
+          "similarity": 0.711409330368042,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5829707572131214,
+          "similarity": 0.6827988028526306,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5645031421749404,
+          "similarity": 0.5785312652587891,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5568520981254551,
+          "similarity": 0.5897137522697449,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.5490581208658664,
+          "similarity": 0.6273407936096191,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.5463646715993429,
+          "similarity": 0.5662592053413391,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.545503218972658,
+          "similarity": 0.5815650224685669,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.5416680636524633,
+          "similarity": 0.5772550702095032,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5395757714738596,
+          "similarity": 0.5426692366600037,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2059,
+          "title": "ADR-002 nxs-011: SqliteWriteTransaction Retirement — Direct pool.begin() at call sites",
+          "category": "decision",
+          "final_score": 0.5389399064496498,
+          "similarity": 0.5713469386100769,
+          "confidence": 0.5751984052060829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5328278640020858,
+          "similarity": 0.5466674566268921,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2621,
+          "title": "SqlxStore::open_readonly() for eval snapshot access — no migration, no drain task",
+          "category": "pattern",
+          "final_score": 0.5318495787493468,
+          "similarity": 0.5942196846008301,
+          "confidence": 0.5232778786041841,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.5279488099374243,
+          "similarity": 0.5427038669586182,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.51188249335011,
+          "similarity": 0.5477311015129089,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0296530140645737
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6494673909375712,
+          "similarity": 0.7852541208267212,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6293815857226561,
+          "similarity": 0.7613947987556458,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2270,
+          "title": "SqlxStore dual-pool WAL architecture: read_pool=N, write_pool=1, PRAGMAs per-connection via SqliteConnectOptions",
+          "category": "pattern",
+          "final_score": 0.623476951305649,
+          "similarity": 0.7249007225036621,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6139349561995091,
+          "similarity": 0.7364372611045837,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2130,
+          "title": "sqlx write_pool: set max_connections=1 to prevent SQLITE_BUSY_SNAPSHOT with fire-and-forget writes",
+          "category": "lesson-learned",
+          "final_score": 0.6129136167547045,
+          "similarity": 0.6943957209587097,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2151,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5991131088014349,
+          "similarity": 0.7198256254196167,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5842915636945246,
+          "similarity": 0.711409330368042,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5829707572131214,
+          "similarity": 0.6827988028526306,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 731,
+          "title": "Batched Fire-and-Forget DB Writes for Mutex-Protected Resources",
+          "category": "pattern",
+          "final_score": 0.5645031421749404,
+          "similarity": 0.5785312652587891,
+          "confidence": 0.6343210069622824,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3799,
+          "title": "Acquire write connection before execute — don't pass write_pool_server() directly to .execute()",
+          "category": "pattern",
+          "final_score": 0.5568520981254551,
+          "similarity": 0.5897137522697449,
+          "confidence": 0.5975789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.5490581208658664,
+          "similarity": 0.6273407936096191,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.5463646715993429,
+          "similarity": 0.5662592053413391,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.545503218972658,
+          "similarity": 0.5815650224685669,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.5416680636524633,
+          "similarity": 0.5772550702095032,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5395757714738596,
+          "similarity": 0.5426692366600037,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2059,
+          "title": "ADR-002 nxs-011: SqliteWriteTransaction Retirement — Direct pool.begin() at call sites",
+          "category": "decision",
+          "final_score": 0.5389399064496498,
+          "similarity": 0.5713469386100769,
+          "confidence": 0.5751984052060829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3028,
+          "title": "unimatrix-store read_pool is pub(crate) — use write_pool or add public method for cross-crate reads",
+          "category": "pattern",
+          "final_score": 0.5328278640020858,
+          "similarity": 0.5466674566268921,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2621,
+          "title": "SqlxStore::open_readonly() for eval snapshot access — no migration, no drain task",
+          "category": "pattern",
+          "final_score": 0.5318495787493468,
+          "similarity": 0.5942196846008301,
+          "confidence": 0.5232778786041841,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.5279488099374243,
+          "similarity": 0.5427038669586182,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.51188249335011,
+          "similarity": 0.5477311015129089,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0296530140645737
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

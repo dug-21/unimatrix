@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-909",
+  "query": "honestly, I think the best way is to force daemon mode sooner rather than later.. This allows us to address any type of concers related to operations prior to have to moving to a container... I'd rather force the addition process in a dev workspace for now... and we can build full functionality and move to container/http later if we would choose to.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.47492411111530497,
+          "similarity": 0.4053558111190796,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.46069407272256935,
+          "similarity": 0.44088852405548096,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.44894270634666555,
+          "similarity": 0.38740086555480957,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.43797979184969715,
+          "similarity": 0.3619561195373535,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.42876714561423734,
+          "similarity": 0.3655179738998413,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.47492411111530497,
+          "similarity": 0.4053558111190796,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.46069407272256935,
+          "similarity": 0.44088852405548096,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.44894270634666555,
+          "similarity": 0.38740086555480957,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.43797979184969715,
+          "similarity": 0.3619561195373535,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.42876714561423734,
+          "similarity": 0.3655179738998413,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

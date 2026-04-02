@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-edf4842f-1774838086000",
+  "query": "memoization cache store module keyed archive SQLite",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.5294761239261071,
+          "similarity": 0.5875153541564941,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.49086607232316637,
+          "similarity": 0.46559566259384155,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.4824546805638765,
+          "similarity": 0.4617727994918823,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.46548495903014575,
+          "similarity": 0.40253663063049316,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.46433903685731215,
+          "similarity": 0.41271573305130005,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.5294761239261071,
+          "similarity": 0.5875153541564941,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.49086607232316637,
+          "similarity": 0.46559566259384155,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 329,
+          "title": "ADR-003: WAL Mode with Auto-Checkpoint",
+          "category": "decision",
+          "final_score": 0.4824546805638765,
+          "similarity": 0.4617727994918823,
+          "confidence": 0.5784158479706903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.46548495903014575,
+          "similarity": 0.40253663063049316,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.46433903685731215,
+          "similarity": 0.41271573305130005,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

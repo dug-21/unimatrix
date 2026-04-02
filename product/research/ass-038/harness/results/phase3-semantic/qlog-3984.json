@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3984",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Investigate #407 bug root cause) → ]\n[Assistant] MCP tools aren't in the deferred list — they'll be available to subagents. Proceeding with Phase 1.\n[tool: ToolSearch(select:mcp__unimatrix__context_cycle,mcp__unimatrix__context_search) → No matching deferred tools found]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5727295595818395,
+          "similarity": 0.6360971331596375,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.5265280607828299,
+          "similarity": 0.5455512404441833,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.49807143638721885,
+          "similarity": 0.48616087436676025,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.4919918315506704,
+          "similarity": 0.4726443290710449,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.4590210005609612,
+          "similarity": 0.4707399010658264,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5727295595818395,
+          "similarity": 0.6360971331596375,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.5265280607828299,
+          "similarity": 0.5455512404441833,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.49807143638721885,
+          "similarity": 0.48616087436676025,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.4919918315506704,
+          "similarity": 0.4726443290710449,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.4590210005609612,
+          "similarity": 0.4707399010658264,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

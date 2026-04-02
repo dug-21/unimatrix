@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3616",
+  "query": "yes... you got it now",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.3386855916754803,
+          "similarity": 0.14679771661758423,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.3084177500190708,
+          "similarity": 0.12818849086761475,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.3068337772904356,
+          "similarity": 0.13369327783584595,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.29995953745509085,
+          "similarity": 0.12499290704727173,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3517,
+          "title": "ADR-005 col-028: confirmed_entries Semantic Contract — Explicit Fetch Only, Shipped Without Consumer",
+          "category": "decision",
+          "final_score": 0.28626252203651825,
+          "similarity": 0.12754452228546143,
+          "confidence": 0.5233632422627477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.3386855916754803,
+          "similarity": 0.14679771661758423,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.3084177500190708,
+          "similarity": 0.12818849086761475,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.3068337772904356,
+          "similarity": 0.13369327783584595,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.29995953745509085,
+          "similarity": 0.12499290704727173,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3517,
+          "title": "ADR-005 col-028: confirmed_entries Semantic Contract — Explicit Fetch Only, Shipped Without Consumer",
+          "category": "decision",
+          "final_score": 0.28626252203651825,
+          "similarity": 0.12754452228546143,
+          "confidence": 0.5233632422627477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

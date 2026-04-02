@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280162000",
+  "query": "direct SQL insert migration bypass store API",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5929409100941219,
+          "similarity": 0.5885202288627625,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.55332903123149,
+          "similarity": 0.5092641711235046,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.5343459584302189,
+          "similarity": 0.4712306261062622,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.5235916187580372,
+          "similarity": 0.5102152228355408,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5139627846872337,
+          "similarity": 0.4434419870376587,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5929698034355033,
+          "similarity": 0.5885202288627625,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.5536170368531108,
+          "similarity": 0.5092641711235046,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.5347584769421403,
+          "similarity": 0.4712306261062622,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.5236790461823673,
+          "similarity": 0.5102152228355408,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5144237049333094,
+          "similarity": 0.4434419870376587,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5240580159932069,
+          "similarity": 0.5885202288627625,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.4897255676446597,
+          "similarity": 0.5092641711235046,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.47326907792257805,
+          "similarity": 0.4712306261062622,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4679815352782634,
+          "similarity": 0.5102152228355408,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.4564688412398153,
+          "similarity": 0.4434419870376587,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5240580159932069,
+          "similarity": 0.5885202288627625,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.4897255676446597,
+          "similarity": 0.5092641711235046,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.47326907792257805,
+          "similarity": 0.4712306261062622,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4679815352782634,
+          "similarity": 0.5102152228355408,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.4564688412398153,
+          "similarity": 0.4434419870376587,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.45832014083862305,
+          "similarity": 0.5885202288627625,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4101324448218713,
+          "similarity": 0.5102152228355408,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.40954718222984904,
+          "similarity": 0.5092641711235046,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.38614192375769985,
+          "similarity": 0.4712306261062622,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.36904122279240537,
+          "similarity": 0.4434419870376587,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5885202288627625,
+          "similarity": 0.5885202288627625,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.5102152228355408,
+          "similarity": 0.5102152228355408,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.5092641711235046,
+          "similarity": 0.5092641711235046,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.4712306261062622,
+          "similarity": 0.4712306261062622,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.4434419870376587,
+          "similarity": 0.4434419870376587,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

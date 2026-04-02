@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-a02f1841-1774917148000",
+  "query": "histogram_total u32 category counts normalization search scoring",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4585264325141907,
+          "similarity": 0.4585264325141907,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.45257890224456787,
+          "similarity": 0.45257890224456787,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.4323776364326477,
+          "similarity": 0.4323776364326477,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.42108821868896484,
+          "similarity": 0.42108821868896484,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.39687204360961914,
+          "similarity": 0.39687204360961914,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.45643298704603097,
+          "similarity": 0.45257890224456787,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4531705575396832,
+          "similarity": 0.4585264325141907,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.4287194154151353,
+          "similarity": 0.4323776364326477,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.4269300758964814,
+          "similarity": 0.42108821868896484,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.418266900846754,
+          "similarity": 0.39687204360961914,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.5130832639496269,
+          "similarity": 0.45257890224456787,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.5080938118710052,
+          "similarity": 0.4585264325141907,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.4771285086176711,
+          "similarity": 0.4323776364326477,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.4757148108871142,
+          "similarity": 0.42108821868896484,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.4661028608265173,
+          "similarity": 0.39687204360961914,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.5134787172941044,
+          "similarity": 0.45257890224456787,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.5084177816707229,
+          "similarity": 0.4585264325141907,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.4774209979783576,
+          "similarity": 0.4323776364326477,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.476071847437429,
+          "similarity": 0.42108821868896484,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.466555349827935,
+          "similarity": 0.39687204360961914,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.37832395847027117,
+          "similarity": 0.4585264325141907,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.374663939842811,
+          "similarity": 0.45257890224456787,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.36223239165086013,
+          "similarity": 0.4323776364326477,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.3552850576547476,
+          "similarity": 0.42108821868896484,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.3403827960674579,
+          "similarity": 0.39687204360961914,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.45643298704603097,
+          "similarity": 0.45257890224456787,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4531705575396832,
+          "similarity": 0.4585264325141907,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.4287194154151353,
+          "similarity": 0.4323776364326477,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.4269300758964814,
+          "similarity": 0.42108821868896484,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.418266900846754,
+          "similarity": 0.39687204360961914,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3521,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 3162,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

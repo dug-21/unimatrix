@@ -1,0 +1,326 @@
+{
+  "scenario_id": "obs-1ebc220a-1774991248000",
+  "query": "Informs edge feature_cycle cross-feature guard NLI candidate detection",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.4353675842285156,
+          "similarity": 0.5512223243713379,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.42814948008610654,
+          "similarity": 0.5394929051399231,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.41972923278808594,
+          "similarity": 0.5258100032806396,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.3904917056743915,
+          "similarity": 0.47829902172088623,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5091146713723643,
+          "similarity": 0.5512223243713379,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.5046300162876193,
+          "similarity": 0.5258100032806396,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.46920844142062784,
+          "similarity": 0.5394929051399231,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.4672590951658107,
+          "similarity": 0.47829902172088623,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5761159877295845,
+          "similarity": 0.5512223243713379,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.5724519828182382,
+          "similarity": 0.5258100032806396,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5258165010392613,
+          "similarity": 0.47829902172088623,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.522492673994987,
+          "similarity": 0.5394929051399231,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5512223243713379,
+          "similarity": 0.5512223243713379,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5394929051399231,
+          "similarity": 0.5394929051399231,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.5258100032806396,
+          "similarity": 0.5258100032806396,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.47829902172088623,
+          "similarity": 0.47829902172088623,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5091146713723643,
+          "similarity": 0.5512223243713379,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.5046300162876193,
+          "similarity": 0.5258100032806396,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.46920844142062784,
+          "similarity": 0.5394929051399231,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.4672590951658107,
+          "similarity": 0.47829902172088623,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5759543405649205,
+          "similarity": 0.5512223243713379,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.5721491128212408,
+          "similarity": 0.5258100032806396,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.5255079459787522,
+          "similarity": 0.47829902172088623,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5226030651063177,
+          "similarity": 0.5394929051399231,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.3333333333333333,
+    "rank_changes": [
+      {
+        "entry_id": 3954,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 2716,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3957,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

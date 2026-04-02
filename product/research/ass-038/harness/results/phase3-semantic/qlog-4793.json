@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4793",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Stage 3b — Wave 1: all three components are independent, spawning in parallel.\n[tool: Bash(git add product/features/crt-035/ && git commit -m \"$(cat <<'EOF'\npseudocode: crt-035 component design + test plans (#46) → [feature/crt-035 ccd6c76] pseudocode: crt-035 component design + test plans (#460)\n 13 files changed, 2673 insertions(+), 6 deletions(-)\n create mode 100644 product/features/crt-035/agents/crt-035-agent-1-pseudocode-report.md\n create mode 100644 product/features/crt-035/agents/crt-035-agent-2-testpl]\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'crt-035'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[Assistant] Gate 3a: **PASS**. Committing Stage 3a artifacts and proceeding to Stage 3b.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5164777289757573,
+          "similarity": 0.5145595073699951,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5043358165135943,
+          "similarity": 0.522892415523529,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.49625498806720914,
+          "similarity": 0.5084542632102966,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4823100524199636,
+          "similarity": 0.5373890995979309,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.473130497932434,
+          "similarity": 0.5199479460716248,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5164777289757573,
+          "similarity": 0.5145595073699951,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5043358165135943,
+          "similarity": 0.522892415523529,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.49625498806720914,
+          "similarity": 0.5084542632102966,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4823100524199636,
+          "similarity": 0.5373890995979309,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.473130497932434,
+          "similarity": 0.5199479460716248,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

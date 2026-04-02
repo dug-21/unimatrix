@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-e275cc04-1774457821000",
+  "query": "hook type string constants observation extract_response_fields PostToolUse",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5254826891614115,
+          "similarity": 0.5659379959106445,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5170840669996167,
+          "similarity": 0.5066989064216614,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.49495658247807783,
+          "similarity": 0.4862426519393921,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.48791338825591035,
+          "similarity": 0.4809642434120178,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.47732854197224106,
+          "similarity": 0.5105285048484802,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5254826891614115,
+          "similarity": 0.5659379959106445,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5170840669996167,
+          "similarity": 0.5066989064216614,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.49495658247807783,
+          "similarity": 0.4862426519393921,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.48791338825591035,
+          "similarity": 0.4809642434120178,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3481,
+          "title": "hook_type import must be at file top level, not only in test scope",
+          "category": "lesson-learned",
+          "final_score": 0.47732854197224106,
+          "similarity": 0.5105285048484802,
+          "confidence": 0.49485103556968285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

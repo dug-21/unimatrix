@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-abcc3cc8-1773157584000",
+  "query": "risk pattern cross-table query knowledge reuse",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.44288864217465324,
+          "similarity": 0.44599616527557373,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4381923515804332,
+          "similarity": 0.42381298542022705,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4343480235894969,
+          "similarity": 0.427398681640625,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.41730843377190047,
+          "similarity": 0.3820451498031616,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4148810887687035,
+          "similarity": 0.37587034702301025,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.4955338063891737,
+          "similarity": 0.44599616527557373,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4912627388927292,
+          "similarity": 0.42381298542022705,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4856346714325816,
+          "similarity": 0.427398681640625,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.46669342382386714,
+          "similarity": 0.3820451498031616,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.46396714664106264,
+          "similarity": 0.37587034702301025,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.44288864217465324,
+          "similarity": 0.44599616527557373,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4381923515804332,
+          "similarity": 0.42381298542022705,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.4343480235894969,
+          "similarity": 0.427398681640625,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.41730843377190047,
+          "similarity": 0.3820451498031616,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4148810887687035,
+          "similarity": 0.37587034702301025,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.4952121333949295,
+          "similarity": 0.44599616527557373,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4908247534805701,
+          "similarity": 0.42381298542022705,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.48525651565471173,
+          "similarity": 0.427398681640625,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.46614375970684957,
+          "similarity": 0.3820451498031616,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.46339508950068564,
+          "similarity": 0.37587034702301025,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.37061302478496844,
+          "similarity": 0.44599616527557373,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.35916841947115385,
+          "similarity": 0.427398681640625,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.3569618371816782,
+          "similarity": 0.42381298542022705,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.33125855372502255,
+          "similarity": 0.3820451498031616,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.32745867509108323,
+          "similarity": 0.37587034702301025,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.44599616527557373,
+          "similarity": 0.44599616527557373,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.427398681640625,
+          "similarity": 0.427398681640625,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.42381298542022705,
+          "similarity": 0.42381298542022705,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.3820451498031616,
+          "similarity": 0.3820451498031616,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.37587034702301025,
+          "similarity": 0.37587034702301025,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

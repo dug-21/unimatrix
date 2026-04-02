@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2414",
+  "query": "we recently redesigned how context_briefing works on the backend... but in reality, I'm not 100% sure that redesign cascaded to the interface?  Does the interface connect properly to the fields used to query for context_briefing?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.5126151148210948,
+          "similarity": 0.4977743625640869,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.504018650692069,
+          "similarity": 0.5020464062690735,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5016326127081149,
+          "similarity": 0.45639705657958984,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.49781137994082536,
+          "similarity": 0.4722219705581665,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.4810870044578678,
+          "similarity": 0.46211981773376465,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.5126151148210948,
+          "similarity": 0.4977743625640869,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.504018650692069,
+          "similarity": 0.5020464062690735,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5016326127081149,
+          "similarity": 0.45639705657958984,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.49781137994082536,
+          "similarity": 0.4722219705581665,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3231,
+          "title": "BriefingService caller map — two call sites, both must migrate together",
+          "category": "pattern",
+          "final_score": 0.4810870044578678,
+          "similarity": 0.46211981773376465,
+          "confidence": 0.5742078439088348,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

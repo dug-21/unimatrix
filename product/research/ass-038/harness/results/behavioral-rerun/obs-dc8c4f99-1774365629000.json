@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-dc8c4f99-1774365629000",
+  "query": "named unit conversion helper column boundary type mismatch seconds milliseconds",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3385,
+          "title": "Named unit-conversion helper at table boundaries to prevent silent unit-mismatch bugs",
+          "category": "pattern",
+          "final_score": 0.5620845186392583,
+          "similarity": 0.6510788798332214,
+          "confidence": 0.5241167222590993,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.528286299812489,
+          "similarity": 0.5533515214920044,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.48594744982762894,
+          "similarity": 0.4544363021850586,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.41940135517590427,
+          "similarity": 0.3552735447883606,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.3958282658724842,
+          "similarity": 0.3272280693054199,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3385,
+          "title": "Named unit-conversion helper at table boundaries to prevent silent unit-mismatch bugs",
+          "category": "pattern",
+          "final_score": 0.5620845186392583,
+          "similarity": 0.6510788798332214,
+          "confidence": 0.5241167222590993,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.528286299812489,
+          "similarity": 0.5533515214920044,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.48594744982762894,
+          "similarity": 0.4544363021850586,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.41940135517590427,
+          "similarity": 0.3552735447883606,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.3958282658724842,
+          "similarity": 0.3272280693054199,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

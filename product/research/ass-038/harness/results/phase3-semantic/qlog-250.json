@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-250",
+  "query": "check unimatrix for anything again",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5297780589171935,
+          "similarity": 0.5424730777740479,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.5054560012414215,
+          "similarity": 0.510692298412323,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.490638305236181,
+          "similarity": 0.4939788579940796,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.4895102758024089,
+          "similarity": 0.47226428985595703,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.48037192817720353,
+          "similarity": 0.4836249351501465,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5297780589171935,
+          "similarity": 0.5424730777740479,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.5054560012414215,
+          "similarity": 0.510692298412323,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.490638305236181,
+          "similarity": 0.4939788579940796,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.4895102758024089,
+          "similarity": 0.47226428985595703,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.48037192817720353,
+          "similarity": 0.4836249351501465,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

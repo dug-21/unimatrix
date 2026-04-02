@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-1790a921-1774276737000",
+  "query": "rayon spawn_blocking tokio runtime context panic prefetch HashMap",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5627858367777012,
+          "similarity": 0.696060061454773,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5449002659675596,
+          "similarity": 0.6068170070648193,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5172417563885804,
+          "similarity": 0.6131872534751892,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5117528847836151,
+          "similarity": 0.6146818995475769,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5244984993567834,
+          "similarity": 0.696060061454773,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.4744196304908166,
+          "similarity": 0.6146818995475769,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.47349984829242414,
+          "similarity": 0.6131872534751892,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.46957969665527344,
+          "similarity": 0.6068170070648193,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.6359752263827949,
+          "similarity": 0.696060061454773,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6196988165862338,
+          "similarity": 0.6068170070648193,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5814035538503196,
+          "similarity": 0.6131872534751892,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5737828520187863,
+          "similarity": 0.6146818995475769,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.696060061454773,
+          "similarity": 0.696060061454773,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.6146818995475769,
+          "similarity": 0.6146818995475769,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.6131872534751892,
+          "similarity": 0.6131872534751892,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6068170070648193,
+          "similarity": 0.6068170070648193,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5627858367777012,
+          "similarity": 0.696060061454773,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5449002659675596,
+          "similarity": 0.6068170070648193,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5172417563885804,
+          "similarity": 0.6131872534751892,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5117528847836151,
+          "similarity": 0.6146818995475769,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.6355825150424552,
+          "similarity": 0.696060061454773,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6197830114197073,
+          "similarity": 0.6068170070648193,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5811958172514643,
+          "similarity": 0.6131872534751892,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2571,
+          "title": "Rayon-Tokio bridge pattern for CPU-bound ML inference",
+          "category": "pattern",
+          "final_score": 0.5735155379826504,
+          "similarity": 0.6146818995475769,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

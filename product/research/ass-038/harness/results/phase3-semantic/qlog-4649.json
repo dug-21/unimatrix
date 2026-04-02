@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4649",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Include it in #409 scope. Here's the reasoning:\n\nThe delivery team is already rewriting the co_access GC logic from scratch — removing `CO_ACCESS_STALENESS_SECONDS` is zero additional effort at that point. It's just not wiring up the old constant instead of the new one.\n\nMore importantly, leaving it creates a confusing config surface. An operator reads `config.toml` and sees both `CO_ACCESS_STALENESS_SECONDS` (or whatever it's exposed as) and `activity_detail_retention_cycles` — two parameters with overlapping co_access scope. That's the kind of config surface that erodes trust in the documentation. The domain-agnosticism commitment only works if the config is clean.\n\nThe one question worth checking: the current issue has a `FLOOR_DAYS` safety floor in the co_access policy:\n\n```\nAND last_updated > FLOOR_DAYS (safety floor, e.g., 365 days)\n```\n\nThat was implicitly carrying forward the old time-based thinking. With K=50 cycles as the activity check, I don't think you need it. If neither entry has been accessed in the last K cycles, the pair is stale — the age is irrelevant. The `count >= MIN_SIGNIFICANT_COUNT` check is the only meaningful floor.\n\nSo the scope addition is: **explicitly remove `CO_ACCESS_STALENESS_SECONDS`** and drop the `FLOOR_DAYS` safety floor from the co_access policy. Clean break, no legacy residue.\n\nWant me to update the issue with that?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5645096944467463,
+          "similarity": 0.5723991990089417,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.5559230716723366,
+          "similarity": 0.5921486020088196,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.5322462088049366,
+          "similarity": 0.5875035524368286,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.5220152191442412,
+          "similarity": 0.5930842757225037,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5645096944467463,
+          "similarity": 0.5723991990089417,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.5559230716723366,
+          "similarity": 0.5921486020088196,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.5322462088049366,
+          "similarity": 0.5875035524368286,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.5220152191442412,
+          "similarity": 0.5930842757225037,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3d9b719e-1774202617000",
+  "query": "lesson-learned failures gate rejection ranking pipeline",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5146757453609114,
+          "similarity": 0.4434243440628052,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5061859679529779,
+          "similarity": 0.40894031524658203,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.4930694838482948,
+          "similarity": 0.4717356562614441,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.49247262413085935,
+          "similarity": 0.4178273677825928,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.4919304539689897,
+          "similarity": 0.42548781633377075,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.5151414407942324,
+          "similarity": 0.4434243440628052,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5068215604543269,
+          "similarity": 0.40894031524658203,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.4932089206299083,
+          "similarity": 0.4717356562614441,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.4929605016233317,
+          "similarity": 0.4178273677825928,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.49236471957444866,
+          "similarity": 0.42548781633377075,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.3864527115455041,
+          "similarity": 0.4717356562614441,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.3690303655771109,
+          "similarity": 0.4434243440628052,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.35799250235924357,
+          "similarity": 0.42548781633377075,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.35327838017390323,
+          "similarity": 0.4178273677825928,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.3478094247671274,
+          "similarity": 0.40894031524658203,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4569905028688554,
+          "similarity": 0.4434243440628052,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.44846573084862257,
+          "similarity": 0.40894031524658203,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.44303333190617916,
+          "similarity": 0.4717356562614441,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.4391148539995105,
+          "similarity": 0.42548781633377075,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.43900174888146976,
+          "similarity": 0.4178273677825928,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4569905028688554,
+          "similarity": 0.4434243440628052,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.44846573084862257,
+          "similarity": 0.40894031524658203,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.44303333190617916,
+          "similarity": 0.4717356562614441,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.4391148539995105,
+          "similarity": 0.42548781633377075,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.43900174888146976,
+          "similarity": 0.4178273677825928,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.4717356562614441,
+          "similarity": 0.4717356562614441,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.4434243440628052,
+          "similarity": 0.4434243440628052,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.42548781633377075,
+          "similarity": 0.42548781633377075,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.4178273677825928,
+          "similarity": 0.4178273677825928,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.40894031524658203,
+          "similarity": 0.40894031524658203,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

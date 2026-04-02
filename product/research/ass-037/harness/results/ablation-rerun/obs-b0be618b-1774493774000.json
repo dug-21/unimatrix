@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-b0be618b-1774493774000",
+  "query": "nan-008 architectural decisions",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5044115823219,
+          "similarity": 0.4702466130256653,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.49158859273583544,
+          "similarity": 0.4109262228012085,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.48228068443280914,
+          "similarity": 0.451387882232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.46375374962443416,
+          "similarity": 0.4099212884902954,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.4518549290491771,
+          "similarity": 0.40888917446136475,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.45108891090778896,
+          "similarity": 0.4702466130256653,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.43750927633619496,
+          "similarity": 0.4109262228012085,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4336179188176657,
+          "similarity": 0.451387882232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.41715782390425166,
+          "similarity": 0.4099212884902954,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.40841496076878364,
+          "similarity": 0.40888917446136475,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5041897318719244,
+          "similarity": 0.4702466130256653,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.49106481111288325,
+          "similarity": 0.4109262228012085,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4820800818211199,
+          "similarity": 0.451387882232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.46340418818849816,
+          "similarity": 0.4099212884902954,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.45157593064276275,
+          "similarity": 0.40888917446136475,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4702466130256653,
+          "similarity": 0.4702466130256653,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.451387882232666,
+          "similarity": 0.451387882232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.4109262228012085,
+          "similarity": 0.4109262228012085,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.4099212884902954,
+          "similarity": 0.4099212884902954,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.40888917446136475,
+          "similarity": 0.40888917446136475,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.38553637724656326,
+          "similarity": 0.4702466130256653,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.3739310044508714,
+          "similarity": 0.451387882232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.3490315217238206,
+          "similarity": 0.4109262228012085,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.34841310060941255,
+          "similarity": 0.4099212884902954,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.347777953514686,
+          "similarity": 0.40888917446136475,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.45108891090778896,
+          "similarity": 0.4702466130256653,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 377,
+          "title": "Wave-Based Refactoring with Compilation Gates (Subtractive and Normalization Variants)",
+          "category": "pattern",
+          "final_score": 0.43750927633619496,
+          "similarity": 0.4109262228012085,
+          "confidence": 0.6068205497853024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4336179188176657,
+          "similarity": 0.451387882232666,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.41715782390425166,
+          "similarity": 0.4099212884902954,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.40841496076878364,
+          "similarity": 0.40888917446136475,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

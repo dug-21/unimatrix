@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-02b88d42-1773947592000",
+  "query": "ort ONNX release candidate pinned version dependency",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 68,
+          "title": "ADR-002: Raw ort + tokenizers (No fastembed Wrapper)",
+          "category": "decision",
+          "final_score": 0.5226375936785834,
+          "similarity": 0.5333059430122375,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.4551333458952156,
+          "similarity": 0.4690278172492981,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.4546856775714805,
+          "similarity": 0.40133893489837646,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2798,
+          "title": "ONNX cross-encoder token_type_ids bug: NLI models often omit it from exported inputs",
+          "category": "lesson-learned",
+          "final_score": 0.44452471291309537,
+          "similarity": 0.41016674041748047,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.42728109510999135,
+          "similarity": 0.39442622661590576,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 68,
+          "title": "ADR-002: Raw ort + tokenizers (No fastembed Wrapper)",
+          "category": "decision",
+          "final_score": 0.5226375936785834,
+          "similarity": 0.5333059430122375,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.4551333458952156,
+          "similarity": 0.4690278172492981,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.4546856775714805,
+          "similarity": 0.40133893489837646,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2798,
+          "title": "ONNX cross-encoder token_type_ids bug: NLI models often omit it from exported inputs",
+          "category": "lesson-learned",
+          "final_score": 0.44452471291309537,
+          "similarity": 0.41016674041748047,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.42728109510999135,
+          "similarity": 0.39442622661590576,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

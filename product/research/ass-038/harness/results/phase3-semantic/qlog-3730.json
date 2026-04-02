@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3730",
+  "query": "nothing I need to do before starting 412, correct?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.3706490162799232,
+          "similarity": 0.20723313093185425,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 430,
+          "title": "How to add new signals to SignalDigest",
+          "category": "procedure",
+          "final_score": 0.35591141574885066,
+          "similarity": 0.23275136947631836,
+          "confidence": 0.5621147434949971,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.342160995490562,
+          "similarity": 0.19907522201538086,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.3338984074563197,
+          "similarity": 0.17826682329177856,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.3223382412556405,
+          "similarity": 0.17709702253341675,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.3706490162799232,
+          "similarity": 0.20723313093185425,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 430,
+          "title": "How to add new signals to SignalDigest",
+          "category": "procedure",
+          "final_score": 0.35591141574885066,
+          "similarity": 0.23275136947631836,
+          "confidence": 0.5621147434949971,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.342160995490562,
+          "similarity": 0.19907522201538086,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.3338984074563197,
+          "similarity": 0.17826682329177856,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.3223382412556405,
+          "similarity": 0.17709702253341675,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

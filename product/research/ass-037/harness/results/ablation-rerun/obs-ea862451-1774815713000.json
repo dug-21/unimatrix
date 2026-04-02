@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-ea862451-1774815713000",
+  "query": "crt-031 lifecycle category pinned adaptive",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.57537355540298,
+          "similarity": 0.5943836569786072,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5008991546419482,
+          "similarity": 0.4502760171890259,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.4780473203765213,
+          "similarity": 0.37798917293548584,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.47669663721773037,
+          "similarity": 0.4093536138534546,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.4737920784268321,
+          "similarity": 0.40427660942077637,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5116567087206431,
+          "similarity": 0.5943836569786072,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4471033853240641,
+          "similarity": 0.4502760171890259,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.42654709381959316,
+          "similarity": 0.4093536138534546,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.4252908457697145,
+          "similarity": 0.37798917293548584,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.42406827209817594,
+          "similarity": 0.40427660942077637,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.46192840429452753,
+          "similarity": 0.5943836569786072,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.3732467798086313,
+          "similarity": 0.4502760171890259,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.34806376237135667,
+          "similarity": 0.4093536138534546,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.344939451951247,
+          "similarity": 0.40427660942077637,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.328762567960299,
+          "similarity": 0.37798917293548584,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5116567087206431,
+          "similarity": 0.5943836569786072,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4471033853240641,
+          "similarity": 0.4502760171890259,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.42654709381959316,
+          "similarity": 0.4093536138534546,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.4252908457697145,
+          "similarity": 0.37798917293548584,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.42406827209817594,
+          "similarity": 0.40427660942077637,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5754969976210034,
+          "similarity": 0.5943836569786072,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5005704329701759,
+          "similarity": 0.4502760171890259,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.4773975921463846,
+          "similarity": 0.37798917293548584,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.47625934485822197,
+          "similarity": 0.4093536138534546,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.47334067927744206,
+          "similarity": 0.40427660942077637,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5943836569786072,
+          "similarity": 0.5943836569786072,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4502760171890259,
+          "similarity": 0.4502760171890259,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.4093536138534546,
+          "similarity": 0.4093536138534546,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.40427660942077637,
+          "similarity": 0.40427660942077637,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.37798917293548584,
+          "similarity": 0.37798917293548584,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 406,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3002,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

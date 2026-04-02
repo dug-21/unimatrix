@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-809",
+  "query": "what does this mean exactly... that our background tick methodology is not actually working? 1,393 entries have stale confidence (oldest: 16 days) — dragging lambda down to 0.64. Background tick will refresh automatically.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5130737505917342,
+          "similarity": 0.46474921703338623,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.48484832920662524,
+          "similarity": 0.44024407863616943,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.46620065050391457,
+          "similarity": 0.42719095945358276,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4653655947933505,
+          "similarity": 0.4533489942550659,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.4640363799765711,
+          "similarity": 0.42386388778686523,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5130737505917342,
+          "similarity": 0.46474921703338623,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.48484832920662524,
+          "similarity": 0.44024407863616943,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.46620065050391457,
+          "similarity": 0.42719095945358276,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4653655947933505,
+          "similarity": 0.4533489942550659,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.4640363799765711,
+          "similarity": 0.42386388778686523,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

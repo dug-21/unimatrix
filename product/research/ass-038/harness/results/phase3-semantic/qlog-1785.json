@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1785",
+  "query": "I'm a little confused... did you run the @docs/testing/eval-harness.md ? This was what was recommended to do after the completion of the development work and before merge:  # 1. Write profile TOMLs (see ARCHITECTURE.md §EvalServiceLayer Integration)                                                                                                         \n  # 2. Run eval                                                                                                                                                                        \n  unimatrix eval run \\                                                                                                                                                                 \n    --db /tmp/eval/pre-crt024-snap.db \\                                                                                                                                                \n    --scenarios /tmp/eval/pre-crt024-scenarios.jsonl \\                                                                                                                                 \n    --configs /tmp/eval/old-behavior.toml,/tmp/eval/crt024-weights.toml \\                                                                                                              \n    --out /tmp/eval/results/ --k 5\n  # 3. Generate report and review before marking PR ready                                                                                                                              \n  unimatrix eval report --results /tmp/eval/results/ --out /tmp/eval/crt024-report.md                                                                                                  ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5807869637795159,
+          "similarity": 0.6865526437759399,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.5683567357700312,
+          "similarity": 0.60966956615448,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5544082156381395,
+          "similarity": 0.5888285040855408,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5270310794995376,
+          "similarity": 0.5688633918762207,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.5217560763963631,
+          "similarity": 0.5738123655319214,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5807869637795159,
+          "similarity": 0.6865526437759399,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.5683567357700312,
+          "similarity": 0.60966956615448,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5544082156381395,
+          "similarity": 0.5888285040855408,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5270310794995376,
+          "similarity": 0.5688633918762207,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.5217560763963631,
+          "similarity": 0.5738123655319214,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

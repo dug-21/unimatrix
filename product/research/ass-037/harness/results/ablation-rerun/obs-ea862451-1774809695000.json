@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-ea862451-1774809695000",
+  "query": "validate_config test fixture parallel list collision isolation",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.5416911932138296,
+          "similarity": 0.7239981889724731,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5032256199763372,
+          "similarity": 0.6614916324615479,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.4212177349970891,
+          "similarity": 0.5282288193702698,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.4163815424992488,
+          "similarity": 0.5203700065612793,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4101934799781213,
+          "similarity": 0.510314404964447,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.7239981889724731,
+          "similarity": 0.7239981889724731,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.6614916324615479,
+          "similarity": 0.6614916324615479,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5282288193702698,
+          "similarity": 0.5282288193702698,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.5203700065612793,
+          "similarity": 0.5203700065612793,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.510314404964447,
+          "similarity": 0.510314404964447,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.6431679903491877,
+          "similarity": 0.7239981889724731,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.6258685146631691,
+          "similarity": 0.6614916324615479,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.5508001656660789,
+          "similarity": 0.5203700065612793,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5488762821301396,
+          "similarity": 0.5282288193702698,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.5121111506742095,
+          "similarity": 0.510314404964447,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.6426396883974016,
+          "similarity": 0.7239981889724731,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.6256356838278856,
+          "similarity": 0.6614916324615479,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.5509990555948685,
+          "similarity": 0.5203700065612793,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5490112328671323,
+          "similarity": 0.5282288193702698,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.5121228941102212,
+          "similarity": 0.510314404964447,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.5699230721875693,
+          "similarity": 0.7239981889724731,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5530696862504273,
+          "similarity": 0.6614916324615479,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.48861145525920985,
+          "similarity": 0.5203700065612793,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.487724528186787,
+          "similarity": 0.5282288193702698,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.45956913749205014,
+          "similarity": 0.510314404964447,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.5699230721875693,
+          "similarity": 0.7239981889724731,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5530696862504273,
+          "similarity": 0.6614916324615479,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.48861145525920985,
+          "similarity": 0.5203700065612793,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.487724528186787,
+          "similarity": 0.5282288193702698,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.45956913749205014,
+          "similarity": 0.510314404964447,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3770,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3479,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

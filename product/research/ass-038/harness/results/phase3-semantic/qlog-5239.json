@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5239",
+  "query": "I also lowered the nli threshold to .45... still not low enough",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.4774053711994315,
+          "similarity": 0.4097118377685547,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.47376142553208733,
+          "similarity": 0.4360414743423462,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.4681401762280777,
+          "similarity": 0.4112914800643921,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.45220148779929936,
+          "similarity": 0.38820797204971313,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2985,
+          "title": "Differential profile tests require extreme input values to expose weight-wiring bugs reliably",
+          "category": "pattern",
+          "final_score": 0.4431437140409308,
+          "similarity": 0.39861851930618286,
+          "confidence": 0.5619350533879796,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.4774053711994315,
+          "similarity": 0.4097118377685547,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.47376142553208733,
+          "similarity": 0.4360414743423462,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.4681401762280777,
+          "similarity": 0.4112914800643921,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.45220148779929936,
+          "similarity": 0.38820797204971313,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2985,
+          "title": "Differential profile tests require extreme input values to expose weight-wiring bugs reliably",
+          "category": "pattern",
+          "final_score": 0.4431437140409308,
+          "similarity": 0.39861851930618286,
+          "confidence": 0.5619350533879796,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

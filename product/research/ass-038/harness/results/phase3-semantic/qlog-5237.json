@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5237",
+  "query": "read @product/research/ass-032/ROADMAP.md we've been working through this.. and have added several.  The most recent being issue 474.  the latest tick processing from after we implmeneted 474: 2026-04-01T01:55:04.133082Z  INFO unimatrix_server::background: background tick starting\n2026-04-01T01:55:04.248166Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.1597 confidence_weight=0.1996\n2026-04-01T01:55:04.248644Z  INFO unimatrix_server::services::status: cycle GC: pass starting k=50 purgeable_count=6 capped_to=10\n2026-04-01T01:55:04.249704Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=vnc-012 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T01:55:04.250343Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=crt-032 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T01:55:04.250990Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-311 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T01:55:04.251568Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-340 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T01:55:04.252192Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-342 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T01:55:04.252821Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-351 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T01:55:04.292411Z  INFO unimatrix_server::services::status: cycle GC: unattributed cleanup observations_deleted=0 query_log_deleted=0 sessions_deleted=0 injection_log_deleted=0\n2026-04-01T01:55:04.292430Z  INFO unimatrix_server::services::status: cycle GC: pass complete cycles_pruned=6 cycles_skipped=0 total_rows_deleted=0\n2026-04-01T01:55:04.292590Z  INFO unimatrix_server::services::status: cycle GC: audit_log cleanup rows_deleted=0 cutoff_days=180\n2026-04-01T01:55:04.292928Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-04-01T01:55:04.292937Z DEBUG unimatrix_server::background: lifecycle guard: adaptive categories eligible for auto-deprecation (stub, #409) categories=[\"lesson-learned\"]\n2026-04-01T01:55:04.293356Z  INFO unimatrix_server::background: maintenance tick complete\n2026-04-01T01:55:04.294087Z  INFO unimatrix_server::background: background tick: GRAPH_EDGES orphaned-edge compaction complete rows_deleted=32\n2026-04-01T01:55:04.395778Z  INFO unimatrix_server::services::co_access_promotion_tick: co_access promotion tick complete promoted_pairs=200 edges_inserted=32 edges_updated=0\n2026-04-01T01:55:04.440681Z DEBUG unimatrix_server::background: typed graph state rebuilt (1486 entries)\n2026-04-01T01:55:04.444848Z DEBUG unimatrix_server::background: PhaseFreqTable rebuilt successfully\n2026-04-01T01:55:04.458596Z DEBUG unimatrix_server::background: contradiction scan starting tick=0\n2026-04-01T01:55:24.671102Z DEBUG unimatrix_server::background: contradiction scan complete; cache updated tick=0 pairs=0\n2026-04-01T01:55:24.691749Z  INFO unimatrix_server::background: extraction tick complete\n2026-04-01T01:55:24.730251Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: merged cap accounting supports_candidates=100 informs_candidates_total=222 informs_candidates_accepted=25 informs_candidates_dropped=197\n2026-04-01T01:55:28.827032Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: nli score distribution nli_score_max=0.32420817017555237 nli_score_mean=0.07185590267181396 nli_score_p75=0.09515795856714249 threshold=0.6000000238418579 pairs=125\n2026-04-01T01:55:28.827904Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: Informs write complete informs_edges_written=4 informs_pairs_evaluated=25\n2026-04-01T01:55:28.827920Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 informs_edges_written=4 pairs_scored=125 source_candidates=100\n2026-04-01T01:55:28.828274Z  INFO unimatrix_server::background: background tick complete duration_secs=24",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.56052802763043,
+          "similarity": 0.5677683353424072,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5326154011716462,
+          "similarity": 0.5693023800849915,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5213572790544717,
+          "similarity": 0.5657331943511963,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5174068001764714,
+          "similarity": 0.565665066242218,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5172019975860301,
+          "similarity": 0.5518381595611572,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.56052802763043,
+          "similarity": 0.5677683353424072,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5326154011716462,
+          "similarity": 0.5693023800849915,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5213572790544717,
+          "similarity": 0.5657331943511963,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5174068001764714,
+          "similarity": 0.565665066242218,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5172019975860301,
+          "similarity": 0.5518381595611572,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

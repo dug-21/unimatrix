@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2993",
+  "query": "so.. I'm running scripts/uni-watch.sh while the feature isin development.  I'm wanting to see as much as I can about what's getting silently injected (to validate if it has value)  Here's waht I'm seeing right now... does this mean there's nothing getting injected?? specifically interested in subagent events: Watermarks — query_id:2975  log_id:1639  obs_id:110896\nPolling every 2s. Ctrl-C to stop.\n----------------------------------------------------------------------------------------------------\nTYPE       TIME                SESSION   EXTRA DETAIL\n----------------------------------------------------------------------------------------------------\nQUERY      2026-03-25 16:55:05 2         (lesson-learned failures gate rejection) \nQUERY      2026-03-25 16:55:06 5         (outcome rework observation hook detection rule) \nQUERY      2026-03-25 16:55:07 4         (risk pattern) \nQUERY      2026-03-25 16:55:11 5         (PostToolUseFailure hook event payload error field) \nQUERY      2026-03-25 16:55:12 5         (PermissionRetriesRule detection rule blast radius pre post differential) \nSUBAGENT   2026-03-25 16:56:50 e275cc04        === Recent conversation (last 0 exchanges) ===\nSUBAGENT   1970-01-01 00:00:00                 \nSUBAGENT   1970-01-01 00:00:00                 \nSUBAGENT   1970-01-01 00:00:00                 \nQUERY      2026-03-25 16:56:51 e275cc04  (5)   === Recent conversation (last 0 exchanges) ===\ndate: '': No such file or directory\nvscode ➜ /workspaces/unimatrix (feature/col-027) $ ./scripts/uni-watch.sh ~/.unimatrix/0d62f3bf1bf46a0a/unimatrix.db --since 15m\nuni-watch  DB: /home/vscode/.unimatrix/0d62f3bf1bf46a0a/unimatrix.db\nWatermarks — query_id:2986  log_id:1649  obs_id:110936\nPolling every 2s. Ctrl-C to stop.\n----------------------------------------------------------------------------------------------------\nTYPE       TIME                SESSION   EXTRA DETAIL\n----------------------------------------------------------------------------------------------------\nSUBAGENT   2026-03-25 17:03:46 e275cc04        === Recent conversation (last 0 exchanges) ===\nSUBAGENT   1970-01-01 00:00:00                 \nSUBAGENT   1970-01-01 00:00:00                 \nQUERY      2026-03-25 17:03:47 e275cc04  (2)   === Recent conversation (",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.502083140345194,
+          "similarity": 0.48381781578063965,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.4915542425016185,
+          "similarity": 0.4476246237754822,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.4873266357271582,
+          "similarity": 0.4460011124610901,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4814254264686183,
+          "similarity": 0.4394262433052063,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.464248744040771,
+          "similarity": 0.4467269778251648,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1039,
+          "title": "ADR-002: Explicit NULL Topic and Feature Cycle Handling (crt-018)",
+          "category": "decision",
+          "final_score": 0.502083140345194,
+          "similarity": 0.48381781578063965,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.4915542425016185,
+          "similarity": 0.4476246237754822,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.4873266357271582,
+          "similarity": 0.4460011124610901,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.4814254264686183,
+          "similarity": 0.4394262433052063,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.464248744040771,
+          "similarity": 0.4467269778251648,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

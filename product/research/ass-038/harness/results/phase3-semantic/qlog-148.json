@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-148",
+  "query": "I'm not sure the pseudocode agent should store patterns, they might, though lookup patterns by component.  2. yes, 3. yes, with some direction to identify what could have been done during design to prevent.  Also.. many times they know which feature caused an issue... the linkage of outcome/rework to the feature that caused it. 4. well... each of the other categores seem to have their own skill.  it also reduces the size of the skill, and is more self evidient that the agent is supposed to do just by the skill name.   Trying to get they agents to get the benefits Unimatrix promises is your #1 task, your #2 task, is still to be cognizent of context windows for agents, and not overbloat them with instructions.  This is a judgement call.  For this iteration error on better descriptions where agents are storing/updating entries.  Quality of updates matters.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5199457834979897,
+          "similarity": 0.5325114727020264,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.5117240107925589,
+          "similarity": 0.5211043953895569,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1009,
+          "title": "Three-Tier Agent Classification for Cross-Cutting Concerns",
+          "category": "pattern",
+          "final_score": 0.5095401193384788,
+          "similarity": 0.4909380078315735,
+          "confidence": 0.6102688841593377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.4906373402959543,
+          "similarity": 0.5037508606910706,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.48020148182810796,
+          "similarity": 0.5152172446250916,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5199457834979897,
+          "similarity": 0.5325114727020264,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.5117240107925589,
+          "similarity": 0.5211043953895569,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1009,
+          "title": "Three-Tier Agent Classification for Cross-Cutting Concerns",
+          "category": "pattern",
+          "final_score": 0.5095401193384788,
+          "similarity": 0.4909380078315735,
+          "confidence": 0.6102688841593377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1231,
+          "title": "Implementation agents under-report novel patterns in greenfield components",
+          "category": "lesson-learned",
+          "final_score": 0.4906373402959543,
+          "similarity": 0.5037508606910706,
+          "confidence": 0.5406572655303467,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.48020148182810796,
+          "similarity": 0.5152172446250916,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

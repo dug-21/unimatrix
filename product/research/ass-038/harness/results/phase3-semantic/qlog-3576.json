@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3576",
+  "query": "any other options... I don't like any of them",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.34046685624526696,
+          "similarity": 0.1811622977256775,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.33998410728828,
+          "similarity": 0.17291992902755737,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.3393684875958324,
+          "similarity": 0.1928858757019043,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.3371400670742759,
+          "similarity": 0.19247525930404663,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 394,
+          "title": "ADR-002: ML-Framework-Agnostic NeuralModel Trait",
+          "category": "decision",
+          "final_score": 0.3066443335176047,
+          "similarity": 0.1868903636932373,
+          "confidence": 0.49390552855744513,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.34046685624526696,
+          "similarity": 0.1811622977256775,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.33998410728828,
+          "similarity": 0.17291992902755737,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.3393684875958324,
+          "similarity": 0.1928858757019043,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.3371400670742759,
+          "similarity": 0.19247525930404663,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 394,
+          "title": "ADR-002: ML-Framework-Agnostic NeuralModel Trait",
+          "category": "decision",
+          "final_score": 0.3066443335176047,
+          "similarity": 0.1868903636932373,
+          "confidence": 0.49390552855744513,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

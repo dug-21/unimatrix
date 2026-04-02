@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-4a5ba677-1774401644000",
+  "query": "phase timeline cycle_events observation window per-phase computation",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.5526863932609558,
+          "similarity": 0.5526863932609558,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.5116451382637024,
+          "similarity": 0.5116451382637024,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5010097622871399,
+          "similarity": 0.5010097622871399,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.4907718896865845,
+          "similarity": 0.4907718896865845,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.47041893005371094,
+          "similarity": 0.47041893005371094,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.5695321781472946,
+          "similarity": 0.5526863932609558,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.5471263266614688,
+          "similarity": 0.5116451382637024,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.5355381637839847,
+          "similarity": 0.47041893005371094,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5268545950564663,
+          "similarity": 0.5010097622871399,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.5053524498620716,
+          "similarity": 0.4907718896865845,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.5696422813164864,
+          "similarity": 0.5526863932609558,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.5473582298536112,
+          "similarity": 0.5116451382637024,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.5359637796907185,
+          "similarity": 0.47041893005371094,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5270235155320828,
+          "similarity": 0.5010097622871399,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.5054477476409964,
+          "similarity": 0.4907718896865845,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.4362685496990497,
+          "similarity": 0.5526863932609558,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.411012392777663,
+          "similarity": 0.5116451382637024,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.40446754602285534,
+          "similarity": 0.5010097622871399,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.39816731673020583,
+          "similarity": 0.4907718896865845,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.38564241849459135,
+          "similarity": 0.47041893005371094,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.5045026901920798,
+          "similarity": 0.5526863932609558,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.485335648769324,
+          "similarity": 0.5116451382637024,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.47408924877850284,
+          "similarity": 0.47041893005371094,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.46976068719388464,
+          "similarity": 0.5010097622871399,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.45330992254462493,
+          "similarity": 0.4907718896865845,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.5045026901920798,
+          "similarity": 0.5526863932609558,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.485335648769324,
+          "similarity": 0.5116451382637024,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.47408924877850284,
+          "similarity": 0.47041893005371094,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.46976068719388464,
+          "similarity": 0.5010097622871399,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.45330992254462493,
+          "similarity": 0.4907718896865845,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 2999,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3802,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3805,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

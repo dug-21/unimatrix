@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-d44a584e-1774201682000",
+  "query": "ConfidenceParams propagation Arc threading serving path",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5256072796594277,
+          "similarity": 0.581813633441925,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5003742158794227,
+          "similarity": 0.5721637606620789,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.4866462937622956,
+          "similarity": 0.49929678440093994,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.4774260887680922,
+          "similarity": 0.4940165877342224,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.4668137529083681,
+          "similarity": 0.5551210641860962,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.4541930051950308,
+          "similarity": 0.581813633441925,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.4482546219458947,
+          "similarity": 0.5721637606620789,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.43776680872990537,
+          "similarity": 0.5551210641860962,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.4034134057851938,
+          "similarity": 0.49929678440093994,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.4001640539902907,
+          "similarity": 0.4940165877342224,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5957537531166728,
+          "similarity": 0.581813633441925,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5620662021225331,
+          "similarity": 0.5721637606620789,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5503677772814901,
+          "similarity": 0.49929678440093994,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.5382302602959872,
+          "similarity": 0.4940165877342224,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.5176736741697114,
+          "similarity": 0.5551210641860962,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5956632328590444,
+          "similarity": 0.581813633441925,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5621317706844781,
+          "similarity": 0.5721637606620789,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5500361474575903,
+          "similarity": 0.49929678440093994,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.5379431585261055,
+          "similarity": 0.4940165877342224,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.5179168390399477,
+          "similarity": 0.5551210641860962,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.581813633441925,
+          "similarity": 0.581813633441925,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5721637606620789,
+          "similarity": 0.5721637606620789,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.5551210641860962,
+          "similarity": 0.5551210641860962,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.49929678440093994,
+          "similarity": 0.49929678440093994,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.4940165877342224,
+          "similarity": 0.4940165877342224,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3216,
+          "title": "Arc threading gap + hidden run_single_tick bypass: serving-path compute_confidence silently uses ::default() when Arc not threaded through ServiceLayer AND background direct construction sites",
+          "category": "lesson-learned",
+          "final_score": 0.5256072796594277,
+          "similarity": 0.581813633441925,
+          "confidence": 0.6156682097948837,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.5003742158794227,
+          "similarity": 0.5721637606620789,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.4866462937622956,
+          "similarity": 0.49929678440093994,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.4774260887680922,
+          "similarity": 0.4940165877342224,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.4668137529083681,
+          "similarity": 0.5551210641860962,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

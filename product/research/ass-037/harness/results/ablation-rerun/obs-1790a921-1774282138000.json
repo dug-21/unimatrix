@@ -1,0 +1,321 @@
+{
+  "scenario_id": "obs-1790a921-1774282138000",
+  "query": "pre-fetch Vec EntryRecord before rayon spawn quality gate",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.6912693381309509,
+          "similarity": 0.6912693381309509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4813305735588074,
+          "similarity": 0.4813305735588074,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.4782135486602783,
+          "similarity": 0.4782135486602783,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.42905211448669434,
+          "similarity": 0.42905211448669434,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.6271264552842654,
+          "similarity": 0.6912693381309509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.512395495155062,
+          "similarity": 0.4782135486602783,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5092710515742402,
+          "similarity": 0.4813305735588074,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.45693285889461943,
+          "similarity": 0.42905211448669434,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5562827987164614,
+          "similarity": 0.6912693381309509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.45747482851727933,
+          "similarity": 0.4782135486602783,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4554210928297184,
+          "similarity": 0.4813305735588074,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4135548053722723,
+          "similarity": 0.42905211448669434,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5562827987164614,
+          "similarity": 0.6912693381309509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.45747482851727933,
+          "similarity": 0.4782135486602783,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4554210928297184,
+          "similarity": 0.4813305735588074,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4135548053722723,
+          "similarity": 0.42905211448669434,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.521550361926739,
+          "similarity": 0.6912693381309509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.39235727603618914,
+          "similarity": 0.4813305735588074,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.3904391068678636,
+          "similarity": 0.4782135486602783,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.3601859166071965,
+          "similarity": 0.42905211448669434,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.6275429675105425,
+          "similarity": 0.6912693381309509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2742,
+          "title": "Collect owned data before rayon_pool.spawn_with_timeout — &[T] is not Send across spawn boundary",
+          "category": "pattern",
+          "final_score": 0.5121735344635374,
+          "similarity": 0.4782135486602783,
+          "confidence": 0.5612268472904673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5090896198988153,
+          "similarity": 0.4813305735588074,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.4567518150997627,
+          "similarity": 0.42905211448669434,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6666666666666666,
+    "rank_changes": [
+      {
+        "entry_id": 2742,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3353,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": -0.16666666666666669,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

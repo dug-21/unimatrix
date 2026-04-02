@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ea862451-1774815009000",
+  "query": "RwLock poison recovery unwrap_or_else pattern",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.4835577580457797,
+          "similarity": 0.4333096146583557,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.46693667966328745,
+          "similarity": 0.4252901077270508,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.46206244533631324,
+          "similarity": 0.44446927309036255,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.4364188755513114,
+          "similarity": 0.4314318895339966,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2731,
+          "title": "NliProviderExt: add health check to wrapped type, not as trait in consuming crate",
+          "category": "pattern",
+          "final_score": 0.4290567429182994,
+          "similarity": 0.38077759742736816,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.4835577580457797,
+          "similarity": 0.4333096146583557,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.46693667966328745,
+          "similarity": 0.4252901077270508,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.46206244533631324,
+          "similarity": 0.44446927309036255,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.4364188755513114,
+          "similarity": 0.4314318895339966,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2731,
+          "title": "NliProviderExt: add health check to wrapped type, not as trait in consuming crate",
+          "category": "pattern",
+          "final_score": 0.4290567429182994,
+          "similarity": 0.38077759742736816,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

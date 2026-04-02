@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5f33a80a-1774489815000",
+  "query": "confirmed_entries HashSet SessionState Thompson Sampling",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3517,
+          "title": "ADR-005 col-028: confirmed_entries Semantic Contract — Explicit Fetch Only, Shipped Without Consumer",
+          "category": "decision",
+          "final_score": 0.5779884210803543,
+          "similarity": 0.68182373046875,
+          "confidence": 0.5233632422627477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5326622694398603,
+          "similarity": 0.5288983583450317,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.48916791101223045,
+          "similarity": 0.48183000087738037,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.47515793740917234,
+          "similarity": 0.5040554404258728,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.4711649839054931,
+          "similarity": 0.466502845287323,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3517,
+          "title": "ADR-005 col-028: confirmed_entries Semantic Contract — Explicit Fetch Only, Shipped Without Consumer",
+          "category": "decision",
+          "final_score": 0.5779884210803543,
+          "similarity": 0.68182373046875,
+          "confidence": 0.5233632422627477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5326622694398603,
+          "similarity": 0.5288983583450317,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.48916791101223045,
+          "similarity": 0.48183000087738037,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.47515793740917234,
+          "similarity": 0.5040554404258728,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.4711649839054931,
+          "similarity": 0.466502845287323,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

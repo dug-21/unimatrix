@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774377883000",
+  "query": "goal byte limit constant named MAX_GOAL_BYTES truncation UDS MCP handler",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5733382341096211,
+          "similarity": 0.6558441519737244,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5214322767863719,
+          "similarity": 0.49836254119873047,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5118739387466095,
+          "similarity": 0.5133548974990845,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.4925004524807516,
+          "similarity": 0.49329566955566406,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.4787557051386806,
+          "similarity": 0.5108911991119385,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5733382341096211,
+          "similarity": 0.6558441519737244,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5214322767863719,
+          "similarity": 0.49836254119873047,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5118739387466095,
+          "similarity": 0.5133548974990845,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.4925004524807516,
+          "similarity": 0.49329566955566406,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.4787557051386806,
+          "similarity": 0.5108911991119385,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

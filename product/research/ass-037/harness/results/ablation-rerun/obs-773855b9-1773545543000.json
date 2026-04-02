@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-773855b9-1773545543000",
+  "query": "risk pattern recurring",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.48078542428858134,
+          "similarity": 0.3703352212905884,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.478207628918204,
+          "similarity": 0.35286206007003784,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.43328958638993786,
+          "similarity": 0.3315020203590393,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.4119658813068525,
+          "similarity": 0.2976033091545105,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.40681943167173096,
+          "similarity": 0.29539811611175537,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.3240524438711313,
+          "similarity": 0.3703352212905884,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.31329972927386945,
+          "similarity": 0.35286206007003784,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.30015508945171654,
+          "similarity": 0.3315020203590393,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.27929434409508336,
+          "similarity": 0.2976033091545105,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.2779373022226187,
+          "similarity": 0.29539811611175537,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.3703352212905884,
+          "similarity": 0.3703352212905884,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.35286206007003784,
+          "similarity": 0.35286206007003784,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.3315020203590393,
+          "similarity": 0.3315020203590393,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.2976033091545105,
+          "similarity": 0.2976033091545105,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.29539811611175537,
+          "similarity": 0.29539811611175537,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4267390392167227,
+          "similarity": 0.3703352212905884,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.42361284821683703,
+          "similarity": 0.35286206007003784,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.3893611286811718,
+          "similarity": 0.3315020203590393,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.37140394989174325,
+          "similarity": 0.2976033091545105,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.36749687994024366,
+          "similarity": 0.29539811611175537,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.48006821517820475,
+          "similarity": 0.3703352212905884,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.4773936966529561,
+          "similarity": 0.35286206007003784,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.432628628168958,
+          "similarity": 0.3315020203590393,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.4112232672019671,
+          "similarity": 0.2976033091545105,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.4060959166356272,
+          "similarity": 0.29539811611175537,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1544,
+          "title": "ADR-002 crt-018b: Hold (Not Increment) consecutive_bad_cycles on Background Tick Error",
+          "category": "decision",
+          "final_score": 0.4267390392167227,
+          "similarity": 0.3703352212905884,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.42361284821683703,
+          "similarity": 0.35286206007003784,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.3893611286811718,
+          "similarity": 0.3315020203590393,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 951,
+          "title": "ADR-002: Deterministic Example Selection via Timestamp Ordering",
+          "category": "decision",
+          "final_score": 0.37140394989174325,
+          "similarity": 0.2976033091545105,
+          "confidence": 0.5753409843816268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.36749687994024366,
+          "similarity": 0.29539811611175537,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

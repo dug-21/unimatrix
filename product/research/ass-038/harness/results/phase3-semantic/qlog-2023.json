@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2023",
+  "query": "yes... select the proper prefix and next number, and begin full design protocol",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.4191616845195679,
+          "similarity": 0.32183873653411865,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.41786403936644645,
+          "similarity": 0.3191067576408386,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.40747068927240504,
+          "similarity": 0.28557586669921875,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.4018445706780166,
+          "similarity": 0.2939762473106384,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.3811597280820439,
+          "similarity": 0.2662249207496643,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.4191616845195679,
+          "similarity": 0.32183873653411865,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.41786403936644645,
+          "similarity": 0.3191067576408386,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 555,
+          "title": "How to verify cross-file consistency in agent/protocol/skill changes",
+          "category": "procedure",
+          "final_score": 0.40747068927240504,
+          "similarity": 0.28557586669921875,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.4018445706780166,
+          "similarity": 0.2939762473106384,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.3811597280820439,
+          "similarity": 0.2662249207496643,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

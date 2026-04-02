@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774564805000",
+  "query": "context_status health metrics lambda coherence gate",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5503742333422027,
+          "similarity": 0.5455418229103088,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.4832684342162815,
+          "similarity": 0.45214617252349854,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.47059138935982636,
+          "similarity": 0.4655642509460449,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.4501266562972266,
+          "similarity": 0.4367513656616211,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.4239525365149325,
+          "similarity": 0.41697096824645996,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5503742333422027,
+          "similarity": 0.5455418229103088,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.4832684342162815,
+          "similarity": 0.45214617252349854,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.47059138935982636,
+          "similarity": 0.4655642509460449,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.4501266562972266,
+          "similarity": 0.4367513656616211,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.4239525365149325,
+          "similarity": 0.41697096824645996,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

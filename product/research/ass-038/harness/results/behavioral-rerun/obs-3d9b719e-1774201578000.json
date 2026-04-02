@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3d9b719e-1774201578000",
+  "query": "signal fusion search pipeline additive boost ranking weight",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.595987617352505,
+          "similarity": 0.6400176882743835,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5436881056651962,
+          "similarity": 0.5610288381576538,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.5188563832161884,
+          "similarity": 0.5232632756233215,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.5159680771030379,
+          "similarity": 0.5055044293403625,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4745702919637319,
+          "similarity": 0.43880975246429443,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.595987617352505,
+          "similarity": 0.6400176882743835,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5436881056651962,
+          "similarity": 0.5610288381576538,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.5188563832161884,
+          "similarity": 0.5232632756233215,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.5159680771030379,
+          "similarity": 0.5055044293403625,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4745702919637319,
+          "similarity": 0.43880975246429443,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

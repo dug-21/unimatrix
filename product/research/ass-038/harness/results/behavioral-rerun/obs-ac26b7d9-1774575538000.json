@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774575538000",
+  "query": "behavior-based testing retrieval pipeline penalty filter ranking post-scoring",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.5962788637258828,
+          "similarity": 0.6518799662590027,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5575701352928095,
+          "similarity": 0.5765644311904907,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.5142147187974976,
+          "similarity": 0.49673211574554443,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.5091442992331092,
+          "similarity": 0.4944906234741211,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.504137301551556,
+          "similarity": 0.49477672576904297,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.5962788637258828,
+          "similarity": 0.6518799662590027,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5575701352928095,
+          "similarity": 0.5765644311904907,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 749,
+          "title": "Calibration Scenario Builder Pattern",
+          "category": "pattern",
+          "final_score": 0.5142147187974976,
+          "similarity": 0.49673211574554443,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.5091442992331092,
+          "similarity": 0.4944906234741211,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.504137301551556,
+          "similarity": 0.49477672576904297,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

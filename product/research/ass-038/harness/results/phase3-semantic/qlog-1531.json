@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1531",
+  "query": "should we define a place to store the measurements/basis, and keep a log?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.3790561725061141,
+          "similarity": 0.2726176977157593,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.3777683609838034,
+          "similarity": 0.25642621517181396,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.37403551029754,
+          "similarity": 0.25580692291259766,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.3671585699249381,
+          "similarity": 0.25757503509521484,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.36507405115455194,
+          "similarity": 0.26360154151916504,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.3790561725061141,
+          "similarity": 0.2726176977157593,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.3777683609838034,
+          "similarity": 0.25642621517181396,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.37403551029754,
+          "similarity": 0.25580692291259766,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.3671585699249381,
+          "similarity": 0.25757503509521484,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.36507405115455194,
+          "similarity": 0.26360154151916504,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

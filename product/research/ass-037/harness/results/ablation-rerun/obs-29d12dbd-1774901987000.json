@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-29d12dbd-1774901987000",
+  "query": "HNSW vector index graph compaction",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5050180141742413,
+          "similarity": 0.6644042730331421,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.4072118539076585,
+          "similarity": 0.5054692625999451,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.40529236426720255,
+          "similarity": 0.5023500919342041,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2673,
+          "title": "EvalServiceLayer snapshot must load VectorIndex from sibling vector/ dir, not construct fresh",
+          "category": "pattern",
+          "final_score": 0.39182424545288086,
+          "similarity": 0.4804643988609314,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.37738176492544323,
+          "similarity": 0.4569953680038452,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.6644042730331421,
+          "similarity": 0.6644042730331421,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.5054692625999451,
+          "similarity": 0.5054692625999451,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5023500919342041,
+          "similarity": 0.5023500919342041,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2673,
+          "title": "EvalServiceLayer snapshot must load VectorIndex from sibling vector/ dir, not construct fresh",
+          "category": "pattern",
+          "final_score": 0.4804643988609314,
+          "similarity": 0.4804643988609314,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.4569953680038452,
+          "similarity": 0.4569953680038452,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.6502710067967984,
+          "similarity": 0.6644042730331421,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.5459233222753943,
+          "similarity": 0.5054692625999451,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5335513723502101,
+          "similarity": 0.5023500919342041,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2673,
+          "title": "EvalServiceLayer snapshot must load VectorIndex from sibling vector/ dir, not construct fresh",
+          "category": "pattern",
+          "final_score": 0.5095180799158979,
+          "similarity": 0.4804643988609314,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.48890008964694653,
+          "similarity": 0.4569953680038452,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.650178632507672,
+          "similarity": 0.6644042730331421,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.546187727894188,
+          "similarity": 0.5054692625999451,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5337553022875697,
+          "similarity": 0.5023500919342041,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2673,
+          "title": "EvalServiceLayer snapshot must load VectorIndex from sibling vector/ dir, not construct fresh",
+          "category": "pattern",
+          "final_score": 0.5097079732561265,
+          "similarity": 0.4804643988609314,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.48910861723938515,
+          "similarity": 0.4569953680038452,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5711590231865284,
+          "similarity": 0.6644042730331421,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.4840417205086188,
+          "similarity": 0.5054692625999451,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.4747610125191011,
+          "similarity": 0.5023500919342041,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2673,
+          "title": "EvalServiceLayer snapshot must load VectorIndex from sibling vector/ dir, not construct fresh",
+          "category": "pattern",
+          "final_score": 0.4556775518623873,
+          "similarity": 0.4804643988609314,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.43899309027468386,
+          "similarity": 0.4569953680038452,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5711590231865284,
+          "similarity": 0.6644042730331421,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.4840417205086188,
+          "similarity": 0.5054692625999451,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.4747610125191011,
+          "similarity": 0.5023500919342041,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2673,
+          "title": "EvalServiceLayer snapshot must load VectorIndex from sibling vector/ dir, not construct fresh",
+          "category": "pattern",
+          "final_score": 0.4556775518623873,
+          "similarity": 0.4804643988609314,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.43899309027468386,
+          "similarity": 0.4569953680038452,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

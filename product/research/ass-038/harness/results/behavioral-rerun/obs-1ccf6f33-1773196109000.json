@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-1ccf6f33-1773196109000",
+  "query": "session attribution deferred resolution workflow change breaks data pipeline",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5479995233902569,
+          "similarity": 0.5424161553382874,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.5010485095135622,
+          "similarity": 0.46566373109817505,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.4864712126961982,
+          "similarity": 0.5255506634712219,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.48614431808582725,
+          "similarity": 0.4694993495941162,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.42578486910159696,
+          "similarity": 0.4102466106414795,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5479995233902569,
+          "similarity": 0.5424161553382874,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.5010485095135622,
+          "similarity": 0.46566373109817505,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.4864712126961982,
+          "similarity": 0.5255506634712219,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.48614431808582725,
+          "similarity": 0.4694993495941162,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.42578486910159696,
+          "similarity": 0.4102466106414795,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

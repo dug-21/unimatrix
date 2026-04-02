@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5283",
+  "query": "so... this would remove ALL uses of nli model... which is OK if thats exactly what we tested... wasn't it used for coaccess as well?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.4972414637666631,
+          "similarity": 0.4698396921157837,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.47073003192518736,
+          "similarity": 0.4446032643318176,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.46377484426149584,
+          "similarity": 0.40144747495651245,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4605066735544756,
+          "similarity": 0.3968290090560913,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.45290148284019294,
+          "similarity": 0.3958379626274109,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.4972414637666631,
+          "similarity": 0.4698396921157837,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.47073003192518736,
+          "similarity": 0.4446032643318176,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.46377484426149584,
+          "similarity": 0.40144747495651245,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4605066735544756,
+          "similarity": 0.3968290090560913,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.45290148284019294,
+          "similarity": 0.3958379626274109,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

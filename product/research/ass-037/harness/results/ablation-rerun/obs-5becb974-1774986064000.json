@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-5becb974-1774986064000",
+  "query": "tick agent cold restart re-reads context after parallel wait long gap",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.5443355757912473,
+          "similarity": 0.6171633005142212,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5396430483743216,
+          "similarity": 0.6634381413459778,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.49314413271619467,
+          "similarity": 0.5064164400100708,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.4926052905843048,
+          "similarity": 0.521362841129303,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.4918946234842973,
+          "similarity": 0.5023815035820007,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.5443355757912473,
+          "similarity": 0.6171633005142212,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5396430483743216,
+          "similarity": 0.6634381413459778,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.49314413271619467,
+          "similarity": 0.5064164400100708,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.4926052905843048,
+          "similarity": 0.521362841129303,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.4918946234842973,
+          "similarity": 0.5023815035820007,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.6179882123958624,
+          "similarity": 0.6171633005142212,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.6073825076608041,
+          "similarity": 0.6634381413459778,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5582495955211682,
+          "similarity": 0.5064164400100708,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.5569125316984054,
+          "similarity": 0.5023815035820007,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.5561560470577517,
+          "similarity": 0.521362841129303,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.6634381413459778,
+          "similarity": 0.6634381413459778,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.6171633005142212,
+          "similarity": 0.6171633005142212,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.521362841129303,
+          "similarity": 0.521362841129303,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5064164400100708,
+          "similarity": 0.5064164400100708,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.5023815035820007,
+          "similarity": 0.5023815035820007,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.6179936039767883,
+          "similarity": 0.6171633005142212,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.6070161309700514,
+          "similarity": 0.6634381413459778,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5585883743153583,
+          "similarity": 0.5064164400100708,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.5572689436468786,
+          "similarity": 0.5023815035820007,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.5563834536324475,
+          "similarity": 0.521362841129303,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5044234715975249,
+          "similarity": 0.6634381413459778,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.47594664647029,
+          "similarity": 0.6171633005142212,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.41699251761803263,
+          "similarity": 0.521362841129303,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.40779473231388974,
+          "similarity": 0.5064164400100708,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.40531169451200044,
+          "similarity": 0.5023815035820007,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 1056,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 324,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": -0.04999999999999999,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

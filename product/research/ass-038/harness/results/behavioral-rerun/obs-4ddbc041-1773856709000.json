@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-4ddbc041-1773856709000",
+  "query": "sqlx pool timeout StoreError propagation MCP transport error",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5359290338230386,
+          "similarity": 0.5357404351234436,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5274879914292581,
+          "similarity": 0.5297881960868835,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2378,
+          "title": "PoolConnection not dropped after COMMIT starves subsequent pool acquires (import pipeline)",
+          "category": "lesson-learned",
+          "final_score": 0.5210492078302698,
+          "similarity": 0.5796989798545837,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.500217958480163,
+          "similarity": 0.5255684852600098,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.5000493310504656,
+          "similarity": 0.5342240929603577,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5359290338230386,
+          "similarity": 0.5357404351234436,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5274879914292581,
+          "similarity": 0.5297881960868835,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2378,
+          "title": "PoolConnection not dropped after COMMIT starves subsequent pool acquires (import pipeline)",
+          "category": "lesson-learned",
+          "final_score": 0.5210492078302698,
+          "similarity": 0.5796989798545837,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.500217958480163,
+          "similarity": 0.5255684852600098,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.5000493310504656,
+          "similarity": 0.5342240929603577,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

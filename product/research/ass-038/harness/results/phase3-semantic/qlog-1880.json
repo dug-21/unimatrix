@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1880",
+  "query": "remove retro from bugfix, and leave it in the skill.  continue where you left off",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.43371352081479253,
+          "similarity": 0.3662504553794861,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.4317246334374274,
+          "similarity": 0.3232269287109375,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.4204984600051185,
+          "similarity": 0.41535496711730957,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.41941884620649184,
+          "similarity": 0.3547612428665161,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.389426725186533,
+          "similarity": 0.3305976390838623,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.43371352081479253,
+          "similarity": 0.3662504553794861,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.4317246334374274,
+          "similarity": 0.3232269287109375,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.4204984600051185,
+          "similarity": 0.41535496711730957,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.41941884620649184,
+          "similarity": 0.3547612428665161,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.389426725186533,
+          "similarity": 0.3305976390838623,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

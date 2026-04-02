@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280234000",
+  "query": "CLI subcommand patterns, sync CLI implementation",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.5710093977618204,
+          "similarity": 0.6238877773284912,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.5291472671839393,
+          "similarity": 0.5473159551620483,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5102932076348855,
+          "similarity": 0.5038823485374451,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.4980455501503902,
+          "similarity": 0.5714519023895264,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1195,
+          "title": "Prefix-Match Settings Merge Pattern for Shared JSON Config Files",
+          "category": "pattern",
+          "final_score": 0.48116894616587913,
+          "similarity": 0.49175888299942017,
+          "confidence": 0.5320887353082149,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.5710093977618204,
+          "similarity": 0.6238877773284912,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1192,
+          "title": "Procedure: Adding a Sync CLI Subcommand to unimatrix",
+          "category": "procedure",
+          "final_score": 0.5291472671839393,
+          "similarity": 0.5473159551620483,
+          "confidence": 0.5829483606963379,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5102932076348855,
+          "similarity": 0.5038823485374451,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.4980455501503902,
+          "similarity": 0.5714519023895264,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1195,
+          "title": "Prefix-Match Settings Merge Pattern for Shared JSON Config Files",
+          "category": "pattern",
+          "final_score": 0.48116894616587913,
+          "similarity": 0.49175888299942017,
+          "confidence": 0.5320887353082149,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

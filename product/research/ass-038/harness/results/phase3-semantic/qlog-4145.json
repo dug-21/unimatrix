@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4145",
+  "query": "confirm the background agent is using the mcp__context_quarantine call and not sql",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.4977507648065145,
+          "similarity": 0.43920087814331055,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.4838330443305423,
+          "similarity": 0.41265618801116943,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.4709562679438165,
+          "similarity": 0.4392278790473938,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.46215171308575775,
+          "similarity": 0.39863812923431396,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.45235349978421435,
+          "similarity": 0.40461957454681396,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.4977507648065145,
+          "similarity": 0.43920087814331055,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.4838330443305423,
+          "similarity": 0.41265618801116943,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.4709562679438165,
+          "similarity": 0.4392278790473938,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.46215171308575775,
+          "similarity": 0.39863812923431396,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.45235349978421435,
+          "similarity": 0.40461957454681396,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

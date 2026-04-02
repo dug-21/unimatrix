@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4062",
+  "query": "is this currently defined as a constant? Should it be?  I'm OK with no if it is the right answer",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1480,
+          "title": "Parameter-passing over shared state when promoting engine constants to runtime values",
+          "category": "pattern",
+          "final_score": 0.40380167707284187,
+          "similarity": 0.3140984773635864,
+          "confidence": 0.5758924415354475,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.3897095930421448,
+          "similarity": 0.2843080759048462,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.3620866136928891,
+          "similarity": 0.22937428951263428,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.33779031168567875,
+          "similarity": 0.21256130933761597,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.3340349406351236,
+          "similarity": 0.2161771059036255,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1480,
+          "title": "Parameter-passing over shared state when promoting engine constants to runtime values",
+          "category": "pattern",
+          "final_score": 0.40380167707284187,
+          "similarity": 0.3140984773635864,
+          "confidence": 0.5758924415354475,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1606,
+          "title": "ADR-006 (crt-014): Named Penalty Constants in graph.rs (Fixed for v1)",
+          "category": "decision",
+          "final_score": 0.3897095930421448,
+          "similarity": 0.2843080759048462,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3359,
+          "title": "Two-window mismatch in dead_knowledge_deprecation_pass causes over-deprecation (GH #367)",
+          "category": "lesson-learned",
+          "final_score": 0.3620866136928891,
+          "similarity": 0.22937428951263428,
+          "confidence": 0.5837003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.33779031168567875,
+          "similarity": 0.21256130933761597,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.3340349406351236,
+          "similarity": 0.2161771059036255,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

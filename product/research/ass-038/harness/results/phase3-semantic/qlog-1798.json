@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1798",
+  "query": "I get what you're saying about transition.. but.. transition \"phase\" is not as obvious that we want the phase thats ENDING, not the one thats beginning... phase-end still in my mind is more self evident.  is the hook firing 2 calls on phase-end?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.4534540573462824,
+          "similarity": 0.37696295976638794,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.43071722971641846,
+          "similarity": 0.36332881450653076,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.4283878455530067,
+          "similarity": 0.3549037575721741,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3514,
+          "title": "ADR-002 col-028: Phase Snapshot Must Be First Statement in Handler Body Before Any Await",
+          "category": "decision",
+          "final_score": 0.41684889312091833,
+          "similarity": 0.36930227279663086,
+          "confidence": 0.5324437487615914,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3693,
+          "title": "run_single_tick rebuild: use timeout+spawn+swap triple-nest; error branch must NOT write to handle",
+          "category": "pattern",
+          "final_score": 0.39902829632094283,
+          "similarity": 0.36100852489471436,
+          "confidence": 0.4959217687358244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.4534540573462824,
+          "similarity": 0.37696295976638794,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.43071722971641846,
+          "similarity": 0.36332881450653076,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.4283878455530067,
+          "similarity": 0.3549037575721741,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3514,
+          "title": "ADR-002 col-028: Phase Snapshot Must Be First Statement in Handler Body Before Any Await",
+          "category": "decision",
+          "final_score": 0.41684889312091833,
+          "similarity": 0.36930227279663086,
+          "confidence": 0.5324437487615914,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3693,
+          "title": "run_single_tick rebuild: use timeout+spawn+swap triple-nest; error branch must NOT write to handle",
+          "category": "pattern",
+          "final_score": 0.39902829632094283,
+          "similarity": 0.36100852489471436,
+          "confidence": 0.4959217687358244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

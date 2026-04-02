@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-9b17b3db-1773874739000",
+  "query": "tokio runtime nesting block_on async handler spawn_blocking",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.696023238131999,
+          "similarity": 0.753564715385437,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6478535734457872,
+          "similarity": 0.6545369625091553,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.6245261074703862,
+          "similarity": 0.6068336367607117,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.5625648874202939,
+          "similarity": 0.633065938949585,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5400995570549015,
+          "similarity": 0.5948712229728699,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6109286960237019,
+          "similarity": 0.753564715385437,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5687602436897276,
+          "similarity": 0.6545369625091553,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5483571380684751,
+          "similarity": 0.6068336367607117,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.5050876993311845,
+          "similarity": 0.633065938949585,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.4859919074952047,
+          "similarity": 0.5948712229728699,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.5598859786987305,
+          "similarity": 0.753564715385437,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.4989458230825571,
+          "similarity": 0.6545369625091553,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.48573288550743693,
+          "similarity": 0.633065938949585,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.46958993031428414,
+          "similarity": 0.6068336367607117,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.4622284449063815,
+          "similarity": 0.5948712229728699,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.6109286960237019,
+          "similarity": 0.753564715385437,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5687602436897276,
+          "similarity": 0.6545369625091553,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5483571380684751,
+          "similarity": 0.6068336367607117,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.5050876993311845,
+          "similarity": 0.633065938949585,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.4859919074952047,
+          "similarity": 0.5948712229728699,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.69639688408819,
+          "similarity": 0.753564715385437,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6478969720760688,
+          "similarity": 0.6545369625091553,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.6244112212969466,
+          "similarity": 0.6068336367607117,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.5630226864561984,
+          "similarity": 0.633065938949585,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5404552172232,
+          "similarity": 0.5948712229728699,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2126,
+          "title": "Use block_in_place (not Handle::current().block_on) when bridging async into sync from within an existing tokio runtime",
+          "category": "pattern",
+          "final_score": 0.753564715385437,
+          "similarity": 0.753564715385437,
+          "confidence": 0.6138211277699445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6545369625091553,
+          "similarity": 0.6545369625091553,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.633065938949585,
+          "similarity": 0.633065938949585,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.6068336367607117,
+          "similarity": 0.6068336367607117,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.5948712229728699,
+          "similarity": 0.5948712229728699,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

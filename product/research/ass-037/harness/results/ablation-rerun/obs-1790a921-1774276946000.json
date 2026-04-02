@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-1790a921-1774276946000",
+  "query": "pre-fetch async data before rayon spawn contradiction check",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5988252934060161,
+          "similarity": 0.6431573629379272,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5882506419340963,
+          "similarity": 0.6155958771705627,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.5709343225521392,
+          "similarity": 0.5823544263839722,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.5393896925240212,
+          "similarity": 0.5699666738510132,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5322268111199494,
+          "similarity": 0.6431573629379272,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5225537446355961,
+          "similarity": 0.6155958771705627,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.5075631797439851,
+          "similarity": 0.5823544263839722,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.4836958241140021,
+          "similarity": 0.5699666738510132,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.491942992577186,
+          "similarity": 0.6431573629379272,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.47498207825880784,
+          "similarity": 0.6155958771705627,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.4545258008516752,
+          "similarity": 0.5823544263839722,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.4469025685237004,
+          "similarity": 0.5699666738510132,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5322268111199494,
+          "similarity": 0.6431573629379272,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5225537446355961,
+          "similarity": 0.6155958771705627,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.5075631797439851,
+          "similarity": 0.5823544263839722,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.4836958241140021,
+          "similarity": 0.5699666738510132,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5991131639873921,
+          "similarity": 0.6431573629379272,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5884282083966708,
+          "similarity": 0.6155958771705627,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.5710084790705277,
+          "similarity": 0.5823544263839722,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.5395882443508198,
+          "similarity": 0.5699666738510132,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.6431573629379272,
+          "similarity": 0.6431573629379272,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.6155958771705627,
+          "similarity": 0.6155958771705627,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.5823544263839722,
+          "similarity": 0.5823544263839722,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.5699666738510132,
+          "similarity": 0.5699666738510132,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-f612daf8-1774526471000",
+  "query": "dual type sync ScenarioResult integration round-trip test guard",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.5549903783780616,
+          "similarity": 0.5940125584602356,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5243011872833963,
+          "similarity": 0.5102317929267883,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.5178079547958961,
+          "similarity": 0.5241296291351318,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5128375499816793,
+          "similarity": 0.5232608318328857,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.5084569859369459,
+          "similarity": 0.4997398853302002,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3563,
+          "title": "ADR-002: Round-Trip Integration Test as Dual-Type Guard (nan-009)",
+          "category": "decision",
+          "final_score": 0.5549903783780616,
+          "similarity": 0.5940125584602356,
+          "confidence": 0.5863845149401167,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.5243011872833963,
+          "similarity": 0.5102317929267883,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.5178079547958961,
+          "similarity": 0.5241296291351318,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5128375499816793,
+          "similarity": 0.5232608318328857,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.5084569859369459,
+          "similarity": 0.4997398853302002,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

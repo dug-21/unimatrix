@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280652000",
+  "query": "risk pattern import export serialization",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5991935708157722,
+          "similarity": 0.6258652806282043,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.511210652102512,
+          "similarity": 0.4428091049194336,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.5094120232995328,
+          "similarity": 0.46040481328964233,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.5011073577485838,
+          "similarity": 0.4542844295501709,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.49472152066816155,
+          "similarity": 0.42075395584106445,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5311329706401132,
+          "similarity": 0.6258652806282043,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.4544084185364711,
+          "similarity": 0.4428091049194336,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.45426247130563363,
+          "similarity": 0.46040481328964233,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.4477643576523062,
+          "similarity": 0.4542844295501709,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.44084604554605616,
+          "similarity": 0.42075395584106445,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.48130171115581805,
+          "similarity": 0.6258652806282043,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.37947988510131836,
+          "similarity": 0.46040481328964233,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.3757134951077975,
+          "similarity": 0.4542844295501709,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.3686517568734976,
+          "similarity": 0.4428091049194336,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.35507935744065505,
+          "similarity": 0.42075395584106445,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.6258652806282043,
+          "similarity": 0.6258652806282043,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.46040481328964233,
+          "similarity": 0.46040481328964233,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.4542844295501709,
+          "similarity": 0.4542844295501709,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.4428091049194336,
+          "similarity": 0.4428091049194336,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.42075395584106445,
+          "similarity": 0.42075395584106445,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5990192459150374,
+          "similarity": 0.6258652806282043,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.5116577210383493,
+          "similarity": 0.4428091049194336,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.5097323318616891,
+          "similarity": 0.46040481328964233,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.5014133899590311,
+          "similarity": 0.4542844295501709,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.49520496880428644,
+          "similarity": 0.42075395584106445,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5311329706401132,
+          "similarity": 0.6258652806282043,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.4544084185364711,
+          "similarity": 0.4428091049194336,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.45426247130563363,
+          "similarity": 0.46040481328964233,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.4477643576523062,
+          "similarity": 0.4542844295501709,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.44084604554605616,
+          "similarity": 0.42075395584106445,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

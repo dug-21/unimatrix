@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3844",
+  "query": "so here is the new tick log after the fix: 2026-03-27T19:42:01.571566Z  INFO unimatrix_server::background: background tick starting\n2026-03-27T19:42:01.725158Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.5952 confidence_weight=0.2500\n2026-03-27T19:42:01.725774Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-27T19:42:01.726782Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-27T19:42:01.775479Z DEBUG unimatrix_server::background: typed graph state rebuilt (3676 entries)\n2026-03-27T19:42:01.809963Z DEBUG unimatrix_server::background: contradiction scan starting tick=0\n2026-03-27T19:42:36.932095Z DEBUG unimatrix_server::background: contradiction scan complete; cache updated tick=0 pairs=0\n2026-03-27T19:42:36.947129Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-27T19:42:36.992279Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2132\n2026-03-27T19:42:36.995804Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2160\n2026-03-27T19:42:36.996633Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2262\n2026-03-27T19:42:36.996987Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2243\n2026-03-27T19:42:36.997959Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2149\n2026-03-27T19:42:36.999170Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2157\n2026-03-27T19:42:40.602826Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 pairs_scored=100 source_candidates=100\n2026-03-27T19:42:40.603760Z  INFO unimatrix_server::background: background tick complete duration_secs=39",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5417912448035546,
+          "similarity": 0.532168447971344,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5404786711825179,
+          "similarity": 0.5337256789207458,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5362418430466571,
+          "similarity": 0.5701255798339844,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.53114435444855,
+          "similarity": 0.5738286375999451,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5199380076355489,
+          "similarity": 0.5570365786552429,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 38,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5417912448035546,
+          "similarity": 0.532168447971344,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5404786711825179,
+          "similarity": 0.5337256789207458,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5362418430466571,
+          "similarity": 0.5701255798339844,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.53114435444855,
+          "similarity": 0.5738286375999451,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5199380076355489,
+          "similarity": 0.5570365786552429,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7574e07c-1774441943000",
+  "query": "goal section rendered header cycle review display verbatim",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.5043043309803479,
+          "similarity": 0.5125706195831299,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.44875962541132375,
+          "similarity": 0.3468603491783142,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.4216867256362511,
+          "similarity": 0.3341549038887024,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.3913875510071074,
+          "similarity": 0.3260717988014221,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.38974859419957675,
+          "similarity": 0.3220330476760864,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.5043043309803479,
+          "similarity": 0.5125706195831299,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.44875962541132375,
+          "similarity": 0.3468603491783142,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.4216867256362511,
+          "similarity": 0.3341549038887024,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.3913875510071074,
+          "similarity": 0.3260717988014221,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.38974859419957675,
+          "similarity": 0.3220330476760864,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

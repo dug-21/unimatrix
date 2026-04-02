@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-67e04789-1774667644000",
+  "query": "decouple freshness decay tests ConfidenceParams default",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.628707269970004,
+          "similarity": 0.7540046572685242,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2284,
+          "title": "ADR-001 dsn-001: ConfidenceParams Struct for Engine API",
+          "category": "decision",
+          "final_score": 0.5854000722445987,
+          "similarity": 0.6167612075805664,
+          "confidence": 0.6364270424059589,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.5390082462006928,
+          "similarity": 0.5887700319290161,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2324,
+          "title": "ConfidenceParams migration: remove alpha0/beta0 snapshot blocks from callers",
+          "category": "pattern",
+          "final_score": 0.5175800982257809,
+          "similarity": 0.537663996219635,
+          "confidence": 0.5653402720133555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.4757340659432545,
+          "similarity": 0.4428727626800537,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.628707269970004,
+          "similarity": 0.7540046572685242,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2284,
+          "title": "ADR-001 dsn-001: ConfidenceParams Struct for Engine API",
+          "category": "decision",
+          "final_score": 0.5854000722445987,
+          "similarity": 0.6167612075805664,
+          "confidence": 0.6364270424059589,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.5390082462006928,
+          "similarity": 0.5887700319290161,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2324,
+          "title": "ConfidenceParams migration: remove alpha0/beta0 snapshot blocks from callers",
+          "category": "pattern",
+          "final_score": 0.5175800982257809,
+          "similarity": 0.537663996219635,
+          "confidence": 0.5653402720133555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.4757340659432545,
+          "similarity": 0.4428727626800537,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

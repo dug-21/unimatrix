@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7e5e18a0-1773360882000",
+  "query": "MCP tool validation pattern shared function context_cycle",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.6171038635926738,
+          "similarity": 0.6891137957572937,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.5949327186884307,
+          "similarity": 0.6238465905189514,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.5671274546078896,
+          "similarity": 0.5844237208366394,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.5577597460926789,
+          "similarity": 0.6076796650886536,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.5500206236307967,
+          "similarity": 0.5828990340232849,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.6171038635926738,
+          "similarity": 0.6891137957572937,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1369,
+          "title": "MCP Tool 6-Step Handler Pipeline",
+          "category": "convention",
+          "final_score": 0.5949327186884307,
+          "similarity": 0.6238465905189514,
+          "confidence": 0.6521793928415244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.5671274546078896,
+          "similarity": 0.5844237208366394,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.5577597460926789,
+          "similarity": 0.6076796650886536,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.5500206236307967,
+          "similarity": 0.5828990340232849,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

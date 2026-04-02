@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ea862451-1774803043000",
+  "query": "CategoryAllowlist lifecycle policy constructor adaptive pinned category classification",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5762057151751264,
+          "similarity": 0.6610394716262817,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.46711849747505685,
+          "similarity": 0.4181191325187683,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4611482566845142,
+          "similarity": 0.424929141998291,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4312397019256945,
+          "similarity": 0.3958861231803894,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.4270046732397407,
+          "similarity": 0.35921984910964966,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5762057151751264,
+          "similarity": 0.6610394716262817,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.46711849747505685,
+          "similarity": 0.4181191325187683,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4611482566845142,
+          "similarity": 0.424929141998291,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4312397019256945,
+          "similarity": 0.3958861231803894,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.4270046732397407,
+          "similarity": 0.35921984910964966,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

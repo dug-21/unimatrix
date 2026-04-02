@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-811",
+  "query": "well... thats partially true... we did a series of recent changes that did actually increased the impact of confidence actions, but that was fairly recent... so it has not been operating 'fixed' for very long.  I'm thinking I want ot put crt-020 on the shelf for now... Just not sure the effort is worth it right now",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.5187965621689454,
+          "similarity": 0.5456942319869995,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.4920971927565938,
+          "similarity": 0.5246901512145996,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.4862418225291145,
+          "similarity": 0.4265010952949524,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.48148328435562393,
+          "similarity": 0.4551127552986145,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2324,
+          "title": "ConfidenceParams migration: remove alpha0/beta0 snapshot blocks from callers",
+          "category": "pattern",
+          "final_score": 0.46768081501743575,
+          "similarity": 0.4428553581237793,
+          "confidence": 0.5653402720133555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1615,
+          "title": "ADR-004 crt-020: Inline Confidence Recomputation in Implicit Vote Step",
+          "category": "decision",
+          "final_score": 0.5187965621689454,
+          "similarity": 0.5456942319869995,
+          "confidence": 0.5571703373342815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.4920971927565938,
+          "similarity": 0.5246901512145996,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.4862418225291145,
+          "similarity": 0.4265010952949524,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.48148328435562393,
+          "similarity": 0.4551127552986145,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2324,
+          "title": "ConfidenceParams migration: remove alpha0/beta0 snapshot blocks from callers",
+          "category": "pattern",
+          "final_score": 0.46768081501743575,
+          "similarity": 0.4428553581237793,
+          "confidence": 0.5653402720133555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

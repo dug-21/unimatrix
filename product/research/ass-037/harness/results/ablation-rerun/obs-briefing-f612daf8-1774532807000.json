@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-briefing-f612daf8-1774532807000",
+  "query": "briefing:nan-009:",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5106900930625913,
+          "similarity": 0.44062328338623047,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5023650743743149,
+          "similarity": 0.4667675495147705,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.46870971192566246,
+          "similarity": 0.3974716067314148,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.4412815746980555,
+          "similarity": 0.39877867698669434,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.4329629120460301,
+          "similarity": 0.37574243545532227,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.3833954150860126,
+          "similarity": 0.4667675495147705,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.36730663592998797,
+          "similarity": 0.44062328338623047,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.34155610891488886,
+          "similarity": 0.39877867698669434,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.34075175798856294,
+          "similarity": 0.3974716067314148,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.32737996028019833,
+          "similarity": 0.37574243545532227,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4667675495147705,
+          "similarity": 0.4667675495147705,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.44062328338623047,
+          "similarity": 0.44062328338623047,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.39877867698669434,
+          "similarity": 0.39877867698669434,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.3974716067314148,
+          "similarity": 0.3974716067314148,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.37574243545532227,
+          "similarity": 0.37574243545532227,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.45354730233033297,
+          "similarity": 0.44062328338623047,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4493493791523416,
+          "similarity": 0.4667675495147705,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.4198793334552266,
+          "similarity": 0.3974716067314148,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.3999893384933471,
+          "similarity": 0.39877867698669434,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.39228315273748776,
+          "similarity": 0.37574243545532227,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.45354730233033297,
+          "similarity": 0.44062328338623047,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4493493791523416,
+          "similarity": 0.4667675495147705,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.4198793334552266,
+          "similarity": 0.3974716067314148,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.3999893384933471,
+          "similarity": 0.39877867698669434,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.39228315273748776,
+          "similarity": 0.37574243545532227,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5102351137789785,
+          "similarity": 0.44062328338623047,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5021339216154865,
+          "similarity": 0.4667675495147705,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.46824712682699854,
+          "similarity": 0.3974716067314148,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.4410055818557739,
+          "similarity": 0.39877867698669434,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.43259135050972675,
+          "similarity": 0.37574243545532227,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3586,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 1166,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3876,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 283,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280160000",
+  "query": "outcome rework import export backup restore",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.4826154570336355,
+          "similarity": 0.42835092544555664,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.46520302802193825,
+          "similarity": 0.4195508360862732,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.46378763622862873,
+          "similarity": 0.4429625868797302,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.46257609498642227,
+          "similarity": 0.41918909549713135,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1145,
+          "title": "ADR-003: --force Flag With Stderr Warning, No Interactive Confirmation",
+          "category": "decision",
+          "final_score": 0.42454273654720853,
+          "similarity": 0.39493435621261597,
+          "confidence": 0.5167097760386864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.4826154570336355,
+          "similarity": 0.42835092544555664,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.46520302802193825,
+          "similarity": 0.4195508360862732,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.46378763622862873,
+          "similarity": 0.4429625868797302,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.46257609498642227,
+          "similarity": 0.41918909549713135,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1145,
+          "title": "ADR-003: --force Flag With Stderr Warning, No Interactive Confirmation",
+          "category": "decision",
+          "final_score": 0.42454273654720853,
+          "similarity": 0.39493435621261597,
+          "confidence": 0.5167097760386864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

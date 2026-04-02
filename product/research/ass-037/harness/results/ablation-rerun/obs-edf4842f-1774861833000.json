@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-edf4842f-1774861833000",
+  "query": "edit bloat large file",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4537496280899549,
+          "similarity": 0.36438870429992676,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.44343400912070025,
+          "similarity": 0.3702210783958435,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.4347429468808331,
+          "similarity": 0.3649923801422119,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.4248287560723044,
+          "similarity": 0.3935563564300537,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3862943611198906
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4070423075526287,
+          "similarity": 0.36438870429992676,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.39986634524823644,
+          "similarity": 0.3702210783958435,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.39314431972209174,
+          "similarity": 0.3649923801422119,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.38777817821502686,
+          "similarity": 0.3935563564300537,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3862943611198906
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.33834237318772536,
+          "similarity": 0.3935563564300537,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.3239822020897498,
+          "similarity": 0.3702210783958435,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.32076454162597656,
+          "similarity": 0.3649923801422119,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.3203930487999549,
+          "similarity": 0.36438870429992676,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3862943611198906
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.3935563564300537,
+          "similarity": 0.3935563564300537,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.3702210783958435,
+          "similarity": 0.3702210783958435,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.3649923801422119,
+          "similarity": 0.3649923801422119,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.36438870429992676,
+          "similarity": 0.36438870429992676,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3862943611198906
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.45433368641537997,
+          "similarity": 0.36438870429992676,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.4439125250077909,
+          "similarity": 0.3702210783958435,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.43519883293794825,
+          "similarity": 0.3649923801422119,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.4250331508412081,
+          "similarity": 0.3935563564300537,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3862943611198906
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4070423075526287,
+          "similarity": 0.36438870429992676,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.39986634524823644,
+          "similarity": 0.3702210783958435,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.39314431972209174,
+          "similarity": 0.3649923801422119,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.38777817821502686,
+          "similarity": 0.3935563564300537,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3862943611198906
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

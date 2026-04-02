@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-af1f3351-1774269615000",
+  "query": "incremental targeted cargo test crate workspace parallel agent compile cycles",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.6402013074650483,
+          "similarity": 0.6413422226905823,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.6036615787479834,
+          "similarity": 0.6060191988945007,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.5749556982858693,
+          "similarity": 0.5753608345985413,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.5642177254723761,
+          "similarity": 0.5642399191856384,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.5640204185598037,
+          "similarity": 0.6298347115516663,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.4908259831942045,
+          "similarity": 0.6413422226905823,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.48374443787794846,
+          "similarity": 0.6298347115516663,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.4690887377812312,
+          "similarity": 0.6060191988945007,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.4502220520606408,
+          "similarity": 0.5753608345985413,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.44337841180654675,
+          "similarity": 0.5642399191856384,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.6413422226905823,
+          "similarity": 0.6413422226905823,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.6298347115516663,
+          "similarity": 0.6298347115516663,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.6060191988945007,
+          "similarity": 0.6060191988945007,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.5753608345985413,
+          "similarity": 0.5753608345985413,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.5642399191856384,
+          "similarity": 0.5642399191856384,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.5622425399167197,
+          "similarity": 0.6413422226905823,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.5330976644374238,
+          "similarity": 0.6060191988945007,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.5099934969367435,
+          "similarity": 0.5753608345985413,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.5059173557758332,
+          "similarity": 0.6298347115516663,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.5013757656431339,
+          "similarity": 0.5642399191856384,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.5622425399167197,
+          "similarity": 0.6413422226905823,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.5330976644374238,
+          "similarity": 0.6060191988945007,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.5099934969367435,
+          "similarity": 0.5753608345985413,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.5059173557758332,
+          "similarity": 0.6298347115516663,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.5013757656431339,
+          "similarity": 0.5642399191856384,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.6402087160054738,
+          "similarity": 0.6413422226905823,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.603676887969714,
+          "similarity": 0.6060191988945007,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.5749583290411463,
+          "similarity": 0.5753608345985413,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.5644477840987119,
+          "similarity": 0.6298347115516663,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.5642178695873973,
+          "similarity": 0.5642399191856384,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 3932,
+        "from_rank": 5,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 924,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 2400,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2957,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": -0.16666666666666669,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

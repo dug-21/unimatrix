@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-bd98afa6-1773804592000",
+  "query": "async fn trait RPITIT object safety migration Rust",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5122530643756573,
+          "similarity": 0.6761612296104431,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.45905571717482346,
+          "similarity": 0.5897155404090881,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.4297341566819411,
+          "similarity": 0.5420680046081543,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4175918652461125,
+          "similarity": 0.5223367810249329,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.41548475852379435,
+          "similarity": 0.5189127326011658,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.6761612296104431,
+          "similarity": 0.6761612296104431,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5897155404090881,
+          "similarity": 0.5897155404090881,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5420680046081543,
+          "similarity": 0.5420680046081543,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.5223367810249329,
+          "similarity": 0.5223367810249329,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.5189127326011658,
+          "similarity": 0.5189127326011658,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.544881885746476,
+          "similarity": 0.6761612296104431,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5211436290748638,
+          "similarity": 0.5897155404090881,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5076554847163454,
+          "similarity": 0.5420680046081543,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.46796966309912086,
+          "similarity": 0.5223367810249329,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.46303920633419526,
+          "similarity": 0.5189127326011658,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.6133697324169722,
+          "similarity": 0.6761612296104431,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5888580814285334,
+          "similarity": 0.5897155404090881,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5747967514670023,
+          "similarity": 0.5420680046081543,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.5224734695874437,
+          "similarity": 0.5223367810249329,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.5160613965828875,
+          "similarity": 0.5189127326011658,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.544881885746476,
+          "similarity": 0.6761612296104431,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5211436290748638,
+          "similarity": 0.5897155404090881,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5076554847163454,
+          "similarity": 0.5420680046081543,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.46796966309912086,
+          "similarity": 0.5223367810249329,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.46303920633419526,
+          "similarity": 0.5189127326011658,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.6129593304745313,
+          "similarity": 0.6761612296104431,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5888524771214709,
+          "similarity": 0.5897155404090881,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5750106648451648,
+          "similarity": 0.5420680046081543,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.5224743629767412,
+          "similarity": 0.5223367810249329,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.5160427603997616,
+          "similarity": 0.5189127326011658,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

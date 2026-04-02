@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2139",
+  "query": "now run retro for this feature",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.3872062377694171,
+          "similarity": 0.2369089126586914,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 425,
+          "title": "Three-Slot Model Registry (Production/Shadow/Previous)",
+          "category": "pattern",
+          "final_score": 0.38475991455292824,
+          "similarity": 0.2524440884590149,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.3722916245327973,
+          "similarity": 0.24954885244369507,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.3591849201603712,
+          "similarity": 0.2490658164024353,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.3558297471598638,
+          "similarity": 0.26437968015670776,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.3872062377694171,
+          "similarity": 0.2369089126586914,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 425,
+          "title": "Three-Slot Model Registry (Production/Shadow/Previous)",
+          "category": "pattern",
+          "final_score": 0.38475991455292824,
+          "similarity": 0.2524440884590149,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.3722916245327973,
+          "similarity": 0.24954885244369507,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.3591849201603712,
+          "similarity": 0.2490658164024353,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.3558297471598638,
+          "similarity": 0.26437968015670776,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

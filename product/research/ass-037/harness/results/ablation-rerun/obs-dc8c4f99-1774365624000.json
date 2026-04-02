@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-dc8c4f99-1774365624000",
+  "query": "stage 3b implementor skip edge case tests test plan omit",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.5534656964815581,
+          "similarity": 0.7431317567825317,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.48483679844782906,
+          "similarity": 0.6316097974777222,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.4627965413607084,
+          "similarity": 0.5957943797111511,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.42481363736666167,
+          "similarity": 0.5340721607208252,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.4097252625685472,
+          "similarity": 0.5095535516738892,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.5988578150747362,
+          "similarity": 0.7431317567825317,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5598004719641927,
+          "similarity": 0.6316097974777222,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5402516699175594,
+          "similarity": 0.5957943797111511,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.48486484082711795,
+          "similarity": 0.5095535516738892,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.4580360803604126,
+          "similarity": 0.5340721607208252,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.6808850426671373,
+          "similarity": 0.7431317567825317,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.6377633892713788,
+          "similarity": 0.6316097974777222,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.6143618790047489,
+          "similarity": 0.5957943797111511,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.5466744600666253,
+          "similarity": 0.5095535516738892,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.5078608222441239,
+          "similarity": 0.5340721607208252,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.7431317567825317,
+          "similarity": 0.7431317567825317,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.6316097974777222,
+          "similarity": 0.6316097974777222,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5957943797111511,
+          "similarity": 0.5957943797111511,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.5340721607208252,
+          "similarity": 0.5340721607208252,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.5095535516738892,
+          "similarity": 0.5095535516738892,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.6804782013984093,
+          "similarity": 0.7431317567825317,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.6378036088255858,
+          "similarity": 0.6316097974777222,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.6144832352092823,
+          "similarity": 0.5957943797111511,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.5469170803829179,
+          "similarity": 0.5095535516738892,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.5076895063063678,
+          "similarity": 0.5340721607208252,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3386,
+          "title": "Stage 3b agents implement happy-path tests but skip edge-case tests from the bottom of the test plan",
+          "category": "lesson-learned",
+          "final_score": 0.5988578150747362,
+          "similarity": 0.7431317567825317,
+          "confidence": 0.5909731222782344,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5598004719641927,
+          "similarity": 0.6316097974777222,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5402516699175594,
+          "similarity": 0.5957943797111511,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.48486484082711795,
+          "similarity": 0.5095535516738892,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.4580360803604126,
+          "similarity": 0.5340721607208252,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3742,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3935,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

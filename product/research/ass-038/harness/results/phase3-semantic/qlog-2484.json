@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2484",
+  "query": "for my gratification run context_get on 1369",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5135662483920685,
+          "similarity": 0.5352367162704468,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.490702941678381,
+          "similarity": 0.4767465591430664,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.45741284214054034,
+          "similarity": 0.4587898850440979,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3514,
+          "title": "ADR-002 col-028: Phase Snapshot Must Be First Statement in Handler Body Before Any Await",
+          "category": "decision",
+          "final_score": 0.43829483253629786,
+          "similarity": 0.41004955768585205,
+          "confidence": 0.5324437487615914,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.43686280939368494,
+          "similarity": 0.40627509355545044,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5135662483920685,
+          "similarity": 0.5352367162704468,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.490702941678381,
+          "similarity": 0.4767465591430664,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.45741284214054034,
+          "similarity": 0.4587898850440979,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3514,
+          "title": "ADR-002 col-028: Phase Snapshot Must Be First Statement in Handler Body Before Any Await",
+          "category": "decision",
+          "final_score": 0.43829483253629786,
+          "similarity": 0.41004955768585205,
+          "confidence": 0.5324437487615914,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.43686280939368494,
+          "similarity": 0.40627509355545044,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

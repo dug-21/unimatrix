@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-11",
+  "query": "well... here's where context matters (this may not be context Unimatrix has or exposes... yet).  In my workflow, each feature will currently have at least 2 sessions.  1 for design, and 1 for delivery. they have separate purposes, will always look different from each other.  Comparing design sesseions across features can have value, but comparing session 1 that creates artifacts, and session 2 that reads artifacts and creates code/tests.. not so meaningful as a raw metric.  The knowledge reuse is GOLD, if we do it right.  It sells the value proposition of Unimatrix on every feature.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5602597628933902,
+          "similarity": 0.5632176995277405,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5574071931432035,
+          "similarity": 0.5673823952674866,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5427140512392195,
+          "similarity": 0.5698230266571045,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5249547141603702,
+          "similarity": 0.5468236804008484,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.5117821142552516,
+          "similarity": 0.47741031646728516,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.5602597628933902,
+          "similarity": 0.5632176995277405,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5574071931432035,
+          "similarity": 0.5673823952674866,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5427140512392195,
+          "similarity": 0.5698230266571045,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5249547141603702,
+          "similarity": 0.5468236804008484,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.5117821142552516,
+          "similarity": 0.47741031646728516,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

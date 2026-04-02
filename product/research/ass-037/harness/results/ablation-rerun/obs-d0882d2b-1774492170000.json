@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-d0882d2b-1774492170000",
+  "query": "ADR-003 data window ephemeral GC interaction",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.506193637780703,
+          "similarity": 0.5466518998146057,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.42750759049690407,
+          "similarity": 0.38651275634765625,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.4233420602648785,
+          "similarity": 0.38798820972442627,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.4053050463471728,
+          "similarity": 0.3829284906387329,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.3997105053349997,
+          "similarity": 0.383573055267334,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.5725548067760036,
+          "similarity": 0.5466518998146057,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.48025426574598046,
+          "similarity": 0.38651275634765625,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.47439221901802675,
+          "similarity": 0.38798820972442627,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.45013158413938104,
+          "similarity": 0.3829284906387329,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.4423896097473197,
+          "similarity": 0.383573055267334,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.5466518998146057,
+          "similarity": 0.5466518998146057,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.38798820972442627,
+          "similarity": 0.38798820972442627,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.38651275634765625,
+          "similarity": 0.38651275634765625,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.383573055267334,
+          "similarity": 0.383573055267334,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.3829284906387329,
+          "similarity": 0.3829284906387329,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4325550152705266,
+          "similarity": 0.5466518998146057,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.3349158213688777,
+          "similarity": 0.38798820972442627,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.33400785006009615,
+          "similarity": 0.38651275634765625,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.3321988032414363,
+          "similarity": 0.383573055267334,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.3318021480853741,
+          "similarity": 0.3829284906387329,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.572386606081449,
+          "similarity": 0.5466518998146057,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.47964555464599135,
+          "similarity": 0.38651275634765625,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.47383115402261367,
+          "similarity": 0.38798820972442627,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.4496952004153508,
+          "similarity": 0.3829284906387329,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.44200768406887825,
+          "similarity": 0.383573055267334,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.506193637780703,
+          "similarity": 0.5466518998146057,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.42750759049690407,
+          "similarity": 0.38651275634765625,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.4233420602648785,
+          "similarity": 0.38798820972442627,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.4053050463471728,
+          "similarity": 0.3829284906387329,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.3997105053349997,
+          "similarity": 0.383573055267334,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

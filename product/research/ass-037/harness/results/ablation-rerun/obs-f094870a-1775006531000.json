@@ -1,0 +1,250 @@
+{
+  "scenario_id": "obs-f094870a-1775006531000",
+  "query": "nli detection tick background tick scheduling multi-type budget independent cap",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.6081921644774759,
+          "similarity": 0.6370875239372253,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5634972008539803,
+          "similarity": 0.5611060857772827,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5399242944634437,
+          "similarity": 0.4897376298904419,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.6370875239372253,
+          "similarity": 0.6370875239372253,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5611060857772827,
+          "similarity": 0.5611060857772827,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4897376298904419,
+          "similarity": 0.4897376298904419,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.6083797966817599,
+          "similarity": 0.6370875239372253,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5634816741327029,
+          "similarity": 0.5611060857772827,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5395984070311515,
+          "similarity": 0.4897376298904419,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.5386176858291057,
+          "similarity": 0.6370875239372253,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5006269667491344,
+          "similarity": 0.5611060857772827,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4783546738155406,
+          "similarity": 0.4897376298904419,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.4882077070382925,
+          "similarity": 0.6370875239372253,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.4414498989398663,
+          "similarity": 0.5611060857772827,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.39753084916334885,
+          "similarity": 0.4897376298904419,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.5386176858291057,
+          "similarity": 0.6370875239372253,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5006269667491344,
+          "similarity": 0.5611060857772827,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.4783546738155406,
+          "similarity": 0.4897376298904419,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

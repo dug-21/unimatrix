@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3d9b719e-1774200835000",
+  "query": "WA-1 phase signal session current_phase",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.5363744626756469,
+          "similarity": 0.5438612699508667,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.48142509737226213,
+          "similarity": 0.4500328302383423,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3297,
+          "title": "SubagentStart hook routing: input.session_id vs ppid fallback session_id",
+          "category": "pattern",
+          "final_score": 0.45669174447097327,
+          "similarity": 0.41145920753479004,
+          "confidence": 0.5803644385143706,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3514,
+          "title": "ADR-002 col-028: Phase Snapshot Must Be First Statement in Handler Body Before Any Await",
+          "category": "decision",
+          "final_score": 0.44505161506803614,
+          "similarity": 0.4228874444961548,
+          "confidence": 0.5324437487615914,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.43758746641341373,
+          "similarity": 0.4021759033203125,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3175,
+          "title": "ADR-004: w_phase_histogram=0.02 — Full Session Signal Budget, Sum 0.95 → 0.97",
+          "category": "decision",
+          "final_score": 0.5363744626756469,
+          "similarity": 0.5438612699508667,
+          "confidence": 0.6075002987612322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.48142509737226213,
+          "similarity": 0.4500328302383423,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3297,
+          "title": "SubagentStart hook routing: input.session_id vs ppid fallback session_id",
+          "category": "pattern",
+          "final_score": 0.45669174447097327,
+          "similarity": 0.41145920753479004,
+          "confidence": 0.5803644385143706,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3514,
+          "title": "ADR-002 col-028: Phase Snapshot Must Be First Statement in Handler Body Before Any Await",
+          "category": "decision",
+          "final_score": 0.44505161506803614,
+          "similarity": 0.4228874444961548,
+          "confidence": 0.5324437487615914,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.43758746641341373,
+          "similarity": 0.4021759033203125,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-776",
+  "query": "so.. context_briefing is easy, we'll allow the agent to define preferred categories.  However, contextSearch has to infer everything, or use what has already been passed.  So the only option I see, for injection to use keywords OR categories.. is to be able to react to Context_cycle, OR, get the actual PROMPT used to spawn",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5484202721306544,
+          "similarity": 0.5683788657188416,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.5321472628701828,
+          "similarity": 0.5382405519485474,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.51940015142167,
+          "similarity": 0.5178700685501099,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.5170109260024142,
+          "similarity": 0.5061264038085938,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5102191650337246,
+          "similarity": 0.513827383518219,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5484202721306544,
+          "similarity": 0.5683788657188416,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1546,
+          "title": "ADR-004 crt-018b: EffectivenessStateHandle as Non-Optional Constructor Parameter on BriefingService",
+          "category": "decision",
+          "final_score": 0.5321472628701828,
+          "similarity": 0.5382405519485474,
+          "confidence": 0.604056067864,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.51940015142167,
+          "similarity": 0.5178700685501099,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.5170109260024142,
+          "similarity": 0.5061264038085938,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5102191650337246,
+          "similarity": 0.513827383518219,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774747538000",
+  "query": "InferenceConfig field naming collision convention",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.4312127553499662,
+          "similarity": 0.5444707274436951,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.3924138362591083,
+          "similarity": 0.481422483921051,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.36503080221322864,
+          "similarity": 0.4369250535964966,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.3585697320791391,
+          "similarity": 0.4264258146286011,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.35229066702035755,
+          "similarity": 0.41622233390808105,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5839735356530902,
+          "similarity": 0.5444707274436951,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5133607354774199,
+          "similarity": 0.481422483921051,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.49512272173926797,
+          "similarity": 0.4369250535964966,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.49030662471674347,
+          "similarity": 0.4264258146286011,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.45651129050453876,
+          "similarity": 0.41622233390808105,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5145453079751793,
+          "similarity": 0.5444707274436951,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.45855937161151133,
+          "similarity": 0.481422483921051,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.442218332848563,
+          "similarity": 0.4369250535964966,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.4379865791008519,
+          "similarity": 0.4264258146286011,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.41252310196386716,
+          "similarity": 0.41622233390808105,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5842317239420406,
+          "similarity": 0.5444707274436951,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.5135694822196184,
+          "similarity": 0.481422483921051,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.4955030986552339,
+          "similarity": 0.4369250535964966,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.49072414635130646,
+          "similarity": 0.4264258146286011,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4567746170182411,
+          "similarity": 0.41622233390808105,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5145453079751793,
+          "similarity": 0.5444707274436951,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.45855937161151133,
+          "similarity": 0.481422483921051,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.442218332848563,
+          "similarity": 0.4369250535964966,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.4379865791008519,
+          "similarity": 0.4264258146286011,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.41252310196386716,
+          "similarity": 0.41622233390808105,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2730,
+          "title": "InferenceConfig struct extension: use ..Default::default() in all existing literal constructions",
+          "category": "pattern",
+          "final_score": 0.5444707274436951,
+          "similarity": 0.5444707274436951,
+          "confidence": 0.6410331475111056,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.481422483921051,
+          "similarity": 0.481422483921051,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.4369250535964966,
+          "similarity": 0.4369250535964966,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.4264258146286011,
+          "similarity": 0.4264258146286011,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.41622233390808105,
+          "similarity": 0.41622233390808105,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1606",
+  "query": "yes... and I also want to see examples of every different query type laid out like you did before",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4100636115253389,
+          "similarity": 0.29944705963134766,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.4000003835484367,
+          "similarity": 0.30196070671081543,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.39568595639540516,
+          "similarity": 0.2904696464538574,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.38793517914137166,
+          "similarity": 0.29715919494628906,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.3832991940214572,
+          "similarity": 0.2882422208786011,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4100636115253389,
+          "similarity": 0.29944705963134766,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.4000003835484367,
+          "similarity": 0.30196070671081543,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.39568595639540516,
+          "similarity": 0.2904696464538574,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.38793517914137166,
+          "similarity": 0.29715919494628906,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.3832991940214572,
+          "similarity": 0.2882422208786011,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

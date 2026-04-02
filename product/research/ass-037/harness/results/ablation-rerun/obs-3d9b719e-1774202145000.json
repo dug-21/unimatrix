@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3d9b719e-1774202145000",
+  "query": "compute_fused_score WA-2 extension integration points",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.5234298630133293,
+          "similarity": 0.5827155113220215,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5186312503188183,
+          "similarity": 0.5755665898323059,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.49846619538683196,
+          "similarity": 0.5433062314987183,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.4712936323897265,
+          "similarity": 0.48851513862609863,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.4449854875300273,
+          "similarity": 0.45030921697616577,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.5926767226337831,
+          "similarity": 0.5827155113220215,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5867912661403089,
+          "similarity": 0.5755665898323059,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.5622765199918558,
+          "similarity": 0.5433062314987183,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.5303525210617719,
+          "similarity": 0.48851513862609863,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.49798898122002133,
+          "similarity": 0.45030921697616577,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.45474800696739787,
+          "similarity": 0.5827155113220215,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.4503486706660344,
+          "similarity": 0.5755665898323059,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.4304961424607497,
+          "similarity": 0.5433062314987183,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.39677854684682995,
+          "similarity": 0.48851513862609863,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.3732672104468713,
+          "similarity": 0.45030921697616577,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.5926120394434469,
+          "similarity": 0.5827155113220215,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5867183786318152,
+          "similarity": 0.5755665898323059,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.5621533363003419,
+          "similarity": 0.5433062314987183,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.5300808497472544,
+          "similarity": 0.48851513862609863,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.4976793723612949,
+          "similarity": 0.45030921697616577,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.5234298630133293,
+          "similarity": 0.5827155113220215,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5186312503188183,
+          "similarity": 0.5755665898323059,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.49846619538683196,
+          "similarity": 0.5433062314987183,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.4712936323897265,
+          "similarity": 0.48851513862609863,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.4449854875300273,
+          "similarity": 0.45030921697616577,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.5827155113220215,
+          "similarity": 0.5827155113220215,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5755665898323059,
+          "similarity": 0.5755665898323059,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.5433062314987183,
+          "similarity": 0.5433062314987183,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.48851513862609863,
+          "similarity": 0.48851513862609863,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.45030921697616577,
+          "similarity": 0.45030921697616577,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

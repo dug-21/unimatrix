@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-5c7012c4-1774564660000",
+  "query": "eval harness CC@k ICD distribution metrics",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.5091455087350466,
+          "similarity": 0.46030622720718384,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.487307433567866,
+          "similarity": 0.4154815673828125,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.4860536936261409,
+          "similarity": 0.3997008800506592,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.46801186595674316,
+          "similarity": 0.3849599361419678,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4568904810623881,
+          "similarity": 0.3929935693740845,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.37941921674288237,
+          "similarity": 0.46030622720718384,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.35183481069711536,
+          "similarity": 0.4154815673828125,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.34212361849271333,
+          "similarity": 0.3997008800506592,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.3379960426917443,
+          "similarity": 0.3929935693740845,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.3330522683950571,
+          "similarity": 0.3849599361419678,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.509464719725425,
+          "similarity": 0.46030622720718384,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.4877768836736507,
+          "similarity": 0.4154815673828125,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.48661809110049054,
+          "similarity": 0.3997008800506592,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.46855468902742803,
+          "similarity": 0.3849599361419678,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4573081079361679,
+          "similarity": 0.3929935693740845,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.46030622720718384,
+          "similarity": 0.46030622720718384,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.4154815673828125,
+          "similarity": 0.4154815673828125,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.3997008800506592,
+          "similarity": 0.3997008800506592,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.3929935693740845,
+          "similarity": 0.3929935693740845,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.3849599361419678,
+          "similarity": 0.3849599361419678,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4540604548861798,
+          "similarity": 0.46030622720718384,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.43505755577528926,
+          "similarity": 0.4154815673828125,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.4330861006625473,
+          "similarity": 0.3997008800506592,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4188726974444095,
+          "similarity": 0.3849599361419678,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4112525907373569,
+          "similarity": 0.3929935693740845,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.4540604548861798,
+          "similarity": 0.46030622720718384,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.43505755577528926,
+          "similarity": 0.4154815673828125,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.4330861006625473,
+          "similarity": 0.3997008800506592,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.4188726974444095,
+          "similarity": 0.3849599361419678,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4112525907373569,
+          "similarity": 0.3929935693740845,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

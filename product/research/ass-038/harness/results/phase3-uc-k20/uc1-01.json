@@ -1,0 +1,414 @@
+{
+  "scenario_id": "uc1-01",
+  "query": "What characters are allowed in Unimatrix feature_cycle identifiers, and what validation approach does the engine use?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.612299710439964,
+          "similarity": 0.6671193242073059,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.568497239962683,
+          "similarity": 0.6467999815940857,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.5201540777485377,
+          "similarity": 0.5430169701576233,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.5154082502950694,
+          "similarity": 0.5514416098594666,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.5136812521860811,
+          "similarity": 0.5102888941764832,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.49076558343136956,
+          "similarity": 0.46672987937927246,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.4812380923256099,
+          "similarity": 0.43027281761169434,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.48118941177932584,
+          "similarity": 0.45272767543792725,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.47551817990510126,
+          "similarity": 0.4148651957511902,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.4734754760839761,
+          "similarity": 0.4325535297393799,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.4719639733896085,
+          "similarity": 0.4446676969528198,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.46809361053644183,
+          "similarity": 0.4451439380645752,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.460683834059192,
+          "similarity": 0.41991376876831055,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.46008189359348917,
+          "similarity": 0.42606472969055176,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 484,
+          "title": "ADR-004: Co-Access Deprecated Exclusion via ID Set",
+          "category": "decision",
+          "final_score": 0.45365797843906064,
+          "similarity": 0.4371045231819153,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.451910575282346,
+          "similarity": 0.41560685634613037,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.43204591486047383,
+          "similarity": 0.44419896602630615,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.4312330441725881,
+          "similarity": 0.4403427839279175,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 359,
+          "title": "ADR-005: Migration Compatibility Module for Bincode Deserializers",
+          "category": "decision",
+          "final_score": 0.42560132375085635,
+          "similarity": 0.4189567565917969,
+          "confidence": 0.48526536933547193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.0596846673731528
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.612299710439964,
+          "similarity": 0.6671193242073059,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.568497239962683,
+          "similarity": 0.6467999815940857,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3103,
+          "title": "str::len() Returns Bytes, Not Chars — Use chars().count() for Character Limits",
+          "category": "lesson-learned",
+          "final_score": 0.5201540777485377,
+          "similarity": 0.5430169701576233,
+          "confidence": 0.5646796822351406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3105,
+          "title": "Use chars().count() not len() for character limits in validation.rs",
+          "category": "pattern",
+          "final_score": 0.5154082502950694,
+          "similarity": 0.5514416098594666,
+          "confidence": 0.5397629510016648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 427,
+          "title": "Fixed-Width Feature Vector with Reserved Slots (SignalDigest)",
+          "category": "pattern",
+          "final_score": 0.5136812521860811,
+          "similarity": 0.5102888941764832,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.49076558343136956,
+          "similarity": 0.46672987937927246,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 239,
+          "title": "Feature Naming and Directory Convention",
+          "category": "convention",
+          "final_score": 0.4812380923256099,
+          "similarity": 0.43027281761169434,
+          "confidence": 0.6201136540099493,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.48118941177932584,
+          "similarity": 0.45272767543792725,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.47551817990510126,
+          "similarity": 0.4148651957511902,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.4734754760839761,
+          "similarity": 0.4325535297393799,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1276,
+          "title": "ADR-004 col-022: Shared Validation Function for MCP Tool and Hook Handler",
+          "category": "decision",
+          "final_score": 0.4719639733896085,
+          "similarity": 0.4446676969528198,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.46809361053644183,
+          "similarity": 0.4451439380645752,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.460683834059192,
+          "similarity": 0.41991376876831055,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.46008189359348917,
+          "similarity": 0.42606472969055176,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 484,
+          "title": "ADR-004: Co-Access Deprecated Exclusion via ID Set",
+          "category": "decision",
+          "final_score": 0.45365797843906064,
+          "similarity": 0.4371045231819153,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.451910575282346,
+          "similarity": 0.41560685634613037,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.43204591486047383,
+          "similarity": 0.44419896602630615,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.4312330441725881,
+          "similarity": 0.4403427839279175,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 359,
+          "title": "ADR-005: Migration Compatibility Module for Bincode Deserializers",
+          "category": "decision",
+          "final_score": 0.42560132375085635,
+          "similarity": 0.4189567565917969,
+          "confidence": 0.48526536933547193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.0596846673731528
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

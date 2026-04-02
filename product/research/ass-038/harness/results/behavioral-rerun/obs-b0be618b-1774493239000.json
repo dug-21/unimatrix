@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-b0be618b-1774493239000",
+  "query": "nan-008 report mod deserialization copy pattern",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.4810599573300861,
+          "similarity": 0.4468041658401489,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.47515911164912883,
+          "similarity": 0.4477683901786804,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.47107470459563305,
+          "similarity": 0.4463080167770386,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4667351094346388,
+          "similarity": 0.44000715017318726,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.44878743087158435,
+          "similarity": 0.45395147800445557,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.4810599573300861,
+          "similarity": 0.4468041658401489,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.47515911164912883,
+          "similarity": 0.4477683901786804,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.47107470459563305,
+          "similarity": 0.4463080167770386,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4667351094346388,
+          "similarity": 0.44000715017318726,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.44878743087158435,
+          "similarity": 0.45395147800445557,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1993",
+  "query": "context_briefing was an idea I had at the beginning... it didn't work very well, so its not currenty in use.  but lets think about this... In practice, I see agents spawned (partially because their told... issue a number of context_search requests to collect information.  Agent currently decides want to search for.  I'm wondering if we can replace that, and transition context_briefing to complement contextSearch.... Hear me out... instead of context_search by the agent(sometimes repetitively), have context_briefing provide a consolidated - but informative index (high k) - to allow the agent to context_get details... WHILE contextSearch injects lessons based on the agent spawn prompt",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5926391699501734,
+          "similarity": 0.6523947715759277,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5759089192614762,
+          "similarity": 0.5876003503799438,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.5683378973074583,
+          "similarity": 0.6036476492881775,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5662189011896095,
+          "similarity": 0.6156410574913025,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5646934811789689,
+          "similarity": 0.6173285841941833,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5926391699501734,
+          "similarity": 0.6523947715759277,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5759089192614762,
+          "similarity": 0.5876003503799438,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.5683378973074583,
+          "similarity": 0.6036476492881775,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5662189011896095,
+          "similarity": 0.6156410574913025,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.5646934811789689,
+          "similarity": 0.6173285841941833,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-30b7b9c9-1774911058000",
+  "query": "personalized_pagerank PPR direction test patterns",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5304605436898346,
+          "similarity": 0.5998023152351379,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.49449349302951057,
+          "similarity": 0.5586907267570496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.4782378752289687,
+          "similarity": 0.5010401606559753,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4776595539988925,
+          "similarity": 0.49629294872283936,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.47003898877803046,
+          "similarity": 0.5097817182540894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5998023152351379,
+          "similarity": 0.5998023152351379,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.5586907267570496,
+          "similarity": 0.5586907267570496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5097817182540894,
+          "similarity": 0.5097817182540894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5010401606559753,
+          "similarity": 0.5010401606559753,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.49629294872283936,
+          "similarity": 0.49629294872283936,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.5304605436898346,
+          "similarity": 0.5998023152351379,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.49449349302951057,
+          "similarity": 0.5586907267570496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.4782378752289687,
+          "similarity": 0.5010401606559753,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4776595539988925,
+          "similarity": 0.49629294872283936,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.47003898877803046,
+          "similarity": 0.5097817182540894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.46526296322162336,
+          "similarity": 0.5998023152351379,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.43996352415818435,
+          "similarity": 0.5586907267570496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.4098656727717473,
+          "similarity": 0.5097817182540894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.40448625271136945,
+          "similarity": 0.5010401606559753,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4015648915217473,
+          "similarity": 0.49629294872283936,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.6006459854647619,
+          "similarity": 0.5998023152351379,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.5553374244259643,
+          "similarity": 0.5586907267570496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.538411633434414,
+          "similarity": 0.5010401606559753,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5380545782964135,
+          "similarity": 0.49629294872283936,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5264366466742152,
+          "similarity": 0.5097817182540894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.6006514996492693,
+          "similarity": 0.5998023152351379,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.5553155074172645,
+          "similarity": 0.5586907267570496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5386558914264301,
+          "similarity": 0.5010401606559753,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5383275301236917,
+          "similarity": 0.49629294872283936,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5265455024155232,
+          "similarity": 0.5097817182540894,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

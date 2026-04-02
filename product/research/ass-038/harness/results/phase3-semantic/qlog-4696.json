@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4696",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Already on `feature/crt-034` with the cycle open at phase `spec` from Session 1. Wave plan from the brief:\n\n- **Wave 1** (parallel): `store_constants` + `config_extension` (no inter-dependencies)\n- **Wave 2**: `co_access_promotion_tick` (consumes Wave 1 constants + config type)\n- **Wave 3**: `background_tick_insertion` (wires in the Wave 2 function)\n\nSpawning Stage 3a in parallel now.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5489650703387102,
+          "similarity": 0.6453984975814819,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3547,
+          "title": "Wave-Parallel Swarm: Type-Definition Waves Must Complete Before Downstream Waves Are Spawned",
+          "category": "lesson-learned",
+          "final_score": 0.5327534055506362,
+          "similarity": 0.5733858346939087,
+          "confidence": 0.555493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.5030592544191933,
+          "similarity": 0.517578661441803,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.4998073159427088,
+          "similarity": 0.5311446189880371,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3693,
+          "title": "run_single_tick rebuild: use timeout+spawn+swap triple-nest; error branch must NOT write to handle",
+          "category": "pattern",
+          "final_score": 0.48032191060806817,
+          "similarity": 0.5154663920402527,
+          "confidence": 0.4959217687358244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5489650703387102,
+          "similarity": 0.6453984975814819,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3547,
+          "title": "Wave-Parallel Swarm: Type-Definition Waves Must Complete Before Downstream Waves Are Spawned",
+          "category": "lesson-learned",
+          "final_score": 0.5327534055506362,
+          "similarity": 0.5733858346939087,
+          "confidence": 0.555493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.5030592544191933,
+          "similarity": 0.517578661441803,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.4998073159427088,
+          "similarity": 0.5311446189880371,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3693,
+          "title": "run_single_tick rebuild: use timeout+spawn+swap triple-nest; error branch must NOT write to handle",
+          "category": "pattern",
+          "final_score": 0.48032191060806817,
+          "similarity": 0.5154663920402527,
+          "confidence": 0.4959217687358244,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

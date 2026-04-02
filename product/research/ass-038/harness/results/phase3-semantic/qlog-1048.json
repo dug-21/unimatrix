@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1048",
+  "query": "did not see integration tests using @product/test/infra-001/USAGE-PROTOCOL.md",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5108261750362916,
+          "similarity": 0.5182315111160278,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.508632663344364,
+          "similarity": 0.48046159744262695,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.49805203482923766,
+          "similarity": 0.460829496383667,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 840,
+          "title": "Integration test harness: how to run smoke and full suite",
+          "category": "procedure",
+          "final_score": 0.4940058899716204,
+          "similarity": 0.4705624580383301,
+          "confidence": 0.5972124755824983,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3797,
+          "title": "infra-001: call_tool without format=json returns summary row, not entry content",
+          "category": "pattern",
+          "final_score": 0.4721217730173449,
+          "similarity": 0.4501922130584717,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5108261750362916,
+          "similarity": 0.5182315111160278,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3526,
+          "title": "Eval Harness Feature Test Strategy: Round-Trip Over infra-001 for JSON Schema Boundary Risk",
+          "category": "pattern",
+          "final_score": 0.508632663344364,
+          "similarity": 0.48046159744262695,
+          "confidence": 0.6227720898738068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.49805203482923766,
+          "similarity": 0.460829496383667,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 840,
+          "title": "Integration test harness: how to run smoke and full suite",
+          "category": "procedure",
+          "final_score": 0.4940058899716204,
+          "similarity": 0.4705624580383301,
+          "confidence": 0.5972124755824983,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3797,
+          "title": "infra-001: call_tool without format=json returns summary row, not entry content",
+          "category": "pattern",
+          "final_score": 0.4721217730173449,
+          "similarity": 0.4501922130584717,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

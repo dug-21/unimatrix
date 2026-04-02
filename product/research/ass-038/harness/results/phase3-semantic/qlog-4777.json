@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4777",
+  "query": "so.. go ahead and close the close immediately and close - no longer relevant buckets.  In addition, #456 was actually merged and we're currently working on 459",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.4116398848125834,
+          "similarity": 0.34711480140686035,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1118,
+          "title": "Versioned Sentinel Markers for Idempotent File Mutation",
+          "category": "pattern",
+          "final_score": 0.39565547762431297,
+          "similarity": 0.3099684715270996,
+          "confidence": 0.5596813370844217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.39446018559069695,
+          "similarity": 0.30488407611846924,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.39112463661753283,
+          "similarity": 0.29692113399505615,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.3663897195427066,
+          "similarity": 0.32121628522872925,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3360,
+          "title": "Timestamp-gated restoration: hardcoded epoch vs COUNTERS key tradeoff (GH #367)",
+          "category": "pattern",
+          "final_score": 0.4116398848125834,
+          "similarity": 0.34711480140686035,
+          "confidence": 0.5500013996243547,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1118,
+          "title": "Versioned Sentinel Markers for Idempotent File Mutation",
+          "category": "pattern",
+          "final_score": 0.39565547762431297,
+          "similarity": 0.3099684715270996,
+          "confidence": 0.5596813370844217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.39446018559069695,
+          "similarity": 0.30488407611846924,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.39112463661753283,
+          "similarity": 0.29692113399505615,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.3663897195427066,
+          "similarity": 0.32121628522872925,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

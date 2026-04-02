@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a18ee37f-1773275466000",
+  "query": "nan-001 knowledge export",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5612032790131013,
+          "similarity": 0.588736355304718,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5055164905185852,
+          "similarity": 0.5180138945579529,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4885261095880742,
+          "similarity": 0.49094653129577637,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.47078001099760025,
+          "similarity": 0.4463636875152588,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.46858410334516565,
+          "similarity": 0.4262045621871948,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5612032790131013,
+          "similarity": 0.588736355304718,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5055164905185852,
+          "similarity": 0.5180138945579529,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4885261095880742,
+          "similarity": 0.49094653129577637,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.47078001099760025,
+          "similarity": 0.4463636875152588,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.46858410334516565,
+          "similarity": 0.4262045621871948,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

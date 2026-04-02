@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4652",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Trace co_access to graph promotion plan) → ]\n[Assistant] Here's the full picture, clearly:\n\n**Two co_access signals, one dead, one stale.**\n\n**Signal 1 — Direct boost: completely dead.**\nThe infrastructure is still there — `compute_search_boost()` still runs, `coac_norm` still gets calculated — but `w_coac = 0.0` (hardcoded default, set in crt-032). Multiplies to zero. Contributes nothing to scoring.\n\n**Signal 2 — PPR via GRAPH_EDGES CoAccess edges: running, but frozen.**\nThis is the important finding. The co_access table was promoted to GRAPH_EDGES **once** — at the v12→v13 migration bootstrap (threshold: count ≥ 3). That was a one-time event. There is no ongoing process that promotes new co_access pairs from the table into GRAPH_EDGES. So:\n\n- The PPR is running on CoAccess edges that were frozen at migration time\n- Every co_access pair accumulated since then is in the table but invisible to PPR\n- The graph grows via NLI Supports edges (ongoing, per tick), but CoAccess edges are static\n\n**The co_access table is being written to but read by nothing meaningful.**\n\n---\n\nThis has a vision implication worth flagging: the flywheel design says `co_access + NLI → graph → PPR`. The NLI → graph path is working. The co_access → graph path only happened once. The flywheel is incomplete on that dimension, which may partly explain why PPR showed identical distribution metrics to pre-PPR — the CoAccess edge density in the graph hasn't grown since the bootstrap.\n\n---\n\n**For #409 scope**: this doesn't change the retention policy design, but it does mean the co_access table cleanup policy is lower stakes than it appeared — the table is largely inert right now. The meaningful work in #409 on co_access is correctness, not impact.\n\nThe live gap (no ongoing co_access → GRAPH_EDGES promotion) is probably worth a separate issue. Want me to note that while we're in this context?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.5895345272503572,
+          "similarity": 0.6650816798210144,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5839762124734899,
+          "similarity": 0.6429146528244019,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 701,
+          "title": "ADR-001: W_COAC Disposition — Delete Dead Weight Constant (crt-013)",
+          "category": "decision",
+          "final_score": 0.5651798271651257,
+          "similarity": 0.5949581265449524,
+          "confidence": 0.6126907786696952,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5628528448488194,
+          "similarity": 0.6028366088867188,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5389809535475587,
+          "similarity": 0.5887181758880615,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.5895345272503572,
+          "similarity": 0.6650816798210144,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5839762124734899,
+          "similarity": 0.6429146528244019,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 701,
+          "title": "ADR-001: W_COAC Disposition — Delete Dead Weight Constant (crt-013)",
+          "category": "decision",
+          "final_score": 0.5651798271651257,
+          "similarity": 0.5949581265449524,
+          "confidence": 0.6126907786696952,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5628528448488194,
+          "similarity": 0.6028366088867188,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5389809535475587,
+          "similarity": 0.5887181758880615,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

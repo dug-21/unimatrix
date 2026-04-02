@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2841",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] That's an out-of-scope col-025 fix made by a subagent — minor log level change. It's benign; I'll note it in the PR. Now launching **Stage 3b — Wave 3** (formatter overhaul — the final and largest component).\n[tool: Bash(git show --stat 6db6c9c) → ]\n[Assistant] Wait — there's a `fix(col-025)` commit that shouldn't be here. Let me check.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3838,
+          "title": "Retrospective findings: bugfix-360",
+          "category": "lesson-learned",
+          "final_score": 0.4930041182166651,
+          "similarity": 0.5353078246116638,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4843869669220018,
+          "similarity": 0.5018459558486938,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3840,
+          "title": "Retrospective findings: bugfix-367",
+          "category": "lesson-learned",
+          "final_score": 0.4833537497771413,
+          "similarity": 0.5169721245765686,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3832,
+          "title": "Retrospective findings: bugfix-311",
+          "category": "lesson-learned",
+          "final_score": 0.4719898732837877,
+          "similarity": 0.4953807592391968,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.47149911880493156,
+          "similarity": 0.5168483257293701,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3838,
+          "title": "Retrospective findings: bugfix-360",
+          "category": "lesson-learned",
+          "final_score": 0.4930041182166651,
+          "similarity": 0.5353078246116638,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3714,
+          "title": "col018_topic_signal_null_for_generic_prompt is a pre-existing flaky test in workspace runs",
+          "category": "lesson-learned",
+          "final_score": 0.4843869669220018,
+          "similarity": 0.5018459558486938,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3840,
+          "title": "Retrospective findings: bugfix-367",
+          "category": "lesson-learned",
+          "final_score": 0.4833537497771413,
+          "similarity": 0.5169721245765686,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3832,
+          "title": "Retrospective findings: bugfix-311",
+          "category": "lesson-learned",
+          "final_score": 0.4719898732837877,
+          "similarity": 0.4953807592391968,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.47149911880493156,
+          "similarity": 0.5168483257293701,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

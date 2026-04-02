@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3681",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] The agent self-committed — implementation is already in `9585775`. Wave 2 — spawning the `search.rs` Step 10b agent.\n[tool: Bash(git log --oneline -5 && git show --stat HEAD~1) → 3eb8ab7 impl: col-030 wave 1 — suppress_contradicts + graph.rs wiring (#418)\n9585775 impl(graph_suppression): suppress_contradicts pure function with 8 unit tests (#418)\na2cb807 pseudocode: col-030 component design + test plans (#418)\n7ba3ac5 chore: resolve WARN-01 and WARN-02 across all col-030 d]\n[tool: Bash(git add crates/unimatrix-engine/src/graph_suppression.rs crates/unimatrix-engine/src/graph.rs product/features/col-030/a) → [feature/col-030 3eb8ab7] impl: col-030 wave 1 — suppress_contradicts + graph.rs wiring (#418)\n 1 file changed, 57 insertions(+)\n create mode 100644 product/features/col-030/agents/col-030-agent-3-graph-suppression-report.md]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.5400529944351457,
+          "similarity": 0.5763168931007385,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5399574729834702,
+          "similarity": 0.5591710209846497,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.531384341538182,
+          "similarity": 0.6324191689491272,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5224348059920977,
+          "similarity": 0.5585145354270935,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5175958986941982,
+          "similarity": 0.5857970714569092,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.5400529944351457,
+          "similarity": 0.5763168931007385,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5399574729834702,
+          "similarity": 0.5591710209846497,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.531384341538182,
+          "similarity": 0.6324191689491272,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3637,
+          "title": "search.rs uses tracing:: qualified — bare debug! unresolved; Option fields need ? specifier",
+          "category": "pattern",
+          "final_score": 0.5224348059920977,
+          "similarity": 0.5585145354270935,
+          "confidence": 0.5487308513684175,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.5175958986941982,
+          "similarity": 0.5857970714569092,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

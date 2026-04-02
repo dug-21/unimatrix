@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-543",
+  "query": "yes please",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.3267366479226975,
+          "similarity": 0.11734950542449951,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.3250463918173083,
+          "similarity": 0.12331229448318481,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 430,
+          "title": "How to add new signals to SignalDigest",
+          "category": "procedure",
+          "final_score": 0.306384159636501,
+          "similarity": 0.138649582862854,
+          "confidence": 0.5621147434949971,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.3060216090737118,
+          "similarity": 0.11245083808898926,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.2993754325235627,
+          "similarity": 0.11778265237808228,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.3267366479226975,
+          "similarity": 0.11734950542449951,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.3250463918173083,
+          "similarity": 0.12331229448318481,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 430,
+          "title": "How to add new signals to SignalDigest",
+          "category": "procedure",
+          "final_score": 0.306384159636501,
+          "similarity": 0.138649582862854,
+          "confidence": 0.5621147434949971,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.3060216090737118,
+          "similarity": 0.11245083808898926,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.2993754325235627,
+          "similarity": 0.11778265237808228,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4254",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Stage 3b — Wave 1: `graph_ppr.rs` and `config.rs` in parallel.\n[tool: Bash(git add product/features/crt-030/ && git commit -m \"$(cat <<'EOF'\npseudocode: crt-030 component design + test plans (#39) → [feature/crt-030 0ce8202] pseudocode: crt-030 component design + test plans (#398)\n 14 files changed, 2523 insertions(+), 6 deletions(-)\n create mode 100644 product/features/crt-030/agents/crt-030-agent-1-pseudocode-report.md\n create mode 100644 product/features/crt-030/agents/crt-030-agent-2-testpl]\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'crt-030'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[Assistant] Gate 3a PASS. Committing Stage 3a artifacts and proceeding to Stage 3b.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5187043075376405,
+          "similarity": 0.5187900066375732,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5032937390977265,
+          "similarity": 0.5209124684333801,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3026,
+          "title": "Isolating hook.rs unit tests from in-progress swarm agent compilation failures",
+          "category": "pattern",
+          "final_score": 0.4949512724521532,
+          "similarity": 0.5122789740562439,
+          "confidence": 0.5401834908612104,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.4790421086519233,
+          "similarity": 0.5125448703765869,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.46399909772370984,
+          "similarity": 0.5025982856750488,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5187043075376405,
+          "similarity": 0.5187900066375732,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.5032937390977265,
+          "similarity": 0.5209124684333801,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3026,
+          "title": "Isolating hook.rs unit tests from in-progress swarm agent compilation failures",
+          "category": "pattern",
+          "final_score": 0.4949512724521532,
+          "similarity": 0.5122789740562439,
+          "confidence": 0.5401834908612104,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.4790421086519233,
+          "similarity": 0.5125448703765869,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.46399909772370984,
+          "similarity": 0.5025982856750488,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

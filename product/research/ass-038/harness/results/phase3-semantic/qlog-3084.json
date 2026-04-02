@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-3084",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Gate report: **PASS**. Now spawning the security reviewer.\n\n**Step 2: Security Review.**\n[tool: Read(/workspaces/unimatrix/.claude/worktrees/agent-aabe7218/product/features/bugfix-389/reports/gate-bugfix-report.md) → ]\n[tool: Bash(find /workspaces/unimatrix/.claude/worktrees/agent-aabe7218 -name \"*.md\" -path \"*/bugfix-389/*\" 2>/dev/null) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5167473544369052,
+          "similarity": 0.5464743375778198,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.4852348397644113,
+          "similarity": 0.4777122735977173,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4660608173092704,
+          "similarity": 0.47522103786468506,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.4607688283418353,
+          "similarity": 0.4740607738494873,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5167473544369052,
+          "similarity": 0.5464743375778198,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.4852348397644113,
+          "similarity": 0.4777122735977173,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3927,
+          "title": "Missing agent-0/agent-1 reports are the most common bugfix gate failure pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4660608173092704,
+          "similarity": 0.47522103786468506,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.4607688283418353,
+          "similarity": 0.4740607738494873,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

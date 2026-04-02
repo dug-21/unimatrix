@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-1790a921-1774277103000",
+  "query": "prefetch HashMap Active entries quality gate rayon closure pattern",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.44922564453784186,
+          "similarity": 0.47715502977371216,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.4462613029312183,
+          "similarity": 0.44547414779663086,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.43120688504993593,
+          "similarity": 0.39926743507385254,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4184835485758657,
+          "similarity": 0.3992205262184143,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.41135597499371984,
+          "similarity": 0.3932003378868103,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5011768621329484,
+          "similarity": 0.47715502977371216,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.500214126788277,
+          "similarity": 0.44547414779663086,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.48408127015933833,
+          "similarity": 0.39926743507385254,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4666224660631084,
+          "similarity": 0.3992205262184143,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.45742973647306545,
+          "similarity": 0.3932003378868103,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.38978771062997675,
+          "similarity": 0.47715502977371216,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.37029178325946516,
+          "similarity": 0.44547414779663086,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.34185688312237084,
+          "similarity": 0.39926743507385254,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.34182801613440883,
+          "similarity": 0.3992205262184143,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.3381232848534217,
+          "similarity": 0.3932003378868103,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.44922564453784186,
+          "similarity": 0.47715502977371216,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.4462613029312183,
+          "similarity": 0.44547414779663086,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.43120688504993593,
+          "similarity": 0.39926743507385254,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4184835485758657,
+          "similarity": 0.3992205262184143,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.41135597499371984,
+          "similarity": 0.3932003378868103,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.47715502977371216,
+          "similarity": 0.47715502977371216,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.44547414779663086,
+          "similarity": 0.44547414779663086,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.39926743507385254,
+          "similarity": 0.39926743507385254,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.3992205262184143,
+          "similarity": 0.3992205262184143,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.3932003378868103,
+          "similarity": 0.3932003378868103,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3354,
+          "title": "Pre-fetch Vec&lt;EntryRecord&gt; in Tokio context before RayonPool::spawn — quality gate pattern",
+          "category": "pattern",
+          "final_score": 0.5010208762085377,
+          "similarity": 0.47715502977371216,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.4998586723792403,
+          "similarity": 0.44547414779663086,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.4835305309704715,
+          "similarity": 0.39926743507385254,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4661847911290519,
+          "similarity": 0.3992205262184143,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3353,
+          "title": "Rayon worker threads have no Tokio runtime — never call Handle::current() inside a rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.45701266245627153,
+          "similarity": 0.3932003378868103,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

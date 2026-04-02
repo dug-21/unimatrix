@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-842",
+  "query": "Good news.  CRT-014, CRT-019 are already completed.  And I thought GNN would likely replace Crt-020",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.45954526356531655,
+          "similarity": 0.4250451326370239,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.4407976741291484,
+          "similarity": 0.40747642517089844,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.43572621176289983,
+          "similarity": 0.37670987844467163,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.4352147630462003,
+          "similarity": 0.37587738037109375,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.4101784050411904,
+          "similarity": 0.3908001184463501,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.45954526356531655,
+          "similarity": 0.4250451326370239,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.4407976741291484,
+          "similarity": 0.40747642517089844,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 395,
+          "title": "ADR-003: Fixed-Width SignalDigest [f32; 32]",
+          "category": "decision",
+          "final_score": 0.43572621176289983,
+          "similarity": 0.37670987844467163,
+          "confidence": 0.573099891292626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 406,
+          "title": "ADR-003: Fixed-Width 32-Slot SignalDigest (crt-007)",
+          "category": "decision",
+          "final_score": 0.4352147630462003,
+          "similarity": 0.37587738037109375,
+          "confidence": 0.5729009563095528,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.4101784050411904,
+          "similarity": 0.3908001184463501,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

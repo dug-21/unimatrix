@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-531f376f-1773534358000",
+  "query": "background maintenance auto-quarantine store mutation after lock release",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5397626428553126,
+          "similarity": 0.45750558376312256,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5134100690430692,
+          "similarity": 0.4215819835662842,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.5047881196606651,
+          "similarity": 0.4539649486541748,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.4924754499661018,
+          "similarity": 0.41260653734207153,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.45723753507030085,
+          "similarity": 0.4114341735839844,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.4759346100633794,
+          "similarity": 0.45750558376312256,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4541689062718279,
+          "similarity": 0.4215819835662842,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.45020026922806844,
+          "similarity": 0.4539649486541748,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.4382754376425935,
+          "similarity": 0.41260653734207153,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4125183593786466,
+          "similarity": 0.4114341735839844,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.45750558376312256,
+          "similarity": 0.45750558376312256,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.4539649486541748,
+          "similarity": 0.4539649486541748,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4215819835662842,
+          "similarity": 0.4215819835662842,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.41260653734207153,
+          "similarity": 0.41260653734207153,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4114341735839844,
+          "similarity": 0.4114341735839844,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.37769574385422927,
+          "similarity": 0.45750558376312256,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.3755168914794922,
+          "similarity": 0.4539649486541748,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.3555889129638672,
+          "similarity": 0.4215819835662842,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.3500655614412748,
+          "similarity": 0.41260653734207153,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.3493441068209135,
+          "similarity": 0.4114341735839844,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.4759346100633794,
+          "similarity": 0.45750558376312256,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.4541689062718279,
+          "similarity": 0.4215819835662842,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.45020026922806844,
+          "similarity": 0.4539649486541748,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.4382754376425935,
+          "similarity": 0.41260653734207153,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4125183593786466,
+          "similarity": 0.4114341735839844,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5392285061079607,
+          "similarity": 0.45750558376312256,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5128137827737393,
+          "similarity": 0.4215819835662842,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.5044580990697137,
+          "similarity": 0.4539649486541748,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.49195682066334834,
+          "similarity": 0.41260653734207153,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.456940110645065,
+          "similarity": 0.4114341735839844,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

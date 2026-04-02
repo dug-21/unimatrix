@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5218",
+  "query": "now build for local install",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.37439392833671326,
+          "similarity": 0.24840021133422852,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 6,
+          "title": "Roadmap milestones 7-9: Multi-Project, Thin-Shell, Build",
+          "category": "decision",
+          "final_score": 0.35948767565963546,
+          "similarity": 0.20965278148651123,
+          "confidence": 0.6048197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1197,
+          "title": "Tag-Triggered Release Pipeline Pattern (Rust + npm via GitHub Actions)",
+          "category": "pattern",
+          "final_score": 0.3524003700303354,
+          "similarity": 0.22797167301177979,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.34545562323686996,
+          "similarity": 0.21374738216400146,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1193,
+          "title": "npm optionalDependencies Pattern for Platform-Specific Rust Binary Distribution",
+          "category": "pattern",
+          "final_score": 0.3133064594782833,
+          "similarity": 0.20312565565109253,
+          "confidence": 0.4887951676537796,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.37439392833671326,
+          "similarity": 0.24840021133422852,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 6,
+          "title": "Roadmap milestones 7-9: Multi-Project, Thin-Shell, Build",
+          "category": "decision",
+          "final_score": 0.35948767565963546,
+          "similarity": 0.20965278148651123,
+          "confidence": 0.6048197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1197,
+          "title": "Tag-Triggered Release Pipeline Pattern (Rust + npm via GitHub Actions)",
+          "category": "pattern",
+          "final_score": 0.3524003700303354,
+          "similarity": 0.22797167301177979,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.34545562323686996,
+          "similarity": 0.21374738216400146,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1193,
+          "title": "npm optionalDependencies Pattern for Platform-Specific Rust Binary Distribution",
+          "category": "pattern",
+          "final_score": 0.3133064594782833,
+          "similarity": 0.20312565565109253,
+          "confidence": 0.4887951676537796,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

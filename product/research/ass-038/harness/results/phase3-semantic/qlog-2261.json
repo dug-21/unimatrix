@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2261",
+  "query": "how does the six-factor confidence scoring formula work with NLI and co-access boost",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 701,
+          "title": "ADR-001: W_COAC Disposition — Delete Dead Weight Constant (crt-013)",
+          "category": "decision",
+          "final_score": 0.5176929321560347,
+          "similarity": 0.5047330260276794,
+          "confidence": 0.6126907786696952,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5156418219894029,
+          "similarity": 0.486924946308136,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5115984178061957,
+          "similarity": 0.505396842956543,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5057828175811017,
+          "similarity": 0.4812626242637634,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.4905215901239548,
+          "similarity": 0.4602662920951843,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 701,
+          "title": "ADR-001: W_COAC Disposition — Delete Dead Weight Constant (crt-013)",
+          "category": "decision",
+          "final_score": 0.5176929321560347,
+          "similarity": 0.5047330260276794,
+          "confidence": 0.6126907786696952,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5156418219894029,
+          "similarity": 0.486924946308136,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5115984178061957,
+          "similarity": 0.505396842956543,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.5057828175811017,
+          "similarity": 0.4812626242637634,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1545,
+          "title": "ADR-003 crt-018b: Utility Delta Applied Inside the Status Penalty Multiplication",
+          "category": "decision",
+          "final_score": 0.4905215901239548,
+          "similarity": 0.4602662920951843,
+          "confidence": 0.6024638987718999,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

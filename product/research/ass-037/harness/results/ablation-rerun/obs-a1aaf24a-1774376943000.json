@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774376943000",
+  "query": "SubagentStart prompt_snippet spawn prompt quality signal useless short",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.42636764966524565,
+          "similarity": 0.5365974307060242,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.4186827586247371,
+          "similarity": 0.5241094827651978,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.41430880473210263,
+          "similarity": 0.5170018076896667,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.41323320682232195,
+          "similarity": 0.5152539610862732,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3297,
+          "title": "SubagentStart hook routing: input.session_id vs ppid fallback session_id",
+          "category": "pattern",
+          "final_score": 0.35550649349506086,
+          "similarity": 0.4214480519294739,
+          "confidence": 0.5803644385143706,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5839399990504266,
+          "similarity": 0.5365974307060242,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5605266565771219,
+          "similarity": 0.5241094827651978,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5540425358988625,
+          "similarity": 0.5170018076896667,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.5476854393658552,
+          "similarity": 0.5152539610862732,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3297,
+          "title": "SubagentStart hook routing: input.session_id vs ppid fallback session_id",
+          "category": "pattern",
+          "final_score": 0.4864593009869316,
+          "similarity": 0.4214480519294739,
+          "confidence": 0.5803644385143706,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5842494276016972,
+          "similarity": 0.5365974307060242,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5607646773209907,
+          "similarity": 0.5241094827651978,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5542846321616678,
+          "similarity": 0.5170018076896667,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.5478974098121272,
+          "similarity": 0.5152539610862732,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3297,
+          "title": "SubagentStart hook routing: input.session_id vs ppid fallback session_id",
+          "category": "pattern",
+          "final_score": 0.48688421111149016,
+          "similarity": 0.4214480519294739,
+          "confidence": 0.5803644385143706,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5139958280173812,
+          "similarity": 0.5365974307060242,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.4959935136742359,
+          "similarity": 0.5241094827651978,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.49076464683847704,
+          "similarity": 0.5170018076896667,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.4859862529407121,
+          "similarity": 0.5152539610862732,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3297,
+          "title": "SubagentStart hook routing: input.session_id vs ppid fallback session_id",
+          "category": "pattern",
+          "final_score": 0.4348333575190481,
+          "similarity": 0.4214480519294739,
+          "confidence": 0.5803644385143706,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5365974307060242,
+          "similarity": 0.5365974307060242,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5241094827651978,
+          "similarity": 0.5241094827651978,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5170018076896667,
+          "similarity": 0.5170018076896667,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.5152539610862732,
+          "similarity": 0.5152539610862732,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3297,
+          "title": "SubagentStart hook routing: input.session_id vs ppid fallback session_id",
+          "category": "pattern",
+          "final_score": 0.4214480519294739,
+          "similarity": 0.4214480519294739,
+          "confidence": 0.5803644385143706,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5139958280173812,
+          "similarity": 0.5365974307060242,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.4959935136742359,
+          "similarity": 0.5241094827651978,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.49076464683847704,
+          "similarity": 0.5170018076896667,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.4859862529407121,
+          "similarity": 0.5152539610862732,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3297,
+          "title": "SubagentStart hook routing: input.session_id vs ppid fallback session_id",
+          "category": "pattern",
+          "final_score": 0.4348333575190481,
+          "similarity": 0.4214480519294739,
+          "confidence": 0.5803644385143706,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

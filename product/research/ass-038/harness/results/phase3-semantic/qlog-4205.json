@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4205",
+  "query": "The scope is solid. The four config fields are right, petgraph dependency is already present, and superseding #396 is\n  correct. Here are my answers to each question, plus one scope gap I spotted.\n\n  ---\n  Q1 — Edge direction for Supports: Backward (Incoming)\n                                                                                                                         \n  Yes, backward is the intent. The primary value of Supports edges is surfacing lessons-learned when a decision is the\n  seed — that requires walking edges in reverse. Forward traversal (lesson → decision) is useful but already partially   \n  served by HNSW co-access. The underserved case is the decision seed surfacing its supporting evidence.\n                                                                                                                         \n  Apply the same reasoning to Prerequisite: A→Prereq→B means \"need A before B\" — backward from B surfaces A. Both        \n  Supports and Prerequisite should traverse Incoming edges. CoAccess is symmetric, direction doesn't matter.\n                                                                                                                         \n  ---                                                                                                                    \n  Q2 — co-access timing: Move 6d before 6c\n                                                                                                                         \n  Zero co-access for PPR entrants is a systematic under-scoring of exactly the entries PPR is designed to surface. If a\n  PPR-surfaced entry has legitimate co-access history with HNSW candidates, it deserves that boost. Run PPR first (6d),  \n  expand the pool, then run co-access prefetch (6c) over the full expanded pool. The ordering should be: HNSW → PPR\n  expansion → co-access prefetch → NLI.                                                                                  \n                                                                  \n  ---\n  Q3 — Pool expansion cap: Yes, add it\n                                      \n  With 18 Supports edges today the cap won't bind, but it should be in from day one. The graph will grow. An uncapped PPR\n   expansion into a dense future graph is a latency regression waiting to happen. Recommend ppr_max_expand defaulting to \n  50. Take the top-N PPR-scored entries above threshold.\n                                                                                                                         \n  ---                                                             \n  Q4 — Determinism: Yes, sort by node ID\n                                                                                                                         \n  Non-deterministic power iteration makes test assertions brittle in ways that are expensive to diagnose. Sort by node ID\n   during accumulation. This is a correctness constraint, not a nicety.                                                  \n                                                                  \n  ---                                                                                                                    \n  Q5 — Blend location: Pre-fusion (into similarity)               \n                                                   \n  The fused scoring formula is 0.85×similarity + 0.15×confidence + coac_boost. PPR conceptually augments the relevance\n  dimension (similarity), not confidence. Blending pre-fusion keeps the formula's weight semantics intact and handles    \n  both cases cleanly:\n                                                                                                                         \n  - Entry only in PPR pool: similarity = w_ppr × ppr_score, then fused normally                                          \n  - Entry in both pools: similarity = (1−w_ppr)×hnsw_score + w_ppr×ppr_score\n                                                                                                                         \n  Additive post-fusion offset would push PPR entries above high-confidence entries in ways that break the weight         \n  semantics. Pre-fusion is correct.                                                                                      \n                                                                                                                         \n  ---                                                             \n  Q6 — Prerequisite edges: Yes, transparent\n                                                                                                                         \n  Include Prerequisite in the traversal from day one even with zero edges. No code change when #412 begins producing\n  them. This is correct.                                                                                                 \n                                                                  \n  ---                                                                                                                    \n  Scope gap: personalization vector construction is unspecified   \n                                                                                                                         \n  The roadmap is explicit — personalization_vector[entry] = hnsw_score × phase_affinity_score (from #414 frequency\n  table). The scope document doesn't describe how the vector is built. The spec needs to define:                         \n                                                                  \n  - For HNSW candidates: hnsw_score × phase_affinity_score (from #414; graceful cold-start to hnsw_score × 1.0 if no     \n  phase data)                                                     \n  - For entries not in HNSW pool: 0.0 (no personalization prior)                                                         \n  - Normalization: the vector must sum to 1.0 before power iteration begins                                              \n                                                                                                                         \n  Without this, the implementer will make an ad-hoc choice and the phase-conditioned weighting — which is the entire     \n  point of #414 being a dependency — may not be wired in correctly. ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5772239210527628,
+          "similarity": 0.6613798141479492,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.567946595049593,
+          "similarity": 0.6125147342681885,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5635657560185553,
+          "similarity": 0.6157410144805908,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5527252462508272,
+          "similarity": 0.5835378170013428,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5391762186422913,
+          "similarity": 0.5492599606513977,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.5772239210527628,
+          "similarity": 0.6613798141479492,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.567946595049593,
+          "similarity": 0.6125147342681885,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5635657560185553,
+          "similarity": 0.6157410144805908,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5527252462508272,
+          "similarity": 0.5835378170013428,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5391762186422913,
+          "similarity": 0.5492599606513977,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

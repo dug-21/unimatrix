@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-d95fe479-1774805985000",
+  "query": "category boost score adjustment lesson learned underrepresented retrieval injection",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.543874204158783,
+          "similarity": 0.543874204158783,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.4582100510597229,
+          "similarity": 0.4582100510597229,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.42090463638305664,
+          "similarity": 0.42090463638305664,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.389001727104187,
+          "similarity": 0.389001727104187,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.386044442653656,
+          "similarity": 0.386044442653656,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.5396414968929089,
+          "similarity": 0.543874204158783,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.5250491176772718,
+          "similarity": 0.4582100510597229,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4900062604861676,
+          "similarity": 0.42090463638305664,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.4763973170485037,
+          "similarity": 0.386044442653656,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.458119292660224,
+          "similarity": 0.389001727104187,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4308456640977126,
+          "similarity": 0.543874204158783,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.3781292621905987,
+          "similarity": 0.4582100510597229,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.35517208392803484,
+          "similarity": 0.42090463638305664,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.3355395243718074,
+          "similarity": 0.389001727104187,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.3337196570176345,
+          "similarity": 0.386044442653656,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.48199537799871867,
+          "similarity": 0.543874204158783,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.46558335636731424,
+          "similarity": 0.4582100510597229,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4373982334487267,
+          "similarity": 0.42090463638305664,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.4250943286791465,
+          "similarity": 0.386044442653656,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.4118875964244434,
+          "similarity": 0.389001727104187,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.5396138321395372,
+          "similarity": 0.543874204158783,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.5254859743218311,
+          "similarity": 0.4582100510597229,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4904579050881488,
+          "similarity": 0.42090463638305664,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.4769878587112152,
+          "similarity": 0.386044442653656,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.45857104145470795,
+          "similarity": 0.389001727104187,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.48199537799871867,
+          "similarity": 0.543874204158783,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.46558335636731424,
+          "similarity": 0.4582100510597229,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4373982334487267,
+          "similarity": 0.42090463638305664,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.4250943286791465,
+          "similarity": 0.386044442653656,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.4118875964244434,
+          "similarity": 0.389001727104187,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3161,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 458,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1592",
+  "query": "so... I want to see some actual examples of the query and updates... I have to visualize some of the results to I can better understand what we're actually testing",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4344303144824755,
+          "similarity": 0.3268568515777588,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.4325810123942724,
+          "similarity": 0.34085404872894287,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4303230308429514,
+          "similarity": 0.3505638837814331,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4302736131599585,
+          "similarity": 0.377602219581604,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4286942491626352,
+          "similarity": 0.33782780170440674,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 5,
+          "title": "Roadmap milestones 5-6: Orchestration and Real-Time Interface",
+          "category": "decision",
+          "final_score": 0.4344303144824755,
+          "similarity": 0.3268568515777588,
+          "confidence": 0.6408010656270641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 724,
+          "title": "Behavior-Based Ranking Tests: Assert Ordering Not Scores",
+          "category": "pattern",
+          "final_score": 0.4325810123942724,
+          "similarity": 0.34085404872894287,
+          "confidence": 0.6157855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4303230308429514,
+          "similarity": 0.3505638837814331,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4302736131599585,
+          "similarity": 0.377602219581604,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4286942491626352,
+          "similarity": 0.33782780170440674,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

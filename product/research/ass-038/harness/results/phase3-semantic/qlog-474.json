@@ -1,0 +1,74 @@
+{
+  "scenario_id": "qlog-474",
+  "query": "<task-notification>\n<task-id>b5vweojze</task-id>\n<tool-use-id>toolu_018s2vgi3iK86grhEMuioEwD</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/2796b206-8a26-403a-829e-ed0eaecffe92/tasks/b5vweojze.output</output-file>\n<status>completed</status>\n<summary>Background command \"cargo test --workspace 2>&1 | grep -E \"^test result:\" | tail -15\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/2796b206-8a26-403a-829e-ed0eaecffe92/tasks/b5vweojze.output",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5156221986569856,
+          "similarity": 0.5782821774482727,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5137832071404708,
+          "similarity": 0.5747880935668945,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5156221986569856,
+          "similarity": 0.5782821774482727,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5137832071404708,
+          "similarity": 0.5747880935668945,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 14,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

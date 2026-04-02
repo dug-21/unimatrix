@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4892",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Clean state:\n- Main workspace: `main` (ccd2d60)\n- Bugfix worktree: `/workspaces/unimatrix/.claude/worktrees/bugfix-batch` on `bugfix/batch-small-fixes`\n\nNow spawning the tester to work entirely inside the bugfix worktree.\n[tool: Bash(git checkout main 2>&1 && git worktree list 2>&1) → Switched to branch 'main'\nYour branch is up to date with 'origin/main'.\n/workspaces/unimatrix                                 ccd2d60 [main]\n/workspaces/unimatrix/.claude/worktrees/bugfix-batch  a2f8a34 [bugfix/batch-small-fixes]]\n[tool: Bash(git worktree remove /workspaces/unimatrix/.claude/worktrees/agent-a9517219 --force 2>&1 && git worktree remove /workspac) → (Bash completed with no output)]\n[Assistant] Two stale agent worktrees still holding `main` and `worktree-agent-a6990de9`. Removing them, then switching main workspace to `main`.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.5757600209162447,
+          "similarity": 0.617438554763794,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5572189112713462,
+          "similarity": 0.6797159314155579,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.556977047966854,
+          "similarity": 0.5894908905029297,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5413049648765988,
+          "similarity": 0.6073347926139832,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.5757600209162447,
+          "similarity": 0.617438554763794,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5572189112713462,
+          "similarity": 0.6797159314155579,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.556977047966854,
+          "similarity": 0.5894908905029297,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5413049648765988,
+          "similarity": 0.6073347926139832,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

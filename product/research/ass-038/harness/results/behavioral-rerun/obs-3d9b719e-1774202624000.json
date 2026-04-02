@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3d9b719e-1774202624000",
+  "query": "duplicate store histogram double count guard mutation",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.47191247523376445,
+          "similarity": 0.4517034888267517,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.45035918909138983,
+          "similarity": 0.3791769742965698,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 89,
+          "title": "ADR-006: Near-Duplicate Detection at 0.92 Cosine Similarity",
+          "category": "decision",
+          "final_score": 0.4437503459646218,
+          "similarity": 0.3851470947265625,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.4371364735227613,
+          "similarity": 0.38434362411499023,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4270146102060465,
+          "similarity": 0.3928384780883789,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.47191247523376445,
+          "similarity": 0.4517034888267517,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.45035918909138983,
+          "similarity": 0.3791769742965698,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 89,
+          "title": "ADR-006: Near-Duplicate Detection at 0.92 Cosine Similarity",
+          "category": "decision",
+          "final_score": 0.4437503459646218,
+          "similarity": 0.3851470947265625,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.4371364735227613,
+          "similarity": 0.38434362411499023,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4270146102060465,
+          "similarity": 0.3928384780883789,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

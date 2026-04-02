@@ -1,0 +1,74 @@
+{
+  "scenario_id": "qlog-2777",
+  "query": "<task-notification>\n<task-id>bkz9tm7gl</task-id>\n<tool-use-id>toolu_017wvBqscCXiATAX7SKubQQk</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/364cb76e-49ce-4c5f-b7ee-a7b4bb64e440/tasks/bkz9tm7gl.output</output-file>\n<status>completed</status>\n<summary>Background command \"python -m pytest product/test/infra-001/suites/test_tools.py product/test/infra-001/suites/test_protocol.py product/test/infra-001/suites/test_edge_cases.py product/test/infra-001/suites/test_lifecycle.py -v --timeout=60 2&gt;&amp;1 | tail -60\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/364cb76e-49ce-4c5f-b7ee-a7b4bb64e440/tasks/bkz9tm7gl.output",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5037551962199963,
+          "similarity": 0.5557348728179932,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5028116860640676,
+          "similarity": 0.5539422035217285,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5037551962199963,
+          "similarity": 0.5557348728179932,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5028116860640676,
+          "similarity": 0.5539422035217285,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 48,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -24,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

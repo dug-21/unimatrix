@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2247",
+  "query": "would our redesign address that?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.38388963179993785,
+          "similarity": 0.2236073613166809,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.3703464400719678,
+          "similarity": 0.24395275115966797,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.3635638768221853,
+          "similarity": 0.20792752504348755,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 185,
+          "title": "ADR-003: Independent Adaptation State Persistence",
+          "category": "decision",
+          "final_score": 0.3631692549793515,
+          "similarity": 0.2517876625061035,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.34193848749386435,
+          "similarity": 0.2322385311126709,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.38388963179993785,
+          "similarity": 0.2236073613166809,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 277,
+          "title": "ADR-004: Sequential Migration with Temporary Re-Exports",
+          "category": "decision",
+          "final_score": 0.3703464400719678,
+          "similarity": 0.24395275115966797,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.3635638768221853,
+          "similarity": 0.20792752504348755,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 185,
+          "title": "ADR-003: Independent Adaptation State Persistence",
+          "category": "decision",
+          "final_score": 0.3631692549793515,
+          "similarity": 0.2517876625061035,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.34193848749386435,
+          "similarity": 0.2322385311126709,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

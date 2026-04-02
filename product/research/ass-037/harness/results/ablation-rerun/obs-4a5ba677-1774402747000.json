@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-4a5ba677-1774402747000",
+  "query": "batch query IN clause knowledge reuse entry lookup pattern",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.43962456629826474,
+          "similarity": 0.5581399202346802,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.38938379287719727,
+          "similarity": 0.47649866342544556,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.345426266009991,
+          "similarity": 0.40506768226623535,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.34391483893761265,
+          "similarity": 0.4026116132736206,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.31944876450758714,
+          "similarity": 0.3628542423248291,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.561500721071001,
+          "similarity": 0.5581399202346802,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.49119802283374925,
+          "similarity": 0.47649866342544556,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.4695792371174431,
+          "similarity": 0.40506768226623535,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.4597652321039589,
+          "similarity": 0.4026116132736206,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.4534672143270845,
+          "similarity": 0.3628542423248291,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.5614788976889469,
+          "similarity": 0.5581399202346802,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.49110257244798106,
+          "similarity": 0.47649866342544556,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.4691603309171105,
+          "similarity": 0.40506768226623535,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.4593941047089567,
+          "similarity": 0.4026116132736206,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.4528788184049919,
+          "similarity": 0.3628542423248291,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.5581399202346802,
+          "similarity": 0.5581399202346802,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.47649866342544556,
+          "similarity": 0.47649866342544556,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.40506768226623535,
+          "similarity": 0.40506768226623535,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.4026116132736206,
+          "similarity": 0.4026116132736206,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.3628542423248291,
+          "similarity": 0.3628542423248291,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.49896051965420646,
+          "similarity": 0.5581399202346802,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.44190846402354916,
+          "similarity": 0.47649866342544556,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.4210554214902968,
+          "similarity": 0.40506768226623535,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.41372978433814295,
+          "similarity": 0.4026116132736206,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.4063014163186493,
+          "similarity": 0.3628542423248291,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.49896051965420646,
+          "similarity": 0.5581399202346802,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.44190846402354916,
+          "similarity": 0.47649866342544556,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3299,
+          "title": "query_by_topic as dedup guard is an anti-pattern — use EXISTS(topic, title) instead of full topic load + Rust filter",
+          "category": "lesson-learned",
+          "final_score": 0.4210554214902968,
+          "similarity": 0.40506768226623535,
+          "confidence": 0.561738601190597,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.41372978433814295,
+          "similarity": 0.4026116132736206,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.4063014163186493,
+          "similarity": 0.3628542423248291,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774369019000",
+  "query": "crt-027 IndexBriefingService agent task effectiveness",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.4952580180093512,
+          "similarity": 0.4581463932991028,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.4933441188805461,
+          "similarity": 0.4726536273956299,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 973,
+          "title": "Retrospective findings: crt-003",
+          "category": "lesson-learned",
+          "final_score": 0.47706695224157747,
+          "similarity": 0.4554567337036133,
+          "confidence": 0.57281496507912,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.4701492808013993,
+          "similarity": 0.44791579246520996,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.45751749963491584,
+          "similarity": 0.4402015209197998,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3244,
+          "title": "ADR-003 crt-027: IndexBriefingService Replaces BriefingService — Dependencies and k Default",
+          "category": "decision",
+          "final_score": 0.4952580180093512,
+          "similarity": 0.4581463932991028,
+          "confidence": 0.6183483441695209,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.4933441188805461,
+          "similarity": 0.4726536273956299,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 973,
+          "title": "Retrospective findings: crt-003",
+          "category": "lesson-learned",
+          "final_score": 0.47706695224157747,
+          "similarity": 0.4554567337036133,
+          "confidence": 0.57281496507912,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.4701492808013993,
+          "similarity": 0.44791579246520996,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.45751749963491584,
+          "similarity": 0.4402015209197998,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

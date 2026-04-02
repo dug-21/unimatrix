@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-af1f3351-1774269623000",
+  "query": "cold restart context re-read front-load files large feature multi-day session",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.6089102126081666,
+          "similarity": 0.673503577709198,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.5484230030214902,
+          "similarity": 0.5470280051231384,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5433698101627811,
+          "similarity": 0.5392188429832458,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.5207796087988522,
+          "similarity": 0.5049411058425903,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1163,
+          "title": "Excessive Context Loading Before First Write Inflates Session Cost",
+          "category": "lesson-learned",
+          "final_score": 0.5118363740696688,
+          "similarity": 0.5173988342285156,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.6089102126081666,
+          "similarity": 0.673503577709198,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.5484230030214902,
+          "similarity": 0.5470280051231384,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5433698101627811,
+          "similarity": 0.5392188429832458,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.5207796087988522,
+          "similarity": 0.5049411058425903,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1163,
+          "title": "Excessive Context Loading Before First Write Inflates Session Cost",
+          "category": "lesson-learned",
+          "final_score": 0.5118363740696688,
+          "similarity": 0.5173988342285156,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

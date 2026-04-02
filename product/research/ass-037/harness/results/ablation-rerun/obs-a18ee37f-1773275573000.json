@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a18ee37f-1773275573000",
+  "query": "SQL row serialization JSONL export column mapping",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.513790926065087,
+          "similarity": 0.5863375663757324,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.49435165639849427,
+          "similarity": 0.5573043823242188,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.48166844525503655,
+          "similarity": 0.4880293607711792,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.4646577800543106,
+          "similarity": 0.474942684173584,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.4553796096534036,
+          "similarity": 0.47435855865478516,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.5863375663757324,
+          "similarity": 0.5863375663757324,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.5573043823242188,
+          "similarity": 0.5573043823242188,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.4880293607711792,
+          "similarity": 0.4880293607711792,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.474942684173584,
+          "similarity": 0.474942684173584,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.47435855865478516,
+          "similarity": 0.47435855865478516,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.45697696392352766,
+          "similarity": 0.5863375663757324,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.43911038912259615,
+          "similarity": 0.5573043823242188,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.39647960662841797,
+          "similarity": 0.4880293607711792,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.388426267183744,
+          "similarity": 0.474942684173584,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.38806680532602167,
+          "similarity": 0.47435855865478516,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.5790917057387731,
+          "similarity": 0.5863375663757324,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.5552567458092845,
+          "similarity": 0.5573043823242188,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.544640085568562,
+          "similarity": 0.4880293607711792,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.5225751212339965,
+          "similarity": 0.474942684173584,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5098976447542025,
+          "similarity": 0.47435855865478516,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.5791387567818702,
+          "similarity": 0.5863375663757324,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.5552700421502905,
+          "similarity": 0.5573043823242188,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.5442724834594881,
+          "similarity": 0.4880293607711792,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.5222658196946431,
+          "similarity": 0.474942684173584,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5096668714678426,
+          "similarity": 0.47435855865478516,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.513790926065087,
+          "similarity": 0.5863375663757324,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.49435165639849427,
+          "similarity": 0.5573043823242188,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.48166844525503655,
+          "similarity": 0.4880293607711792,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.4646577800543106,
+          "similarity": 0.474942684173584,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.4553796096534036,
+          "similarity": 0.47435855865478516,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

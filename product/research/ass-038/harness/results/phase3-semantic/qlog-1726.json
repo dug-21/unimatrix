@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1726",
+  "query": "yes.  add it",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.33695977103045394,
+          "similarity": 0.17973816394805908,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.3367696833288625,
+          "similarity": 0.17729854583740234,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 430,
+          "title": "How to add new signals to SignalDigest",
+          "category": "procedure",
+          "final_score": 0.3143057737814787,
+          "similarity": 0.15370064973831177,
+          "confidence": 0.5621147434949971,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.3111774114606062,
+          "similarity": 0.14959144592285156,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.3050560115144746,
+          "similarity": 0.14625763893127441,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.33695977103045394,
+          "similarity": 0.17973816394805908,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.3367696833288625,
+          "similarity": 0.17729854583740234,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 430,
+          "title": "How to add new signals to SignalDigest",
+          "category": "procedure",
+          "final_score": 0.3143057737814787,
+          "similarity": 0.15370064973831177,
+          "confidence": 0.5621147434949971,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3769,
+          "title": "How to add new fields to InferenceConfig",
+          "category": "procedure",
+          "final_score": 0.3111774114606062,
+          "similarity": 0.14959144592285156,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.3050560115144746,
+          "similarity": 0.14625763893127441,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

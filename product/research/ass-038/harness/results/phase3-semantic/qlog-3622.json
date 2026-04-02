@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3622",
+  "query": "OK... finding after issue 413 was implemented: Finding 1 (low, non-blocking): EDGE_SOURCE_NLI constant not yet adopted by existing callers\n\nEDGE_SOURCE_NLI is correctly defined in unimatrix-store/src/read.rs and re-exported from lib.rs (per ADR-001). However, nli_detection.rs still uses bare 'nli' string literals in embedded SQL (lines 545, 599, 1054) and background.rs uses a bare \"nli\" Rust string comparison (line 1129). ADR-001 documents this as an intended follow-up for GH #412. The coupling risk (SR-01) is not resolved for existing callers until they adopt the constant.\n\nRecommendation: file a follow-up task against GH #412 to migrate the bare 'nli' literals.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.6326544273075247,
+          "similarity": 0.7121586203575134,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.5628461564412566,
+          "similarity": 0.5963578224182129,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3882,
+          "title": "ADR-002 crt-034: Constants Location — unimatrix-store/src/read.rs alongside EDGE_SOURCE_NLI",
+          "category": "decision",
+          "final_score": 0.5409483366939557,
+          "similarity": 0.6070073246955872,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2731,
+          "title": "NliProviderExt: add health check to wrapped type, not as trait in consuming crate",
+          "category": "pattern",
+          "final_score": 0.531617796395135,
+          "similarity": 0.5756435990333557,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 484,
+          "title": "ADR-004: Co-Access Deprecated Exclusion via ID Set",
+          "category": "decision",
+          "final_score": 0.5224605296583986,
+          "similarity": 0.5678293704986572,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.6326544273075247,
+          "similarity": 0.7121586203575134,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 63,
+          "title": "ADR-001: hnsw_rs as Vector Index Library",
+          "category": "decision",
+          "final_score": 0.5628461564412566,
+          "similarity": 0.5963578224182129,
+          "confidence": 0.604356964028821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3882,
+          "title": "ADR-002 crt-034: Constants Location — unimatrix-store/src/read.rs alongside EDGE_SOURCE_NLI",
+          "category": "decision",
+          "final_score": 0.5409483366939557,
+          "similarity": 0.6070073246955872,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2731,
+          "title": "NliProviderExt: add health check to wrapped type, not as trait in consuming crate",
+          "category": "pattern",
+          "final_score": 0.531617796395135,
+          "similarity": 0.5756435990333557,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 484,
+          "title": "ADR-004: Co-Access Deprecated Exclusion via ID Set",
+          "category": "decision",
+          "final_score": 0.5224605296583986,
+          "similarity": 0.5678293704986572,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

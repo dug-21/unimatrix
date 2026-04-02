@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a02f1841-1774957353000",
+  "query": "markdown escaping MCP response formatter table cell",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.5520802379909314,
+          "similarity": 0.6699524521827698,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.5346040254682386,
+          "similarity": 0.5214717984199524,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.49053886303510585,
+          "similarity": 0.45188748836517334,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4877025130268725,
+          "similarity": 0.4682457447052002,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.47770438916290814,
+          "similarity": 0.4868438243865967,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3920,
+          "title": "MCP response formatter: escape_md_cell / escape_md_text two-helper escaping pattern",
+          "category": "pattern",
+          "final_score": 0.5520802379909314,
+          "similarity": 0.6699524521827698,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.5346040254682386,
+          "similarity": 0.5214717984199524,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3246,
+          "title": "ADR-005 crt-027: IndexEntry as Typed WA-5 Contract Surface",
+          "category": "decision",
+          "final_score": 0.49053886303510585,
+          "similarity": 0.45188748836517334,
+          "confidence": 0.6144805020021827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4877025130268725,
+          "similarity": 0.4682457447052002,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.47770438916290814,
+          "similarity": 0.4868438243865967,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

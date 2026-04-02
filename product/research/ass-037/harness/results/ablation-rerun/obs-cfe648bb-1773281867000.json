@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-cfe648bb-1773281867000",
+  "query": "unimatrix-server crate patterns conventions gotchas",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.6650829911231995,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.6650829911231995,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.6650829911231995,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.6635355353355408,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.6635355353355408,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5086607544381997,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5086347665055665,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5085885328655421,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5078702008992314,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5078239576452589,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5649843932227085,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5649489551327543,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5648859092599936,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5640470434684481,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5639839844857584,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5643301540207447,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5642944843092874,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.564231026371999,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5633967918876176,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5633333207547142,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5086607544381997,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5086347665055665,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5085885328655421,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5078702008992314,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5078239576452589,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5054356868450458,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3749,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5054356868450458,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.4203975295886664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3724,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5054356868450458,
+          "similarity": 0.6650829911231995,
+          "confidence": 0.42015679101314096,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5044834063603327,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.5044834063603327,
+          "similarity": 0.6635355353355408,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3749,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3747,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

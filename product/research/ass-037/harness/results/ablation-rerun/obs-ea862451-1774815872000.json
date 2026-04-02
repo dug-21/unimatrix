@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ea862451-1774815872000",
+  "query": "config serde default split Default impl divergence test fixture silent failure",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5795357253682574,
+          "similarity": 0.5797805190086365,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5702520084086778,
+          "similarity": 0.5601944923400879,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5328521399992886,
+          "similarity": 0.5047181248664856,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.5013430211862056,
+          "similarity": 0.48379385471343994,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.49101517366491293,
+          "similarity": 0.44938015937805176,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.4529418578514686,
+          "similarity": 0.5797805190086365,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.44088891836313104,
+          "similarity": 0.5601944923400879,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4067496153024527,
+          "similarity": 0.5047181248664856,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.3938731413621169,
+          "similarity": 0.48379385471343994,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.37269548269418573,
+          "similarity": 0.44938015937805176,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5797805190086365,
+          "similarity": 0.5797805190086365,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5601944923400879,
+          "similarity": 0.5601944923400879,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5047181248664856,
+          "similarity": 0.5047181248664856,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.48379385471343994,
+          "similarity": 0.48379385471343994,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.44938015937805176,
+          "similarity": 0.44938015937805176,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.513646065554633,
+          "similarity": 0.5797805190086365,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.505483212722043,
+          "similarity": 0.5601944923400879,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4742721394899449,
+          "similarity": 0.5047181248664856,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.44982090505805267,
+          "similarity": 0.48379385471343994,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.43983820934001167,
+          "similarity": 0.44938015937805176,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.513646065554633,
+          "similarity": 0.5797805190086365,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.505483212722043,
+          "similarity": 0.5601944923400879,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4742721394899449,
+          "similarity": 0.5047181248664856,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.44982090505805267,
+          "similarity": 0.48379385471343994,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.43983820934001167,
+          "similarity": 0.44938015937805176,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5795373149373506,
+          "similarity": 0.5797805190086365,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5701866998627778,
+          "similarity": 0.5601944923400879,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5326694515893353,
+          "similarity": 0.5047181248664856,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.501229065559759,
+          "similarity": 0.48379385471343994,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.4907448164292839,
+          "similarity": 0.44938015937805176,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

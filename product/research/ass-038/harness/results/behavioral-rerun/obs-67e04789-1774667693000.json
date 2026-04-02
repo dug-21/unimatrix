@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-67e04789-1774667693000",
+  "query": "cargo test targeted unit test multi-binary crate procedure",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.5900180763947335,
+          "similarity": 0.6240343451499939,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.5819730731493854,
+          "similarity": 0.6346521377563477,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.5405350730872491,
+          "similarity": 0.5568111538887024,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.5376844499217419,
+          "similarity": 0.5470829010009766,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.521916109394461,
+          "similarity": 0.5313568115234375,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.5900180763947335,
+          "similarity": 0.6240343451499939,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.5819730731493854,
+          "similarity": 0.6346521377563477,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.5405350730872491,
+          "similarity": 0.5568111538887024,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.5376844499217419,
+          "similarity": 0.5470829010009766,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.521916109394461,
+          "similarity": 0.5313568115234375,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-18f5d7e9-1774714220000",
+  "query": "ExtractionRule store writes replication loop extraction pipeline",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.4138194964482234,
+          "similarity": 0.516206681728363,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.3804906331575834,
+          "similarity": 0.462047278881073,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.378080258002648,
+          "similarity": 0.458130419254303,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.3731440764207106,
+          "similarity": 0.4501091241836548,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.3730427668644832,
+          "similarity": 0.44994449615478516,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.516206681728363,
+          "similarity": 0.516206681728363,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.462047278881073,
+          "similarity": 0.462047278881073,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.458130419254303,
+          "similarity": 0.458130419254303,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4501091241836548,
+          "similarity": 0.4501091241836548,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.44994449615478516,
+          "similarity": 0.44994449615478516,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.48035230546282887,
+          "similarity": 0.516206681728363,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.45190960599253555,
+          "similarity": 0.462047278881073,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.4493388814137029,
+          "similarity": 0.458130419254303,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.43701490122590314,
+          "similarity": 0.4501091241836548,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4239586602821572,
+          "similarity": 0.44994449615478516,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.48035230546282887,
+          "similarity": 0.516206681728363,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.45190960599253555,
+          "similarity": 0.462047278881073,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.4493388814137029,
+          "similarity": 0.458130419254303,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.43701490122590314,
+          "similarity": 0.4501091241836548,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.4239586602821572,
+          "similarity": 0.44994449615478516,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.5400711367403178,
+          "similarity": 0.516206681728363,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5063418828445514,
+          "similarity": 0.462047278881073,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.5031974431899546,
+          "similarity": 0.458130419254303,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.48706857774303813,
+          "similarity": 0.4501091241836548,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.46916438703876623,
+          "similarity": 0.44994449615478516,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.5399161727467336,
+          "similarity": 0.516206681728363,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2152,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5060542555460872,
+          "similarity": 0.462047278881073,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.5029048001773855,
+          "similarity": 0.458130419254303,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4868285812913538,
+          "similarity": 0.4501091241836548,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.46903958255250655,
+          "similarity": 0.44994449615478516,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

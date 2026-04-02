@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-eb6484ed-1774444296000",
+  "query": "UDS error classification fire-and-forget logging",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.577548707925013,
+          "similarity": 0.5705974102020264,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.5759729481217821,
+          "similarity": 0.5822156071662903,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.5641943088281929,
+          "similarity": 0.6000007390975952,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.5473772487456074,
+          "similarity": 0.5259191989898682,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5211171956610496,
+          "similarity": 0.5174506902694702,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.577594141243464,
+          "similarity": 0.5705974102020264,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.5759321464286808,
+          "similarity": 0.5822156071662903,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.5639602798721838,
+          "similarity": 0.6000007390975952,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.5475174974368215,
+          "similarity": 0.5259191989898682,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5211411597485763,
+          "similarity": 0.5174506902694702,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.46538507021390474,
+          "similarity": 0.6000007390975952,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.45444037364079404,
+          "similarity": 0.5822156071662903,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.44729071397047776,
+          "similarity": 0.5705974102020264,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.4197964301476112,
+          "similarity": 0.5259191989898682,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.4145850401658278,
+          "similarity": 0.5174506902694702,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.5115755464918114,
+          "similarity": 0.5705974102020264,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.5111945357670596,
+          "similarity": 0.5822156071662903,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.5037425424138479,
+          "similarity": 0.6000007390975952,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.48647126234610344,
+          "similarity": 0.5259191989898682,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.4666493228360678,
+          "similarity": 0.5174506902694702,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.5115755464918114,
+          "similarity": 0.5705974102020264,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.5111945357670596,
+          "similarity": 0.5822156071662903,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.5037425424138479,
+          "similarity": 0.6000007390975952,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.48647126234610344,
+          "similarity": 0.5259191989898682,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.4666493228360678,
+          "similarity": 0.5174506902694702,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.6000007390975952,
+          "similarity": 0.6000007390975952,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3448,
+          "title": "UDS fire-and-forget protocol produces two expected I/O errors that must not be WARN-logged",
+          "category": "lesson-learned",
+          "final_score": 0.5822156071662903,
+          "similarity": 0.5822156071662903,
+          "confidence": 0.5669557739463815,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.5705974102020264,
+          "similarity": 0.5705974102020264,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 101,
+          "title": "ADR-004: Fire-and-Forget Usage Recording",
+          "category": "decision",
+          "final_score": 0.5259191989898682,
+          "similarity": 0.5259191989898682,
+          "confidence": 0.5783722095038978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3467,
+          "title": "ADR: UDS observation logs use synthetic target \"unimatrix_server::obs\" for independent operator control",
+          "category": "decision",
+          "final_score": 0.5174506902694702,
+          "similarity": 0.5174506902694702,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

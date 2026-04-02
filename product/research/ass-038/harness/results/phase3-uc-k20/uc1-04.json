@@ -1,0 +1,434 @@
+{
+  "scenario_id": "uc1-04",
+  "query": "What is the complete checklist for bumping CURRENT_SCHEMA_VERSION, including test and migration requirements?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.6012886772660342,
+          "similarity": 0.6956093311309814,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.6007642413842337,
+          "similarity": 0.6675325632095337,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5483231514843488,
+          "similarity": 0.5509145855903625,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5479943456147846,
+          "similarity": 0.5501892566680908,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5377021789978479,
+          "similarity": 0.5603004693984985,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 375,
+          "title": "Database init ordering: migration before DDL in Store::open()",
+          "category": "procedure",
+          "final_score": 0.5233369731496123,
+          "similarity": 0.5236489772796631,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1277,
+          "title": "ADR-005 col-022: Schema v12 Migration for Keywords Column",
+          "category": "decision",
+          "final_score": 0.5231717855509461,
+          "similarity": 0.5236914753913879,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5211100304853747,
+          "similarity": 0.5014356970787048,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 379,
+          "title": "ADR-005: Scan-and-Rewrite Migration — Historical (Superseded by ALTER TABLE for post-v6)",
+          "category": "decision",
+          "final_score": 0.519227305672209,
+          "similarity": 0.5182157754898071,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5110178728610865,
+          "similarity": 0.48985564708709717,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.5060912958736566,
+          "similarity": 0.4812976121902466,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5054553891989361,
+          "similarity": 0.5031940937042236,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.49996024639496917,
+          "similarity": 0.47971898317337036,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.49426181810486647,
+          "similarity": 0.48295730352401733,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.47481344033471895,
+          "similarity": 0.4548403024673462,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3600,
+          "title": "read.rs test helper create_graph_edges_table is for pre-v13 schema only — new cohesion tests must not call it",
+          "category": "pattern",
+          "final_score": 0.47117620077815536,
+          "similarity": 0.4374295473098755,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.4702302959421282,
+          "similarity": 0.49469292163848877,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.46916906994293983,
+          "similarity": 0.45088207721710205,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.4679605927223799,
+          "similarity": 0.44837212562561035,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.46557469437482857,
+          "similarity": 0.4742974042892456,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.35778649882815
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3894,
+          "title": "Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests",
+          "category": "pattern",
+          "final_score": 0.6012886772660342,
+          "similarity": 0.6956093311309814,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 760,
+          "title": "ADR-017-003: Independent Migration Versioning v9→v10",
+          "category": "decision",
+          "final_score": 0.6007642413842337,
+          "similarity": 0.6675325632095337,
+          "confidence": 0.605599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 836,
+          "title": "How to add a new table to the v6+ SQLite schema",
+          "category": "procedure",
+          "final_score": 0.5483231514843488,
+          "similarity": 0.5509145855903625,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5479943456147846,
+          "similarity": 0.5501892566680908,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5377021789978479,
+          "similarity": 0.5603004693984985,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 375,
+          "title": "Database init ordering: migration before DDL in Store::open()",
+          "category": "procedure",
+          "final_score": 0.5233369731496123,
+          "similarity": 0.5236489772796631,
+          "confidence": 0.6009875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1277,
+          "title": "ADR-005 col-022: Schema v12 Migration for Keywords Column",
+          "category": "decision",
+          "final_score": 0.5231717855509461,
+          "similarity": 0.5236914753913879,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5211100304853747,
+          "similarity": 0.5014356970787048,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 379,
+          "title": "ADR-005: Scan-and-Rewrite Migration — Historical (Superseded by ALTER TABLE for post-v6)",
+          "category": "decision",
+          "final_score": 0.519227305672209,
+          "similarity": 0.5182157754898071,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5110178728610865,
+          "similarity": 0.48985564708709717,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.5060912958736566,
+          "similarity": 0.4812976121902466,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1264,
+          "title": "Idempotent ALTER TABLE Guard via pragma_table_info",
+          "category": "pattern",
+          "final_score": 0.5054553891989361,
+          "similarity": 0.5031940937042236,
+          "confidence": 0.5816730653910787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 376,
+          "title": "DDL-before-migration ordering causes post-merge production failures",
+          "category": "lesson-learned",
+          "final_score": 0.49996024639496917,
+          "similarity": 0.47971898317337036,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.49426181810486647,
+          "similarity": 0.48295730352401733,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.47481344033471895,
+          "similarity": 0.4548403024673462,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3600,
+          "title": "read.rs test helper create_graph_edges_table is for pre-v13 schema only — new cohesion tests must not call it",
+          "category": "pattern",
+          "final_score": 0.47117620077815536,
+          "similarity": 0.4374295473098755,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.4702302959421282,
+          "similarity": 0.49469292163848877,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.46916906994293983,
+          "similarity": 0.45088207721710205,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.4679605927223799,
+          "similarity": 0.44837212562561035,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.46557469437482857,
+          "similarity": 0.4742974042892456,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.35778649882815
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

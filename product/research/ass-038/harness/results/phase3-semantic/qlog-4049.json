@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4049",
+  "query": "do that search again and remove 'active'",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.3874382772373942,
+          "similarity": 0.27325892448425293,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.38593023781604807,
+          "similarity": 0.2840036153793335,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.38590393268001555,
+          "similarity": 0.2834336757659912,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.38416685682307417,
+          "similarity": 0.27574217319488525,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.384103801383075,
+          "similarity": 0.2756223678588867,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.3874382772373942,
+          "similarity": 0.27325892448425293,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.38593023781604807,
+          "similarity": 0.2840036153793335,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.38590393268001555,
+          "similarity": 0.2834336757659912,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1605,
+          "title": "ADR-005 (crt-014): Cycle Detection Fallback Strategy",
+          "category": "decision",
+          "final_score": 0.38416685682307417,
+          "similarity": 0.27574217319488525,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 601,
+          "title": "ADR-002: Restore fallback to Active when pre_quarantine_status is NULL or invalid",
+          "category": "decision",
+          "final_score": 0.384103801383075,
+          "similarity": 0.2756223678588867,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

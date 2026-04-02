@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-5f33a80a-1774490358000",
+  "query": "analytics drain phase snapshot integration test query_log write",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.6452291656647628,
+          "similarity": 0.6867230534553528,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.6209580548975437,
+          "similarity": 0.6107670068740845,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5603067513036943,
+          "similarity": 0.5424362421035767,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.5374253799070203,
+          "similarity": 0.5126680135726929,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.5373867436387164,
+          "similarity": 0.5276267528533936,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.6867230534553528,
+          "similarity": 0.6867230534553528,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.6107670068740845,
+          "similarity": 0.6107670068740845,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5424362421035767,
+          "similarity": 0.5424362421035767,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.5276267528533936,
+          "similarity": 0.5276267528533936,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.5126680135726929,
+          "similarity": 0.5126680135726929,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.5187526482802172,
+          "similarity": 0.6867230534553528,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.4720104657686674,
+          "similarity": 0.6107670068740845,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.4299607643714318,
+          "similarity": 0.5424362421035767,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.42084723252516526,
+          "similarity": 0.5276267528533936,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.41164185450627255,
+          "similarity": 0.5126680135726929,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.6449579637837788,
+          "similarity": 0.6867230534553528,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.6210246630545599,
+          "similarity": 0.6107670068740845,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5604235520174207,
+          "similarity": 0.5424362421035767,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.5375871927588787,
+          "similarity": 0.5126680135726929,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.537450534428163,
+          "similarity": 0.5276267528533936,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.5689495917178498,
+          "similarity": 0.6867230534553528,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5460870407164711,
+          "similarity": 0.6107670068740845,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.49705403376294766,
+          "similarity": 0.5424362421035767,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.47925872885861837,
+          "similarity": 0.5276267528533936,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.4782898128366611,
+          "similarity": 0.5126680135726929,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.5689495917178498,
+          "similarity": 0.6867230534553528,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5460870407164711,
+          "similarity": 0.6107670068740845,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.49705403376294766,
+          "similarity": 0.5424362421035767,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2440,
+          "title": "SQLite analytics drain tests require sleep > DRAIN_FLUSH_INTERVAL (500ms)",
+          "category": "pattern",
+          "final_score": 0.47925872885861837,
+          "similarity": 0.5276267528533936,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.4782898128366611,
+          "similarity": 0.5126680135726929,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-ea4a711a-1774632869000",
+  "query": "rand thread_rng safe async tick W1-2 rayon closure prohibition",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5236230064429905,
+          "similarity": 0.5461497902870178,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5186247499677173,
+          "similarity": 0.5876532793045044,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.5176016897640902,
+          "similarity": 0.5452092885971069,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2543,
+          "title": "Rayon panic_handler required to prevent SIGABRT in test harness",
+          "category": "pattern",
+          "final_score": 0.49684773047236486,
+          "similarity": 0.5238500237464905,
+          "confidence": 0.528800948787147,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5236230064429905,
+          "similarity": 0.5461497902870178,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5186247499677173,
+          "similarity": 0.5876532793045044,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.5176016897640902,
+          "similarity": 0.5452092885971069,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2543,
+          "title": "Rayon panic_handler required to prevent SIGABRT in test harness",
+          "category": "pattern",
+          "final_score": 0.49684773047236486,
+          "similarity": 0.5238500237464905,
+          "confidence": 0.528800948787147,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

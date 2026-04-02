@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4586",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Wave 1 committed. Spawning Wave 2 — tools handler and status service in parallel.\n[tool: Bash(git add product/features/crt-033/agents/crt-033-agent-3-cycle-review-index-report.md product/features/crt-033/agents/crt) → [feature/crt-033 51ebda7] impl: crt-033 Wave 1 — cycle_review_index module, migration v17→v18, status_response (#453)\n 3 files changed, 176 insertions(+)\n create mode 100644 product/features/crt-033/agents/crt-033-agent-3-cycle-review-index-report.md\n create mode 100644 product/features/crt-033/]\n[Assistant] Good. The agent reports are untracked — adding those and proceeding to Wave 2.\n[tool: Bash(git restore --staged crates/unimatrix-server/src/eval/profile/layer.rs crates/unimatrix-server/src/infra/config.rs crate) →  M .mcp.json\n M crates/unimatrix-server/src/eval/profile/layer.rs\n M crates/unimatrix-server/src/infra/config.rs\n M crates/unimatrix-server/src/services/search.rs\n M product/research/ass-032/ROADMAP.md\n M product/test/eval-baselines/log.jsonl\n?? .claire/\n?? product/features/bugfix-436/agents/436-age]\n[Assistant] Agents committed their own work. Those three staged files are pre-existing modifications — unstaging them.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5341726853536902,
+          "similarity": 0.5481799244880676,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.503079068263938,
+          "similarity": 0.5205045938491821,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.49411093550452323,
+          "similarity": 0.5092466473579407,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.4911859361370713,
+          "similarity": 0.5041715502738953,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.47239729805996533,
+          "similarity": 0.5185548663139343,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 42,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5341726853536902,
+          "similarity": 0.5481799244880676,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3746,
+          "title": "Moving a pre-loop extraction block when inserting a new pipeline step in search.rs",
+          "category": "pattern",
+          "final_score": 0.503079068263938,
+          "similarity": 0.5205045938491821,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.49411093550452323,
+          "similarity": 0.5092466473579407,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.4911859361370713,
+          "similarity": 0.5041715502738953,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.47239729805996533,
+          "similarity": 0.5185548663139343,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -18,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

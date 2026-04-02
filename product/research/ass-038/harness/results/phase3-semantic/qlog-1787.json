@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1787",
+  "query": "My gut instinct on keywords, drop them.  I'm wondering whether theres an outcome for each phase?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.45394682591413194,
+          "similarity": 0.4083298444747925,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.43368823147769875,
+          "similarity": 0.33931636810302734,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.42072692627224295,
+          "similarity": 0.34134113788604736,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.42028064556703104,
+          "similarity": 0.34926939010620117,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3873,
+          "title": "Retrospective findings: crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.3766610278079383,
+          "similarity": 0.314255952835083,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2987,
+          "title": "context_cycle keywords field is inert — stored but never consumed",
+          "category": "pattern",
+          "final_score": 0.45394682591413194,
+          "similarity": 0.4083298444747925,
+          "confidence": 0.5773844639457976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.43368823147769875,
+          "similarity": 0.33931636810302734,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.42072692627224295,
+          "similarity": 0.34134113788604736,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.42028064556703104,
+          "similarity": 0.34926939010620117,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3873,
+          "title": "Retrospective findings: crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.3766610278079383,
+          "similarity": 0.314255952835083,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

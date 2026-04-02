@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-36cc40d0-1773865765000",
+  "query": "prompt injection content validation write guard knowledge poisoning",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.5500508045136874,
+          "similarity": 0.5266973376274109,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.5046157187468372,
+          "similarity": 0.4115965962409973,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.4926461366686351,
+          "similarity": 0.43543457984924316,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.4920615956349039,
+          "similarity": 0.43275296688079834,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.4743999475296998,
+          "similarity": 0.4122459888458252,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4883725388333587,
+          "similarity": 0.5266973376274109,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.44704835196133835,
+          "similarity": 0.4115965962409973,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.44003036956209435,
+          "similarity": 0.43543457984924316,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.43941294588262986,
+          "similarity": 0.43275296688079834,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.42508038954634014,
+          "similarity": 0.4122459888458252,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.4883725388333587,
+          "similarity": 0.5266973376274109,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.44704835196133835,
+          "similarity": 0.4115965962409973,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.44003036956209435,
+          "similarity": 0.43543457984924316,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.43941294588262986,
+          "similarity": 0.43275296688079834,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.42508038954634014,
+          "similarity": 0.4122459888458252,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.42027528469379133,
+          "similarity": 0.5266973376274109,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.36411358759953427,
+          "similarity": 0.43543457984924316,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.36246336423433745,
+          "similarity": 0.43275296688079834,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.34984368544358474,
+          "similarity": 0.4122459888458252,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.34944405922522914,
+          "similarity": 0.4115965962409973,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.5266973376274109,
+          "similarity": 0.5266973376274109,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.43543457984924316,
+          "similarity": 0.43543457984924316,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.43275296688079834,
+          "similarity": 0.43275296688079834,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.4122459888458252,
+          "similarity": 0.4122459888458252,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.4115965962409973,
+          "similarity": 0.4115965962409973,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3569,
+          "title": "Markdown injection: unsanitized data written into Markdown tables or headings",
+          "category": "lesson-learned",
+          "final_score": 0.5498991586248154,
+          "similarity": 0.5266973376274109,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 604,
+          "title": "Safety-Guard Validation: Permissive Character/Length Gating Over Format Enforcement",
+          "category": "pattern",
+          "final_score": 0.5040116984708252,
+          "similarity": 0.4115965962409973,
+          "confidence": 0.6375001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.49227463305292474,
+          "similarity": 0.43543457984924316,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.49167647466896813,
+          "similarity": 0.43275296688079834,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.47399635039538884,
+          "similarity": 0.4122459888458252,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

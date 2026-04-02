@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774575749000",
+  "query": "graph_edges SQL query cross-category JOIN aggregate",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.5589153475592623,
+          "similarity": 0.6016553640365601,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5315854092322164,
+          "similarity": 0.5347812175750732,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.503898422981717,
+          "similarity": 0.5128167271614075,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.4578469764336808,
+          "similarity": 0.43129920959472656,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.4357278253578801,
+          "similarity": 0.41758835315704346,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.5589153475592623,
+          "similarity": 0.6016553640365601,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5315854092322164,
+          "similarity": 0.5347812175750732,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.503898422981717,
+          "similarity": 0.5128167271614075,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.4578469764336808,
+          "similarity": 0.43129920959472656,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.4357278253578801,
+          "similarity": 0.41758835315704346,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

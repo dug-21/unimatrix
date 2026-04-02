@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-349",
+  "query": "1. Let architect decide, 2. drop tee for distribution, 3 - plain text is fine, 4. NPM_TOKEN has been configured in Gitub as repository secrect for Actions",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4769376363180602,
+          "similarity": 0.4139077067375183,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.46376989698803006,
+          "similarity": 0.38688695430755615,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1197,
+          "title": "Tag-Triggered Release Pipeline Pattern (Rust + npm via GitHub Actions)",
+          "category": "pattern",
+          "final_score": 0.4478612241089295,
+          "similarity": 0.4093472957611084,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.44387866447559776,
+          "similarity": 0.3891946077346802,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.40955536161554784,
+          "similarity": 0.38372886180877686,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4769376363180602,
+          "similarity": 0.4139077067375183,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.46376989698803006,
+          "similarity": 0.38688695430755615,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1197,
+          "title": "Tag-Triggered Release Pipeline Pattern (Rust + npm via GitHub Actions)",
+          "category": "pattern",
+          "final_score": 0.4478612241089295,
+          "similarity": 0.4093472957611084,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.44387866447559776,
+          "similarity": 0.3891946077346802,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.40955536161554784,
+          "similarity": 0.38372886180877686,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

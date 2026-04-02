@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1977",
+  "query": "now run retro",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.385238725874848,
+          "similarity": 0.2741483449935913,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.3424823347348418,
+          "similarity": 0.1863815188407898,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.3370545350225411,
+          "similarity": 0.22870677709579468,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.3319810465762262,
+          "similarity": 0.19737845659255981,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.3309973602564067,
+          "similarity": 0.20498567819595337,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 722,
+          "title": "Worktree cleanup is retro's responsibility, not implementation's",
+          "category": "lesson-learned",
+          "final_score": 0.385238725874848,
+          "similarity": 0.2741483449935913,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.3424823347348418,
+          "similarity": 0.1863815188407898,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.3370545350225411,
+          "similarity": 0.22870677709579468,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.3319810465762262,
+          "similarity": 0.19737845659255981,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.3309973602564067,
+          "similarity": 0.20498567819595337,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

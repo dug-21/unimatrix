@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774371798000",
+  "query": "error handling graceful degradation None fallback DB read session registration",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.47437983769854736,
+          "similarity": 0.47188806533813477,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3301,
+          "title": "Graceful degradation via empty fallback, not early return, when post-error side effects must run",
+          "category": "pattern",
+          "final_score": 0.46899794298977265,
+          "similarity": 0.48774611949920654,
+          "confidence": 0.5837496108005646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4647832889614974,
+          "similarity": 0.4741309881210327,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.45524168960486816,
+          "similarity": 0.45970141887664795,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.4163388829086853,
+          "similarity": 0.44250160455703735,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3301,
+          "title": "Graceful degradation via empty fallback, not early return, when post-error side effects must run",
+          "category": "pattern",
+          "final_score": 0.48774611949920654,
+          "similarity": 0.48774611949920654,
+          "confidence": 0.5837496108005646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4741309881210327,
+          "similarity": 0.4741309881210327,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.47188806533813477,
+          "similarity": 0.47188806533813477,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.45970141887664795,
+          "similarity": 0.45970141887664795,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.44250160455703735,
+          "similarity": 0.44250160455703735,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.5362185943570126,
+          "similarity": 0.47188806533813477,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3301,
+          "title": "Graceful degradation via empty fallback, not early return, when post-error side effects must run",
+          "category": "pattern",
+          "final_score": 0.5272769688585893,
+          "similarity": 0.48774611949920654,
+          "confidence": 0.5837496108005646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.5228269664058756,
+          "similarity": 0.4741309881210327,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.5111453172148536,
+          "similarity": 0.45970141887664795,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.45943556432985855,
+          "similarity": 0.44250160455703735,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.5358008636490977,
+          "similarity": 0.47188806533813477,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3301,
+          "title": "Graceful degradation via empty fallback, not early return, when post-error side effects must run",
+          "category": "pattern",
+          "final_score": 0.5270202750315802,
+          "similarity": 0.48774611949920654,
+          "confidence": 0.5837496108005646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.5225107587546753,
+          "similarity": 0.4741309881210327,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.510811265926943,
+          "similarity": 0.45970141887664795,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.4593256035521129,
+          "similarity": 0.44250160455703735,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.47437983769854736,
+          "similarity": 0.47188806533813477,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3301,
+          "title": "Graceful degradation via empty fallback, not early return, when post-error side effects must run",
+          "category": "pattern",
+          "final_score": 0.46899794298977265,
+          "similarity": 0.48774611949920654,
+          "confidence": 0.5837496108005646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4647832889614974,
+          "similarity": 0.4741309881210327,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.45524168960486816,
+          "similarity": 0.45970141887664795,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.4163388829086853,
+          "similarity": 0.44250160455703735,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3301,
+          "title": "Graceful degradation via empty fallback, not early return, when post-error side effects must run",
+          "category": "pattern",
+          "final_score": 0.396305304307204,
+          "similarity": 0.48774611949920654,
+          "confidence": 0.5837496108005646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.3879267619206355,
+          "similarity": 0.4741309881210327,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3399,
+          "title": "ADR-004 col-025: Session Resume Goal Lookup Degrades to None on Any Failure",
+          "category": "decision",
+          "final_score": 0.3865465017465445,
+          "similarity": 0.47188806533813477,
+          "confidence": 0.6281193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.3790470270010141,
+          "similarity": 0.45970141887664795,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.3684625258812538,
+          "similarity": 0.44250160455703735,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774611238000",
+  "query": "context_store duplicate key failure bulk ADR write sequencing",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.5224816099618897,
+          "similarity": 0.5019955635070801,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.5119608829902484,
+          "similarity": 0.5426865220069885,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 634,
+          "title": "ADR-003: Phase Metrics Foreign Key with CASCADE",
+          "category": "decision",
+          "final_score": 0.5074036602673316,
+          "similarity": 0.5267269611358643,
+          "confidence": 0.55334284767438,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.49630707086234915,
+          "similarity": 0.5076377987861633,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.5224816099618897,
+          "similarity": 0.5019955635070801,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.5119608829902484,
+          "similarity": 0.5426865220069885,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 634,
+          "title": "ADR-003: Phase Metrics Foreign Key with CASCADE",
+          "category": "decision",
+          "final_score": 0.5074036602673316,
+          "similarity": 0.5267269611358643,
+          "confidence": 0.55334284767438,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.49630707086234915,
+          "similarity": 0.5076377987861633,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

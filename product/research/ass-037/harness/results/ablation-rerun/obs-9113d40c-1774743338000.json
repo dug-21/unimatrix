@@ -1,0 +1,250 @@
+{
+  "scenario_id": "obs-9113d40c-1774743338000",
+  "query": "sleep polling workaround run_in_background TaskOutput agent wait async",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3561,
+          "title": "Avoid sleep polling in tester agents: use run_in_background + TaskOutput",
+          "category": "procedure",
+          "final_score": 0.6025544392051151,
+          "similarity": 0.7352827191352844,
+          "confidence": 0.6163769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.5152721244029889,
+          "similarity": 0.5743240118026733,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.45177138712031967,
+          "similarity": 0.48541879653930664,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3561,
+          "title": "Avoid sleep polling in tester agents: use run_in_background + TaskOutput",
+          "category": "procedure",
+          "final_score": 0.5486355194678674,
+          "similarity": 0.7352827191352844,
+          "confidence": 0.6163769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.4495840072631836,
+          "similarity": 0.5743240118026733,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.39487310556265026,
+          "similarity": 0.48541879653930664,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3561,
+          "title": "Avoid sleep polling in tester agents: use run_in_background + TaskOutput",
+          "category": "procedure",
+          "final_score": 0.6025544392051151,
+          "similarity": 0.7352827191352844,
+          "confidence": 0.6163769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.5152721244029889,
+          "similarity": 0.5743240118026733,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.45177138712031967,
+          "similarity": 0.48541879653930664,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3561,
+          "title": "Avoid sleep polling in tester agents: use run_in_background + TaskOutput",
+          "category": "procedure",
+          "final_score": 0.68663944263104,
+          "similarity": 0.7352827191352844,
+          "confidence": 0.6163769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.5822507140220143,
+          "similarity": 0.5743240118026733,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5037410918423171,
+          "similarity": 0.48541879653930664,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3561,
+          "title": "Avoid sleep polling in tester agents: use run_in_background + TaskOutput",
+          "category": "procedure",
+          "final_score": 0.6863215127192477,
+          "similarity": 0.7352827191352844,
+          "confidence": 0.6163769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.582302522533252,
+          "similarity": 0.5743240118026733,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5038608454063891,
+          "similarity": 0.48541879653930664,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3561,
+          "title": "Avoid sleep polling in tester agents: use run_in_background + TaskOutput",
+          "category": "procedure",
+          "final_score": 0.7352827191352844,
+          "similarity": 0.7352827191352844,
+          "confidence": 0.6163769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.5743240118026733,
+          "similarity": 0.5743240118026733,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.48541879653930664,
+          "similarity": 0.48541879653930664,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

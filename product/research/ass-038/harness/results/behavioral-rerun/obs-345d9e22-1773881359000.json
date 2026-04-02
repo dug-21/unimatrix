@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-345d9e22-1773881359000",
+  "query": "multi-file rename blast radius Rust Python Markdown",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.517399463464499,
+          "similarity": 0.5404406785964966,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2340,
+          "title": "Multi-crate rename eradication: grep critical trees separately, not repo-wide",
+          "category": "lesson-learned",
+          "final_score": 0.47624855872538097,
+          "similarity": 0.4781948924064636,
+          "confidence": 0.538110527388229,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.4711591768650364,
+          "similarity": 0.5116103291511536,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.44328191756786994,
+          "similarity": 0.40269672870635986,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.4402195706916917,
+          "similarity": 0.40107154846191406,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2325,
+          "title": "Tool rename blast radius: build passing is not sufficient",
+          "category": "pattern",
+          "final_score": 0.517399463464499,
+          "similarity": 0.5404406785964966,
+          "confidence": 0.5608832885515024,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2340,
+          "title": "Multi-crate rename eradication: grep critical trees separately, not repo-wide",
+          "category": "lesson-learned",
+          "final_score": 0.47624855872538097,
+          "similarity": 0.4781948924064636,
+          "confidence": 0.538110527388229,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.4711591768650364,
+          "similarity": 0.5116103291511536,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.44328191756786994,
+          "similarity": 0.40269672870635986,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.4402195706916917,
+          "similarity": 0.40107154846191406,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

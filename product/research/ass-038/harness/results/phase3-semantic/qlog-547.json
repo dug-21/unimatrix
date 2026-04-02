@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-547",
+  "query": "I'm good with 1 as bayesian, 2,4 and 5.  What I don't know is the blast radius to do it 'the clean' way.  Entire rearchitecture, or  update 1 calling function",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.4542046469955038,
+          "similarity": 0.3962406516075134,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.4278874355995309,
+          "similarity": 0.3578958511352539,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.40463780785375747,
+          "similarity": 0.30910634994506836,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.3861277932763937,
+          "similarity": 0.32930755615234375,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.3589751308115735,
+          "similarity": 0.3132566213607788,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.4542046469955038,
+          "similarity": 0.3962406516075134,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.4278874355995309,
+          "similarity": 0.3578958511352539,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 255,
+          "title": "ADR-004: Batched Confidence Recomputation",
+          "category": "decision",
+          "final_score": 0.40463780785375747,
+          "similarity": 0.30910634994506836,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.3861277932763937,
+          "similarity": 0.32930755615234375,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.3589751308115735,
+          "similarity": 0.3132566213607788,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

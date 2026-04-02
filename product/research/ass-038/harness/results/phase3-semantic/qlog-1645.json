@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1645",
+  "query": "The only other thing I could think of is some pre-chewing for keyword triggers that might connect to categories.. but I cannot think of a way to do that domain agnostically",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.41680010395880507,
+          "similarity": 0.3229299783706665,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.4163591851422832,
+          "similarity": 0.35284852981567383,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4162736539295595,
+          "similarity": 0.3571685552597046,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4039643133877805,
+          "similarity": 0.31627964973449707,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.3982788982148697,
+          "similarity": 0.3145953416824341,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.41680010395880507,
+          "similarity": 0.3229299783706665,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.4163591851422832,
+          "similarity": 0.35284852981567383,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4162736539295595,
+          "similarity": 0.3571685552597046,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.4039643133877805,
+          "similarity": 0.31627964973449707,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.3982788982148697,
+          "similarity": 0.3145953416824341,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

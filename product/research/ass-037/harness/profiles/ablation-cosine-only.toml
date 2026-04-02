@@ -1,0 +1,14 @@
+[profile]
+name = "ablation-cosine-only"
+description = "Q4: Pure cosine — w_sim=0.85, all other formula weights zeroed, PPR disabled. If identical to baseline, confirms cosine is the sole effective signal."
+distribution_change = false
+
+[inference]
+w_nli  = 0.0
+w_sim  = 0.85
+w_conf = 0.0
+w_coac = 0.0
+w_util = 0.0
+w_prov = 0.0
+ppr_blend_weight = 0.0
+ppr_max_expand   = 0

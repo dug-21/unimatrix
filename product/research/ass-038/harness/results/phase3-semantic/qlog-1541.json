@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1541",
+  "query": "1. waive the hand-authored scenarios,  2. In this first iteration, I think we replace with NLI and compare to benchmark.  We may go back and modify based on performance. 3. The most important architectural perspecctive is externalizing model config if possible.  If we can build once and through configuration pull in a different model in testing, that would be great.  This may invalidate our model hashes for production, so I'll accept a more hard coded solution.. architect should look into this. Ultimately, we should plan to test 3 profiles to find the best alternative.  4. I'm thinking a separate value is appropriate for different uses.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.5574220230902819,
+          "similarity": 0.5815519690513611,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.5167087634895535,
+          "similarity": 0.4962965250015259,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.48230960815062396,
+          "similarity": 0.5060937404632568,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.47669627384231616,
+          "similarity": 0.4355146884918213,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4658578509381005,
+          "similarity": 0.47343307733535767,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.5574220230902819,
+          "similarity": 0.5815519690513611,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.5167087634895535,
+          "similarity": 0.4962965250015259,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.48230960815062396,
+          "similarity": 0.5060937404632568,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.47669627384231616,
+          "similarity": 0.4355146884918213,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4658578509381005,
+          "similarity": 0.47343307733535767,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-826",
+  "query": "look at issue 293.. does this basic proposal handle WO-2?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.45917818325000104,
+          "similarity": 0.3976036310195923,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.4371197895479867,
+          "similarity": 0.401287317276001,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2157,
+          "title": "ADR-001 alc-003: SessionIdentitySource as a Resolved Enum, Not a Trait Object",
+          "category": "decision",
+          "final_score": 0.43677582977697305,
+          "similarity": 0.41019773483276367,
+          "confidence": 0.5281090596335505,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.4201535803395202,
+          "similarity": 0.42421650886535645,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2158,
+          "title": "ADR-001 alc-003: SessionIdentitySource as enum not trait",
+          "category": "decision",
+          "final_score": 0.40998782409022105,
+          "similarity": 0.4049016833305359,
+          "confidence": 0.4629645463441204,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.45917818325000104,
+          "similarity": 0.3976036310195923,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3205,
+          "title": "Weight budget assignment when one of two planned scoring terms is deferred to a later feature",
+          "category": "procedure",
+          "final_score": 0.4371197895479867,
+          "similarity": 0.401287317276001,
+          "confidence": 0.541771832664534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2157,
+          "title": "ADR-001 alc-003: SessionIdentitySource as a Resolved Enum, Not a Trait Object",
+          "category": "decision",
+          "final_score": 0.43677582977697305,
+          "similarity": 0.41019773483276367,
+          "confidence": 0.5281090596335505,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.4201535803395202,
+          "similarity": 0.42421650886535645,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2158,
+          "title": "ADR-001 alc-003: SessionIdentitySource as enum not trait",
+          "category": "decision",
+          "final_score": 0.40998782409022105,
+          "similarity": 0.4049016833305359,
+          "confidence": 0.4629645463441204,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

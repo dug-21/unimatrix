@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2839",
+  "query": "revert your change... you were doing research not suppose to touch code when theres another active development effort ongoing",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.45723807723604704,
+          "similarity": 0.3842121958732605,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.41416909575321204,
+          "similarity": 0.3387260437011719,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1118,
+          "title": "Versioned Sentinel Markers for Idempotent File Mutation",
+          "category": "pattern",
+          "final_score": 0.403109477645595,
+          "similarity": 0.3241310715675354,
+          "confidence": 0.5596813370844217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.3982361786729436,
+          "similarity": 0.3237903118133545,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.383119613404447,
+          "similarity": 0.32918262481689453,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.45723807723604704,
+          "similarity": 0.3842121958732605,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.41416909575321204,
+          "similarity": 0.3387260437011719,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1118,
+          "title": "Versioned Sentinel Markers for Idempotent File Mutation",
+          "category": "pattern",
+          "final_score": 0.403109477645595,
+          "similarity": 0.3241310715675354,
+          "confidence": 0.5596813370844217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.3982361786729436,
+          "similarity": 0.3237903118133545,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3809,
+          "title": "Mutation spread hotspot inflated by design artifacts -- separate code vs artifact mutation counts",
+          "category": "lesson-learned",
+          "final_score": 0.383119613404447,
+          "similarity": 0.32918262481689453,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

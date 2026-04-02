@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4564",
+  "query": "Here's my feedback.  There are enough changes here, the design and design review process just need to rerun.  EVERY DESIGN ARTIFACT MUST BE ALIGNED.  MANDATORY.  That said, here is my feedback on the design: ---                                                                       \n  Item 1: pending_cycle_reviews source — accept the substitution, fix the   \n  architecture                                                              \n                                                                  \n  The semantics shift (\"formal start event\" vs \"Unimatrix was queried during\n   this cycle\") is acceptable. Post-col-022, a properly-run cycle always has\n   both. The cycle_events.cycle_start approach is actually cleaner because\n  it's already timestamped for K-window filtering and it naturally excludes \n  pre-cycle_events era cycles without an extra condition.         \n\n  The problem is that the architecture didn't fully update. Two places still\n   say query_log.feature_cycle:\n  - ADR-004 table entry (line 105): query_log.feature_cycle + 90-day default\n  - Integration Points \"Upstream dependencies\" table (line 189): query_log |\n   feature_cycle column for K-window pending set                            \n                                                                            \n  The spec's SQL (cycle_events) is correct; the architecture's two stale\n  references need updating before delivery. Close spec OQ-02 with \"accepted:\n   cycle_events.cycle_start. Architecture ADR-004 and Integration Points\n  updated to match.\" The query_log.feature_cycle column does not exist and  \n  should not be introduced here.                                  \n\n  ---\n  Item 2: Schema cascade count — spec needs updating, architecture is \n  authoritative                                                             \n               \n  Spec AC-02b has 5 items; architecture has 7. The two missing from the     \n  spec:                                                                     \n   \n  - Item 5 (server.rs assertion: assert_eq!(version, N) → 18) — not in spec \n  - Item 6 (rename test_current_schema_version_is_17 → >= 17) — not in spec\n                                                                            \n  Architecture is authoritative. Update spec AC-02b to 7 items before       \n  delivery proceeds. The grep gate at the end (grep -r 'schema_version.*==  \n  17') catches the hard reference but not the test rename — that one        \n  requires explicit checklist coverage.                           \n\n  ---\n  Item 3: raw_signals_available type — spec is correct, fix the architecture\n                                                                            \n  bool is right. SQLite INTEGER 1/0 maps to Rust bool cleanly via sqlx. The\n  architecture Integration Surface at line 209 shows raw_signals_available: \n  i32 — that's wrong. i32 forces manual 0/1 comparisons in handler code,\n  which is exactly what you don't want. Fix the architecture struct         \n  signature to raw_signals_available: bool. The DDL stays INTEGER NOT NULL \n  DEFAULT 1 — sqlx handles the mapping.\n\n  ---\n  Item 4 (unrequested): SR-07 discriminator inconsistency between \n  architecture and spec                                                     \n                       \n  Architecture (lines 158-178) introduces a SELECT COUNT(*) FROM            \n  cycle_events WHERE cycle_id = ? discriminator query in the                \n  force=true/empty-observations path. The spec doesn't have this — it uses\n  get_cycle_review() return value as the sole discriminator and sends       \n  ERROR_NO_OBSERVATION_DATA when both observations and stored record are\n  absent.\n\n  The architecture's discriminator handles the edge case \"signals purged    \n  before review was ever written\" by routing to observation_metrics\n  fallback. The spec accepts ERROR_NO_OBSERVATION_DATA for that case        \n  (OQ-01).                                                        \n\n  The spec's approach is correct for V1 — the pathological case doesn't     \n  warrant the extra query. Close OQ-01: \"accepted —\n  ERROR_NO_OBSERVATION_DATA for no-stored-record case. No cycle_events COUNT\n   discriminator.\" Remove the discriminator from the architecture's control\n  flow section so delivery doesn't implement it.\n\n  ---\n  Summary: three architecture fixes, two spec fixes, one OQ closure before \n  delivery:                                                                 \n   \n  ┌─────┬───────────────────────┬───────────────────────────────────────┐   \n  │     │         File          │                  Fix                  │\n  ├─────┼───────────────────────┼───────────────────────────────────────┤   \n  │ A   │ architecture.md       │ query_log.feature_cycle →             │\n  │     │ ADR-004 table         │ cycle_events.cycle_start              │   \n  ├─────┼───────────────────────┼───────────────────────────────────────┤   \n  │ B   │ architecture.md       │ Remove query_log row for pending set  │\n  │     │ Integration Points    │                                       │   \n  ├─────┼───────────────────────┼───────────────────────────────────────┤\n  │ C   │ architecture.md       │ raw_signals_available: i32 → bool     │\n  │     │ Integration Surface   │                                       │   \n  ├─────┼───────────────────────┼───────────────────────────────────────┤\n  │ D   │ architecture.md       │ Remove cycle_events COUNT             │   \n  │     │ control flow SR-07    │ discriminator                         │   \n  ├─────┼───────────────────────┼───────────────────────────────────────┤\n  │ E   │ spec AC-02b           │ Expand 5 → 7 items (add server.rs +   │   \n  │     │                       │ test rename)                          │   \n  ├─────┼───────────────────────┼───────────────────────────────────────┤\n  │ F   │ spec OQ-01            │ Close: spec approach accepted         │   \n  ├─────┼───────────────────────┼───────────────────────────────────────┤   \n  │ G   │ spec OQ-02            │ Close: cycle_events.cycle_start       │\n  │     │                       │ accepted; architecture updated        │   \n  └─────┴───────────────────────┴───────────────────────────────────────┘",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.6266815507780213,
+          "similarity": 0.7457647323608398,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.5996735806875175,
+          "similarity": 0.7208905220031738,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5732404927631226,
+          "similarity": 0.6068232655525208,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.557786937355175,
+          "similarity": 0.5972313284873962,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3375,
+          "title": "ADR-005 col-024: Open-Ended Window Capped at unix_now_secs(), No Additional Max-Age Limit",
+          "category": "decision",
+          "final_score": 0.5438754110139884,
+          "similarity": 0.5844721794128418,
+          "confidence": 0.569844430733909,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.6266815507780213,
+          "similarity": 0.7457647323608398,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3805,
+          "title": "K-window set-difference query for pending/backlog status reporting",
+          "category": "pattern",
+          "final_score": 0.5996735806875175,
+          "similarity": 0.7208905220031738,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.5732404927631226,
+          "similarity": 0.6068232655525208,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.557786937355175,
+          "similarity": 0.5972313284873962,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3375,
+          "title": "ADR-005 col-024: Open-Ended Window Capped at unix_now_secs(), No Additional Max-Age Limit",
+          "category": "decision",
+          "final_score": 0.5438754110139884,
+          "similarity": 0.5844721794128418,
+          "confidence": 0.569844430733909,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

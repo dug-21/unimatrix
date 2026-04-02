@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-02b88d42-1773938076000",
+  "query": "async wrapper service handle pattern",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.547626471790185,
+          "similarity": 0.4849644899368286,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5385516475228702,
+          "similarity": 0.4505378007888794,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.5363775434770335,
+          "similarity": 0.5013564229011536,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5177949608815231,
+          "similarity": 0.4439229965209961,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.49731954978402526,
+          "similarity": 0.4470130205154419,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4836253215854796,
+          "similarity": 0.4849644899368286,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.47660052616906395,
+          "similarity": 0.5013564229011536,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.474554614680154,
+          "similarity": 0.4505378007888794,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.4589593998223237,
+          "similarity": 0.4439229965209961,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.44426231630803564,
+          "similarity": 0.4470130205154419,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.40468087563147914,
+          "similarity": 0.5013564229011536,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.3945935322688176,
+          "similarity": 0.4849644899368286,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.3734078774085412,
+          "similarity": 0.4505378007888794,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.37123878185565656,
+          "similarity": 0.4470130205154419,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.3693372286283053,
+          "similarity": 0.4439229965209961,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4836253215854796,
+          "similarity": 0.4849644899368286,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.47660052616906395,
+          "similarity": 0.5013564229011536,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.474554614680154,
+          "similarity": 0.4505378007888794,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.4589593998223237,
+          "similarity": 0.4439229965209961,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.44426231630803564,
+          "similarity": 0.4470130205154419,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5472195758041242,
+          "similarity": 0.4849644899368286,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5379801290375845,
+          "similarity": 0.4505378007888794,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.5361501336031641,
+          "similarity": 0.5013564229011536,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.5173152728012599,
+          "similarity": 0.4439229965209961,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.4969928840095538,
+          "similarity": 0.4470130205154419,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.5013564229011536,
+          "similarity": 0.5013564229011536,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4849644899368286,
+          "similarity": 0.4849644899368286,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.4505378007888794,
+          "similarity": 0.4505378007888794,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.4470130205154419,
+          "similarity": 0.4470130205154419,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3213,
+          "title": "Arc startup resource threading: background tick's run_single_tick also constructs services directly",
+          "category": "pattern",
+          "final_score": 0.4439229965209961,
+          "similarity": 0.4439229965209961,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 323,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1560,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

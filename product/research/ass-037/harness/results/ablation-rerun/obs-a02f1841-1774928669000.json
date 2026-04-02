@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-a02f1841-1774928669000",
+  "query": "xpass xfail integration test incidental fix batch verification",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.7377872467041016,
+          "similarity": 0.7377872467041016,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.43321651220321655,
+          "similarity": 0.43321651220321655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.41892820596694946,
+          "similarity": 0.41892820596694946,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.416459321975708,
+          "similarity": 0.416459321975708,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.40318721532821655,
+          "similarity": 0.40318721532821655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.5840417530030366,
+          "similarity": 0.7377872467041016,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.44609383289428245,
+          "similarity": 0.41892820596694946,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.43406557369901333,
+          "similarity": 0.416459321975708,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.43136406215192297,
+          "similarity": 0.43321651220321655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.41634941371442297,
+          "similarity": 0.40318721532821655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.5840417530030366,
+          "similarity": 0.7377872467041016,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.44609383289428245,
+          "similarity": 0.41892820596694946,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.43406557369901333,
+          "similarity": 0.416459321975708,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.43136406215192297,
+          "similarity": 0.43321651220321655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.41634941371442297,
+          "similarity": 0.40318721532821655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.6611671862128587,
+          "similarity": 0.7377872467041016,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.502043571586117,
+          "similarity": 0.41892820596694946,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.4858658439554083,
+          "similarity": 0.416459321975708,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.4806585836432389,
+          "similarity": 0.43321651220321655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.4629139991261934,
+          "similarity": 0.40318721532821655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.5501767672025241,
+          "similarity": 0.7377872467041016,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.3627486228942871,
+          "similarity": 0.43321651220321655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.3539558190565843,
+          "similarity": 0.41892820596694946,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.35243650583120495,
+          "similarity": 0.416459321975708,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.3442690555865948,
+          "similarity": 0.40318721532821655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3918,
+          "title": "Batch bug fix verification: XPASS signals from incidental fixes must be surfaced, not ignored",
+          "category": "lesson-learned",
+          "final_score": 0.6606664015037658,
+          "similarity": 0.7377872467041016,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.5025868092699024,
+          "similarity": 0.41892820596694946,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.4863194813539685,
+          "similarity": 0.416459321975708,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1685,
+          "title": "Integration test stub activation pattern: skip → real test when GH issue is fixed",
+          "category": "procedure",
+          "final_score": 0.4809686625415397,
+          "similarity": 0.43321651220321655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2380,
+          "title": "Bug fix verification: tokio runtime nesting panic in async tool handler",
+          "category": "procedure",
+          "final_score": 0.46330437026212795,
+          "similarity": 0.40318721532821655,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 1685,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 238,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3253,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

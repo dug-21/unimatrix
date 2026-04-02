@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774371793000",
+  "query": "SubagentStart UDS injection path prompt_snippet query precedence hook",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5997658685237683,
+          "similarity": 0.6642730832099915,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5680146028554363,
+          "similarity": 0.6000372767448425,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.5470668398530727,
+          "similarity": 0.5732553601264954,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.5383281827127648,
+          "similarity": 0.5334072709083557,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.531486581378079,
+          "similarity": 0.5031979084014893,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5997658685237683,
+          "similarity": 0.6642730832099915,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5680146028554363,
+          "similarity": 0.6000372767448425,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.5470668398530727,
+          "similarity": 0.5732553601264954,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.5383281827127648,
+          "similarity": 0.5334072709083557,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.531486581378079,
+          "similarity": 0.5031979084014893,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

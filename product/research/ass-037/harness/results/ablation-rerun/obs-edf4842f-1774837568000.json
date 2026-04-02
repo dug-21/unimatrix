@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-edf4842f-1774837568000",
+  "query": "serde deserialization untrusted JSON stored data security",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.5090444269236498,
+          "similarity": 0.4685859680175781,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.5068232355746941,
+          "similarity": 0.4545156955718994,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.48406797770754545,
+          "similarity": 0.42418164014816284,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.46866006950788286,
+          "similarity": 0.3916318416595459,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.4425644231211969,
+          "similarity": 0.40361487865448,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.5087817096580258,
+          "similarity": 0.4685859680175781,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.5064835762240265,
+          "similarity": 0.4545156955718994,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.4836791053857312,
+          "similarity": 0.42418164014816284,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.46815988621016635,
+          "similarity": 0.3916318416595459,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.44231150400128316,
+          "similarity": 0.40361487865448,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4543456516170576,
+          "similarity": 0.4685859680175781,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.4517223356024128,
+          "similarity": 0.4545156955718994,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.43297678662608047,
+          "similarity": 0.42418164014816284,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.4194260393314251,
+          "similarity": 0.3916318416595459,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.4012694281779063,
+          "similarity": 0.40361487865448,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4685859680175781,
+          "similarity": 0.4685859680175781,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.4545156955718994,
+          "similarity": 0.4545156955718994,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.42418164014816284,
+          "similarity": 0.42418164014816284,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.40361487865448,
+          "similarity": 0.40361487865448,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.3916318416595459,
+          "similarity": 0.3916318416595459,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.38451444185697115,
+          "similarity": 0.4685859680175781,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.3758558126596304,
+          "similarity": 0.4545156955718994,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.35718870162963867,
+          "similarity": 0.42418164014816284,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.3445322330181415,
+          "similarity": 0.40361487865448,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.3371580564058744,
+          "similarity": 0.3916318416595459,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4543456516170576,
+          "similarity": 0.4685859680175781,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.4517223356024128,
+          "similarity": 0.4545156955718994,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3787,
+          "title": "ADR-001: Deserializer Helpers in mcp/serde_util.rs Submodule",
+          "category": "decision",
+          "final_score": 0.43297678662608047,
+          "similarity": 0.42418164014816284,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.4194260393314251,
+          "similarity": 0.3916318416595459,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.4012694281779063,
+          "similarity": 0.40361487865448,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

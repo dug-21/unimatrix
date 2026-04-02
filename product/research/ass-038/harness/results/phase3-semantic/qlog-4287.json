@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4287",
+  "query": "before we merge, the review found the following related to the PPR feature: Finding 1 (medium): Direction Discrepancy — Outgoing vs Incoming (ADR-003 Violation)\n\nADR-003 (Unimatrix entry #3733), ARCHITECTURE.md (lines 92-94, Technology Decisions table ADR-003 row), ACCEPTANCE-MAP AC-08, and RISK-TEST-STRATEGY R-12 all specify Direction::Incoming for all three positive edge types in personalized_pagerank.\n\nThe implementation at graph_ppr.rs:98, 104, 110, 164, 167, 170 uses Direction::Outgoing throughout.\n\nThe doc-comment claims this is the \"reverse random-walk formulation\" that is \"consistent with ADR-003's goal.\" This claim is misleading. ADR-003 specifies a mechanism (Direction::Incoming), not just a goal. The two formulations are the transpose of each other and produce different score distributions. They are not mathematically equivalent.\n\nConcretely: the Incoming formulation propagates mass from each node to its incoming neighbors (nodes that point to it). The Outgoing formulation propagates mass from each node's outgoing targets back to the node — i.e., for node u with edge u→v, u accumulates v's score. For the current edge topology (Supports A→B, seed on B), both formulations surface A, which is why the tests pass and the behavioral outcomes are correct. But the normalization and convergence differ.\n\nR-12 in the risk strategy explicitly describes this as the defect mode to prevent: \"If the direction is accidentally coded as Direction::Outgoing, the function traverses B → X edges (where B is a seed) and surfaces what B is a prerequisite FOR — the opposite semantic.\" The tests in graph_ppr_tests.rs verify the behavioral outcomes but cannot distinguish Incoming from Outgoing — they pass with both formulations.\n\nRequired action before merge (one of two options):\n\nOption A — The ADR spec was correct: correct the code to Direction::Incoming and update ADR-003 to confirm the implementation matches.\n\nOption B — The Outgoing/transpose formulation is deliberately chosen: update ADR-003, ARCHITECTURE.md, ACCEPTANCE-MAP AC-08, and RISK-TEST-STRATEGY R-12 to document the actual direction used, with explicit rationale. Add a test that distinguishes Incoming from Outgoing behavior.\n\nThe code is internally consistent and all tests pass. This is not blocking as an outright defect, but the undocumented divergence from four specification artifacts creates a future correctness risk — particularly once Prerequisite edges are introduced by #412.\n\nFinding 2 (low, informational): Quarantine bypass — CORRECTLY MITIGATED\n\nR-08 (Critical) is correctly handled. SecurityGateway::is_quarantined is called at search.rs:946 for every PPR-fetched entry before injection. Quarantined entries are silently skipped. Behavior is identical to the HNSW path at line 647. No action required.\n\nFinding 3 (low, informational): Config validation\n\nAll five PPR fields are validated at startup with correct bounds. No runtime reload path. Maximum DoS surface (ppr_max_expand=500) is the documented architectural ceiling and is operator-controlled via config. No action required.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.6685812133104397,
+          "similarity": 0.7989990711212158,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.6417554543944215,
+          "similarity": 0.7839897274971008,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.6268919579593929,
+          "similarity": 0.7360607981681824,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.5693463829740532,
+          "similarity": 0.6464124917984009,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5519478386398177,
+          "similarity": 0.584026038646698,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.6685812133104397,
+          "similarity": 0.7989990711212158,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3750,
+          "title": "ADR-003 crt-030: Edge Direction Semantics for PPR Traversal — Outgoing for Reverse/Transpose PPR",
+          "category": "decision",
+          "final_score": 0.6417554543944215,
+          "similarity": 0.7839897274971008,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.6268919579593929,
+          "similarity": 0.7360607981681824,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3896,
+          "title": "PPR regression test trap: inserting only B→A and seeding at B gives A score 0.0 — both edges required",
+          "category": "pattern",
+          "final_score": 0.5693463829740532,
+          "similarity": 0.6464124917984009,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5519478386398177,
+          "similarity": 0.584026038646698,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-525",
+  "query": "I approve.  Don't forget to remove any maintain:true tests as well",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.513156196894844,
+          "similarity": 0.4895274043083191,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.48060682078804684,
+          "similarity": 0.4223771095275879,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.47811330481872627,
+          "similarity": 0.4031308889389038,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.4634382120013849,
+          "similarity": 0.420248806476593,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3930,
+          "title": "list_purgeable_cycles includes already-purged cycles (raw_signals_available=0 not filtered)",
+          "category": "pattern",
+          "final_score": 0.4569464679815701,
+          "similarity": 0.4265526533126831,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.513156196894844,
+          "similarity": 0.4895274043083191,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.48060682078804684,
+          "similarity": 0.4223771095275879,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.47811330481872627,
+          "similarity": 0.4031308889389038,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.4634382120013849,
+          "similarity": 0.420248806476593,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3930,
+          "title": "list_purgeable_cycles includes already-purged cycles (raw_signals_available=0 not filtered)",
+          "category": "pattern",
+          "final_score": 0.4569464679815701,
+          "similarity": 0.4265526533126831,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

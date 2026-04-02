@@ -1,0 +1,134 @@
+{
+  "scenario_id": "uc3-02",
+  "query": "How should the is_in_progress status field be typed on RetrospectiveReport to correctly represent cycles with no event data?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.6366851518110836,
+          "similarity": 0.7539179921150208,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5503613279673255,
+          "similarity": 0.5831226706504822,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5268916507107007,
+          "similarity": 0.5007555484771729,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3040,
+          "title": "infra-001: seeding CYCLE_EVENTS for phase_narrative tests — UDS-only write path constraint",
+          "category": "pattern",
+          "final_score": 0.4650357019400878,
+          "similarity": 0.432977557182312,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.4465322311808809,
+          "similarity": 0.4308466911315918,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.6366851518110836,
+          "similarity": 0.7539179921150208,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5503613279673255,
+          "similarity": 0.5831226706504822,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5268916507107007,
+          "similarity": 0.5007555484771729,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3040,
+          "title": "infra-001: seeding CYCLE_EVENTS for phase_narrative tests — UDS-only write path constraint",
+          "category": "pattern",
+          "final_score": 0.4650357019400878,
+          "similarity": 0.432977557182312,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.4465322311808809,
+          "similarity": 0.4308466911315918,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

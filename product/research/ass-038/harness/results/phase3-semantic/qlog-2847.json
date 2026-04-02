@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2847",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Now spawning `uni-docs` (MANDATORY — modified MCP tool output format) and `/uni-review-pr` in parallel.\n[tool: Bash(gh pr comment 377 --body \"$(cat <<'EOF'\n## Session 2 — Delivery Complete\n\nAll three gates passed.\n\n### Gates\n- **Gate ) → ]\n[tool: Bash(gh pr view 377 --json title,state,url | head -5) → ]\n[Assistant] PR #377 already exists. Let me update it with the delivery completion details.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5275736104987409,
+          "similarity": 0.5728257298469543,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.47778971867614606,
+          "similarity": 0.4225534200668335,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.4736299785286082,
+          "similarity": 0.4443960189819336,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.4706394189164924,
+          "similarity": 0.444923996925354,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.4592269889011773,
+          "similarity": 0.42319637537002563,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5275736104987409,
+          "similarity": 0.5728257298469543,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 269,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool",
+          "category": "decision",
+          "final_score": 0.47778971867614606,
+          "similarity": 0.4225534200668335,
+          "confidence": 0.6217814934540632,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.4736299785286082,
+          "similarity": 0.4443960189819336,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.4706394189164924,
+          "similarity": 0.444923996925354,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.4592269889011773,
+          "similarity": 0.42319637537002563,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

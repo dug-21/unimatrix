@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cb586d22-1773713931000",
+  "query": "unimatrix-server daemon spawn auto-start process",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5509178944075172,
+          "similarity": 0.5289987325668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.54425935875109,
+          "similarity": 0.5576017498970032,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.5298241415305414,
+          "similarity": 0.5148285031318665,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.5239621950646471,
+          "similarity": 0.535590410232544,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.5107284688434175,
+          "similarity": 0.5031203031539917,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.48927303806996814,
+          "similarity": 0.5289987325668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4862969797439329,
+          "similarity": 0.5576017498970032,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4728596039978548,
+          "similarity": 0.5148285031318665,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.4699449703962442,
+          "similarity": 0.535590410232544,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.4580755640287723,
+          "similarity": 0.5031203031539917,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5510611569032079,
+          "similarity": 0.5289987325668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5441721535802018,
+          "similarity": 0.5576017498970032,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.5299221522390295,
+          "similarity": 0.5148285031318665,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.5238861936583211,
+          "similarity": 0.535590410232544,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.5107781954165511,
+          "similarity": 0.5031203031539917,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.48927303806996814,
+          "similarity": 0.5289987325668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4862969797439329,
+          "similarity": 0.5576017498970032,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.4728596039978548,
+          "similarity": 0.5148285031318665,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.4699449703962442,
+          "similarity": 0.535590410232544,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.4580755640287723,
+          "similarity": 0.5031203031539917,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5576017498970032,
+          "similarity": 0.5576017498970032,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.535590410232544,
+          "similarity": 0.535590410232544,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5289987325668335,
+          "similarity": 0.5289987325668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.5148285031318665,
+          "similarity": 0.5148285031318665,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.5031203031539917,
+          "similarity": 0.5031203031539917,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.43929338455200195,
+          "similarity": 0.5576017498970032,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.4257479447584886,
+          "similarity": 0.535590410232544,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.421691527733436,
+          "similarity": 0.5289987325668335,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 334,
+          "title": "ADR-002: Database Filename Transition via cfg-gated db_path",
+          "category": "decision",
+          "final_score": 0.41297138654268706,
+          "similarity": 0.5148285031318665,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.40576634040245646,
+          "similarity": 0.5031203031539917,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

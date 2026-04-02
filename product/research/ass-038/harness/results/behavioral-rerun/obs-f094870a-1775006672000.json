@@ -1,0 +1,74 @@
+{
+  "scenario_id": "obs-f094870a-1775006672000",
+  "query": "background tick budget scheduling independent per-type",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.4860965211770546,
+          "similarity": 0.47674423456192017,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.45736911623101484,
+          "similarity": 0.4900013208389282,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.4860965211770546,
+          "similarity": 0.47674423456192017,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.45736911623101484,
+          "similarity": 0.4900013208389282,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

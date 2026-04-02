@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-67e04789-1774666440000",
+  "query": "cargo test lib flag freshness scoring unit test selection",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.41506462830763596,
+          "similarity": 0.5182300209999084,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.40089057042048526,
+          "similarity": 0.4951971769332886,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.3914731465853178,
+          "similarity": 0.47989386320114136,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.3895088709317721,
+          "similarity": 0.47670191526412964,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.3872173749483549,
+          "similarity": 0.47297823429107666,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.48495092321111355,
+          "similarity": 0.5182300209999084,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.48151836017199917,
+          "similarity": 0.47989386320114136,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.47806860327842354,
+          "similarity": 0.4951971769332886,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.4684390226222382,
+          "similarity": 0.47670191526412964,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4618750836975373,
+          "similarity": 0.47297823429107666,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.5461845984270276,
+          "similarity": 0.5182300209999084,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.5452316842359655,
+          "similarity": 0.47989386320114136,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.538996398918102,
+          "similarity": 0.4951971769332886,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.5275925883771769,
+          "similarity": 0.47670191526412964,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5189483272033771,
+          "similarity": 0.47297823429107666,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.48495092321111355,
+          "similarity": 0.5182300209999084,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.48151836017199917,
+          "similarity": 0.47989386320114136,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.47806860327842354,
+          "similarity": 0.4951971769332886,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.4684390226222382,
+          "similarity": 0.47670191526412964,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4618750836975373,
+          "similarity": 0.47297823429107666,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.5460030751969813,
+          "similarity": 0.5182300209999084,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.5448074126708042,
+          "similarity": 0.47989386320114136,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.5387119883857331,
+          "similarity": 0.4951971769332886,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.5272621294608584,
+          "similarity": 0.47670191526412964,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5186498201065439,
+          "similarity": 0.47297823429107666,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.5182300209999084,
+          "similarity": 0.5182300209999084,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.4951971769332886,
+          "similarity": 0.4951971769332886,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.47989386320114136,
+          "similarity": 0.47989386320114136,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.47670191526412964,
+          "similarity": 0.47670191526412964,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.47297823429107666,
+          "similarity": 0.47297823429107666,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 747,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 487,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

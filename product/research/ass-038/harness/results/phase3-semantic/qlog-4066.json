@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4066",
+  "query": "question:  Our context_store calls allow tags to be set.  Currently, i've given no structure, recommendations on using tags so the agents are freeforming them, and they're currently NOT used for retrieval to my knowledge in any way.. any reason to include tags as a graph edge?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 360,
+          "title": "ADR-006: entry_tags Junction Table with Foreign Key CASCADE",
+          "category": "decision",
+          "final_score": 0.47128073304557405,
+          "similarity": 0.4557734727859497,
+          "confidence": 0.5566570285723444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.45627691126371117,
+          "similarity": 0.3770413398742676,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.44340093199845676,
+          "similarity": 0.3978714942932129,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 373,
+          "title": "Junction Table with FK CASCADE for Tag-Like Many-to-Many in SQLite",
+          "category": "pattern",
+          "final_score": 0.4379903809515274,
+          "similarity": 0.3848764896392822,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.4223950892737208,
+          "similarity": 0.3538167476654053,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 360,
+          "title": "ADR-006: entry_tags Junction Table with Foreign Key CASCADE",
+          "category": "decision",
+          "final_score": 0.47128073304557405,
+          "similarity": 0.4557734727859497,
+          "confidence": 0.5566570285723444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.45627691126371117,
+          "similarity": 0.3770413398742676,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.44340093199845676,
+          "similarity": 0.3978714942932129,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 373,
+          "title": "Junction Table with FK CASCADE for Tag-Like Many-to-Many in SQLite",
+          "category": "pattern",
+          "final_score": 0.4379903809515274,
+          "similarity": 0.3848764896392822,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.4223950892737208,
+          "similarity": 0.3538167476654053,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cb586d22-1773712730000",
+  "query": "CancellationToken tokio-util daemon session lifetime",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5091620958206174,
+          "similarity": 0.5353406667709351,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1940,
+          "title": "tokio-util 0.7: CancellationToken needs no feature flag — \"sync\" feature does not exist",
+          "category": "pattern",
+          "final_score": 0.47334031638061286,
+          "similarity": 0.5334720015525818,
+          "confidence": 0.5220143853477399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.467625351960917,
+          "similarity": 0.5157774686813354,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.4578356420743683,
+          "similarity": 0.4936724901199341,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.44242280308141335,
+          "similarity": 0.5077361464500427,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5091620958206174,
+          "similarity": 0.5353406667709351,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1940,
+          "title": "tokio-util 0.7: CancellationToken needs no feature flag — \"sync\" feature does not exist",
+          "category": "pattern",
+          "final_score": 0.47334031638061286,
+          "similarity": 0.5334720015525818,
+          "confidence": 0.5220143853477399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.467625351960917,
+          "similarity": 0.5157774686813354,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.4578356420743683,
+          "similarity": 0.4936724901199341,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.44242280308141335,
+          "similarity": 0.5077361464500427,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5774627973216659,
+          "similarity": 0.5353406667709351,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1940,
+          "title": "tokio-util 0.7: CancellationToken needs no feature flag — \"sync\" feature does not exist",
+          "category": "pattern",
+          "final_score": 0.5287847949233282,
+          "similarity": 0.5334720015525818,
+          "confidence": 0.5220143853477399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.522600255521129,
+          "similarity": 0.5157774686813354,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.5112601946359627,
+          "similarity": 0.4936724901199341,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.48896417270646886,
+          "similarity": 0.5077361464500427,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5777381053644812,
+          "similarity": 0.5353406667709351,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1940,
+          "title": "tokio-util 0.7: CancellationToken needs no feature flag — \"sync\" feature does not exist",
+          "category": "pattern",
+          "final_score": 0.5287541595858822,
+          "similarity": 0.5334720015525818,
+          "confidence": 0.5220143853477399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.522644848899167,
+          "similarity": 0.5157774686813354,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.511375146953061,
+          "similarity": 0.4936724901199341,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.48884148006762196,
+          "similarity": 0.5077361464500427,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.42559425647442156,
+          "similarity": 0.5353406667709351,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1940,
+          "title": "tokio-util 0.7: CancellationToken needs no feature flag — \"sync\" feature does not exist",
+          "category": "pattern",
+          "final_score": 0.42444430864774263,
+          "similarity": 0.5334720015525818,
+          "confidence": 0.5220143853477399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.41355536534236026,
+          "similarity": 0.5157774686813354,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.4086068593538725,
+          "similarity": 0.5077361464500427,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.39995230161226714,
+          "similarity": 0.4936724901199341,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5353406667709351,
+          "similarity": 0.5353406667709351,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1940,
+          "title": "tokio-util 0.7: CancellationToken needs no feature flag — \"sync\" feature does not exist",
+          "category": "pattern",
+          "final_score": 0.5334720015525818,
+          "similarity": 0.5334720015525818,
+          "confidence": 0.5220143853477399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.5157774686813354,
+          "similarity": 0.5157774686813354,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.5077361464500427,
+          "similarity": 0.5077361464500427,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.4936724901199341,
+          "similarity": 0.4936724901199341,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

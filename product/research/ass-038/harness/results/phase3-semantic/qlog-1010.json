@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1010",
+  "query": "Q4 - Updates come later in the roadmap for cpu bound workload.. out of scope for this feature, Q3-Have architect decide, Need more information on Q1 and Q2",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.42259682187635517,
+          "similarity": 0.3195081353187561,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.4218098492799106,
+          "similarity": 0.3296050429344177,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.4049265719121077,
+          "similarity": 0.350871205329895,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.39975322240763334,
+          "similarity": 0.3492366075515747,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.39686300777010364,
+          "similarity": 0.3158057928085327,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.42259682187635517,
+          "similarity": 0.3195081353187561,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1628,
+          "title": "Per-query full-store reads inside spawn_blocking cause MCP instability under load",
+          "category": "lesson-learned",
+          "final_score": 0.4218098492799106,
+          "similarity": 0.3296050429344177,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1511,
+          "title": "Parallel worktrees harm features with cascading signature changes — use single-agent sequential delivery",
+          "category": "lesson-learned",
+          "final_score": 0.4049265719121077,
+          "similarity": 0.350871205329895,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.39975322240763334,
+          "similarity": 0.3492366075515747,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.39686300777010364,
+          "similarity": 0.3158057928085327,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

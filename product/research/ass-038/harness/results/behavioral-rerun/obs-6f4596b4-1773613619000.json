@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-6f4596b4-1773613619000",
+  "query": "unimatrix-vector hnsw layer iteration get_embedding",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.5722916867264644,
+          "similarity": 0.6628649234771729,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5250452476263648,
+          "similarity": 0.5066865682601929,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4999987841711956,
+          "similarity": 0.5141521692276001,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4873260782536104,
+          "similarity": 0.5315390229225159,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1724,
+          "title": "get_embedding: use IntoIterator for &PointIndexation (all layers), not get_layer_iterator(0)",
+          "category": "pattern",
+          "final_score": 0.4627262629642177,
+          "similarity": 0.5058364272117615,
+          "confidence": 0.4619192463146461,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.5722916867264644,
+          "similarity": 0.6628649234771729,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5250452476263648,
+          "similarity": 0.5066865682601929,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4999987841711956,
+          "similarity": 0.5141521692276001,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4873260782536104,
+          "similarity": 0.5315390229225159,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1724,
+          "title": "get_embedding: use IntoIterator for &PointIndexation (all layers), not get_layer_iterator(0)",
+          "category": "pattern",
+          "final_score": 0.4627262629642177,
+          "similarity": 0.5058364272117615,
+          "confidence": 0.4619192463146461,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

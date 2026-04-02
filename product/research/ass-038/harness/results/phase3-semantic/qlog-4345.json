@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4345",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Read(/workspaces/unimatrix/product/PRODUCT-VISION.md) → File content (13516 tokens) exceeds maximum allowed tokens (10000). Use offset and limit parameters to read specific portions of the file, or search for specific content instead of reading the whole file.]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1091,
+          "title": "ADR-002 nan-003: Versioned Sentinel + Head-Check Fallback for Init Idempotency",
+          "category": "decision",
+          "final_score": 0.4931516042598718,
+          "similarity": 0.49638646841049194,
+          "confidence": 0.5580022566903781,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.441959147716118,
+          "similarity": 0.3756171464920044,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.4415172953208675,
+          "similarity": 0.3737297058105469,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.43117251842900317,
+          "similarity": 0.4178277850151062,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.40567518856650897,
+          "similarity": 0.3693828582763672,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1091,
+          "title": "ADR-002 nan-003: Versioned Sentinel + Head-Check Fallback for Init Idempotency",
+          "category": "decision",
+          "final_score": 0.4931516042598718,
+          "similarity": 0.49638646841049194,
+          "confidence": 0.5580022566903781,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.441959147716118,
+          "similarity": 0.3756171464920044,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.4415172953208675,
+          "similarity": 0.3737297058105469,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.43117251842900317,
+          "similarity": 0.4178277850151062,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.40567518856650897,
+          "similarity": 0.3693828582763672,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

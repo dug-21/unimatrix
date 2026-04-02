@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774576041000",
+  "query": "outcome rework search query filtering",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.48495757045509147,
+          "similarity": 0.42862486839294434,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4730318333403477,
+          "similarity": 0.4358866810798645,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.465912965833679,
+          "similarity": 0.40011852979660034,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.4608754173261467,
+          "similarity": 0.4066730737686157,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 481,
+          "title": "ADR-001: RetrievalMode Enum for Strict vs Flexible Search",
+          "category": "decision",
+          "final_score": 0.44969966340004996,
+          "similarity": 0.41592705249786377,
+          "confidence": 0.5550032970889018,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.48495757045509147,
+          "similarity": 0.42862486839294434,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4730318333403477,
+          "similarity": 0.4358866810798645,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 97,
+          "title": "ADR-007: Feature Boost in Briefing via Score Adjustment",
+          "category": "decision",
+          "final_score": 0.465912965833679,
+          "similarity": 0.40011852979660034,
+          "confidence": 0.6215944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.4608754173261467,
+          "similarity": 0.4066730737686157,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 481,
+          "title": "ADR-001: RetrievalMode Enum for Strict vs Flexible Search",
+          "category": "decision",
+          "final_score": 0.44969966340004996,
+          "similarity": 0.41592705249786377,
+          "confidence": 0.5550032970889018,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

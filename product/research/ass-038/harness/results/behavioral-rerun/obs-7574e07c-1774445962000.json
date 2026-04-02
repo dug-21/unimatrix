@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7574e07c-1774445962000",
+  "query": "render_* section helper pattern always emit fallback Option None formatter",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.5262442987883185,
+          "similarity": 0.5542565584182739,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.5221582594184263,
+          "similarity": 0.4863177537918091,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2617,
+          "title": "Use render_long_help() not render_help() when asserting on multi-paragraph clap doc comment content in tests",
+          "category": "pattern",
+          "final_score": 0.4603179327278908,
+          "similarity": 0.4740254878997803,
+          "confidence": 0.5008265489760177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.45987583646078856,
+          "similarity": 0.43653082847595215,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.4563097724837667,
+          "similarity": 0.446194052696228,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.5262442987883185,
+          "similarity": 0.5542565584182739,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.5221582594184263,
+          "similarity": 0.4863177537918091,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2617,
+          "title": "Use render_long_help() not render_help() when asserting on multi-paragraph clap doc comment content in tests",
+          "category": "pattern",
+          "final_score": 0.4603179327278908,
+          "similarity": 0.4740254878997803,
+          "confidence": 0.5008265489760177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.45987583646078856,
+          "similarity": 0.43653082847595215,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3459,
+          "title": "Domain-Specific Markdown Formatter Module Pattern",
+          "category": "pattern",
+          "final_score": 0.4563097724837667,
+          "similarity": 0.446194052696228,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

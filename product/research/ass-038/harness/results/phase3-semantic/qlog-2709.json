@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2709",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Spawning architect and specification writer in parallel with all settled decisions.\n[Assistant] Got it — the sequence makes sense now:\n\n1. Agent calls `context_cycle(start, goal: \"...too long...\")` \n2. Hook fires → **UDS writes truncated version** to `cycle_events` (defensive truncate, no failure)\n3. MCP handler validates → **rejects with error** → agent sees it and corrects\n4. Agent retries with shorter goal → MCP accepts → **UDS writes again → overwrites the truncated version**\n\nLast writer wins. The corrected goal ends up as the stored value. The cycle_id is the same across both attempts so observation attribution is never disrupted.\n\nSo the actual behavior per path:\n\n| Path | Over limit | Result |\n|---|---|---|\n| MCP | Reject with descriptive error | Agent corrects and retries |\n| UDS | Truncate at char boundary, write it | Overwritten if agent retries successfully |\n\nOne `MAX_GOAL_BYTES` constant. The UDS truncation isn't a final state — it's just defensive handling that gets naturally corrected by the successful retry. Clean.\n\nReady to send the architect in to revise ADR-003 and ADR-005 with all the settled decisions?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.5511592240540106,
+          "similarity": 0.5723676085472107,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.5475327478429614,
+          "similarity": 0.5841720700263977,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.525264007027506,
+          "similarity": 0.5366889834403992,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.5178337044467561,
+          "similarity": 0.537044882774353,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5113370747930062,
+          "similarity": 0.5380419492721558,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.5511592240540106,
+          "similarity": 0.5723676085472107,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.5475327478429614,
+          "similarity": 0.5841720700263977,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.525264007027506,
+          "similarity": 0.5366889834403992,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.5178337044467561,
+          "similarity": 0.537044882774353,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5113370747930062,
+          "similarity": 0.5380419492721558,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

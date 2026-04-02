@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774265109000",
+  "query": "observation fetch session query extraction background tick pool",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.42443081048818737,
+          "similarity": 0.5334500670433044,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.40687036514282227,
+          "similarity": 0.5049143433570862,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.4022434674776518,
+          "similarity": 0.4973956346511841,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.3698827303372897,
+          "similarity": 0.4448094367980957,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.3673721460195688,
+          "similarity": 0.4407297372817993,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5082964620930808,
+          "similarity": 0.5334500670433044,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.47403983382591347,
+          "similarity": 0.5049143433570862,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.46931741389287496,
+          "similarity": 0.4973956346511841,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.44718885655663126,
+          "similarity": 0.4448094367980957,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.44659438834239784,
+          "similarity": 0.4407297372817993,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5764542603957188,
+          "similarity": 0.5334500670433044,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5323348330937833,
+          "similarity": 0.5049143433570862,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.5265786885219945,
+          "similarity": 0.4973956346511841,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.5011839465046702,
+          "similarity": 0.4448094367980957,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.5007441898049243,
+          "similarity": 0.4407297372817993,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5082964620930808,
+          "similarity": 0.5334500670433044,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.47403983382591347,
+          "similarity": 0.5049143433570862,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.46931741389287496,
+          "similarity": 0.4973956346511841,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.44718885655663126,
+          "similarity": 0.4448094367980957,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.44659438834239784,
+          "similarity": 0.4407297372817993,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5767353335548849,
+          "similarity": 0.5334500670433044,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5325140519809513,
+          "similarity": 0.5049143433570862,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.5267694274361828,
+          "similarity": 0.4973956346511841,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.5015524073524258,
+          "similarity": 0.4448094367980957,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.501136441128605,
+          "similarity": 0.4407297372817993,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5334500670433044,
+          "similarity": 0.5334500670433044,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.5049143433570862,
+          "similarity": 0.5049143433570862,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.4973956346511841,
+          "similarity": 0.4973956346511841,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.4448094367980957,
+          "similarity": 0.4448094367980957,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3210,
+          "title": "SessionRegistry access in SearchService: pre-resolved params vs. Arc field — pattern and WA-4a forward caveat",
+          "category": "pattern",
+          "final_score": 0.4407297372817993,
+          "similarity": 0.4407297372817993,
+          "confidence": 0.5874317323383274,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

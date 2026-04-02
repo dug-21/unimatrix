@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-537",
+  "query": "run context_status",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.46728929608463743,
+          "similarity": 0.4322606325149536,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.46174998540046297,
+          "similarity": 0.4011306166648865,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.44816938083968294,
+          "similarity": 0.4030916094779968,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.4355326274619864,
+          "similarity": 0.3989526033401489,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.4322134271139073,
+          "similarity": 0.404266357421875,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3703,
+          "title": "context_get fails at agent startup when querying entry IDs not yet stored in that session",
+          "category": "lesson-learned",
+          "final_score": 0.46728929608463743,
+          "similarity": 0.4322606325149536,
+          "confidence": 0.579412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.46174998540046297,
+          "similarity": 0.4011306166648865,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.44816938083968294,
+          "similarity": 0.4030916094779968,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.4355326274619864,
+          "similarity": 0.3989526033401489,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.4322134271139073,
+          "similarity": 0.404266357421875,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

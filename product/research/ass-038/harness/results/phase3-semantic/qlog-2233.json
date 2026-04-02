@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2233",
+  "query": "hmm.  i believe some of that... but not all.  1. I don't seem to have issues with proper features, the symptom I've seen has presented itself on multiple bugfix cycles. of the 3 compounding failures #1 would impact real feature cycles and bugfixes randomly.  I've just not seen that experience.  The fallback, is the way it is, because there used to be No context_cycle(start) command, and therefore, no concrete signal at all.  So its looking for anything that may present itself... kind of to be expected.  your #3 from that list is absolutely false.  The entire bugfix cycle was initiated, reviewed, develped, and tested.  all in the same session.  The cycle(start) command should have been enough to tag that session with that feature ID, and once that is done, that is supposed to superseed any fallback identifiers.  Bottom line, This issue could be one of 2 things:  If that bug was done in the same session that a previous bug was also worked on, that session may have already been tagged, and therefore the context_cycle(start) command could not successfully attribute the session to this bugfix. (most likely issue).",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.6075189357482558,
+          "similarity": 0.6719523072242737,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5726084617078068,
+          "similarity": 0.5891731381416321,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5492979467294228,
+          "similarity": 0.6031269431114197,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.5475761732561487,
+          "similarity": 0.5982601642608643,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5240932534870348,
+          "similarity": 0.6167771816253662,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.6075189357482558,
+          "similarity": 0.6719523072242737,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5726084617078068,
+          "similarity": 0.5891731381416321,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3728,
+          "title": "context_get fails 13x due to integer serialization bug — use context_search as fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5492979467294228,
+          "similarity": 0.6031269431114197,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.5475761732561487,
+          "similarity": 0.5982601642608643,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5240932534870348,
+          "similarity": 0.6167771816253662,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

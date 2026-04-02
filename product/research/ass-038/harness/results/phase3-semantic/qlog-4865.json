@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4865",
+  "query": "Here's the propose plan for issue 458. any thoughts/comments? DIAGNOSIS + DESIGN REVIEW COMPLETE — Awaiting approval.\n                                                                                \n  ---\n  Root Cause: Orphaned-edge compaction in background.rs uses NOT IN (SELECT id  \n  FROM entries) — matching only fully-deleted entries. Quarantined entries      \n  (status=3) remain in entries, so their GRAPH_EDGES rows survive every tick.\n  build_typed_relation_graph then emits a WARN for each such edge because it    \n  builds an active-only snapshot. Both CoAccess and Supports edges are affected.\n                                                                                \n  Affected Files:\n  - crates/unimatrix-server/src/background.rs — line 519–525 (production SQL),  \n  line 2933–2943 (test helper SQL)                                              \n                                                                                \n  Proposed Fix:                                                                 \n                                                                                \n  DELETE FROM graph_edges                                                       \n  WHERE source_id NOT IN (SELECT id FROM entries WHERE status != ?1)            \n     OR target_id NOT IN (SELECT id FROM entries WHERE status != ?1)            \n  with .bind(Status::Quarantined as u8 as i64) — matching the prune pass        \n  convention in status.rs. Two-line change, one file. Also add a sync-warning   \n  comment to the test helper SQL.                                               \n                                                                                \n  Design Review: APPROVED WITH NOTES (both notes are non-blocking)\n  - Use bound parameter ?1 + .bind(Status::Quarantined as u8 as i64) rather than\n   literal 3 — matches prune pass convention, guards against enum renumbering   \n  - Add doc comment to run_graph_edges_compaction noting it must stay in sync   \n  with the production DELETE                                                    \n                                                                                \n  Risk Assessment: Low. Strictly a superset of deletions — no valid edges are\n  newly removed. Deprecated (status=1) entries are unaffected. Background tick  \n  path, not hot path.                                             \n                                                                                \n  Missing Tests:                                                                \n  - test_background_tick_compaction_removes_quarantined_source_edges — entry\n  with status=3 as source, both CoAccess and Supports edges deleted             \n  - test_background_tick_compaction_removes_quarantined_target_edges — entry\n  with status=3 as target, same edge types                                      \n                                                                                \n  Knowledge stored: Lesson #3906 (compaction must filter status, not just entry\n  existence), ADR #3907 (GRAPH_EDGES compaction status filter).  ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.6546304968775537,
+          "similarity": 0.7925677299499512,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.6523640656458874,
+          "similarity": 0.784457802772522,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.6480945318044775,
+          "similarity": 0.8210850954055786,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5869935301527031,
+          "similarity": 0.6799420714378357,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.6546304968775537,
+          "similarity": 0.7925677299499512,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3908,
+          "title": "GRAPH_EDGES compaction DELETE must filter quarantined entries by status, not just existence",
+          "category": "pattern",
+          "final_score": 0.6523640656458874,
+          "similarity": 0.784457802772522,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.6480945318044775,
+          "similarity": 0.8210850954055786,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5869935301527031,
+          "similarity": 0.6799420714378357,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -14,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

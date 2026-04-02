@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4239",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] All PASS. Spawning the synthesizer with a fresh context window.\n[tool: Agent(Re-run vision guardian for crt-030) → Done. Self-check before returning:\n\n- [x] ALIGNMENT-REPORT.md follows the template format\n- [x] All checks evaluated — Scope Additions now PASS (was WARN)\n- [x] No VARIANCE or FAIL present; WARN-01 section present with full resolution evidence\n- [x] Scope gaps and additions both checked\n- [x] Evid]\n[Assistant] All three updated. Re-running vision guardian against the corrected artifacts.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5179884481017615,
+          "similarity": 0.509861946105957,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.4997160330638778,
+          "similarity": 0.4914819002151489,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4993122195247578,
+          "similarity": 0.5122483372688293,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.478001982517976,
+          "similarity": 0.47285813093185425,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.461474558679681,
+          "similarity": 0.49780166149139404,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3337,
+          "title": "Architecture diagram informal headers diverge from spec — testers assert against wrong strings",
+          "category": "pattern",
+          "final_score": 0.5179884481017615,
+          "similarity": 0.509861946105957,
+          "confidence": 0.6061658646962714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3440,
+          "title": "Procedure: verify section order from SPEC before spawning formatter or test-plan agent",
+          "category": "procedure",
+          "final_score": 0.4997160330638778,
+          "similarity": 0.4914819002151489,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4993122195247578,
+          "similarity": 0.5122483372688293,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.478001982517976,
+          "similarity": 0.47285813093185425,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.461474558679681,
+          "similarity": 0.49780166149139404,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 12,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-105",
+  "query": "just ran retrospective on vnc-011, and col-020b before that... the data it found for those 2 latest features was EXTREMElY sparce, where col-020, was chock full.  I blieeve it may be possible that something in col-020b may have corrupted the full data flow driving our retro analysis.  I don't believe with the size and scope of vnc-011 for example, this was all the data there is: RETROSPECTIVE COMPLETE — Knowledge base updated.                                                                                                                                         \n                                                                                                                                                                                           \n  Feature: vnc-011                                                                                                                                                                         \n  PR: #197 (merged)                                                                                                                                                                        \n                                                                                                                                                                                           \n  Retrospective summary:                                                                                                                                                                   \n  - Sessions: 1, Tool calls: 11 (primary agent only — subagents did the work), Duration: 1h 50m\n  - Hotspots: 0\n  - Baseline outliers: 0\n\n  Knowledge extracted:\n  - Patterns: 1 new (#949 — Domain-Specific Markdown Formatter Module Pattern)\n  - Procedures: 0\n  - Lessons: 1 new (#953 — Human overrides must propagate to ALL downstream artifacts)\n  - ADRs stored: 3 (#950 format-dependent evidence_limit, #951 deterministic selection, #952 separate module)\n  - ADRs validated: 2 (ADR-002, ADR-003)\n  - ADRs with caveats: 1 (ADR-001 — file text says unwrap_or(0), shipped code correctly uses unwrap_or(3) per human override)\n\n  Gate 3a lesson: Pseudocode agents consumed stale ADR text that predated the human override. The implementation brief had the correct value, but agents prioritized architecture\n  artifacts. Future mitigation: ensure human overrides are explicitly noted in ALL artifacts agents will read, not just the brief.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.5605566264458194,
+          "similarity": 0.570081889629364,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5410220625481609,
+          "similarity": 0.5307070016860962,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.5319854600380933,
+          "similarity": 0.5342668890953064,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 953,
+          "title": "Human overrides must be propagated to ALL downstream artifacts, not just the implementation brief",
+          "category": "lesson-learned",
+          "final_score": 0.5311110550327814,
+          "similarity": 0.5943459272384644,
+          "confidence": 0.521092967605458,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 977,
+          "title": "Retrospective findings: vnc-010",
+          "category": "lesson-learned",
+          "final_score": 0.5045676083009645,
+          "similarity": 0.5645316243171692,
+          "confidence": 0.4916383306495191,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 324,
+          "title": "Session gaps without coordinator checkpointing cause expensive context re-reads",
+          "category": "lesson-learned",
+          "final_score": 0.5605566264458194,
+          "similarity": 0.570081889629364,
+          "confidence": 0.6356795723109899,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5410220625481609,
+          "similarity": 0.5307070016860962,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 92,
+          "title": "ADR-002: Correction Chain Atomicity",
+          "category": "decision",
+          "final_score": 0.5319854600380933,
+          "similarity": 0.5342668890953064,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 953,
+          "title": "Human overrides must be propagated to ALL downstream artifacts, not just the implementation brief",
+          "category": "lesson-learned",
+          "final_score": 0.5311110550327814,
+          "similarity": 0.5943459272384644,
+          "confidence": 0.521092967605458,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 977,
+          "title": "Retrospective findings: vnc-010",
+          "category": "lesson-learned",
+          "final_score": 0.5045676083009645,
+          "similarity": 0.5645316243171692,
+          "confidence": 0.4916383306495191,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 38,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 14,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

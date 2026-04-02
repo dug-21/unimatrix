@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3428",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(wc -l /workspaces/unimatrix/crates/unimatrix-server/src/eval/report/render.rs /workspaces/unimatrix/crates/unimatrix-ser) → ]\n[Assistant] REWORKABLE FAIL — missing 14 phase tests and two file size violations. Spawning rework.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.5694902233530251,
+          "similarity": 0.5992238521575928,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3837,
+          "title": "Retrospective findings: bugfix-358",
+          "category": "lesson-learned",
+          "final_score": 0.5301554547941532,
+          "similarity": 0.5801507234573364,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5229362218756424,
+          "similarity": 0.5921788215637207,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.5203163781417043,
+          "similarity": 0.5872011184692383,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.5129640510960628,
+          "similarity": 0.5732316970825195,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.5694902233530251,
+          "similarity": 0.5992238521575928,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3837,
+          "title": "Retrospective findings: bugfix-358",
+          "category": "lesson-learned",
+          "final_score": 0.5301554547941532,
+          "similarity": 0.5801507234573364,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5229362218756424,
+          "similarity": 0.5921788215637207,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.5203163781417043,
+          "similarity": 0.5872011184692383,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.5129640510960628,
+          "similarity": 0.5732316970825195,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

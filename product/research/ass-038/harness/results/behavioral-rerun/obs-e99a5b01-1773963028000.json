@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-e99a5b01-1773963028000",
+  "query": "test-support feature flag production binary compile-time safety",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.5196690082042569,
+          "similarity": 0.5019017457962036,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.512897593821072,
+          "similarity": 0.4659932851791382,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.503799636532789,
+          "similarity": 0.48612260818481445,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.4988657266413221,
+          "similarity": 0.4785711169242859,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4900918729418373,
+          "similarity": 0.47194063663482666,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.5196690082042569,
+          "similarity": 0.5019017457962036,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 553,
+          "title": "How to validate Claude Code worktree isolation before committing to it in architecture",
+          "category": "procedure",
+          "final_score": 0.512897593821072,
+          "similarity": 0.4659932851791382,
+          "confidence": 0.6550173472584268,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.503799636532789,
+          "similarity": 0.48612260818481445,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 885,
+          "title": "Serde-heavy types need explicit test coverage in component test plans",
+          "category": "lesson-learned",
+          "final_score": 0.4988657266413221,
+          "similarity": 0.4785711169242859,
+          "confidence": 0.5989625195631803,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.4900918729418373,
+          "similarity": 0.47194063663482666,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

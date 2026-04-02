@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1563",
+  "query": "Add it... and revise all spec/achtiecture documentation accordingly",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.46824866880006755,
+          "similarity": 0.38839662075042725,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.45284621659564095,
+          "similarity": 0.45011329650878906,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.4361201004121158,
+          "similarity": 0.41118359565734863,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.42749004835062654,
+          "similarity": 0.3914365768432617,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.41614347677902896,
+          "similarity": 0.376855731010437,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.46824866880006755,
+          "similarity": 0.38839662075042725,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.45284621659564095,
+          "similarity": 0.45011329650878906,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.4361201004121158,
+          "similarity": 0.41118359565734863,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3614,
+          "title": "Correcting interface signatures across multi-document design specs",
+          "category": "procedure",
+          "final_score": 0.42749004835062654,
+          "similarity": 0.3914365768432617,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.41614347677902896,
+          "similarity": 0.376855731010437,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

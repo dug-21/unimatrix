@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-a02f1841-1774917142000",
+  "query": "saturating arithmetic u32 counter overflow session histogram",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5832194407958804,
+          "similarity": 0.5965428352355957,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.4987707452724406,
+          "similarity": 0.42757534980773926,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.48125889829687396,
+          "similarity": 0.39144885540008545,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.47720554471827237,
+          "similarity": 0.43201136589050293,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4646081071732284,
+          "similarity": 0.3886035680770874,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5965428352355957,
+          "similarity": 0.5965428352355957,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.43201136589050293,
+          "similarity": 0.43201136589050293,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.42757534980773926,
+          "similarity": 0.42757534980773926,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.39144885540008545,
+          "similarity": 0.39144885540008545,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.3886035680770874,
+          "similarity": 0.3886035680770874,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5175272236681125,
+          "similarity": 0.5965428352355957,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.44393121082761666,
+          "similarity": 0.42757534980773926,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.42859211557344284,
+          "similarity": 0.39144885540008545,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.4285362801440629,
+          "similarity": 0.43201136589050293,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4162575900888584,
+          "similarity": 0.3886035680770874,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5175272236681125,
+          "similarity": 0.5965428352355957,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.44393121082761666,
+          "similarity": 0.42757534980773926,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.42859211557344284,
+          "similarity": 0.39144885540008545,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.4285362801440629,
+          "similarity": 0.43201136589050293,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4162575900888584,
+          "similarity": 0.3886035680770874,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5833059563441901,
+          "similarity": 0.5965428352355957,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.4983084375096828,
+          "similarity": 0.42757534980773926,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4806757162001416,
+          "similarity": 0.39144885540008545,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.4769120760245855,
+          "similarity": 0.43201136589050293,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.46411457120507166,
+          "similarity": 0.3886035680770874,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.4632571293757512,
+          "similarity": 0.5965428352355957,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.3620069943941557,
+          "similarity": 0.43201136589050293,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.35927713834322417,
+          "similarity": 0.42757534980773926,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.3370454494769757,
+          "similarity": 0.39144885540008545,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.3352945034320538,
+          "similarity": 0.3886035680770874,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3177,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3162,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 1040,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

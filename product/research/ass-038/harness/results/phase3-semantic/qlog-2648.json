@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2648",
+  "query": "had a thought about context_briefing.  We are still not getting great response output from the signals we have available when the context_briefing runs.  here's my thought, and how things tie together.  \\\n\\\n1. context_cycle (start, is used to initiate a new feature... we used to have keywords on the tool, and have removed it (there is still a keywords data infrastructure for this currently).  My thought, on a feature that is starting, is to include a goal statement (1 sentence/2 max) which is the goal for the feature or task we're working on.  This gets stored, and placed in the feature histogram in memory)\\\n2. Agents today issue a number of context_search calls. My thought is to replace those search calls with 1 context_briefing which builds a prioritized index.  Context_briefing includes a 'task' (what is this agent supposed to do).  My thought, to enhance context_briefing, is to use the topic_goal (feature) combined with the task, to provide the prioritized index.  Agents tomorrow would issue 1 context_briefing.  Then they'be be able to context_get anything relevant immediately. and eliminate the multiple search calls. \\\n3. Availability of the feature goal would also improve the injection on the UDS path as well.\\\n\\\nthoughts?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.6243090103328836,
+          "similarity": 0.6894822120666504,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5604972084007156,
+          "similarity": 0.591325044631958,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5405254406749386,
+          "similarity": 0.5668234825134277,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.531862518022729,
+          "similarity": 0.5612478852272034,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5281043546959745,
+          "similarity": 0.5369857549667358,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.6243090103328836,
+          "similarity": 0.6894822120666504,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5604972084007156,
+          "similarity": 0.591325044631958,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5405254406749386,
+          "similarity": 0.5668234825134277,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3325,
+          "title": "Three-Step Query Derivation Priority — Shared Free Function for Multi-Caller Services",
+          "category": "pattern",
+          "final_score": 0.531862518022729,
+          "similarity": 0.5612478852272034,
+          "confidence": 0.5704155700228312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5281043546959745,
+          "similarity": 0.5369857549667358,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

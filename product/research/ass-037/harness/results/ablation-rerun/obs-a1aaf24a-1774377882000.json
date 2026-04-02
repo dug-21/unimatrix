@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a1aaf24a-1774377882000",
+  "query": "goal byte limit constant named MAX_GOAL_BYTES truncation UDS MCP handler",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.61166676743324,
+          "similarity": 0.6558441519737244,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5530083238420022,
+          "similarity": 0.49836254119873047,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5424921975530475,
+          "similarity": 0.5133548974990845,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.5208498249595077,
+          "similarity": 0.49329566955566406,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.5057020569988723,
+          "similarity": 0.5108911991119385,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.611378026357812,
+          "similarity": 0.6558441519737244,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5533654858200627,
+          "similarity": 0.49836254119873047,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5426826374226813,
+          "similarity": 0.5133548974990845,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.5210299174784871,
+          "similarity": 0.49329566955566406,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.5056681410373489,
+          "similarity": 0.5108911991119385,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5422785729159577,
+          "similarity": 0.6558441519737244,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.48876360689738363,
+          "similarity": 0.49836254119873047,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4820512713721738,
+          "similarity": 0.5133548974990845,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.4648429162740166,
+          "similarity": 0.49329566955566406,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.45490758840663553,
+          "similarity": 0.5108911991119385,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.6558441519737244,
+          "similarity": 0.6558441519737244,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5133548974990845,
+          "similarity": 0.5133548974990845,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.5108911991119385,
+          "similarity": 0.5108911991119385,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.49836254119873047,
+          "similarity": 0.49836254119873047,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.49329566955566406,
+          "similarity": 0.49329566955566406,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.5422785729159577,
+          "similarity": 0.6558441519737244,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.48876360689738363,
+          "similarity": 0.49836254119873047,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4820512713721738,
+          "similarity": 0.5133548974990845,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.4648429162740166,
+          "similarity": 0.49329566955566406,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.45490758840663553,
+          "similarity": 0.5108911991119385,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3408,
+          "title": "MCP tool handler byte-length guard: define pub(crate) constant in hook.rs, import in tools.rs",
+          "category": "pattern",
+          "final_score": 0.49975024736844575,
+          "similarity": 0.6558441519737244,
+          "confidence": 0.5478549897636515,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4120645523071289,
+          "similarity": 0.5133548974990845,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.41054843022273135,
+          "similarity": 0.5108911991119385,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.40283848689152646,
+          "similarity": 0.49836254119873047,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.3997204120342548,
+          "similarity": 0.49329566955566406,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

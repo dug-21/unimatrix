@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1244",
+  "query": "Option A",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.3363799416970289,
+          "similarity": 0.16891640424728394,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.3221057172503552,
+          "similarity": 0.14943701028823853,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.32012946079048044,
+          "similarity": 0.1626383662223816,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.30508747182999707,
+          "similarity": 0.1703525185585022,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.29734246243184526,
+          "similarity": 0.19011574983596802,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.3363799416970289,
+          "similarity": 0.16891640424728394,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.3221057172503552,
+          "similarity": 0.14943701028823853,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.32012946079048044,
+          "similarity": 0.1626383662223816,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.30508747182999707,
+          "similarity": 0.1703525185585022,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.29734246243184526,
+          "similarity": 0.19011574983596802,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4088",
+  "query": "OK... now I want to pick up issue 436 and work as a bugfix",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.48883667471004255,
+          "similarity": 0.43173980712890625,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4683852795478961,
+          "similarity": 0.39765822887420654,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.46230465096649564,
+          "similarity": 0.38958269357681274,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.43371731032906324,
+          "similarity": 0.38192832469940186,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.41489807032375414,
+          "similarity": 0.4047142267227173,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.48883667471004255,
+          "similarity": 0.43173980712890625,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.4683852795478961,
+          "similarity": 0.39765822887420654,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.46230465096649564,
+          "similarity": 0.38958269357681274,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1008,
+          "title": "ADR-005: Bugfix Causal Linkage via caused_by_feature Tag",
+          "category": "decision",
+          "final_score": 0.43371731032906324,
+          "similarity": 0.38192832469940186,
+          "confidence": 0.560192235608312,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3492,
+          "title": "Bugfix renames must include all SKILL.md files referencing the renamed identifier — non-code blast radius missed causes gate failure",
+          "category": "lesson-learned",
+          "final_score": 0.41489807032375414,
+          "similarity": 0.4047142267227173,
+          "confidence": 0.4765601527034511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

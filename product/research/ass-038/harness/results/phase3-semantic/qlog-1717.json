@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1717",
+  "query": "well.. I want to design the system that GNN can turn predictive, and self learning.  Assuming a domain agnostic platform, the other work is building the knwoledge components (#330), context_briefing would be surfacing our adaptive intelligence improvements.  Thats the result of the intelligence, not the design point.  We must focus on an intelligence pipeline that can be tuned to meet these needs while itself getting smarter all the time",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4778112707294473,
+          "similarity": 0.4043912887573242,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.47482991440367595,
+          "similarity": 0.41048556566238403,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.44263872274040106,
+          "similarity": 0.3988116979598999,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.4376634830049746,
+          "similarity": 0.3869703412055969,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.4326506469319261,
+          "similarity": 0.3798343539237976,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4778112707294473,
+          "similarity": 0.4043912887573242,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.47482991440367595,
+          "similarity": 0.41048556566238403,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.44263872274040106,
+          "similarity": 0.3988116979598999,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.4376634830049746,
+          "similarity": 0.3869703412055969,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.4326506469319261,
+          "similarity": 0.3798343539237976,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

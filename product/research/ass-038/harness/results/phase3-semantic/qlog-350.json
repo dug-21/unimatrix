@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-350",
+  "query": "rock and role",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 74,
+          "title": "ADR-004: SHA-256 Content Hash",
+          "category": "decision",
+          "final_score": 0.31855509595839104,
+          "similarity": 0.16366565227508545,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.30635774032218277,
+          "similarity": 0.1728155016899109,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.29381041077004166,
+          "similarity": 0.11603790521621704,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.2712009005453303,
+          "similarity": 0.11764657497406006,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.2687297130553383,
+          "similarity": 0.12201535701751709,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 74,
+          "title": "ADR-004: SHA-256 Content Hash",
+          "category": "decision",
+          "final_score": 0.31855509595839104,
+          "similarity": 0.16366565227508545,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.30635774032218277,
+          "similarity": 0.1728155016899109,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.29381041077004166,
+          "similarity": 0.11603790521621704,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.2712009005453303,
+          "similarity": 0.11764657497406006,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.2687297130553383,
+          "similarity": 0.12201535701751709,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

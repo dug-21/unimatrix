@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4283",
+  "query": "there is another issue that is somewhat linked: The gap is confirmed. Here's the situation:                                                                  \n                                                                                                               \n  Root cause: Entries are embedded synchronously at store time. If the embedding service fails (or the adapter  \n  isn't ready), the entry is committed to the DB with embedding_dim = 0 and no VECTOR_MAP row. After that,\n  nothing ever re-embeds them.                                                                                  \n                                                                            \n  No recovery path exists in normal operation:                                                                  \n  - All background ticks (maintenance_tick, extraction_tick, graph_inference_tick) skip entries that lack       \n  embeddings — they don't fix them                                                                              \n  - reconstruct_embeddings() exists but only runs during import                                                 \n  - The NLI tick's embedded_ids filter (the \"RC-2 fix\") permanently excludes unembedded entries from graph      \n  inference                                                                                                     \n                                                                                                                \n  Affected entries (2132, 2149, 2152, 2157, 2159) are all from recent features (nxs-011, alc-003 era) — stored  \n  when the embed adapter was likely unavailable.                                                                \n                                                                            \n  The fix would be a re-embedding maintenance subtask in the tick loop:                                         \n  1. Query SELECT id FROM entries WHERE embedding_dim = 0 AND status = 'Active' (or entries missing from\n  VECTOR_MAP)                                                                                                   \n  2. Embed in batches (like reconstruct_embeddings does)                    \n  3. Insert into VECTOR_MAP and vector_index                \\\n\\\nI'm thinking the maintenance task needs to remove embeddings fo quarantined items, and create embeddings for those that are active but not there: The gap is confirmed. Here's the situation:                                                                  \n                                                                                                               \n  Root cause: Entries are embedded synchronously at store time. If the embedding service fails (or the adapter  \n  isn't ready), the entry is committed to the DB with embedding_dim = 0 and no VECTOR_MAP row. After that,\n  nothing ever re-embeds them.                                                                                  \n                                                                            \n  No recovery path exists in normal operation:                                                                  \n  - All background ticks (maintenance_tick, extraction_tick, graph_inference_tick) skip entries that lack       \n  embeddings — they don't fix them                                                                              \n  - reconstruct_embeddings() exists but only runs during import                                                 \n  - The NLI tick's embedded_ids filter (the \"RC-2 fix\") permanently excludes unembedded entries from graph      \n  inference                                                                                                     \n                                                                                                                \n  Affected entries (2132, 2149, 2152, 2157, 2159) are all from recent features (nxs-011, alc-003 era) — stored  \n  when the embed adapter was likely unavailable.                                                                \n                                                                            \n  The fix would be a re-embedding maintenance subtask in the tick loop:                                         \n  1. Query SELECT id FROM entries WHERE embedding_dim = 0 AND status = 'Active' (or entries missing from\n  VECTOR_MAP)                                                                                                   \n  2. Embed in batches (like reconstruct_embeddings does)                    \n  3. Insert into VECTOR_MAP and vector_index                ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.5843906779811496,
+          "similarity": 0.623458743095398,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5836521762283395,
+          "similarity": 0.6539052128791809,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5783530381316234,
+          "similarity": 0.6079713702201843,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.5691564949614639,
+          "similarity": 0.6429274678230286,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.5451540477073481,
+          "similarity": 0.6254981756210327,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.5843906779811496,
+          "similarity": 0.623458743095398,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.5836521762283395,
+          "similarity": 0.6539052128791809,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.5783530381316234,
+          "similarity": 0.6079713702201843,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.5691564949614639,
+          "similarity": 0.6429274678230286,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.5451540477073481,
+          "similarity": 0.6254981756210327,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 41,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 15,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

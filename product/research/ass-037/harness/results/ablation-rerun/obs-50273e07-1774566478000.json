@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-50273e07-1774566478000",
+  "query": "StatusReport field naming health metric output format",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.5055206382689825,
+          "similarity": 0.4161027669906616,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4788593164393911,
+          "similarity": 0.36498749256134033,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.47817668862172624,
+          "similarity": 0.41055822372436523,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.46105345009422016,
+          "similarity": 0.3644665479660034,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.454271083755033,
+          "similarity": 0.40524107217788696,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.3522170873788687,
+          "similarity": 0.4161027669906616,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.3488050607534555,
+          "similarity": 0.41055822372436523,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.3455329674940843,
+          "similarity": 0.40524107217788696,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.3207615338839017,
+          "similarity": 0.36498749256134033,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.32044095259446365,
+          "similarity": 0.3644665479660034,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.44845531919663134,
+          "similarity": 0.4161027669906616,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.4280334532375569,
+          "similarity": 0.41055822372436523,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4254959982263095,
+          "similarity": 0.36498749256134033,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.41240363326682833,
+          "similarity": 0.3644665479660034,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.41014819956555004,
+          "similarity": 0.40524107217788696,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.5061050688002134,
+          "similarity": 0.4161027669906616,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4796035767261758,
+          "similarity": 0.36498749256134033,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.47861863937268945,
+          "similarity": 0.41055822372436523,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.4616847370362347,
+          "similarity": 0.3644665479660034,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.45459154134704055,
+          "similarity": 0.40524107217788696,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.4161027669906616,
+          "similarity": 0.4161027669906616,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.41055822372436523,
+          "similarity": 0.41055822372436523,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.40524107217788696,
+          "similarity": 0.40524107217788696,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.36498749256134033,
+          "similarity": 0.36498749256134033,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.3644665479660034,
+          "similarity": 0.3644665479660034,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 307,
+          "title": "Response Formatting Convention",
+          "category": "convention",
+          "final_score": 0.44845531919663134,
+          "similarity": 0.4161027669906616,
+          "confidence": 0.6346797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.4280334532375569,
+          "similarity": 0.41055822372436523,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4254959982263095,
+          "similarity": 0.36498749256134033,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.41240363326682833,
+          "similarity": 0.3644665479660034,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3566,
+          "title": "Lookup per-scenario metadata in render_report via results slice, not NotableEntry extension",
+          "category": "pattern",
+          "final_score": 0.41014819956555004,
+          "similarity": 0.40524107217788696,
+          "confidence": 0.5250922115886886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

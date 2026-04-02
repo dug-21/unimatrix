@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-850",
+  "query": "yes... I love this",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 733,
+          "title": "Panic Hook for Long-Running Server Processes",
+          "category": "pattern",
+          "final_score": 0.2963541895730807,
+          "similarity": 0.08791148662567139,
+          "confidence": 0.6073735336616886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 373,
+          "title": "Junction Table with FK CASCADE for Tag-Like Many-to-Many in SQLite",
+          "category": "pattern",
+          "final_score": 0.2781267081931238,
+          "similarity": 0.08113551139831543,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.2676184420610773,
+          "similarity": 0.08036500215530396,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.25034185596712855,
+          "similarity": 0.07131427526473999,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.2187041621788405,
+          "similarity": 0.07129889726638794,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 733,
+          "title": "Panic Hook for Long-Running Server Processes",
+          "category": "pattern",
+          "final_score": 0.2963541895730807,
+          "similarity": 0.08791148662567139,
+          "confidence": 0.6073735336616886,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 373,
+          "title": "Junction Table with FK CASCADE for Tag-Like Many-to-Many in SQLite",
+          "category": "pattern",
+          "final_score": 0.2781267081931238,
+          "similarity": 0.08113551139831543,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.2676184420610773,
+          "similarity": 0.08036500215530396,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.25034185596712855,
+          "similarity": 0.07131427526473999,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.2187041621788405,
+          "similarity": 0.07129889726638794,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

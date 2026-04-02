@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-cb586d22-1773707010000",
+  "query": "shutdown graceful lifecycle background processing between sessions",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.5590739846229553,
+          "similarity": 0.5590739846229553,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.5354151129722595,
+          "similarity": 0.5354151129722595,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.46126431226730347,
+          "similarity": 0.46126431226730347,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.4525887370109558,
+          "similarity": 0.4525887370109558,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.44519031047821045,
+          "similarity": 0.44519031047821045,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.5115091612830355,
+          "similarity": 0.5590739846229553,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.477444174106379,
+          "similarity": 0.5354151129722595,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.46054558082855385,
+          "similarity": 0.4525887370109558,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.46031136017811797,
+          "similarity": 0.46126431226730347,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.45070527374075736,
+          "similarity": 0.44519031047821045,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.5115091612830355,
+          "similarity": 0.5590739846229553,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.477444174106379,
+          "similarity": 0.5354151129722595,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.46054558082855385,
+          "similarity": 0.4525887370109558,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.46031136017811797,
+          "similarity": 0.46126431226730347,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.45070527374075736,
+          "similarity": 0.44519031047821045,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.5785057667838706,
+          "similarity": 0.5590739846229553,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.534204318056675,
+          "similarity": 0.5354151129722595,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.5186904523106683,
+          "similarity": 0.4525887370109558,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.5175823718549514,
+          "similarity": 0.46126431226730347,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.50594443596665,
+          "similarity": 0.44519031047821045,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.5786327718960335,
+          "similarity": 0.5590739846229553,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.5341964043644164,
+          "similarity": 0.5354151129722595,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.5191224896655684,
+          "similarity": 0.4525887370109558,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.5179504637476812,
+          "similarity": 0.46126431226730347,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.5063415217541561,
+          "similarity": 0.44519031047821045,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2057,
+          "title": "Store-owned background task requires explicit shutdown protocol before spec — drain task lifecycle risk",
+          "category": "pattern",
+          "final_score": 0.4401993751525879,
+          "similarity": 0.5590739846229553,
+          "confidence": 0.6065738965718593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.4256400695213905,
+          "similarity": 0.5354151129722595,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.3800088075491098,
+          "similarity": 0.46126431226730347,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.37466999200674206,
+          "similarity": 0.4525887370109558,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2658,
+          "title": "Use run_in_background + TaskOutput instead of sleep-polling for background process coordination",
+          "category": "lesson-learned",
+          "final_score": 0.3701171141404372,
+          "similarity": 0.44519031047821045,
+          "confidence": 0.5937003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 1614,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2998,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

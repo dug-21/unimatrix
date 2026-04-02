@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774576492000",
+  "query": "graph.rs module split file size limit sibling module re-export",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5359018696657896,
+          "similarity": 0.6079190373420715,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.5248477970409636,
+          "similarity": 0.5317370295524597,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5180949012785792,
+          "similarity": 0.515516459941864,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5143437667764336,
+          "similarity": 0.519447922706604,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4715136404510335,
+          "similarity": 0.5186648368835449,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5359018696657896,
+          "similarity": 0.6079190373420715,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.5248477970409636,
+          "similarity": 0.5317370295524597,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5180949012785792,
+          "similarity": 0.515516459941864,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5143437667764336,
+          "similarity": 0.519447922706604,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.4715136404510335,
+          "similarity": 0.5186648368835449,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

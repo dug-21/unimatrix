@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3808",
+  "query": "next tick log (i made no changes): 2026-03-27T16:54:26.710187Z  INFO unimatrix_server::background: background tick starting\n2026-03-27T16:54:26.840480Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.5944 confidence_weight=0.2500\n2026-03-27T16:54:26.840986Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-27T16:54:26.841751Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-27T16:54:26.880244Z DEBUG unimatrix_server::background: typed graph state rebuilt (3666 entries)\n2026-03-27T16:54:26.884664Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-27T16:54:26.929874Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=400\n2026-03-27T16:54:26.929894Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=401\n2026-03-27T16:54:26.929895Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=402\n2026-03-27T16:54:26.929896Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=403\n2026-03-27T16:54:26.929986Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=410\n2026-03-27T16:54:26.929987Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=411\n2026-03-27T16:54:26.929988Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=412\n2026-03-27T16:54:26.929989Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=413\n2026-03-27T16:54:26.929989Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=414\n2026-03-27T16:54:26.929990Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=415\n2026-03-27T16:54:26.929991Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=416\n2026-03-27T16:54:26.929992Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=417\n2026-03-27T16:54:26.929993Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=418\n2026-03-27T16:54:26.929993Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=419\n2026-03-27T16:54:26.930393Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=434\n2026-03-27T16:54:26.930394Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=435\n2026-03-27T16:54:26.930395Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=436\n2026-03-27T16:54:26.930395Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=437\n2026-03-27T16:54:26.930396Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=438\n2026-03-27T16:54:26.930397Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=439\n2026-03-27T16:54:26.930397Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=440\n2026-03-27T16:54:26.930405Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=441\n2026-03-27T16:54:26.930406Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=442\n2026-03-27T16:54:26.930406Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=443\n2026-03-27T16:54:26.931028Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=461\n2026-03-27T16:54:26.931030Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=462\n2026-03-27T16:54:26.931031Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=463\n2026-03-27T16:54:26.931032Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=464\n2026-03-27T16:54:26.931032Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=465\n2026-03-27T16:54:26.931033Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=466\n2026-03-27T16:54:26.931034Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=467\n2026-03-27T16:54:26.931034Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=468\n2026-03-27T16:54:26.931035Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=469\n2026-03-27T16:54:29.357038Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(82636)\n2026-03-27T16:54:29.357102Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(82636)\n2026-03-27T16:54:29.357146Z DEBUG unimatrix_server::uds::listener: UDS: connection closed before header (fire-and-forget, empty queue)\n2026-03-27T16:54:31.267451Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 pairs_scored=100 source_candidates=100\n2026-03-27T16:54:31.269581Z  INFO unimatrix_server::background: background tick complete duration_secs=5",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5495073631770344,
+          "similarity": 0.5508801937103271,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5478581192574504,
+          "similarity": 0.5436955094337463,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5319174319556056,
+          "similarity": 0.5619091987609863,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5288058132670862,
+          "similarity": 0.5693854093551636,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5012800106317133,
+          "similarity": 0.5350241661071777,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5495073631770344,
+          "similarity": 0.5508801937103271,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5478581192574504,
+          "similarity": 0.5436955094337463,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5319174319556056,
+          "similarity": 0.5619091987609863,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5288058132670862,
+          "similarity": 0.5693854093551636,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5012800106317133,
+          "similarity": 0.5350241661071777,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

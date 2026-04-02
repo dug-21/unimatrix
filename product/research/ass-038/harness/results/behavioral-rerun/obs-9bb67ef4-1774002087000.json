@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002087000",
+  "query": "snapshot VACUUM INTO database offline eval",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.5208403921982847,
+          "similarity": 0.5720725655555725,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5125305793315147,
+          "similarity": 0.5568655133247375,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2602,
+          "title": "ADR-001: VACUUM INTO via sqlx + block_on Wrapper + Live-DB Path Guard",
+          "category": "decision",
+          "final_score": 0.493315384050404,
+          "similarity": 0.473560094833374,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2661,
+          "title": "Snapshot commands must copy all storage artifacts, not just the primary database",
+          "category": "lesson-learned",
+          "final_score": 0.4822921218166659,
+          "similarity": 0.48550939559936523,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.47982738807827796,
+          "similarity": 0.4660493731498718,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.5208403921982847,
+          "similarity": 0.5720725655555725,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5125305793315147,
+          "similarity": 0.5568655133247375,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2602,
+          "title": "ADR-001: VACUUM INTO via sqlx + block_on Wrapper + Live-DB Path Guard",
+          "category": "decision",
+          "final_score": 0.493315384050404,
+          "similarity": 0.473560094833374,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2661,
+          "title": "Snapshot commands must copy all storage artifacts, not just the primary database",
+          "category": "lesson-learned",
+          "final_score": 0.4822921218166659,
+          "similarity": 0.48550939559936523,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3524,
+          "title": "ADR-005 nan-008: Baseline Recording Is a Named Delivery Step with Snapshot Check",
+          "category": "decision",
+          "final_score": 0.47982738807827796,
+          "similarity": 0.4660493731498718,
+          "confidence": 0.5651752345697949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

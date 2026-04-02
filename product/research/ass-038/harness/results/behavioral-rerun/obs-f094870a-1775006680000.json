@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-f094870a-1775006680000",
+  "query": "compile cycles type definitions incomplete before first compile Rust large file",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5861090599659676,
+          "similarity": 0.6782615780830383,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5332770255733127,
+          "similarity": 0.5682961344718933,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.5282088426280612,
+          "similarity": 0.5586665868759155,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.5096040901181379,
+          "similarity": 0.5434021353721619,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5861090599659676,
+          "similarity": 0.6782615780830383,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5332770255733127,
+          "similarity": 0.5682961344718933,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2400,
+          "title": "186 Compile Cycles in dsn-001: Use cargo test -p, Not Full Workspace, Per Change",
+          "category": "lesson-learned",
+          "final_score": 0.5282088426280612,
+          "similarity": 0.5586665868759155,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3755,
+          "title": "Large file compile-cycle amplification: search.rs at 4000+ lines produces 94 compile cycles when adding a new pipeline step",
+          "category": "lesson-learned",
+          "final_score": 0.5096040901181379,
+          "similarity": 0.5434021353721619,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

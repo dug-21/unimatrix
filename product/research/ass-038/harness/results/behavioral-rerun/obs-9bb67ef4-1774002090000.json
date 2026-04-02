@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002090000",
+  "query": "AF_UNIX UDS socket MCP client Python integration test",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5703236651023127,
+          "similarity": 0.6244093775749207,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5153400619292731,
+          "similarity": 0.5625162720680237,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.5067949640610827,
+          "similarity": 0.5422304272651672,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.49223461056319273,
+          "similarity": 0.48610615730285645,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.49183594349687176,
+          "similarity": 0.4857543706893921,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5703236651023127,
+          "similarity": 0.6244093775749207,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.5153400619292731,
+          "similarity": 0.5625162720680237,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.5067949640610827,
+          "similarity": 0.5422304272651672,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.49223461056319273,
+          "similarity": 0.48610615730285645,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3789,
+          "title": "ADR-003: Mandatory Integration Test for MCP Dispatch Path (SR-03)",
+          "category": "decision",
+          "final_score": 0.49183594349687176,
+          "similarity": 0.4857543706893921,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

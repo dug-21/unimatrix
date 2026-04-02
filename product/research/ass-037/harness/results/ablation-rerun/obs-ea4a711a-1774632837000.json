@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ea4a711a-1774632837000",
+  "query": "embedding filter source selection background tick no-embedding entries accumulate",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5123034715652466,
+          "similarity": 0.5123034715652466,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.4127933979034424,
+          "similarity": 0.4127933979034424,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.36272478103637695,
+          "similarity": 0.36272478103637695,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.3484370708465576,
+          "similarity": 0.3484370708465576,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.3407323360443115,
+          "similarity": 0.3407323360443115,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5335281505389838,
+          "similarity": 0.5123034715652466,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5027075557904057,
+          "similarity": 0.4127933979034424,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.4678859987540651,
+          "similarity": 0.36272478103637695,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.44263570345703696,
+          "similarity": 0.3484370708465576,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.39108520939581365,
+          "similarity": 0.3407323360443115,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.475407541832938,
+          "similarity": 0.5123034715652466,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.44617176743986037,
+          "similarity": 0.4127933979034424,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.41729805115540625,
+          "similarity": 0.36272478103637695,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.39782865392493094,
+          "similarity": 0.3484370708465576,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.35951130929321745,
+          "similarity": 0.3407323360443115,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.475407541832938,
+          "similarity": 0.5123034715652466,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.44617176743986037,
+          "similarity": 0.4127933979034424,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.41729805115540625,
+          "similarity": 0.36272478103637695,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.39782865392493094,
+          "similarity": 0.3484370708465576,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.35951130929321745,
+          "similarity": 0.3407323360443115,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.4114175209632287,
+          "similarity": 0.5123034715652466,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.35018055255596453,
+          "similarity": 0.4127933979034424,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.31936909602238583,
+          "similarity": 0.36272478103637695,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.310576658982497,
+          "similarity": 0.3484370708465576,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.30583528371957636,
+          "similarity": 0.3407323360443115,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5336668739309691,
+          "similarity": 0.5123034715652466,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.503295230024961,
+          "similarity": 0.4127933979034424,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.4685733269744422,
+          "similarity": 0.36272478103637695,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.44325138079436033,
+          "similarity": 0.3484370708465576,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.3914143131432091,
+          "similarity": 0.3407323360443115,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

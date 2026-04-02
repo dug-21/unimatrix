@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5048",
+  "query": "alright... then lets start delivery protocol",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.41113539921609976,
+          "similarity": 0.2901572585105896,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.39148694313737364,
+          "similarity": 0.25155138969421387,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.38771374063135544,
+          "similarity": 0.2620876431465149,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.3811724007076943,
+          "similarity": 0.3356887102127075,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.33941909800813963,
+          "similarity": 0.25635743141174316,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.41113539921609976,
+          "similarity": 0.2901572585105896,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.39148694313737364,
+          "similarity": 0.25155138969421387,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.38771374063135544,
+          "similarity": 0.2620876431465149,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.3811724007076943,
+          "similarity": 0.3356887102127075,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 198,
+          "title": "ASS-014: Graceful Degradation — Zero-Regression Guarantee with WAL and Cache",
+          "category": "decision",
+          "final_score": 0.33941909800813963,
+          "similarity": 0.25635743141174316,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

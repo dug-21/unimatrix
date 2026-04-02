@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-707",
+  "query": "I'm not sure which issue to add this too... but is it possible to build an availability testing strategy?  It should not run on EVERY feature, but certainly before creating a new public release... would love to have something to be able to catch these reliability type concerns..  Our testing strategy has not caught these to date.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.4280540262894216,
+          "similarity": 0.33933699131011963,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.42060546491313766,
+          "similarity": 0.332744836807251,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.420014324497081,
+          "similarity": 0.3278217315673828,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.4116412820050762,
+          "similarity": 0.33338451385498047,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4003736328679368,
+          "similarity": 0.3431857228279114,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.4280540262894216,
+          "similarity": 0.33933699131011963,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.42060546491313766,
+          "similarity": 0.332744836807251,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3742,
+          "title": "Optional future branch in architecture must match scope intent — WARN if architecture and risk diverge from scope deferral",
+          "category": "pattern",
+          "final_score": 0.420014324497081,
+          "similarity": 0.3278217315673828,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.4116412820050762,
+          "similarity": 0.33338451385498047,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.4003736328679368,
+          "similarity": 0.3431857228279114,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

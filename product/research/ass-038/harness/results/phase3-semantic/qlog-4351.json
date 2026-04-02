@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4351",
+  "query": "scoping 445... your thoughts? ---                                                                                                                                                              \n  Concrete design                                                 \n                 \n  Config (backward-compat, no migration):\n  [knowledge]                                                                                                                                                      \n  categories = [\"lesson-learned\", \"decision\", \"convention\", \"pattern\", \"procedure\"]\n  adaptive_categories = [\"lesson-learned\"]   # default — everything else is pinned                                                                                 \n                                                                                                                                                                   \n  adaptive_categories defaults to [\"lesson-learned\"]. Existing configs that omit it get the correct default behavior. No format break.\n                                                                                                                                                                   \n  Runtime: Extend CategoryAllowlist to carry lifecycle — add a second HashSet<String> for adaptive categories and an is_adaptive(&self, category: &str) -> bool    \n  method. Startup validation: every entry in adaptive_categories must also be in categories (fail fast if not).                                                    \n                                                                                                                                                                   \n  context_status: Add a category policy section to the output — each category listed with its lifecycle. Gives operators visibility without digging into config.   \n   \n  Maintenance tick: Add a lifecycle guard stub — if !category_policy.is_adaptive(entry.category) { continue; } before any future retention processing. The guard is\n   the hook; #409 fills in the body.                              \n                                                                                                                                                                   \n  ---                                                             \n  What this leaves open (intentionally)\n                                                                                                                                                                   \n  - What \"adaptive\" actually does to entries (decay rate, deprecation threshold, scoring weight) — all deferred to #409 and beyond\n  - Whether adaptive affects PPR personalization weighting — deferred                                                                                              \n  - K-parameter retention alignment with #409's query_log/co_access cleanup — deferred                                                                             \n                                                                                           ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.6059041686265842,
+          "similarity": 0.7174665331840515,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5580548371075681,
+          "similarity": 0.6090516448020935,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5313717650239372,
+          "similarity": 0.554516077041626,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.52716632605571,
+          "similarity": 0.5495269894599915,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.5255644419589036,
+          "similarity": 0.5523775219917297,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.6059041686265842,
+          "similarity": 0.7174665331840515,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5580548371075681,
+          "similarity": 0.6090516448020935,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5313717650239372,
+          "similarity": 0.554516077041626,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.52716632605571,
+          "similarity": 0.5495269894599915,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1007,
+          "title": "ADR-004: Separate /store-pattern Skill with What/Why/Scope Template",
+          "category": "decision",
+          "final_score": 0.5255644419589036,
+          "similarity": 0.5523775219917297,
+          "confidence": 0.5659927396145533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

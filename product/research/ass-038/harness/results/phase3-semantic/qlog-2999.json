@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2999",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Yes — that's exactly what's happening. The SubagentStart path reuses `extract_transcript_block`, which is the PreCompact restoration function. Here's the flow:\n\n**Step 5b (SubagentStart fallback, hook.rs:88-115):**\n```\ntranscript_path → extract_transcript_block() → HookRequest::ContextSearch { query: q }\n```\n\n**Step 5d (PreCompact, hook.rs:124-134):**\n```\ntranscript_path → extract_transcript_block() → prepend to briefing output\n```\n\n**Same function, different purpose.** `extract_transcript_block` was designed to produce a *context restoration block* — up to `MAX_PRECOMPACT_BYTES = 3000` bytes, formatted with structural headers (`=== Recent conversation (last 0 exchanges) ===` / `=== End recent conversation ===`). For PreCompact that's correct — it's injected as context. For SubagentStart it's passed directly as the **vector search query**.\n\nTwo concrete problems result:\n\n1. **Noisy query**: The structural headers (`=== Recent conversation ===`, `=== End recent conversation ===`) are part of the string fed to the embedding model. They add signal noise — the embedding is partially anchored to template text, not semantics.\n\n2. **Over-long query**: Up to 3000 bytes. Embedding models are optimized for shorter queries — a focused 100-200 byte description of what the subagent is doing would almost certainly yield better retrieval than a 3000-byte transcript dump.\n\nThe `(2)` result counts you're seeing mean it *is* working — the transcript body does contain enough semantic signal for the embeddings to surface relevant entries. But the retrieval quality is probably lower than if SubagentStart had its own query extraction that stripped the headers and targeted just the task description (e.g., the most recent `Agent(...)` tool call description from the transcript).\n\nThe comment at line 84 acknowledges the workaround: *\"Claude Code does not send prompt_snippet in the SubagentStart payload, so... [we] derive a query from the transcript tail.\"* The PreCompact function was the nearest available tool when this was built.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.6127151011189366,
+          "similarity": 0.6575320959091187,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.6063373986769557,
+          "similarity": 0.696540117263794,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5857572711999993,
+          "similarity": 0.6376567482948303,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5830368238325205,
+          "similarity": 0.637564480304718,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5641095869236055,
+          "similarity": 0.6116333603858948,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.6127151011189366,
+          "similarity": 0.6575320959091187,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3331,
+          "title": "PreCompact hook: read transcript_path locally before server round-trip, prepend to BriefingContent",
+          "category": "pattern",
+          "final_score": 0.6063373986769557,
+          "similarity": 0.696540117263794,
+          "confidence": 0.5792870574606029,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5857572711999993,
+          "similarity": 0.6376567482948303,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5830368238325205,
+          "similarity": 0.637564480304718,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5641095869236055,
+          "similarity": 0.6116333603858948,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

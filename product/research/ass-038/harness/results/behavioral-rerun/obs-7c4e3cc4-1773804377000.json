@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7c4e3cc4-1773804377000",
+  "query": "outcome rework identity authentication",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.4391157000945123,
+          "similarity": 0.4602445363998413,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2157,
+          "title": "ADR-001 alc-003: SessionIdentitySource as a Resolved Enum, Not a Trait Object",
+          "category": "decision",
+          "final_score": 0.4150657476726415,
+          "similarity": 0.3689485788345337,
+          "confidence": 0.5281090596335505,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.40627577010289706,
+          "similarity": 0.353434681892395,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 196,
+          "title": "ASS-014: Authentication Architecture — Layered Local Auth, AuthContext Unification",
+          "category": "decision",
+          "final_score": 0.4018136146768748,
+          "similarity": 0.3749070167541504,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2158,
+          "title": "ADR-001 alc-003: SessionIdentitySource as enum not trait",
+          "category": "decision",
+          "final_score": 0.3755814193440149,
+          "similarity": 0.33952951431274414,
+          "confidence": 0.4629645463441204,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.4391157000945123,
+          "similarity": 0.4602445363998413,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2157,
+          "title": "ADR-001 alc-003: SessionIdentitySource as a Resolved Enum, Not a Trait Object",
+          "category": "decision",
+          "final_score": 0.4150657476726415,
+          "similarity": 0.3689485788345337,
+          "confidence": 0.5281090596335505,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.40627577010289706,
+          "similarity": 0.353434681892395,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 196,
+          "title": "ASS-014: Authentication Architecture — Layered Local Auth, AuthContext Unification",
+          "category": "decision",
+          "final_score": 0.4018136146768748,
+          "similarity": 0.3749070167541504,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2158,
+          "title": "ADR-001 alc-003: SessionIdentitySource as enum not trait",
+          "category": "decision",
+          "final_score": 0.3755814193440149,
+          "similarity": 0.33952951431274414,
+          "confidence": 0.4629645463441204,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

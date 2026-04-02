@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3398",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Good briefing — patterns #3526 (round-trip dual-type test), #3529 (render_report parameter extension), #3555 (the exact phase gap) all surfaced. Spawning Stage 3a pseudocode and tester in parallel now.\n[tool: mcp__unimatrix__context_briefing(implement phase field in eval scenario extraction, result passthrough, report aggregation and rendering for phase-strati) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3555,
+          "title": "Eval harness phase gap: scenarios SQL omits query_log.phase despite column existing since col-028",
+          "category": "pattern",
+          "final_score": 0.5804406311719653,
+          "similarity": 0.6530534029006958,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5630368797993334,
+          "similarity": 0.569431483745575,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3040,
+          "title": "infra-001: seeding CYCLE_EVENTS for phase_narrative tests — UDS-only write path constraint",
+          "category": "pattern",
+          "final_score": 0.5454857850201787,
+          "similarity": 0.5858327150344849,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5399251783030007,
+          "similarity": 0.591953694820404,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.5388461052462155,
+          "similarity": 0.6068684458732605,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3555,
+          "title": "Eval harness phase gap: scenarios SQL omits query_log.phase despite column existing since col-028",
+          "category": "pattern",
+          "final_score": 0.5804406311719653,
+          "similarity": 0.6530534029006958,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5630368797993334,
+          "similarity": 0.569431483745575,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3040,
+          "title": "infra-001: seeding CYCLE_EVENTS for phase_narrative tests — UDS-only write path constraint",
+          "category": "pattern",
+          "final_score": 0.5454857850201787,
+          "similarity": 0.5858327150344849,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3513,
+          "title": "ADR-001 col-028: Phase Helper as Free Function Taking (&SessionRegistry, Option<&str>)",
+          "category": "decision",
+          "final_score": 0.5399251783030007,
+          "similarity": 0.591953694820404,
+          "confidence": 0.5484344913647107,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3538,
+          "title": "Phase snapshot in MCP handlers: first-statement discipline, free function form, single-binding dual-consumer rule",
+          "category": "pattern",
+          "final_score": 0.5388461052462155,
+          "similarity": 0.6068684458732605,
+          "confidence": 0.5241987915636415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

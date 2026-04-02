@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774751327000",
+  "query": "InferenceConfig serde TOML deserialization test pattern flat fields",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.6749333828153457,
+          "similarity": 0.7388710975646973,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.6257988601774459,
+          "similarity": 0.6779331564903259,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5704863469189055,
+          "similarity": 0.5644634962081909,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.5404027612009764,
+          "similarity": 0.5138890147209167,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5282247115540182,
+          "similarity": 0.4971962571144104,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.5942092205689,
+          "similarity": 0.7388710975646973,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.5541147078961488,
+          "similarity": 0.6779331564903259,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5059875541544102,
+          "similarity": 0.5644634962081909,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.4805546258621105,
+          "similarity": 0.5138890147209167,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4705112056139073,
+          "similarity": 0.4971962571144104,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.550843752347506,
+          "similarity": 0.7388710975646973,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.5133434809171237,
+          "similarity": 0.6779331564903259,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.44351599766657906,
+          "similarity": 0.5644634962081909,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.4123932398282565,
+          "similarity": 0.5138890147209167,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.40212077360886794,
+          "similarity": 0.4971962571144104,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.7388710975646973,
+          "similarity": 0.7388710975646973,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.6779331564903259,
+          "similarity": 0.6779331564903259,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5644634962081909,
+          "similarity": 0.5644634962081909,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.5138890147209167,
+          "similarity": 0.5138890147209167,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4971962571144104,
+          "similarity": 0.4971962571144104,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.6745154892548925,
+          "similarity": 0.7388710975646973,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.6254581131427213,
+          "similarity": 0.6779331564903259,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5705257119562306,
+          "similarity": 0.5644634962081909,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.5405760536616304,
+          "similarity": 0.5138890147209167,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5284275119098326,
+          "similarity": 0.4971962571144104,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.5942092205689,
+          "similarity": 0.7388710975646973,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.5541147078961488,
+          "similarity": 0.6779331564903259,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5059875541544102,
+          "similarity": 0.5644634962081909,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3790,
+          "title": "ADR-004: Mandatory None-for-Absent Tests for Optional Fields (SR-05)",
+          "category": "decision",
+          "final_score": 0.4805546258621105,
+          "similarity": 0.5138890147209167,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4705112056139073,
+          "similarity": 0.4971962571144104,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

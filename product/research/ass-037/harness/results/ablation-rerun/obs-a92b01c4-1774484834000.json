@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-a92b01c4-1774484834000",
+  "query": "cycle_start handler guard pattern missing new field",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.38991370567908656,
+          "similarity": 0.4773597717285156,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.3563793622530424,
+          "similarity": 0.42286646366119385,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.34063353905311,
+          "similarity": 0.3972795009613037,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.3405924576979417,
+          "similarity": 0.3972127437591553,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.3400283960195688,
+          "similarity": 0.3962961435317993,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.513111756379951,
+          "similarity": 0.4773597717285156,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.48311569281093814,
+          "similarity": 0.42286646366119385,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.46032845859497384,
+          "similarity": 0.3972127437591553,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.455992328788714,
+          "similarity": 0.3972795009613037,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.44732683952757557,
+          "similarity": 0.3962961435317993,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.4579356919145725,
+          "similarity": 0.4773597717285156,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.4321890378809116,
+          "similarity": 0.42286646366119385,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.4137545015305634,
+          "similarity": 0.3972127437591553,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4106000896147276,
+          "similarity": 0.3972795009613037,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.40421642190807644,
+          "similarity": 0.3962961435317993,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.4579356919145725,
+          "similarity": 0.4773597717285156,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.4321890378809116,
+          "similarity": 0.42286646366119385,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.4137545015305634,
+          "similarity": 0.3972127437591553,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4106000896147276,
+          "similarity": 0.3972795009613037,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.40421642190807644,
+          "similarity": 0.3962961435317993,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.4773597717285156,
+          "similarity": 0.4773597717285156,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.42286646366119385,
+          "similarity": 0.42286646366119385,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.3972795009613037,
+          "similarity": 0.3972795009613037,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.3972127437591553,
+          "similarity": 0.3972127437591553,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.3962961435317993,
+          "similarity": 0.3962961435317993,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.512879600635461,
+          "similarity": 0.4773597717285156,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.48272446405022545,
+          "similarity": 0.42286646366119385,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.4599186162908451,
+          "similarity": 0.3972127437591553,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.4556110766599646,
+          "similarity": 0.3972795009613037,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.44699547137175877,
+          "similarity": 0.3962961435317993,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3806,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3716,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

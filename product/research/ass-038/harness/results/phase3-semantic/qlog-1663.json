@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1663",
+  "query": "lets talk about #2... why is it a meaningful scope expansion, how is that any worse than a domain_pack mcp tool?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.4619250118452549,
+          "similarity": 0.41470927000045776,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 348,
+          "title": "Scope must not include removing code that the same feature depends on",
+          "category": "lesson-learned",
+          "final_score": 0.46064031241775516,
+          "similarity": 0.41907644271850586,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 481,
+          "title": "ADR-001: RetrievalMode Enum for Strict vs Flexible Search",
+          "category": "decision",
+          "final_score": 0.4471109709357234,
+          "similarity": 0.4110085368156433,
+          "confidence": 0.5550032970889018,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1254,
+          "title": "ADR-001 nan-005: README as Single File with Capability-First Section Order",
+          "category": "decision",
+          "final_score": 0.43746145975100037,
+          "similarity": 0.43705880641937256,
+          "confidence": 0.4915970958678977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.42409188783277596,
+          "similarity": 0.41723573207855225,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.4619250118452549,
+          "similarity": 0.41470927000045776,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 348,
+          "title": "Scope must not include removing code that the same feature depends on",
+          "category": "lesson-learned",
+          "final_score": 0.46064031241775516,
+          "similarity": 0.41907644271850586,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 481,
+          "title": "ADR-001: RetrievalMode Enum for Strict vs Flexible Search",
+          "category": "decision",
+          "final_score": 0.4471109709357234,
+          "similarity": 0.4110085368156433,
+          "confidence": 0.5550032970889018,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1254,
+          "title": "ADR-001 nan-005: README as Single File with Capability-First Section Order",
+          "category": "decision",
+          "final_score": 0.43746145975100037,
+          "similarity": 0.43705880641937256,
+          "confidence": 0.4915970958678977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.42409188783277596,
+          "similarity": 0.41723573207855225,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

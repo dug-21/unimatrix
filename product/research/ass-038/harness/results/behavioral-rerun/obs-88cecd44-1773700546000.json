@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-88cecd44-1773700546000",
+  "query": "contradiction detection shadow evaluation",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.476367134184546,
+          "similarity": 0.4577021598815918,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.4584812197593334,
+          "similarity": 0.452625036239624,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4374555022924079,
+          "similarity": 0.39124780893325806,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.4217706857076444,
+          "similarity": 0.360795259475708,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.41894769129475107,
+          "similarity": 0.35435497760772705,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.476367134184546,
+          "similarity": 0.4577021598815918,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.4584812197593334,
+          "similarity": 0.452625036239624,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4374555022924079,
+          "similarity": 0.39124780893325806,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 458,
+          "title": "ADR: Conservative Ground Truth Backfill Scope (crt-008 ADR-006)",
+          "category": "decision",
+          "final_score": 0.4217706857076444,
+          "similarity": 0.360795259475708,
+          "confidence": 0.5579557762411663,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.41894769129475107,
+          "similarity": 0.35435497760772705,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1600",
+  "query": "show me some examples of every type of query",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.39520611844078724,
+          "similarity": 0.2806861400604248,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.39046498989981737,
+          "similarity": 0.30185723304748535,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.38520013286291876,
+          "similarity": 0.29268407821655273,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.38331635331676006,
+          "similarity": 0.2702610492706299,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.3779102971806306,
+          "similarity": 0.27343928813934326,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1588,
+          "title": "Store::query(QueryFilter::default()) returns Active-only — use query_by_status per variant for full-store reads",
+          "category": "pattern",
+          "final_score": 0.39520611844078724,
+          "similarity": 0.2806861400604248,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.39046498989981737,
+          "similarity": 0.30185723304748535,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.38520013286291876,
+          "similarity": 0.29268407821655273,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1275,
+          "title": "ADR-003 col-022: JSON Text Column for Keywords Storage",
+          "category": "decision",
+          "final_score": 0.38331635331676006,
+          "similarity": 0.2702610492706299,
+          "confidence": 0.5829143171874492,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.3779102971806306,
+          "similarity": 0.27343928813934326,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

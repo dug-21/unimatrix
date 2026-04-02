@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-1ebc220a-1774994892000",
+  "query": "large file read before first write context loading testing agent",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.6153719425201416,
+          "similarity": 0.6153719425201416,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1163,
+          "title": "Excessive Context Loading Before First Write Inflates Session Cost",
+          "category": "lesson-learned",
+          "final_score": 0.582041323184967,
+          "similarity": 0.582041323184967,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.514255702495575,
+          "similarity": 0.514255702495575,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.5096113681793213,
+          "similarity": 0.5096113681793213,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.5073649287223816,
+          "similarity": 0.5073649287223816,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.6169398639802708,
+          "similarity": 0.6153719425201416,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1163,
+          "title": "Excessive Context Loading Before First Write Inflates Session Cost",
+          "category": "lesson-learned",
+          "final_score": 0.5806656468757777,
+          "similarity": 0.582041323184967,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.5397587828150239,
+          "similarity": 0.5096113681793213,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5192617551756968,
+          "similarity": 0.514255702495575,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.5152083588385242,
+          "similarity": 0.5073649287223816,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.5434398967942075,
+          "similarity": 0.6153719425201416,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1163,
+          "title": "Excessive Context Loading Before First Write Inflates Session Cost",
+          "category": "lesson-learned",
+          "final_score": 0.5146307800941357,
+          "similarity": 0.582041323184967,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.479653639492326,
+          "similarity": 0.5096113681793213,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.46505182894912017,
+          "similarity": 0.514255702495575,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.4616064420625235,
+          "similarity": 0.5073649287223816,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.5434398967942075,
+          "similarity": 0.6153719425201416,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1163,
+          "title": "Excessive Context Loading Before First Write Inflates Session Cost",
+          "category": "lesson-learned",
+          "final_score": 0.5146307800941357,
+          "similarity": 0.582041323184967,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.479653639492326,
+          "similarity": 0.5096113681793213,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.46505182894912017,
+          "similarity": 0.514255702495575,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.4616064420625235,
+          "similarity": 0.5073649287223816,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.47484427232008714,
+          "similarity": 0.6153719425201416,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1163,
+          "title": "Excessive Context Loading Before First Write Inflates Session Cost",
+          "category": "lesson-learned",
+          "final_score": 0.4543331219599797,
+          "similarity": 0.582041323184967,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.41261889384343076,
+          "similarity": 0.514255702495575,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.4097608419565054,
+          "similarity": 0.5096113681793213,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.40837841767531174,
+          "similarity": 0.5073649287223816,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.616929682672088,
+          "similarity": 0.6153719425201416,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1163,
+          "title": "Excessive Context Loading Before First Write Inflates Session Cost",
+          "category": "lesson-learned",
+          "final_score": 0.5806745798388243,
+          "similarity": 0.582041323184967,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3333,
+          "title": "ADR-001 crt-028: Tail-Bytes Read Strategy for Transcript I/O",
+          "category": "decision",
+          "final_score": 0.5395630203823243,
+          "similarity": 0.5096113681793213,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3952,
+          "title": "Long-wait parallel agent resumes with stale ADR context — tick-file agents must re-read architecture after 60+ min gaps",
+          "category": "lesson-learned",
+          "final_score": 0.5192292483401115,
+          "similarity": 0.514255702495575,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3810,
+          "title": "Tool failure outlier (21 failures, 2.6σ) co-occurs with large context load (141KB) — likely context pressure, not MCP errors",
+          "category": "lesson-learned",
+          "final_score": 0.5151574274741336,
+          "similarity": 0.5073649287223816,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3952,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3333,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

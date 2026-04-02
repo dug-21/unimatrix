@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-ea862451-1774815861000",
+  "query": "RwLock two-field struct independent locks separate concerns",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.496608697451078,
+          "similarity": 0.6507391333580017,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.40296008036686826,
+          "similarity": 0.4985601305961609,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 186,
+          "title": "ADR-004: RwLock for Weight Access with Atomic Swap",
+          "category": "decision",
+          "final_score": 0.390471311715933,
+          "similarity": 0.4782658815383911,
+          "confidence": 0.5622991934786955,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.3861896808330829,
+          "similarity": 0.47130823135375977,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.3806819182175856,
+          "similarity": 0.46235811710357666,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.5244112698276417,
+          "similarity": 0.6507391333580017,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4818021188095592,
+          "similarity": 0.4985601305961609,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 186,
+          "title": "ADR-004: RwLock for Weight Access with Atomic Swap",
+          "category": "decision",
+          "final_score": 0.4578226988128042,
+          "similarity": 0.4782658815383911,
+          "confidence": 0.5622991934786955,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.45439685345276937,
+          "similarity": 0.46235811710357666,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.4499895612691511,
+          "similarity": 0.47130823135375977,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.5873547690420571,
+          "similarity": 0.6507391333580017,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5437911306605556,
+          "similarity": 0.4985601305961609,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 186,
+          "title": "ADR-004: RwLock for Weight Access with Atomic Swap",
+          "category": "decision",
+          "final_score": 0.5128678335138106,
+          "similarity": 0.4782658815383911,
+          "confidence": 0.5622991934786955,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.509725277572078,
+          "similarity": 0.46235811710357666,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.5027985908249368,
+          "similarity": 0.47130823135375977,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.6507391333580017,
+          "similarity": 0.6507391333580017,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4985601305961609,
+          "similarity": 0.4985601305961609,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 186,
+          "title": "ADR-004: RwLock for Weight Access with Atomic Swap",
+          "category": "decision",
+          "final_score": 0.4782658815383911,
+          "similarity": 0.4782658815383911,
+          "confidence": 0.5622991934786955,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.47130823135375977,
+          "similarity": 0.47130823135375977,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.46235811710357666,
+          "similarity": 0.46235811710357666,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.5244112698276417,
+          "similarity": 0.6507391333580017,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4818021188095592,
+          "similarity": 0.4985601305961609,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 186,
+          "title": "ADR-004: RwLock for Weight Access with Atomic Swap",
+          "category": "decision",
+          "final_score": 0.4578226988128042,
+          "similarity": 0.4782658815383911,
+          "confidence": 0.5622991934786955,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.45439685345276937,
+          "similarity": 0.46235811710357666,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.4499895612691511,
+          "similarity": 0.47130823135375977,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.5877663558233294,
+          "similarity": 0.6507391333580017,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5434974228679297,
+          "similarity": 0.4985601305961609,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 186,
+          "title": "ADR-004: RwLock for Weight Access with Atomic Swap",
+          "category": "decision",
+          "final_score": 0.5126431455139702,
+          "similarity": 0.4782658815383911,
+          "confidence": 0.5622991934786955,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.5094176986079967,
+          "similarity": 0.46235811710357666,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3700,
+          "title": "Lock-before-loop snapshot pattern for RwLock handles in scoring hot-paths",
+          "category": "pattern",
+          "final_score": 0.5025941079712277,
+          "similarity": 0.47130823135375977,
+          "confidence": 0.547784818640904,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3682,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3700,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

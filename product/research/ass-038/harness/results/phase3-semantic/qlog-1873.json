@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1873",
+  "query": "now, use lookup to identify how many outcome records there are, and show me some examples",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.40766409920086255,
+          "similarity": 0.2978705167770386,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.39443087177094505,
+          "similarity": 0.2891348600387573,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.3810790464870366,
+          "similarity": 0.2840239405632019,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.36997854391708773,
+          "similarity": 0.2565479278564453,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.3615163023626198,
+          "similarity": 0.2482709288597107,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.40766409920086255,
+          "similarity": 0.2978705167770386,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3594,
+          "title": "ADR-004 col-029: Cross-Category Edge Count SQL — No Cartesian Product",
+          "category": "decision",
+          "final_score": 0.39443087177094505,
+          "similarity": 0.2891348600387573,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.3810790464870366,
+          "similarity": 0.2840239405632019,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.36997854391708773,
+          "similarity": 0.2565479278564453,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1043,
+          "title": "Subquery Dedup Before JOIN Aggregation to Prevent Count Inflation",
+          "category": "pattern",
+          "final_score": 0.3615163023626198,
+          "similarity": 0.2482709288597107,
+          "confidence": 0.55515720804181,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

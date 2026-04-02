@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4938",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Yes — the scope correctly handles this. Both values are config-driven, not hardcoded:\n\n**`[retention]` block in `config.toml`** maps to a new `RetentionConfig` struct on `UnimatrixConfig`:\n\n```toml\n[retention]\nactivity_detail_retention_cycles = 50   # cycle-based GC (default 50)\naudit_log_retention_days = 180          # audit_log time-based DELETE (default 180)\n```\n\nThe GC SQL uses these as bound parameters — the K-cycle query uses `LIMIT :k` bound from `retention_config.activity_detail_retention_cycles`, and the audit DELETE uses `:audit_retention_days * 86400` bound from `retention_config.audit_log_retention_days`. Neither value is a hardcoded literal in the new code.\n\nThe existing inline literal (`60_i64 * 24 * 60 * 60 * 1000` in status.rs) is removed entirely (Constraint 7, AC-01). It's not extracted to a named constant — it's replaced by the config value.\n\nAC-10, AC-11, and AC-12 cover parsing, defaults, and validation:\n- AC-10: both fields parse correctly from config with correct defaults\n- AC-11: `activity_detail_retention_cycles = 0` → structured error\n- AC-12: `audit_log_retention_days = 0` → structured error\n\nThe pattern is the same as `InferenceConfig` fields like `max_co_access_promotion_per_tick` — serde default fn + `validate()` range check + `merge_configs()` project-overrides-global. Both values are independently tunable per domain without code changes.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.5851609383123135,
+          "similarity": 0.6605755686759949,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.5812441059229895,
+          "similarity": 0.6358852386474609,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.54403793714893,
+          "similarity": 0.5752830505371094,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.542461397429121,
+          "similarity": 0.5597018003463745,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3915,
+          "title": "ADR-001 crt-036: Per-Cycle Transaction Granularity for Activity GC Pass",
+          "category": "decision",
+          "final_score": 0.5381311482225545,
+          "similarity": 0.5640601515769958,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3914,
+          "title": "Cycle-based GC for observations/query_log requires two-hop join through sessions",
+          "category": "pattern",
+          "final_score": 0.5851609383123135,
+          "similarity": 0.6605755686759949,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.5812441059229895,
+          "similarity": 0.6358852386474609,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.54403793714893,
+          "similarity": 0.5752830505371094,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.542461397429121,
+          "similarity": 0.5597018003463745,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3915,
+          "title": "ADR-001 crt-036: Per-Cycle Transaction Granularity for Activity GC Pass",
+          "category": "decision",
+          "final_score": 0.5381311482225545,
+          "similarity": 0.5640601515769958,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 42,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

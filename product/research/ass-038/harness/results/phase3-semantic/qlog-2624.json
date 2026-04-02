@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2624",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Re-running Gate 3b.\n[tool: Bash(git log --oneline -3 && git status --short) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4960946147053038,
+          "similarity": 0.5392364263534546,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.4613628822202769,
+          "similarity": 0.4063839912414551,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3838,
+          "title": "Retrospective findings: bugfix-360",
+          "category": "lesson-learned",
+          "final_score": 0.43090219567951393,
+          "similarity": 0.41731417179107666,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4163795353236951,
+          "similarity": 0.41212111711502075,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2463,
+          "title": "Gate 3c: always verify committed code, not working tree state",
+          "category": "lesson-learned",
+          "final_score": 0.4115757331641944,
+          "similarity": 0.3811248540878296,
+          "confidence": 0.5012414841773427,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4960946147053038,
+          "similarity": 0.5392364263534546,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.4613628822202769,
+          "similarity": 0.4063839912414551,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3838,
+          "title": "Retrospective findings: bugfix-360",
+          "category": "lesson-learned",
+          "final_score": 0.43090219567951393,
+          "similarity": 0.41731417179107666,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4163795353236951,
+          "similarity": 0.41212111711502075,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2463,
+          "title": "Gate 3c: always verify committed code, not working tree state",
+          "category": "lesson-learned",
+          "final_score": 0.4115757331641944,
+          "similarity": 0.3811248540878296,
+          "confidence": 0.5012414841773427,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

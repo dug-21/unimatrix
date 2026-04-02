@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-b1ecc03a-1773959852000",
+  "query": "multi-wave delivery cross-cutting infrastructure migration wave foundation wiring",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.5580600211858942,
+          "similarity": 0.5642035603523254,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.42348742486766755,
+          "similarity": 0.3327034115791321,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.41944408937300154,
+          "similarity": 0.347493052482605,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.402204771328763,
+          "similarity": 0.3368392586708069,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.38904890873215414,
+          "similarity": 0.3330058455467224,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.5642035603523254,
+          "similarity": 0.5642035603523254,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.347493052482605,
+          "similarity": 0.347493052482605,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.3368392586708069,
+          "similarity": 0.3368392586708069,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.3330058455467224,
+          "similarity": 0.3330058455467224,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.3327034115791321,
+          "similarity": 0.3327034115791321,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.4968575862264774,
+          "similarity": 0.5642035603523254,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.382737672341565,
+          "similarity": 0.3327034115791321,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.3807585357057081,
+          "similarity": 0.347493052482605,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.3674061162191467,
+          "similarity": 0.3368392586708069,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.3575029227733612,
+          "similarity": 0.3330058455467224,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.4433560371398926,
+          "similarity": 0.5642035603523254,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.30999572460468,
+          "similarity": 0.347493052482605,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.30343954379741966,
+          "similarity": 0.3368392586708069,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.30108052033644456,
+          "similarity": 0.3330058455467224,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.30089440712561977,
+          "similarity": 0.3327034115791321,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.5580198673351332,
+          "similarity": 0.5642035603523254,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.424080784431645,
+          "similarity": 0.3327034115791321,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.41991435758797147,
+          "similarity": 0.347493052482605,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.4026319969016908,
+          "similarity": 0.3368392586708069,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.3894152032627779,
+          "similarity": 0.3330058455467224,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2579,
+          "title": "How to deliver cross-cutting infrastructure migration: foundation → cleanup → call-site migration → CI enforcement",
+          "category": "procedure",
+          "final_score": 0.4968575862264774,
+          "similarity": 0.5642035603523254,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.382737672341565,
+          "similarity": 0.3327034115791321,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.3807585357057081,
+          "similarity": 0.347493052482605,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.3674061162191467,
+          "similarity": 0.3368392586708069,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3951,
+          "title": "Two-wave delivery for compile-dependent components: Wave 1 independent interfaces, Wave 2 consuming implementations",
+          "category": "procedure",
+          "final_score": 0.3575029227733612,
+          "similarity": 0.3330058455467224,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

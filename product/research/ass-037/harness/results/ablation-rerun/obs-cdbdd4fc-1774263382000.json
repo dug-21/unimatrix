@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774263382000",
+  "query": "hot path database read background tick unbounded query pagination SQL filter",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.4399220580319587,
+          "similarity": 0.34750795364379883,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.432484811623726,
+          "similarity": 0.32494038343429565,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.4271052176920752,
+          "similarity": 0.32848984003067017,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.41735698206314054,
+          "similarity": 0.3294677138328552,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.4129161659550983,
+          "similarity": 0.307367205619812,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.4393219664450226,
+          "similarity": 0.34750795364379883,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.4317864711809374,
+          "similarity": 0.32494038343429565,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.42646485809687124,
+          "similarity": 0.32848984003067017,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.4167862725291776,
+          "similarity": 0.3294677138328552,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.4122307830957782,
+          "similarity": 0.307367205619812,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.34750795364379883,
+          "similarity": 0.34750795364379883,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.3294677138328552,
+          "similarity": 0.3294677138328552,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.32848984003067017,
+          "similarity": 0.32848984003067017,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.32494038343429565,
+          "similarity": 0.32494038343429565,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.307367205619812,
+          "similarity": 0.307367205619812,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.3953366389692698,
+          "similarity": 0.34750795364379883,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.38830610442830715,
+          "similarity": 0.32494038343429565,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.38464021860641695,
+          "similarity": 0.32848984003067017,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.37760778077692064,
+          "similarity": 0.3294677138328552,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.37279372131155813,
+          "similarity": 0.307367205619812,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.3953366389692698,
+          "similarity": 0.34750795364379883,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.38830610442830715,
+          "similarity": 0.32494038343429565,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.38464021860641695,
+          "similarity": 0.32848984003067017,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.37760778077692064,
+          "similarity": 0.3294677138328552,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.37279372131155813,
+          "similarity": 0.307367205619812,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.31000489455003005,
+          "similarity": 0.34750795364379883,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.2989032085125263,
+          "similarity": 0.3294677138328552,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.29830144001887393,
+          "similarity": 0.32848984003067017,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.2961171590364896,
+          "similarity": 0.32494038343429565,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3029,
+          "title": "MCP handler SQL: write_pool_server for all queries, try_get for manual row hydration",
+          "category": "pattern",
+          "final_score": 0.2853028957660382,
+          "similarity": 0.307367205619812,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

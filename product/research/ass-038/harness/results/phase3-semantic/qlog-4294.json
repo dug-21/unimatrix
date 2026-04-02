@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4294",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Entries look good — 9 ADRs all properly structured, plus #3743/#3744/#3746 from implementation agents. No low-quality entries to deprecate. Proceeding to Phase 2.\n\n**RETROSPECTIVE BRIEFING for crt-030**\n```\nSessions: 2 | Records: 2051 | Tool calls: 977 | Duration: 10h 3m (incl. 2 overnight gaps)\n\nHOTSPOTS (6 warnings, 7 info):\n- [warning] compile_cycles: 94 compile/check cycles (peak at +110m during search.rs impl)\n- [warning] context_load: 119 KB loaded before first write in test phase\n- [warning] file_breadth: 62 distinct files accessed in develop phase\n- [warning] tool_failure_hotspot: context_store failed 8×, Read failed 19× during develop\n- [warning] mutation_spread: 50 files mutated\n- [warning] session_timeout: 7.2h and 8.5h gaps (overnight)\n- [info] search_via_bash: 20.2% of Bash calls are search commands (should use Grep/Glob)\n- [info] edit_bloat: avg Edit response 92.4 KB (1.8× typical)\n- [info] reread_rate: 49 files re-read multiple times\n\nBASELINE OUTLIERS (positive):\n- permission_friction_events: 0.0 vs mean 15.7 — OutstandingLow\n- coordinator_respawn_count: 0.0 vs mean 1.1 — OutstandingLow\n- post_completion_work_pct: 0.0 vs mean 4.3 — OutstandingLow\n- knowledge_entries_stored: 22.0 vs mean 8.5 — OutstandingHigh\n\nRECOMMENDATIONS:\n- [sleep_workarounds] Use run_in_background + TaskOutput instead of sleep polling\n- [compile_cycles] Batch field additions before compiling — complete type definitions\n  in-memory before each build\n\nREWORK SIGNALS:\n- Gate 3a REWORKABLE FAIL → PASS: architect agent report missing Knowledge Stewardship section\n- Post-merge security finding: Direction::Outgoing vs spec's Direction::Incoming —\n  4 spec artifacts corrected (ADR-003, ARCHITECTURE.md, AC-08, R-12)\n```\n[tool: mcp__unimatrix__context_search(crt-030 pattern lesson procedure implementation) → #1563 | Design agents following an established pattern should query the pattern entry, not re-read source files | lesson-learned | [context-load, crt-018b, design-phase, hotspot, pattern-reuse, retrospective, unimatrix-query] | 0.45\n#1011 | Category-to-Skill Mapping: One Skill Per Knowledge Category]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 369,
+          "title": "Retrospective findings: nxs-008",
+          "category": "lesson-learned",
+          "final_score": 0.5591487940584309,
+          "similarity": 0.5983936786651611,
+          "confidence": 0.5914129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.5462905689155708,
+          "similarity": 0.6141878366470337,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3856,
+          "title": "Retrospective findings: bugfix-66",
+          "category": "lesson-learned",
+          "final_score": 0.5351806503676588,
+          "similarity": 0.5956985950469971,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3880,
+          "title": "Retrospective findings: crt-028",
+          "category": "lesson-learned",
+          "final_score": 0.5307729464581138,
+          "similarity": 0.6070685982704163,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3840,
+          "title": "Retrospective findings: bugfix-367",
+          "category": "lesson-learned",
+          "final_score": 0.5236263495495445,
+          "similarity": 0.5934900641441345,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 369,
+          "title": "Retrospective findings: nxs-008",
+          "category": "lesson-learned",
+          "final_score": 0.5591487940584309,
+          "similarity": 0.5983936786651611,
+          "confidence": 0.5914129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3518,
+          "title": "ADR-006 col-028: UsageContext.current_phase Doc Comment Update Is Required Deliverable",
+          "category": "decision",
+          "final_score": 0.5462905689155708,
+          "similarity": 0.6141878366470337,
+          "confidence": 0.5339489204179302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3856,
+          "title": "Retrospective findings: bugfix-66",
+          "category": "lesson-learned",
+          "final_score": 0.5351806503676588,
+          "similarity": 0.5956985950469971,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3880,
+          "title": "Retrospective findings: crt-028",
+          "category": "lesson-learned",
+          "final_score": 0.5307729464581138,
+          "similarity": 0.6070685982704163,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3840,
+          "title": "Retrospective findings: bugfix-367",
+          "category": "lesson-learned",
+          "final_score": 0.5236263495495445,
+          "similarity": 0.5934900641441345,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

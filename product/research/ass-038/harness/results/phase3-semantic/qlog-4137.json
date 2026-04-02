@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4137",
+  "query": "We've identified all of the background-tick genereated data.. its actually interesting data, likely used for context_cycle-review... so before we delete these, lets talk about what we SHOULD be doing with it... they are not knowledge entries, for sure.. however... I think 437 likely turned them off... so.. lets discuss the 3 types: # Review: background-tick entries — topic=workflow\n\nTotal: 94 entries\n\n---\n\n## ID 400 — Convention: agents access product/research/ass-015/\n**category:** convention\n\nAll 3 observed sessions access 'product/research/ass-015/'. This is a consistent workflow pattern that may warrant documentation.\n\n---\n\n## ID 401 — Convention: agents access product/\n**category:** convention\n\nAll 3 observed sessions access 'product/'. This is a consistent workflow pattern that may warrant documentation.\n\n---\n\n## ID 1871 — Convention: agents access crates/unimatrix-server/src/\n**category:** convention\n\nAll 3 observed sessions access 'crates/unimatrix-server/src/'. This is a consistent workflow pattern that may warrant documentation.\n\n---\n\n## ID 1974 — Convention: agents access crates/unimatrix-server/src/\n**category:** convention\n\nAll 3 observed sessions access 'crates/unimatrix-server/src/'. This is a consistent workflow pattern that may warrant documentation.\n\n---\n\n## ID 2000 — Convention: agents access crates/unimatrix-server/src/\n**category:** convention\n\nAll 3 observed sessions access 'crates/unimatrix-server/src/'. This is a consistent workflow pattern that may warrant documentation.\n\n---\n\n## ID 2086 — Convention: agents access crates/unimatrix-server/src/\n**category:** convention\n\nAll 3 observed sessions access 'crates/unimatrix-server/src/'. This is a consistent workflow pattern that may warrant documentation.\n\n---\n\n## ID 2112 — Convention: agents access crates/unimatrix-server/src/\n**category:** convention\n\nAll 3 observed sessions access 'crates/unimatrix-server/src/'. This is a consistent workflow pattern that may warrant documentation.\n\n---\n\n## ID 2127 — Convention: agents access crates/unimatrix-server/src/\n**category:** convention\n\nAll 3 observed sessions access 'crates/unimatrix-server/src/'. This is a consistent workflow pattern that may warrant documentation.\n\n---\n\n## ID 2173 — Convention: agents access crates/unimatrix-server/src/services/\n**category:** convention\n\nAll 4 observed sessions access 'crates/unimatrix-server/src/services/'. This is a consistent workflow pattern that may warrant documentation.\n\\\n# Review: background-tick entries — topic=knowledge-management\n\nTotal: 1965 entries\n\n---\n\n## ID 410 — Possible dead knowledge: Product vision and strategic approach\n**category:** lesson-learned\n\nEntry 'Product vision and strategic approach' (ID: 2) has 6 accesses but was not used in the last 5 sessions. Consider deprecating.\n\n---\n\n## ID 411 — Possible dead knowledge: Roadmap milestones 1-2: Foundation and MCP Server\n**category:** lesson-learned\n\nEntry 'Roadmap milestones 1-2: Foundation and MCP Server' (ID: 3) has 7 accesses but was not used in the last 5 sessions. Consider deprecating.\n\n---\n\n## ID 412 — Possible dead knowledge: Roadmap milestones 3-4: Agent Integration and Learning\n**category:** lesson-learned\n\nEntry 'Roadmap milestones 3-4: Agent Integration and Learning' (ID: 4) has 6 accesses but was not used in the last 5 sessions. Consider deprecating.\n\n---\n\n## ID 413 — Possible dead knowledge: Roadmap milestones 5-6: Orchestration and Real-Time Interface\n**category:** lesson-learned\n\nEntry 'Roadmap milestones 5-6: Orchestration and Real-Time Interface' (ID: 5) has 19 accesses but was not used in the last 5 sessions. Consider deprecating.\n\n---\n\n## ID 414 — Possible dead knowledge: Roadmap milestones 7-9: Multi-Project, Thin-Shell, Build\n**category:** lesson-learned\n\nEntry 'Roadmap milestones 7-9: Multi-Project, Thin-Shell, Build' (ID: 6) has 6 accesses but was not used in the last 5 sessions. Consider deprecating.\n\n---\n\n## ID 415 — Possible dead knowledge: Security cross-cutting concerns and threat landscape\n**category:** lesson-learned\n\nEntry 'Security cross-cutting concerns and threat landscape' (ID: 7) has 7 accesses but was not used in the last 5 sessions. Consider deprecating.\n\\\n# Review: background-tick entries — topic=process-improvement\n\nTotal: 127 entries\n\n---\n\n## ID 402 — Recurring friction: sleep_workarounds\n**category:** lesson-learned\n\nDetection rule 'sleep_workarounds' fired in 3 sessions: [885c20bc-fd0e-44f2-95b4-de2edde0ab60, 58fc4275-e332-4949-882f-351d284d7103, 5d231153-829d-4cae-8486-59a3e2de4d84]. This recurring pattern indicates a systemic issue worth addressing.\n\n---\n\n## ID 403 — Recurring friction: reread_rate\n**category:** lesson-learned\n\nDetection rule 'reread_rate' fired in 3 sessions: [541e53c1-6393-4fea-9b6b-06e6b2f47bbb, 885c20bc-fd0e-44f2-95b4-de2edde0ab60, 5d231153-829d-4cae-8486-59a3e2de4d84]. This recurring pattern indicates a systemic issue worth addressing.\n\n---\n\n## ID 1564 — Recurring friction: reread_rate\n**category:** lesson-learned\n\nDetection rule 'reread_rate' fired in 3 sessions: [531f376f-597e-4bbd-9b0d-dac833043de7, d5f8392e-4e93-49bf-a096-0e28ced542c1, 75990fd0-59d7-48b7-8a3a-b514775b72fd]. This recurring pattern indicates a systemic issue worth addressing.\n\n---\n\n## ID 1861 — Recurring friction: reread_rate\n**category:** lesson-learned\n\nDetection rule 'reread_rate' fired in 3 sessions: [0b7c1330-3132-49c5-a905-820ca75ffe25, a18ee37f-bd6f-4885-9cb6-fa217eab619a, 1ccf6f33-2632-4fd9-b18d-381e283258e7]. This recurring pattern indicates a systemic issue worth addressing.\n\n---\n\n## ID 1862 — Recurring friction: file_breadth\n**category:** lesson-learned\n\nDetection rule 'file_breadth' fired in 3 sessions: [0b7c1330-3132-49c5-a905-820ca75ffe25, a18ee37f-bd6f-4885-9cb6-fa217eab619a, 1ccf6f33-2632-4fd9-b18d-381e283258e7]. This recurring pattern indicates a systemic issue worth addressing.\n\n---\n\n## ID 1872 — Recurring friction: reread_rate\n**category:** lesson-learned\n\nDetection rule 'reread_rate' fired in 3 sessions: [418121be-1a29-4db3-acdd-5f23e6b69ce9, 2eb0aff5-a63b-42a9-850d-27df2f9fa591, cfe648bb-d0e9-4a70-88a9-5791fc446927]. This recurring pattern indicates a systemic issue worth addressing.\n\n---\n\n## ID 1873 — Recurring friction: reread_rate\n**category:** lesson-learned\n\nDetection rule 'reread_rate' fired in 3 sessions: [7e5e18a0-dcde-453e-be9f-47ed63fdf330, 823902bd-f6b0-4d6c-85a1-b6e22d8865b6, 418121be-1a29-4db3-acdd-5f23e6b69ce9]. This recurring pattern indicates a systemic issue worth addressing.\n\n---\n\n## ID 1964 — Recurring friction: reread_rate\n**category:** lesson-learned\n\nDetection rule 'reread_rate' fired in 3 sessions: [0b7c1330-3132-49c5-a905-820ca75ffe25, a18ee37f-bd6f-4885-9cb6-fa217eab619a, 1ccf6f33-2632-4fd9-b18d-381e283258e7]. This recurring pattern indicates a systemic issue worth addressing.\n\n---\n\n## ID 1965 — Recurring friction: file_breadth\n**category:** lesson-learned\n\nDetection rule 'file_breadth' fired in 3 sessions: [0b7c1330-3132-49c5-a905-820ca75ffe25, a18ee37f-bd6f-4885-9cb6-fa217eab619a, 1ccf6f33-2632-4fd9-b18d-381e283258e7]. This recurring pattern indicates a systemic issue worth addressing.\n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.5595829034699504,
+          "similarity": 0.5785162448883057,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.47748974262271804,
+          "similarity": 0.5305359959602356,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.46037040632734494,
+          "similarity": 0.5305359959602356,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4586406833576382,
+          "similarity": 0.5271782875061035,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4585838933966193,
+          "similarity": 0.5271782875061035,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.5595829034699504,
+          "similarity": 0.5785162448883057,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.47748974262271804,
+          "similarity": 0.5305359959602356,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.46037040632734494,
+          "similarity": 0.5305359959602356,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4586406833576382,
+          "similarity": 0.5271782875061035,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3725,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4585838933966193,
+          "similarity": 0.5271782875061035,
+          "confidence": 0.4201872999249618,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

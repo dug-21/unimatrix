@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-228",
+  "query": "Your agent ID: nan-003-agent-3-risk\nMODE: architecture-risk\n\nProduce a risk-based test strategy for nan-003 (Unimatrix Onboarding Skills).\n\nRead these artifacts for context:\n- SCOPE.md: product/features/nan-003/SCOPE.md\n- Architecture: product/features/nan-003/architecture/ARCHITECTURE.md\n- ADRs:\n  - product/features/nan-003/architecture/ADR-001-hard-stop-gates-seed-state-machine.md\n  - product/features/nan-003/architecture/ADR-002-versioned-sentinel-idempotency.md\n  - product/features/nan-003/architecture/ADR-003-context-status-preflight.md\n  - product/features/nan-003/architecture/ADR-004-terminal-only-recommendation-output.md\n  - product/features/nan-003/architecture/ADR-005-claude-md-block-unimatrix-skills-only.md\n  - product/features/nan-003/architecture/ADR-006-seed-entry-categories-and-quality-gate.md\n- Specification: product/features/nan-003/specification/SPECIFICATION.md\n- Scope Risk Assessment: product/features/nan-003/SCOPE-RISK-ASSESSMENT.md\n\nUse the architecture (component boundaries, integration points, ADRs)\nand specification (acceptance criteria, domain models, constraints)\nto inform your risk analysis. Identify risks that are specific to\nthe designed architecture — not generic risks.\n\nTrace each SR-XX scope risk in the Scope Risk Traceability table.\n\nProduce RISK-TEST-STRATEGY.md at product/features/nan-003/RISK-TEST-STRATEGY.md.\nReturn: file path, risk summary, key testing scenarios.\n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5915397644161399,
+          "similarity": 0.6598203182220459,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.5743984337491713,
+          "similarity": 0.6298248171806335,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1091,
+          "title": "ADR-002 nan-003: Versioned Sentinel + Head-Check Fallback for Init Idempotency",
+          "category": "decision",
+          "final_score": 0.5630419716172262,
+          "similarity": 0.6291781663894653,
+          "confidence": 0.5580022566903781,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5590102284916614,
+          "similarity": 0.6067339181900024,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5589712596896015,
+          "similarity": 0.6527811884880066,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5915397644161399,
+          "similarity": 0.6598203182220459,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1095,
+          "title": "ADR-006 nan-003: Seed Entry Categories Restricted + What/Why/Scope Quality Gate",
+          "category": "decision",
+          "final_score": 0.5743984337491713,
+          "similarity": 0.6298248171806335,
+          "confidence": 0.5879031527754172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1091,
+          "title": "ADR-002 nan-003: Versioned Sentinel + Head-Check Fallback for Init Idempotency",
+          "category": "decision",
+          "final_score": 0.5630419716172262,
+          "similarity": 0.6291781663894653,
+          "confidence": 0.5580022566903781,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5590102284916614,
+          "similarity": 0.6067339181900024,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5589712596896015,
+          "similarity": 0.6527811884880066,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5014",
+  "query": "OK.. scope for crt-036 is proposed: SCOPE.md — crt-037 Summary                                                                                                                                     \n                                                                                                                                                                 \n  Problem: 79% of active entries (868/1,093) are isolated from PPR traversal. The NLI tick already computes neutral scores but silently discards them — the      \n  neutral zone is exactly where \"past failure informs later decision\" relationships live. Confirmed missed bridge: Lesson #376 (nxs-008) and ADR #2060 (nxs-011) \n  cover the same invariant with zero edge between them after 26 days.\n                                                                                                                                                                 \n  Scope:                                                                                                                                                         \n  1. RelationType::Informs — new enum variant in graph.rs\n  2. PPR extension — 4th edges_of_type call in personalized_pagerank + positive_out_degree_weight                                                                \n  3. Config — 3 new InferenceConfig fields: informs_category_pairs, nli_informs_cosine_floor (0.45), nli_informs_ppr_weight (0.6)\n  4. Detection — separate HNSW scan at 0.45 cosine + Phase 8b write loop using the already-computed neutral score                                                \n                                                                                                                                                                 \n  Hard constraints: No schema migration, no new ML model, no new tick, W1-2 / C-14 / R-09 rayon contract preserved, domain vocabulary only in config defaults.   \n                                                                                                                                                                 \n  Explicitly out: Mentions/ImplementsDecision edges, config-extensible relation types, post-store NLI, changes to penalty/terminal logic.                        \n                                                                                                                                                                 \n  5 open questions requiring your input before architecture:                                                                                                     \n                                                                  \n  ┌─────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────┬─────────────────────────────────────┐   \n  │  #  │                                                   Question                                                   │               Default               │\n  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────┤   \n  │ 1   │ Cap budget: shared max_graph_inference_per_tick or separate max_informs_per_tick?                            │ Combined (avoids starvation)        │\n  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────┤   \n  │ 2   │ NLI batch structure: merge Informs candidates into existing Phase 7 batch (W1-2 preferred) or second rayon   │ Merge (option a)                    │   \n  │     │ spawn?                                                                                                       │                                     │   \n  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────┤   \n  │ 3   │ query_existing_informs_pairs dedup: directional (source_id, target_id) or symmetric?                         │ Directional (semantically correct)  │   \n  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────┤\n  │ 4   │ nli.neutral > 0.5 threshold: fixed constant or configurable field?                                           │ Fixed (avoid over-parameterizing    │   \n  │     │                                                                                                              │ v1)                                 │\n  ├─────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────────────────────┤   \n  │ 5   │ Delivery gate: quantitative ICD assertion or post-delivery eval only?                                        │ Post-delivery eval                  │\\\nthoughts? does it align with what we talked about?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.6223033548727599,
+          "similarity": 0.7042015194892883,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.563001714427418,
+          "similarity": 0.6030631065368652,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5611893928002393,
+          "similarity": 0.5855543613433838,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.5361062649328044,
+          "similarity": 0.5725473165512085,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5053901315990247,
+          "similarity": 0.581241250038147,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.6223033548727599,
+          "similarity": 0.7042015194892883,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.563001714427418,
+          "similarity": 0.6030631065368652,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5611893928002393,
+          "similarity": 0.5855543613433838,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.5361062649328044,
+          "similarity": 0.5725473165512085,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5053901315990247,
+          "similarity": 0.581241250038147,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 47,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

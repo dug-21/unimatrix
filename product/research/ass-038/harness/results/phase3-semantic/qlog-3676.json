@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3676",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Both fixes applied. Re-running Gate 3a.\n[tool: Agent(Tester rework: col-030 graph_suppression test plan) → Both fixes are correctly applied. Let me do a final self-check against the requirements:\n\n**FIX 1 verification:**\n- Line 6: `-> (Vec<bool>, Vec<Option<u64>>)` — DONE\n- All 8 Act lines: `let (mask, cids) = suppress_contradicts(...)` — DONE (confirmed via replace_all)\n- `cids` assertions on T-GS-0]\n[Assistant] REWORKABLE FAIL on two issues in `test-plan/graph_suppression.md`. Sending the tester back for rework (iteration 1/2).\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5765208428922078,
+          "similarity": 0.5927332639694214,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5543698594181332,
+          "similarity": 0.6090688109397888,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.5346078235021197,
+          "similarity": 0.5804092288017273,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.5247832828760356,
+          "similarity": 0.5795671939849854,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2463,
+          "title": "Gate 3c: always verify committed code, not working tree state",
+          "category": "lesson-learned",
+          "final_score": 0.5123712656919172,
+          "similarity": 0.5726363658905029,
+          "confidence": 0.5012414841773427,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5765208428922078,
+          "similarity": 0.5927332639694214,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5543698594181332,
+          "similarity": 0.6090688109397888,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3806,
+          "title": "Gate 3b: handler integration tests absent when implementation agent treats existing smoke tests as sufficient coverage",
+          "category": "lesson-learned",
+          "final_score": 0.5346078235021197,
+          "similarity": 0.5804092288017273,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3644,
+          "title": "Parallel pseudocode + test-plan spawn creates interface divergence when pseudocode changes a function signature",
+          "category": "lesson-learned",
+          "final_score": 0.5247832828760356,
+          "similarity": 0.5795671939849854,
+          "confidence": 0.5250300621135462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2463,
+          "title": "Gate 3c: always verify committed code, not working tree state",
+          "category": "lesson-learned",
+          "final_score": 0.5123712656919172,
+          "similarity": 0.5726363658905029,
+          "confidence": 0.5012414841773427,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

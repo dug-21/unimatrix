@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-6f4596b4-1773612567000",
+  "query": "integration test fixture isolation server fixture flaky",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.4971180492818009,
+          "similarity": 0.4781959056854248,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4808824646790252,
+          "similarity": 0.462546169757843,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.46611952361643405,
+          "similarity": 0.46713781356811523,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4583802882669763,
+          "similarity": 0.46062803268432617,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.43367031749894724,
+          "similarity": 0.4491389989852905,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3479,
+          "title": "Two-Site Atomicity Enforcement: Cross-Module Coupled Test Pattern",
+          "category": "pattern",
+          "final_score": 0.4971180492818009,
+          "similarity": 0.4781959056854248,
+          "confidence": 0.5947548399285674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4808824646790252,
+          "similarity": 0.462546169757843,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.46611952361643405,
+          "similarity": 0.46713781356811523,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3899,
+          "title": "Architecture/spec consistency: spec writer's test fixture requirement overrides architect's earlier description when they conflict",
+          "category": "lesson-learned",
+          "final_score": 0.4583802882669763,
+          "similarity": 0.46062803268432617,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.43367031749894724,
+          "similarity": 0.4491389989852905,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

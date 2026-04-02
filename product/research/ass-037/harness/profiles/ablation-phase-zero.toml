@@ -1,0 +1,8 @@
+[profile]
+name = "ablation-phase-zero"
+description = "Q4: phase_histogram and phase_explicit both zeroed. Tests whether phase-conditioned signals (WA-2, col-031) contribute to ranking quality. All other signals at baseline."
+distribution_change = false
+
+[inference]
+w_phase_histogram = 0.0
+w_phase_explicit  = 0.0

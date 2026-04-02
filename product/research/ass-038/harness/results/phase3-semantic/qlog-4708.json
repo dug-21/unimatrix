@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4708",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(git add crates/unimatrix-server/src/services/co_access_promotion_tick.rs product/features/crt-034/agents/crt-034-agent-5) → [feature/crt-034 41755f5] impl: crt-034 wave 2-3 fixups + agent reports (#456)\n 3 files changed, 133 insertions(+), 3 deletions(-)\n create mode 100644 product/features/crt-034/agents/crt-034-agent-5-co-access-promotion-tick-report.md\n create mode 100644 product/features/crt-034/agents/crt-034-agent-]\n[Assistant] `co_access_promotion_tick.rs` has unstaged changes — committing before Gate 3b.\n[tool: Bash(git log --oneline -3 && git status --short) → 4a3b7f2 impl(background_tick_insertion): wire run_co_access_promotion_tick into background tick loop with ORDERING INVARIANT anchor comment (#457)\neae792e impl(co_access_promotion_tick): recurring co_access→GRAPH_EDGES promotion tick (#460)\nf6fcd52 chore: crt-034 wave 1 agent reports (#456)\n M .cl]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.5170501520613171,
+          "similarity": 0.5172421336174011,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.5054475592586393,
+          "similarity": 0.5149825215339661,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.49839671783680406,
+          "similarity": 0.5178720355033875,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3880,
+          "title": "Retrospective findings: crt-028",
+          "category": "lesson-learned",
+          "final_score": 0.46697988329435647,
+          "similarity": 0.48586177825927734,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.5170501520613171,
+          "similarity": 0.5172421336174011,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 971,
+          "title": "Retrospective findings: crt-005",
+          "category": "lesson-learned",
+          "final_score": 0.5054475592586393,
+          "similarity": 0.5149825215339661,
+          "confidence": 0.564811201510641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.49839671783680406,
+          "similarity": 0.5178720355033875,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3880,
+          "title": "Retrospective findings: crt-028",
+          "category": "lesson-learned",
+          "final_score": 0.46697988329435647,
+          "similarity": 0.48586177825927734,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.75,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

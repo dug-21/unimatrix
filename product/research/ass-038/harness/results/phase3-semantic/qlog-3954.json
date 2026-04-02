@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3954",
+  "query": "yes... the 1 year setting is only for the confidence/aging aspect.. not for 409... that is as much about data retention as anything else.  Create a separate issue for this, the 1 aspect is that this should likely be exposed as a configuration entry in TOML, that way a different data domain can set this value differently.  Create the issue",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.47451956546154095,
+          "similarity": 0.4662415385246277,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 652,
+          "title": "ADR-004: Persistence backward compat via serde(default) — no version bump (crt-012)",
+          "category": "decision",
+          "final_score": 0.4503615876330185,
+          "similarity": 0.4059032201766968,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.4481865742530017,
+          "similarity": 0.38450461626052856,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.44081520657788054,
+          "similarity": 0.4041633605957031,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.4378353920753989,
+          "similarity": 0.4079779386520386,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.47451956546154095,
+          "similarity": 0.4662415385246277,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 652,
+          "title": "ADR-004: Persistence backward compat via serde(default) — no version bump (crt-012)",
+          "category": "decision",
+          "final_score": 0.4503615876330185,
+          "similarity": 0.4059032201766968,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.4481865742530017,
+          "similarity": 0.38450461626052856,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.44081520657788054,
+          "similarity": 0.4041633605957031,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.4378353920753989,
+          "similarity": 0.4079779386520386,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

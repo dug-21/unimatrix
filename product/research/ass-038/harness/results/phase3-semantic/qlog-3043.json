@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3043",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Now re-running Gate 3c against the complete, committed state.\n[tool: Bash(git add crates/unimatrix-server/src/uds/hook.rs crates/unimatrix-server/src/uds/listener.rs .claude/settings.json && git) → ]\n[Assistant] Clean (13 warnings → 12, one removed by fixing the dead variable). Committing all three fixes together.\n[tool: Bash(cargo build -p unimatrix-server 2>&1 | tail -5) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5200632233487152,
+          "similarity": 0.5240148901939392,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5080022236971913,
+          "similarity": 0.5298585891723633,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3837,
+          "title": "Retrospective findings: bugfix-358",
+          "category": "lesson-learned",
+          "final_score": 0.49350026091316856,
+          "similarity": 0.5105058550834656,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.48004785658183846,
+          "similarity": 0.5106909275054932,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2463,
+          "title": "Gate 3c: always verify committed code, not working tree state",
+          "category": "lesson-learned",
+          "final_score": 0.4798639904117177,
+          "similarity": 0.5108725428581238,
+          "confidence": 0.5012414841773427,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5200632233487152,
+          "similarity": 0.5240148901939392,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5080022236971913,
+          "similarity": 0.5298585891723633,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3837,
+          "title": "Retrospective findings: bugfix-358",
+          "category": "lesson-learned",
+          "final_score": 0.49350026091316856,
+          "similarity": 0.5105058550834656,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.48004785658183846,
+          "similarity": 0.5106909275054932,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2463,
+          "title": "Gate 3c: always verify committed code, not working tree state",
+          "category": "lesson-learned",
+          "final_score": 0.4798639904117177,
+          "similarity": 0.5108725428581238,
+          "confidence": 0.5012414841773427,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-88cecd44-1773700542000",
+  "query": "MCP server transport architecture rmcp",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 77,
+          "title": "ADR-001: rmcp 0.16 with stdio Transport",
+          "category": "decision",
+          "final_score": 0.5672454135454161,
+          "similarity": 0.5977378487586975,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5666335101734027,
+          "similarity": 0.6173980832099915,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.489594088261175,
+          "similarity": 0.5314841270446777,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.47932892415252304,
+          "similarity": 0.4900449514389038,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.4456690810175923,
+          "similarity": 0.45823240280151367,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 77,
+          "title": "ADR-001: rmcp 0.16 with stdio Transport",
+          "category": "decision",
+          "final_score": 0.5672454135454161,
+          "similarity": 0.5977378487586975,
+          "confidence": 0.614326338539419,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5666335101734027,
+          "similarity": 0.6173980832099915,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3814,
+          "title": "MCP tool param deserialization fixes require infra-001 transport-level validation — unit tests on serde structs are insufficient",
+          "category": "pattern",
+          "final_score": 0.489594088261175,
+          "similarity": 0.5314841270446777,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.47932892415252304,
+          "similarity": 0.4900449514389038,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.4456690810175923,
+          "similarity": 0.45823240280151367,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

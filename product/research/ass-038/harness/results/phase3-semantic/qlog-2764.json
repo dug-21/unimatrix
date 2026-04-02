@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2764",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Good catches. The scope of \"what counts as a query\" hasn't been defined, and it matters for both the in-memory field and the `query_log` reconstruction path. Sending the researcher to investigate.\n[Assistant] The researcher found something cleaner than expected. The updated SCOPE.md is at `product/research/ass-032/SCOPE.md`.\n\n**Corrected picture:**\n\n`query_count` and `category_counts` are structurally different:\n\n| Signal | Event log? | Training reconstruction? | New table? |\n|---|---|---|---|\n| `category_counts` | No | Impossible from DB | Yes — OQ-01's `session_category_snapshots` |\n| `query_count` | Yes — `query_log` | `COUNT(*) WHERE session_id = ? AND ts <= label_ts` | **No** |\n\nASS-031 `TRAINING-DESIGN.md` already specifies this reconstruction path. The GNN training pipeline reads `query_log` directly with a timestamp bound — so historical sessions get the correct count at training time. The in-memory `query_count` field serves inference only (session context vector during live scoring).\n\n**Scope for this feature is therefore:**\n- Add `query_count: u32` to `SessionState` (in-memory, inference path only)\n- Add `increment_query_count()` to `SessionRegistry`\n- Call it in `context_search` handler\n- No schema migration, no new table, no analytics write queue\n\n**Remaining open questions before I proceed to Phase 1b:**\n\n- **OQ-A**: Should `query_count` also increment in the UDS hook-triggered search path? (Since `query_log` captures both, training reconstruction counts both — inference should match for consistency.)\n- **OQ-C**: Increment before or after reading for the session context vector? Recommendation: increment-first so the current call is included; training reconstruction uses `ts <= label_ts` (inclusive) to match.\n- **OQ-D** (no action now): Any future `query_log` GC must stay within the GNN training window retention.\n\nReady to proceed to Phase 1b (scope risk assessment)? And your answers to OQ-A and OQ-C?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.6611936605701272,
+          "similarity": 0.808678925037384,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.5940218060052014,
+          "similarity": 0.6894452571868896,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5237966976739042,
+          "similarity": 0.5410388708114624,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.52371545955426,
+          "similarity": 0.526580810546875,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.5175707203794001,
+          "similarity": 0.5846397280693054,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.6611936605701272,
+          "similarity": 0.808678925037384,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.5940218060052014,
+          "similarity": 0.6894452571868896,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5237966976739042,
+          "similarity": 0.5410388708114624,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.52371545955426,
+          "similarity": 0.526580810546875,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.5175707203794001,
+          "similarity": 0.5846397280693054,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

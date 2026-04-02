@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280317000",
+  "query": "sync CLI subcommand pattern Store::open database access testability",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5123119405047634,
+          "similarity": 0.568331241607666,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.4777467269211701,
+          "similarity": 0.49589765071868896,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.4730166096721025,
+          "similarity": 0.49372172355651855,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.4709931441126581,
+          "similarity": 0.4850672483444214,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.4430319284069367,
+          "similarity": 0.507634162902832,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5123119405047634,
+          "similarity": 0.568331241607666,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.4777467269211701,
+          "similarity": 0.49589765071868896,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.4730166096721025,
+          "similarity": 0.49372172355651855,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.4709931441126581,
+          "similarity": 0.4850672483444214,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.4430319284069367,
+          "similarity": 0.507634162902832,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.4458961486816406,
+          "similarity": 0.568331241607666,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.40854410024789667,
+          "similarity": 0.507634162902832,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.4013216312115009,
+          "similarity": 0.49589765071868896,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.39998259911170375,
+          "similarity": 0.49372172355651855,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.3946567682119516,
+          "similarity": 0.4850672483444214,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5788270515155903,
+          "similarity": 0.568331241607666,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5384859339389896,
+          "similarity": 0.49589765071868896,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.5322069423385213,
+          "similarity": 0.49372172355651855,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.5302781146306659,
+          "similarity": 0.4850672483444214,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.48968753282296884,
+          "similarity": 0.507634162902832,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.568331241607666,
+          "similarity": 0.568331241607666,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.507634162902832,
+          "similarity": 0.507634162902832,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.49589765071868896,
+          "similarity": 0.49589765071868896,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.49372172355651855,
+          "similarity": 0.49372172355651855,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.4850672483444214,
+          "similarity": 0.4850672483444214,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5787588969057985,
+          "similarity": 0.568331241607666,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5382093866453511,
+          "similarity": 0.49589765071868896,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1191,
+          "title": "Sync CLI Subcommand Pattern for unimatrix",
+          "category": "pattern",
+          "final_score": 0.5319570383204563,
+          "similarity": 0.49372172355651855,
+          "confidence": 0.5871858263128109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.529984537576859,
+          "similarity": 0.4850672483444214,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2651,
+          "title": "Nested clap 4.x subcommand for multi-level CLI dispatch (pre-tokio)",
+          "category": "pattern",
+          "final_score": 0.489804069381929,
+          "similarity": 0.507634162902832,
+          "confidence": 0.4640494898517358,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

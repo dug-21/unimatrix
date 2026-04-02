@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4313",
+  "query": "so.. am now focused on the maintenance tick corrections for HNSW alignment.. #444.  Review their proposed solution: Proposed Fix (architect-revised):                                            \n                                                                               \n  Tick ordering: prune → heal → graph compaction (prune must run before heal)  \n                                                                               \n  ┌──────────────┬─────────────────────────────────────────────────────────┐   \n  │     Fix      │                         Change                          │\n  ├──────────────┼─────────────────────────────────────────────────────────┤\n  │              │ Query embedding_dim=0 AND status=Active (+ active       │\n  │ Heal pass    │ entries with embedding_dim>0 but not in HNSW index).    │\n  │              │ Re-embed, cap at 20/tick. Write order: embed →          │   \n  │              │ insert_hnsw_only → UPDATE embedding_dim.                │\n  ├──────────────┼─────────────────────────────────────────────────────────┤   \n  │              │ Query VECTOR_MAP rows for quarantined entries. Delete   │\n  │ Prune pass   │ VECTOR_MAP row, call VectorIndex::remove_entry()        │   \n  │              │ (IdMap-only, mark stale). Next compact() cleans the     │\n  │              │ stale HNSW point.                                       │   \n  ├──────────────┼─────────────────────────────────────────────────────────┤\n  │              │ TypedGraphState::rebuild() filters out Quarantined      │   \n  │ Graph filter │ before build_typed_relation_graph(). Deprecated entries │\n  │              │  retained (needed for Supersedes chain traversal).      │   \n  ├──────────────┼─────────────────────────────────────────────────────────┤\n  │ Metric       │ Fast SQL COUNT in compute_report(): WHERE status=Active │\n  │              │  AND embedding_dim=0. Score: 1.0 - (unembedded/active). │   \n  ├──────────────┼─────────────────────────────────────────────────────────┤\n  │ Restore path │ restore_with_audit() must re-insert into HNSW when      │   \n  │  (blocking)  │ !vector_index.contains(id) && embedding_dim>0. Without  │   \n  │              │ this, a restored entry has no HNSW point after prune.   │\n  └──────────────┴─────────────────────────────────────────────────────────┘   \n                                                                  \n  Design Review: APPROVED WITH NOTES\n\n  - 1 blocking finding: restore_with_audit does not re-insert into HNSW after a\n   status restore. Fix 2 (prune) makes this gap operational — must be fixed\n  together.                                                                    \n  - Non-blocking: embed→HNSW→DB write order; embed-service unavailability\n  handling (skip+log); use mark-stale not immediate compact; filter all_entries\n   consistently before graph builder.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.651356025619273,
+          "similarity": 0.7825425267219543,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.6270359473944312,
+          "similarity": 0.700468897819519,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.5989869196543077,
+          "similarity": 0.6975359916687012,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5906707582712344,
+          "similarity": 0.6630405187606812,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5766919632383057,
+          "similarity": 0.6854202151298523,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3761,
+          "title": "Maintenance tick must enforce VECTOR_MAP/HNSW/graph invariants — heal unembedded, prune quarantined",
+          "category": "lesson-learned",
+          "final_score": 0.651356025619273,
+          "similarity": 0.7825425267219543,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.6270359473944312,
+          "similarity": 0.700468897819519,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3911,
+          "title": "How to add a new maintenance tick pass to run_maintenance()",
+          "category": "procedure",
+          "final_score": 0.5989869196543077,
+          "similarity": 0.6975359916687012,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5906707582712344,
+          "similarity": 0.6630405187606812,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5766919632383057,
+          "similarity": 0.6854202151298523,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

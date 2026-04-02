@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002281000",
+  "query": "settings.json allowlist cargo build test permission friction",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.5570145877841505,
+          "similarity": 0.5459319949150085,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5425446475621811,
+          "similarity": 0.5090723633766174,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.5016844812838996,
+          "similarity": 0.49355047941207886,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.4948742709924536,
+          "similarity": 0.4201895594596863,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.48285754461625074,
+          "similarity": 0.4424043893814087,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.5459319949150085,
+          "similarity": 0.5459319949150085,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5090723633766174,
+          "similarity": 0.5090723633766174,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.49355047941207886,
+          "similarity": 0.49355047941207886,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.4424043893814087,
+          "similarity": 0.4424043893814087,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.4201895594596863,
+          "similarity": 0.4201895594596863,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.5569426228953898,
+          "similarity": 0.5459319949150085,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5423272950674697,
+          "similarity": 0.5090723633766174,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.5016316630899267,
+          "similarity": 0.49355047941207886,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.4943893053331499,
+          "similarity": 0.4201895594596863,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.4825948617900504,
+          "similarity": 0.4424043893814087,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.49482005645095306,
+          "similarity": 0.5459319949150085,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.48164484060791896,
+          "similarity": 0.5090723633766174,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.4507665848934182,
+          "similarity": 0.49355047941207886,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.4405647945416224,
+          "similarity": 0.4201895594596863,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.43339652460479755,
+          "similarity": 0.4424043893814087,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.49482005645095306,
+          "similarity": 0.5459319949150085,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.48164484060791896,
+          "similarity": 0.5090723633766174,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.4507665848934182,
+          "similarity": 0.49355047941207886,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.4405647945416224,
+          "similarity": 0.4201895594596863,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.43339652460479755,
+          "similarity": 0.4424043893814087,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4321119968707745,
+          "similarity": 0.5459319949150085,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.40942914669330305,
+          "similarity": 0.5090723633766174,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3466,
+          "title": "Bash Permission Retries Persist Across Features — context_search and context_store both missing from allowlist (updated bugfix-381)",
+          "category": "lesson-learned",
+          "final_score": 0.39987721809974086,
+          "similarity": 0.49355047941207886,
+          "confidence": 0.5133044839579293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.36840270115778995,
+          "similarity": 0.4424043893814087,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 747,
+          "title": "Cross-Crate Test Infrastructure via Feature Flags",
+          "category": "pattern",
+          "final_score": 0.35473203659057617,
+          "similarity": 0.4201895594596863,
+          "confidence": 0.6015667160392641,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3330,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 747,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

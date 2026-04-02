@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ea862451-1774810885000",
+  "query": "serde default fn struct absent field TOML deserialization",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3777,
+          "title": "Field-level serde(default fn) only fires when struct section is present in TOML, not when absent",
+          "category": "pattern",
+          "final_score": 0.6003095831699595,
+          "similarity": 0.7313435673713684,
+          "confidence": 0.5132066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5743957359012009,
+          "similarity": 0.6026785373687744,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.5649558420981665,
+          "similarity": 0.6380704641342163,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.5403744640970706,
+          "similarity": 0.5689062476158142,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.5173778836681189,
+          "similarity": 0.5842733383178711,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3777,
+          "title": "Field-level serde(default fn) only fires when struct section is present in TOML, not when absent",
+          "category": "pattern",
+          "final_score": 0.6003095831699595,
+          "similarity": 0.7313435673713684,
+          "confidence": 0.5132066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 646,
+          "title": "Backward-Compatible Config Extension via serde(default)",
+          "category": "pattern",
+          "final_score": 0.5743957359012009,
+          "similarity": 0.6026785373687744,
+          "confidence": 0.626676229776439,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.5649558420981665,
+          "similarity": 0.6380704641342163,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.5403744640970706,
+          "similarity": 0.5689062476158142,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.5173778836681189,
+          "similarity": 0.5842733383178711,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-30b7b9c9-1774915349000",
+  "query": "security migration SQL injection access control trust boundary",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.43097925186157227,
+          "similarity": 0.43097925186157227,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.41667771339416504,
+          "similarity": 0.41667771339416504,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.3916545510292053,
+          "similarity": 0.3916545510292053,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.37618398666381836,
+          "similarity": 0.37618398666381836,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.35631024837493896,
+          "similarity": 0.35631024837493896,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.44168535375665025,
+          "similarity": 0.41667771339416504,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.44033758133345147,
+          "similarity": 0.43097925186157227,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.43092075759751003,
+          "similarity": 0.3916545510292053,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.426071713075553,
+          "similarity": 0.37618398666381836,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.40011093023778416,
+          "similarity": 0.35631024837493896,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.3613718472994291,
+          "similarity": 0.43097925186157227,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.3525709005502554,
+          "similarity": 0.41667771339416504,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.3371720314025879,
+          "similarity": 0.3916545510292053,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.3276516841008113,
+          "similarity": 0.37618398666381836,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.31542169130765474,
+          "similarity": 0.35631024837493896,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.49675659207832723,
+          "similarity": 0.41667771339416504,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.49350459674575964,
+          "similarity": 0.43097925186157227,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.484434907385876,
+          "similarity": 0.3916545510292053,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4792960780778357,
+          "similarity": 0.37618398666381836,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.44561203676019995,
+          "similarity": 0.35631024837493896,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.44168535375665025,
+          "similarity": 0.41667771339416504,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.44033758133345147,
+          "similarity": 0.43097925186157227,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.43092075759751003,
+          "similarity": 0.3916545510292053,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.426071713075553,
+          "similarity": 0.37618398666381836,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.40011093023778416,
+          "similarity": 0.35631024837493896,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.4962365993595989,
+          "similarity": 0.41667771339416504,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.4930985880127454,
+          "similarity": 0.43097925186157227,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 103,
+          "title": "ADR-007: FEATURE_ENTRIES Trust-Level Gating",
+          "category": "decision",
+          "final_score": 0.4838324375394041,
+          "similarity": 0.3916545510292053,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4786265190426797,
+          "similarity": 0.37618398666381836,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.44503215501743854,
+          "similarity": 0.35631024837493896,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 252,
+        "from_rank": 2,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 314,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

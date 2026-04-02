@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ea862451-1774807760000",
+  "query": "Default impl serde default split test rewrite silent failure",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5527790189780858,
+          "similarity": 0.5910462141036987,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.541527148145559,
+          "similarity": 0.5734713673591614,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.4891543774448811,
+          "similarity": 0.45270204544067383,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.48307416242342316,
+          "similarity": 0.47717607021331787,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.474106319740323,
+          "similarity": 0.49148833751678467,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5527790189780858,
+          "similarity": 0.5910462141036987,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.541527148145559,
+          "similarity": 0.5734713673591614,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.4891543774448811,
+          "similarity": 0.45270204544067383,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.48307416242342316,
+          "similarity": 0.47717607021331787,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.474106319740323,
+          "similarity": 0.49148833751678467,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

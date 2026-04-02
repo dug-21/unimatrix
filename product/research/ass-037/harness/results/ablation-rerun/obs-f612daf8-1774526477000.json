@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-f612daf8-1774526477000",
+  "query": "serde skip_serializing_if Option null JSONL wire format backward compat",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.6125594796840074,
+          "similarity": 0.6363171935081482,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.592654157961288,
+          "similarity": 0.6069217920303345,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5891140436106705,
+          "similarity": 0.5643560290336609,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.5476805332200118,
+          "similarity": 0.5064884424209595,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5418874678545671,
+          "similarity": 0.520078182220459,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.5417445633060731,
+          "similarity": 0.6363171935081482,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.525142443088248,
+          "similarity": 0.6069217920303345,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.519522805275893,
+          "similarity": 0.5643560290336609,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.4852021343760771,
+          "similarity": 0.5064884424209595,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4819521681669316,
+          "similarity": 0.520078182220459,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.6363171935081482,
+          "similarity": 0.6363171935081482,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.6069217920303345,
+          "similarity": 0.6069217920303345,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5643560290336609,
+          "similarity": 0.5643560290336609,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.520078182220459,
+          "similarity": 0.520078182220459,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.5064884424209595,
+          "similarity": 0.5064884424209595,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.4877336575434758,
+          "similarity": 0.6363171935081482,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.46964417971097505,
+          "similarity": 0.6069217920303345,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.4434498640207144,
+          "similarity": 0.5643560290336609,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.41620195828951323,
+          "similarity": 0.520078182220459,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.4078390414898212,
+          "similarity": 0.5064884424209595,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.5417445633060731,
+          "similarity": 0.6363171935081482,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.525142443088248,
+          "similarity": 0.6069217920303345,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.519522805275893,
+          "similarity": 0.5643560290336609,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.4852021343760771,
+          "similarity": 0.5064884424209595,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.4819521681669316,
+          "similarity": 0.520078182220459,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3562,
+          "title": "ADR-001: Suppress Null Phase Emission in JSONL Output (nan-009)",
+          "category": "decision",
+          "final_score": 0.6127137505529953,
+          "similarity": 0.6363171935081482,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3255,
+          "title": "serde(default) alone does not omit None on serialization — pair with skip_serializing_if for wire optional fields",
+          "category": "pattern",
+          "final_score": 0.5927468049357622,
+          "similarity": 0.6069217920303345,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.5889532772822484,
+          "similarity": 0.5643560290336609,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.547413052110927,
+          "similarity": 0.5064884424209595,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.5417458491166831,
+          "similarity": 0.520078182220459,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

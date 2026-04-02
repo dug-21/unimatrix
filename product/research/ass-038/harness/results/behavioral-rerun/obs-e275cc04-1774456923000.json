@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-e275cc04-1774456923000",
+  "query": "detection rules event_type filtering observation",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.5682464953930256,
+          "similarity": 0.6048334240913391,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5202428935766528,
+          "similarity": 0.5127006769180298,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5108480266993393,
+          "similarity": 0.5039710998535156,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2905,
+          "title": "ADR-003 col-023: Rule Evaluator DSL for Data-Driven Detection Rules",
+          "category": "decision",
+          "final_score": 0.5099010972209488,
+          "similarity": 0.5009052753448486,
+          "confidence": 0.5970097276785059,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.48480752895574664,
+          "similarity": 0.46535050868988037,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2907,
+          "title": "ADR-005 col-023: Mandatory source_domain Guards in All Detection Rules",
+          "category": "decision",
+          "final_score": 0.5682464953930256,
+          "similarity": 0.6048334240913391,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5202428935766528,
+          "similarity": 0.5127006769180298,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5108480266993393,
+          "similarity": 0.5039710998535156,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2905,
+          "title": "ADR-003 col-023: Rule Evaluator DSL for Data-Driven Detection Rules",
+          "category": "decision",
+          "final_score": 0.5099010972209488,
+          "similarity": 0.5009052753448486,
+          "confidence": 0.5970097276785059,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3420,
+          "title": "Use Option<bool> not bool for event-derived status fields on RetrospectiveReport",
+          "category": "pattern",
+          "final_score": 0.48480752895574664,
+          "similarity": 0.46535050868988037,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

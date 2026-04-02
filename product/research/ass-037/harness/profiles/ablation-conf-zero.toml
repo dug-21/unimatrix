@@ -1,0 +1,12 @@
+[profile]
+name = "ablation-conf-zero"
+description = "Q4: w_conf=0.0, weight redistributed to sim/util/prov. Tests whether Wilson-score confidence drives the MRR lift seen in cosine-only comparison. PPR and NLI unchanged."
+distribution_change = false
+
+[inference]
+w_nli  = 0.35
+w_sim  = 0.40   # 0.25 + share of 0.15
+w_conf = 0.0
+w_coac = 0.0
+w_util = 0.125  # 0.05 + share of 0.15
+w_prov = 0.125  # 0.05 + share of 0.15

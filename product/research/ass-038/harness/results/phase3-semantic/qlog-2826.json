@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2826",
+  "query": "so... I'm not quite understanding how the GNN will not simply continually overweight whatever category rises to the top?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4193020825637014,
+          "similarity": 0.3056739568710327,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4006428496231432,
+          "similarity": 0.337752103805542,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.3882742756273151,
+          "similarity": 0.2998563051223755,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.37770353103475274,
+          "similarity": 0.2897326946258545,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.36930759341288755,
+          "similarity": 0.2785060405731201,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4193020825637014,
+          "similarity": 0.3056739568710327,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4006428496231432,
+          "similarity": 0.337752103805542,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.3882742756273151,
+          "similarity": 0.2998563051223755,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.37770353103475274,
+          "similarity": 0.2897326946258545,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.36930759341288755,
+          "similarity": 0.2785060405731201,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

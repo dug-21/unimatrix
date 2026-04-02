@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-3d9b719e-1774217384000",
+  "query": "additive weight field normalization denominator excluded six-term sum constraint",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.6107233238311462,
+          "similarity": 0.6277565956115723,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.5248416546744377,
+          "similarity": 0.5020537972450256,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.4829019854710721,
+          "similarity": 0.3797210454940796,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.445858454179628,
+          "similarity": 0.3705620765686035,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.4411794573618129,
+          "similarity": 0.3536721467971802,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.610611995257418,
+          "similarity": 0.6277565956115723,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.5249905949190745,
+          "similarity": 0.5020537972450256,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.4835763706996799,
+          "similarity": 0.3797210454940796,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.4463505873666282,
+          "similarity": 0.3705620765686035,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.44175140056811774,
+          "similarity": 0.3536721467971802,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.4824655972994291,
+          "similarity": 0.6277565956115723,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.40511002907386195,
+          "similarity": 0.5020537972450256,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.3298283356886644,
+          "similarity": 0.3797210454940796,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.3241920471191406,
+          "similarity": 0.3705620765686035,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.3137982441828801,
+          "similarity": 0.3536721467971802,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.6277565956115723,
+          "similarity": 0.6277565956115723,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.5020537972450256,
+          "similarity": 0.5020537972450256,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.3797210454940796,
+          "similarity": 0.3797210454940796,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.3705620765686035,
+          "similarity": 0.3705620765686035,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.3536721467971802,
+          "similarity": 0.3536721467971802,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.5397142105169455,
+          "similarity": 0.6277565956115723,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.46835413324425607,
+          "similarity": 0.5020537972450256,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.4294428590450582,
+          "similarity": 0.3797210454940796,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.40166700483630075,
+          "similarity": 0.3705620765686035,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.39710974518514147,
+          "similarity": 0.3536721467971802,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.5397142105169455,
+          "similarity": 0.6277565956115723,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3182,
+          "title": "Extending FusedScoreInputs/FusionWeights: additive phase terms excluded from NLI-absent re-normalization denominator",
+          "category": "pattern",
+          "final_score": 0.46835413324425607,
+          "similarity": 0.5020537972450256,
+          "confidence": 0.5577574487391442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.4294428590450582,
+          "similarity": 0.3797210454940796,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.40166700483630075,
+          "similarity": 0.3705620765686035,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.39710974518514147,
+          "similarity": 0.3536721467971802,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002134000",
+  "query": "offline live test partition separation daemon required acceptance group",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.5964369773864746,
+          "similarity": 0.5964369773864746,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.3805280923843384,
+          "similarity": 0.3805280923843384,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2154,
+          "title": "test entry - delete",
+          "category": "pattern",
+          "final_score": 0.37119412422180176,
+          "similarity": 0.37119412422180176,
+          "confidence": 0.46296403078592896,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.35239601135253906,
+          "similarity": 0.35239601135253906,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.33908671140670776,
+          "similarity": 0.33908671140670776,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.48743331909154125,
+          "similarity": 0.5964369773864746,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.4158521111823425,
+          "similarity": 0.3805280923843384,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.41353892892868543,
+          "similarity": 0.33908671140670776,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.4089860706664428,
+          "similarity": 0.35239601135253906,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2154,
+          "title": "test entry - delete",
+          "category": "pattern",
+          "final_score": 0.37448627134667956,
+          "similarity": 0.37119412422180176,
+          "confidence": 0.46296403078592896,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.48743331909154125,
+          "similarity": 0.5964369773864746,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.4158521111823425,
+          "similarity": 0.3805280923843384,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.41353892892868543,
+          "similarity": 0.33908671140670776,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.4089860706664428,
+          "similarity": 0.35239601135253906,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2154,
+          "title": "test entry - delete",
+          "category": "pattern",
+          "final_score": 0.37448627134667956,
+          "similarity": 0.37119412422180176,
+          "confidence": 0.46296403078592896,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.542278437180604,
+          "similarity": 0.5964369773864746,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.464908838411234,
+          "similarity": 0.33908671140670776,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.46429577957734536,
+          "similarity": 0.3805280923843384,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.45749045896764573,
+          "similarity": 0.35239601135253906,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2154,
+          "title": "test entry - delete",
+          "category": "pattern",
+          "final_score": 0.40873635872530834,
+          "similarity": 0.37119412422180176,
+          "confidence": 0.46296403078592896,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.5419244597936377,
+          "similarity": 0.5964369773864746,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.46573120525440087,
+          "similarity": 0.33908671140670776,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.4648432808008291,
+          "similarity": 0.3805280923843384,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.4581773507821236,
+          "similarity": 0.35239601135253906,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2154,
+          "title": "test entry - delete",
+          "category": "pattern",
+          "final_score": 0.4089817328070306,
+          "similarity": 0.37119412422180176,
+          "confidence": 0.46296403078592896,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2650,
+          "title": "Offline/live acceptance group partition: @pytest.mark.integration separates daemon-dependent tests",
+          "category": "pattern",
+          "final_score": 0.4631919860839844,
+          "similarity": 0.5964369773864746,
+          "confidence": 0.46404943466101334,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3004,
+          "title": "Analytics drain phase-snapshot causal integration test pattern (crt-025 R-02)",
+          "category": "pattern",
+          "final_score": 0.3303249799288236,
+          "similarity": 0.3805280923843384,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2154,
+          "title": "test entry - delete",
+          "category": "pattern",
+          "final_score": 0.32458099952110875,
+          "similarity": 0.37119412422180176,
+          "confidence": 0.46296403078592896,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 648,
+          "title": "Implementation agents must not leave their assigned worktree",
+          "category": "lesson-learned",
+          "final_score": 0.31301293006310094,
+          "similarity": 0.35239601135253906,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.3048225916348971,
+          "similarity": 0.33908671140670776,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 3579,
+        "from_rank": 2,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2154,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3004,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

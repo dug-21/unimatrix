@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2837",
+  "query": "would a record of that be in our injection log?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 290,
+          "title": "ADR-001: UsageService scope — access counting only, injection logs remain UDS-specific",
+          "category": "decision",
+          "final_score": 0.4740302852065825,
+          "similarity": 0.4443778395652771,
+          "confidence": 0.5803995747531855,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.44402717400724556,
+          "similarity": 0.3823390007019043,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.43210524748218193,
+          "similarity": 0.3734109401702881,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 361,
+          "title": "ADR-007: JSON Array Columns for Non-Queried Vec Fields",
+          "category": "decision",
+          "final_score": 0.42923297980360187,
+          "similarity": 0.3629907965660095,
+          "confidence": 0.5750740929440489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.4229450038977486,
+          "similarity": 0.3635692596435547,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 290,
+          "title": "ADR-001: UsageService scope — access counting only, injection logs remain UDS-specific",
+          "category": "decision",
+          "final_score": 0.4740302852065825,
+          "similarity": 0.4443778395652771,
+          "confidence": 0.5803995747531855,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.44402717400724556,
+          "similarity": 0.3823390007019043,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.43210524748218193,
+          "similarity": 0.3734109401702881,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 361,
+          "title": "ADR-007: JSON Array Columns for Non-Queried Vec Fields",
+          "category": "decision",
+          "final_score": 0.42923297980360187,
+          "similarity": 0.3629907965660095,
+          "confidence": 0.5750740929440489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.4229450038977486,
+          "similarity": 0.3635692596435547,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

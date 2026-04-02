@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-7c4e3cc4-1773804578000",
+  "query": "agent identity authentication session capability resolution",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.5358843026099745,
+          "similarity": 0.6441051959991455,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.5100387649788988,
+          "similarity": 0.5949983596801758,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5021973359448715,
+          "similarity": 0.49324679374694824,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.48053148753100416,
+          "similarity": 0.49452054500579834,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.46018558894599904,
+          "similarity": 0.5001625418663025,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.5358843026099745,
+          "similarity": 0.6441051959991455,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2160,
+          "title": "ADR-001 alc-003: SessionIdentitySource enum shape",
+          "category": "decision",
+          "final_score": 0.5100387649788988,
+          "similarity": 0.5949983596801758,
+          "confidence": 0.46296470539961726,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5021973359448715,
+          "similarity": 0.49324679374694824,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.48053148753100416,
+          "similarity": 0.49452054500579834,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.46018558894599904,
+          "similarity": 0.5001625418663025,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

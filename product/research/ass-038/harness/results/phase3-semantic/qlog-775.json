@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-775",
+  "query": "scrum master does not call context_cycle for each subagentstart... only 1 time at the beginning of the feature",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5032738058120304,
+          "similarity": 0.49537092447280884,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 979,
+          "title": "Retrospective findings: nxs-009",
+          "category": "lesson-learned",
+          "final_score": 0.49532348878678156,
+          "similarity": 0.46748441457748413,
+          "confidence": 0.6051860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.48166999491350904,
+          "similarity": 0.4549981355667114,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.481327898628098,
+          "similarity": 0.4676838517189026,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 684,
+          "title": "Always launch feature sessions with worktree isolation from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5032738058120304,
+          "similarity": 0.49537092447280884,
+          "confidence": 0.5869275808143557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 979,
+          "title": "Retrospective findings: nxs-009",
+          "category": "lesson-learned",
+          "final_score": 0.49532348878678156,
+          "similarity": 0.46748441457748413,
+          "confidence": 0.6051860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.48166999491350904,
+          "similarity": 0.4549981355667114,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.481327898628098,
+          "similarity": 0.4676838517189026,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

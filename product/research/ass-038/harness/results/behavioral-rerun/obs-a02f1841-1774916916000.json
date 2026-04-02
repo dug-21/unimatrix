@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a02f1841-1774916916000",
+  "query": "saturating arithmetic integer overflow u32 counter",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5338913926066186,
+          "similarity": 0.5694634318351746,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.46843812683007946,
+          "similarity": 0.4056129455566406,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4608878263666091,
+          "similarity": 0.4244566559791565,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.42794595163623106,
+          "similarity": 0.3748633861541748,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.41481179273160784,
+          "similarity": 0.3377499580383301,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5338913926066186,
+          "similarity": 0.5694634318351746,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.46843812683007946,
+          "similarity": 0.4056129455566406,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.4608878263666091,
+          "similarity": 0.4244566559791565,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.42794595163623106,
+          "similarity": 0.3748633861541748,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.41481179273160784,
+          "similarity": 0.3377499580383301,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2272",
+  "query": "can you pull a list of 20 of each of these types of actual queries from our database?  I really want to see how this system is performing, and the only REAL way to do that is to see what its actually doing.  The metrics have not been a good representation of actual performance.  1 query is not enough to get an effective undersatnding of our performance",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.47662653869581373,
+          "similarity": 0.4303593635559082,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.4476874099739583,
+          "similarity": 0.4164959192276001,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.44246382090018876,
+          "similarity": 0.4014850854873657,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 704,
+          "title": "ADR-004: Single StatusAggregates Store Method (crt-013)",
+          "category": "decision",
+          "final_score": 0.42660752405229496,
+          "similarity": 0.3616294860839844,
+          "confidence": 0.5698925851648231,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.42488369061638265,
+          "similarity": 0.3673613667488098,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.47662653869581373,
+          "similarity": 0.4303593635559082,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1038,
+          "title": "ADR-001: Consolidated Effectiveness Query via Single Store Method (crt-018)",
+          "category": "decision",
+          "final_score": 0.4476874099739583,
+          "similarity": 0.4164959192276001,
+          "confidence": 0.5487287996041724,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.44246382090018876,
+          "similarity": 0.4014850854873657,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 704,
+          "title": "ADR-004: Single StatusAggregates Store Method (crt-013)",
+          "category": "decision",
+          "final_score": 0.42660752405229496,
+          "similarity": 0.3616294860839844,
+          "confidence": 0.5698925851648231,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.42488369061638265,
+          "similarity": 0.3673613667488098,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

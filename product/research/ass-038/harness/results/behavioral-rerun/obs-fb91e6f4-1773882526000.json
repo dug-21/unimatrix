@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773882526000",
+  "query": "single file topology",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.4457915424978689,
+          "similarity": 0.3949400782585144,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 867,
+          "title": "ADR-004 col-020: Explicit Tool-to-Field Mapping for File Path Extraction",
+          "category": "decision",
+          "final_score": 0.4273495311519856,
+          "similarity": 0.3683105707168579,
+          "confidence": 0.5623621978170213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.4261842514193236,
+          "similarity": 0.3445969223976135,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 665,
+          "title": "File::create truncates before flock — TOCTOU in lock-file guards",
+          "category": "lesson-learned",
+          "final_score": 0.41809852312457696,
+          "similarity": 0.3527981638908386,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1254,
+          "title": "ADR-001 nan-005: README as Single File with Capability-First Section Order",
+          "category": "decision",
+          "final_score": 0.40097563717377493,
+          "similarity": 0.36773574352264404,
+          "confidence": 0.4915970958678977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.4457915424978689,
+          "similarity": 0.3949400782585144,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 867,
+          "title": "ADR-004 col-020: Explicit Tool-to-Field Mapping for File Path Extraction",
+          "category": "decision",
+          "final_score": 0.4273495311519856,
+          "similarity": 0.3683105707168579,
+          "confidence": 0.5623621978170213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.4261842514193236,
+          "similarity": 0.3445969223976135,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 665,
+          "title": "File::create truncates before flock — TOCTOU in lock-file guards",
+          "category": "lesson-learned",
+          "final_score": 0.41809852312457696,
+          "similarity": 0.3527981638908386,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1254,
+          "title": "ADR-001 nan-005: README as Single File with Capability-First Section Order",
+          "category": "decision",
+          "final_score": 0.40097563717377493,
+          "similarity": 0.36773574352264404,
+          "confidence": 0.4915970958678977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

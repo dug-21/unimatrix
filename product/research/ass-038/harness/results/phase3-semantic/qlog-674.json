@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-674",
+  "query": "yes.. keep at 15.  proceed.  Is there a way to test for this stability?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.42233593689767923,
+          "similarity": 0.3054382801055908,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.4110393629358128,
+          "similarity": 0.3136237859725952,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.4070090418142226,
+          "similarity": 0.2680327892303467,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.38528629856290053,
+          "similarity": 0.2679387331008911,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.3721334986734197,
+          "similarity": 0.27170801162719727,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 487,
+          "title": "How to run workspace tests without hanging",
+          "category": "procedure",
+          "final_score": 0.42233593689767923,
+          "similarity": 0.3054382801055908,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.4110393629358128,
+          "similarity": 0.3136237859725952,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 315,
+          "title": "Test Gateway Pattern: new_permissive() with Throwaway Store",
+          "category": "pattern",
+          "final_score": 0.4070090418142226,
+          "similarity": 0.2680327892303467,
+          "confidence": 0.650406271738109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3553,
+          "title": "CO_ACCESS_STALENESS_SECONDS: 30-day window is too aggressive for dormant feature cycles",
+          "category": "lesson-learned",
+          "final_score": 0.38528629856290053,
+          "similarity": 0.2679387331008911,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.3721334986734197,
+          "similarity": 0.27170801162719727,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-abcc3cc8-1773157712000",
+  "query": "observe server boundary computation split trait extension",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5071271686352028,
+          "similarity": 0.4910092353820801,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.48878327876369787,
+          "similarity": 0.4805079698562622,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.47227679106619525,
+          "similarity": 0.42699098587036133,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.46910695782973133,
+          "similarity": 0.42996954917907715,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.46146119274868647,
+          "similarity": 0.44753557443618774,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5071271686352028,
+          "similarity": 0.4910092353820801,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 884,
+          "title": "Server-Side Cross-Table Computation as Scoped Exception to Trait Abstraction",
+          "category": "pattern",
+          "final_score": 0.48878327876369787,
+          "similarity": 0.4805079698562622,
+          "confidence": 0.5688289425639482,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.47227679106619525,
+          "similarity": 0.42699098587036133,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.46910695782973133,
+          "similarity": 0.42996954917907715,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.46146119274868647,
+          "similarity": 0.44753557443618774,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

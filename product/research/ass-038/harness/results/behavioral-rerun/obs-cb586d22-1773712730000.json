@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cb586d22-1773712730000",
+  "query": "CancellationToken tokio-util daemon session lifetime",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5432393574313779,
+          "similarity": 0.5353406667709351,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1940,
+          "title": "tokio-util 0.7: CancellationToken needs no feature flag — \"sync\" feature does not exist",
+          "category": "pattern",
+          "final_score": 0.4994116164715787,
+          "similarity": 0.5334720015525818,
+          "confidence": 0.5220143853477399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.4939453911203071,
+          "similarity": 0.5157774686813354,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.48386197358958083,
+          "similarity": 0.4936724901199341,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.46370027163945127,
+          "similarity": 0.5077361464500427,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5432393574313779,
+          "similarity": 0.5353406667709351,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1940,
+          "title": "tokio-util 0.7: CancellationToken needs no feature flag — \"sync\" feature does not exist",
+          "category": "pattern",
+          "final_score": 0.4994116164715787,
+          "similarity": 0.5334720015525818,
+          "confidence": 0.5220143853477399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1912,
+          "title": "ADR-002 vnc-005: Session Lifetime Separate from Daemon Lifetime via CancellationToken",
+          "category": "decision",
+          "final_score": 0.4939453911203071,
+          "similarity": 0.5157774686813354,
+          "confidence": 0.5324553920674976,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.48386197358958083,
+          "similarity": 0.4936724901199341,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1673,
+          "title": "Supervisor Pattern for fire-and-forget tokio::spawn: is_cancelled() guards abort on shutdown",
+          "category": "lesson-learned",
+          "final_score": 0.46370027163945127,
+          "similarity": 0.5077361464500427,
+          "confidence": 0.4618490995213067,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

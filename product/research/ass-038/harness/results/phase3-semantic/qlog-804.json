@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-804",
+  "query": "so.. we performed a @product/research/ass-020/SECURITY-AUDIT.md, and created a number of gh issues to resolve it.  we've not worked these yet... but one of these issues stemmed form the risk identified related to access control.. that because of the LLM agent is setting the agent identifier/role, RBAC is just creating friction.  However, in a post research convesation, we talked about moving the access control to the LLM itself through environment config (in STDIO) model, and then could use the same backend structure to secure the backend when OAUTH would be utilzed... it moved the identity to the LLM itself, and you talked me into eliminating the autoenroll for writes, but to manage identity of the known LLM agents at a minimum.  Here's my issue... I cannot find an open issue for this design change... but there should be one.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5428571776831206,
+          "similarity": 0.5705004930496216,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.49989810322796135,
+          "similarity": 0.5313171148300171,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.47334725954180845,
+          "similarity": 0.4445077180862427,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.46158999986036997,
+          "similarity": 0.5028309226036072,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.4341535732057259,
+          "similarity": 0.450816810131073,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5428571776831206,
+          "similarity": 0.5705004930496216,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.49989810322796135,
+          "similarity": 0.5313171148300171,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1301,
+          "title": "New MCP tools must include agent_id in params struct -- checklist gap in col-022",
+          "category": "lesson-learned",
+          "final_score": 0.47334725954180845,
+          "similarity": 0.4445077180862427,
+          "confidence": 0.5783601072045622,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.46158999986036997,
+          "similarity": 0.5028309226036072,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.4341535732057259,
+          "similarity": 0.450816810131073,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

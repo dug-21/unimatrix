@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5becb974-1774967683000",
+  "query": "SQLite relation_type CHECK constraint DDL schema column free-text",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2745,
+          "title": "SQLite NOT NULL DEFAULT '' gotcha: INSERT OR IGNORE silently discards row when NULL is bound for a NOT NULL column",
+          "category": "pattern",
+          "final_score": 0.47025340290991513,
+          "similarity": 0.459051251411438,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 373,
+          "title": "Junction Table with FK CASCADE for Tag-Like Many-to-Many in SQLite",
+          "category": "pattern",
+          "final_score": 0.4495569759788487,
+          "similarity": 0.4068530201911926,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.448849029927186,
+          "similarity": 0.4112241268157959,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.44738370391417126,
+          "similarity": 0.41468340158462524,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.42522091187928845,
+          "similarity": 0.4289197325706482,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2745,
+          "title": "SQLite NOT NULL DEFAULT '' gotcha: INSERT OR IGNORE silently discards row when NULL is bound for a NOT NULL column",
+          "category": "pattern",
+          "final_score": 0.47025340290991513,
+          "similarity": 0.459051251411438,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 373,
+          "title": "Junction Table with FK CASCADE for Tag-Like Many-to-Many in SQLite",
+          "category": "pattern",
+          "final_score": 0.4495569759788487,
+          "similarity": 0.4068530201911926,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.448849029927186,
+          "similarity": 0.4112241268157959,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.44738370391417126,
+          "similarity": 0.41468340158462524,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3962,
+          "title": "EntryRecord.feature_cycle is String not Option<String> — empty string means absent",
+          "category": "pattern",
+          "final_score": 0.42522091187928845,
+          "similarity": 0.4289197325706482,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1634",
+  "query": "or GNN learning",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.44419882430413105,
+          "similarity": 0.3958868980407715,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.4335046787138016,
+          "similarity": 0.37906861305236816,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.4290198233650727,
+          "similarity": 0.33141446113586426,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4251588784825584,
+          "similarity": 0.37195634841918945,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.41466262392689235,
+          "similarity": 0.3456571102142334,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.44419882430413105,
+          "similarity": 0.3958868980407715,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.4335046787138016,
+          "similarity": 0.37906861305236816,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 181,
+          "title": "Adaptive Embedding Pipeline: MicroLoRA + Contrastive + EWC++ (d-ruvector analysis)",
+          "category": "pattern",
+          "final_score": 0.4290198233650727,
+          "similarity": 0.33141446113586426,
+          "confidence": 0.6196045760825343,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4251588784825584,
+          "similarity": 0.37195634841918945,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 449,
+          "title": "Shared ML Infrastructure Crate (unimatrix-learn)",
+          "category": "pattern",
+          "final_score": 0.41466262392689235,
+          "similarity": 0.3456571102142334,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

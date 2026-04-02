@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-e275cc04-1774458254000",
+  "query": "hook binary exit code payload extraction defensive parsing truncation",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5418630838394165,
+          "similarity": 0.5418630838394165,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5399522185325623,
+          "similarity": 0.5399522185325623,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.516559898853302,
+          "similarity": 0.516559898853302,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.515495240688324,
+          "similarity": 0.515495240688324,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.4571327567100525,
+          "similarity": 0.4571327567100525,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5659226875391103,
+          "similarity": 0.5418630838394165,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.5478225829050183,
+          "similarity": 0.516559898853302,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5426066658991763,
+          "similarity": 0.5399522185325623,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.5339382418089628,
+          "similarity": 0.515495240688324,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.5018846770495674,
+          "similarity": 0.4571327567100525,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5010196069098817,
+          "similarity": 0.5418630838394165,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.48602501746317767,
+          "similarity": 0.516559898853302,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.48389572933601144,
+          "similarity": 0.5399522185325623,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.47583323622426743,
+          "similarity": 0.515495240688324,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.4483111759011171,
+          "similarity": 0.4571327567100525,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5010196069098817,
+          "similarity": 0.5418630838394165,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.48602501746317767,
+          "similarity": 0.516559898853302,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.48389572933601144,
+          "similarity": 0.5399522185325623,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.47583323622426743,
+          "similarity": 0.515495240688324,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.4483111759011171,
+          "similarity": 0.4571327567100525,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5657664563462552,
+          "similarity": 0.5418630838394165,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.5476195784631239,
+          "similarity": 0.516559898853302,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.5425894292279645,
+          "similarity": 0.5399522185325623,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.533818482061426,
+          "similarity": 0.515495240688324,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.5015940801642458,
+          "similarity": 0.4571327567100525,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.4296080515934871,
+          "similarity": 0.5418630838394165,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.4284321344815768,
+          "similarity": 0.5399522185325623,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.4140368608328012,
+          "similarity": 0.516559898853302,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.41338168657743013,
+          "similarity": 0.515495240688324,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3324,
+          "title": "Hook-Side Stdout Format Dispatch by Source — Server-Agnostic Event Formatting",
+          "category": "pattern",
+          "final_score": 0.37746631182157075,
+          "similarity": 0.4571327567100525,
+          "confidence": 0.565815991820303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2909,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3474,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

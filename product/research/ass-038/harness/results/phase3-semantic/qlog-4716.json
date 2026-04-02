@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4716",
+  "query": "file the bugfix.. however, I believe I went to be last night with over 1200 active entries, and now there's just over 1000, I'm not sure there is still not an issue",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.5360362867126985,
+          "similarity": 0.5296728014945984,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5197234782171386,
+          "similarity": 0.5574354529380798,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.48291674139095075,
+          "similarity": 0.42049193382263184,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.4806435036629848,
+          "similarity": 0.42868250608444214,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3847,
+          "title": "Retrospective findings: bugfix-408",
+          "category": "lesson-learned",
+          "final_score": 0.44759641636531355,
+          "similarity": 0.417738676071167,
+          "confidence": 0.5467064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1468,
+          "title": "Retrospective findings: bugfix-252",
+          "category": "lesson-learned",
+          "final_score": 0.5360362867126985,
+          "similarity": 0.5296728014945984,
+          "confidence": 0.6268516332278987,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5197234782171386,
+          "similarity": 0.5574354529380798,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.48291674139095075,
+          "similarity": 0.42049193382263184,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.4806435036629848,
+          "similarity": 0.42868250608444214,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3847,
+          "title": "Retrospective findings: bugfix-408",
+          "category": "lesson-learned",
+          "final_score": 0.44759641636531355,
+          "similarity": 0.417738676071167,
+          "confidence": 0.5467064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

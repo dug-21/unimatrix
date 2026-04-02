@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4974",
+  "query": "OK.. I now want to work on a research spike: product/research/ass-033.  This is a sharp insight. The isolation problem might be a       \n  category problem, not a density problem.     \n                                                                  \n  Current reality:                                                \n  The graph only self-populates via two automated detection       \n  mechanisms:                                                     \n  - CoAccess — entries accessed together (behavioral signal)    \n  - Supports / Prerequisite — NLI entailment (semantic signal,    \n  binary: entails or doesn't)                                   \n                                                                  \n  NLI is good at one specific relationship: does A logically    \n  entail B? For a knowledge base like Unimatrix, most             \n  relationships aren't entailment. An ADR doesn't entail a      \n  lesson-learned. A pattern doesn't entail a convention. But      \n  they're deeply related.                                       \n\n  Consider entries that almost certainly have relationships we're \n  blind to:\n  - ADR-001 (SQLite choice) → InformedBy → the lesson about not   \n  mocking the database                                            \n  - Convention (write_pool_server) → ImplementsDecision → ADR-001\n  - Pattern (background tick ordering) → AppliedIn → every        \n  maintenance tick feature                                        \n  - Lesson (per-query store scan) → CausedBy → GH#264 incident    \n  - crt-034 → FulfilledContract → ADR-006                         \n                                                                  \n  None of these are NLI-detectable. But every one of them would   \n  create an edge that reduces isolation.                          \n                                                                  \n  The architecture is already ready. relation_type is free-text.  \n  No migration needed to add InformedBy, ImplementsDecision,    \n  FulfilledContract, etc. The storage layer is generic. The       \n  bottleneck is detection.                                      \n\n  Detection options:                                              \n                                       \n  ┌───────────────────────┬────────────┬────────┬─────────────┐   \n  │       Approach        │ Precision  │  Cost  │     Fit     │   \n  ├───────────────────────┼────────────┼────────┼─────────────┤   \n  │ LLM annotation at     │ High       │ Medium │ Most        │   \n  │ store-time            │            │        │ promising   │ \n  ├───────────────────────┼────────────┼────────┼─────────────┤   \n  │ Explicit              │ Very high  │ Manual │ Good for    │\n  │ context_relate tool   │            │        │ ADRs        │   \n  ├───────────────────────┼────────────┼────────┼─────────────┤ \n  │ Config-defined        │ Low-medium │ Low    │ Good for    │   \n  │ keyword heuristics    │            │        │ Mentions    │   \n  ├───────────────────────┼────────────┼────────┼─────────────┤\n  │ Relation extraction   │ Medium     │ High   │ Overkill    │   \n  │ model (REBEL etc.)    │            │        │ now         │   \n  └───────────────────────┴────────────┴────────┴─────────────┘\n                                                                  \n  LLM annotation at store-time is the interesting one: when an    \n  entry is stored, run a lightweight prompt against nearby HNSW\n  neighbors — \"which of these relationships applies?\" The same NLI\n   tick infrastructure could be extended.                       \n\n  The config-extensibility angle is worth thinking about          \n  carefully. Rather than hard-coding new types, you could define a\n   [graph.relation_types] block:                                  \n                                                                \n  [[inference.relation_types]]\n  name = \"InformedBy\"                                             \n  direction = \"positive\"                                          \n  ppr_weight = 0.8                                                \n  detection = \"llm\"                                               \n  prompt_template = \"...\"                                         \n                                                                  \n  PPR already uses a weight per-traversal; giving each relation   \n  type a configurable weight is a natural extension.              \n                                                                  \n  Where it fits:                                                  \n   \n  This is an ASS spike before any implementation. The research    \n  questions are:                                                \n  1. What relationship types actually exist in the Unimatrix      \n  knowledge domain? (taxonomy)                                    \n  2. Which detection mechanism fits each type?\n  3. How do new types affect PPR traversal weights?               \n  4. Config-extensible or hard-coded set?                         \n                                                                  \n  This directly attacks the 79% isolation problem from the right  \n  direction — by expanding the semantic vocabulary of the graph   \n  rather than lowering thresholds or waiting for co_access to     \n  accumulate. If we can get even 3-4 new relationship types with  \n  reasonable coverage, isolation could drop significantly.      \n\n  I'd add this as ASS-033 on the roadmap: Parameterized           \n  relationship taxonomy and detection mechanisms. It's the right\n  next research spike after the current cortical work stabilizes.\\\nNow... in my mind, BEST CASE, as a generic platform, Unimatrix can identify relationships on its own, through some evaluation mechanisms... whether they be through observation table analaysis, or knowledge entry level stuff... 2nd best alternative would be to allow config driven relationship suggestions.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5362795729813876,
+          "similarity": 0.5575975179672241,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.5107119035295773,
+          "similarity": 0.493847131729126,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.5017478395239089,
+          "similarity": 0.4700053334236145,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4985359151166153,
+          "similarity": 0.46754443645477295,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.4834448402542988,
+          "similarity": 0.4803112745285034,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5362795729813876,
+          "similarity": 0.5575975179672241,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.5107119035295773,
+          "similarity": 0.493847131729126,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.5017478395239089,
+          "similarity": 0.4700053334236145,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.4985359151166153,
+          "similarity": 0.46754443645477295,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 457,
+          "title": "ADR: Convention Follow/Deviate Detection via Metadata Matching (crt-008 ADR-005)",
+          "category": "decision",
+          "final_score": 0.4834448402542988,
+          "similarity": 0.4803112745285034,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

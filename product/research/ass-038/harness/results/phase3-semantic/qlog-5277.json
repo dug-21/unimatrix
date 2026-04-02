@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5277",
+  "query": "1st tick after 476 merged: 2026-04-01T11:21:52.359356Z  INFO unimatrix_server::background: background tick starting\n2026-04-01T11:21:52.477276Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.1463 confidence_weight=0.1828\n2026-04-01T11:21:52.480011Z  INFO unimatrix_server::services::status: cycle GC: pass starting k=50 purgeable_count=6 capped_to=10\n2026-04-01T11:21:52.481032Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=vnc-012 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T11:21:52.481881Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=crt-032 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T11:21:52.483032Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-311 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T11:21:52.483807Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-340 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T11:21:52.484470Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-342 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T11:21:52.485719Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-351 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-04-01T11:21:52.645198Z  INFO unimatrix_server::services::status: cycle GC: unattributed cleanup observations_deleted=0 query_log_deleted=0 sessions_deleted=0 injection_log_deleted=0\n2026-04-01T11:21:52.645226Z  INFO unimatrix_server::services::status: cycle GC: pass complete cycles_pruned=6 cycles_skipped=0 total_rows_deleted=0\n2026-04-01T11:21:52.645533Z  INFO unimatrix_server::services::status: cycle GC: audit_log cleanup rows_deleted=0 cutoff_days=180\n2026-04-01T11:21:52.645934Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-04-01T11:21:52.645946Z DEBUG unimatrix_server::background: lifecycle guard: adaptive categories eligible for auto-deprecation (stub, #409) categories=[\"lesson-learned\"]\n2026-04-01T11:21:52.646432Z  INFO unimatrix_server::background: maintenance tick complete\n2026-04-01T11:21:52.648007Z  INFO unimatrix_server::background: background tick: GRAPH_EDGES orphaned-edge compaction complete rows_deleted=32\n2026-04-01T11:21:52.755314Z  INFO unimatrix_server::services::co_access_promotion_tick: co_access promotion tick complete promoted_pairs=200 edges_inserted=0 edges_updated=0\n2026-04-01T11:21:52.812704Z DEBUG unimatrix_server::background: typed graph state rebuilt (1490 entries)\n2026-04-01T11:21:52.812987Z DEBUG unimatrix_server::background: PhaseFreqTable rebuilt successfully\n2026-04-01T11:21:52.823518Z DEBUG unimatrix_server::background: contradiction scan starting tick=0\n2026-04-01T11:22:15.777683Z DEBUG unimatrix_server::background: contradiction scan complete; cache updated tick=0 pairs=0\n2026-04-01T11:22:15.800663Z  INFO unimatrix_server::background: extraction tick complete\n2026-04-01T11:22:15.834259Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: merged cap accounting supports_candidates=100 informs_candidates_total=239 informs_candidates_accepted=25 informs_candidates_dropped=214\n2026-04-01T11:22:20.694513Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: nli score distribution nli_score_max=0.297110378742218 nli_score_mean=0.07173037528991699 nli_score_p75=0.09476064145565033 threshold=0.6000000238418579 pairs=125\n2026-04-01T11:22:20.695226Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: Informs write complete informs_edges_written=2 informs_pairs_evaluated=25\n2026-04-01T11:22:20.695244Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 informs_edges_written=2 pairs_scored=125 source_candidates=100\n2026-04-01T11:22:20.696238Z  INFO unimatrix_server::background: background tick complete duration_secs=28\n",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5729548745361884,
+          "similarity": 0.5913793444633484,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5490924521076663,
+          "similarity": 0.5500918626785278,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5369926244751028,
+          "similarity": 0.5545612573623657,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5215596493209157,
+          "similarity": 0.5482964515686035,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5163503561318354,
+          "similarity": 0.5457200407981873,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5729548745361884,
+          "similarity": 0.5913793444633484,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5490924521076663,
+          "similarity": 0.5500918626785278,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5369926244751028,
+          "similarity": 0.5545612573623657,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5215596493209157,
+          "similarity": 0.5482964515686035,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5163503561318354,
+          "similarity": 0.5457200407981873,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

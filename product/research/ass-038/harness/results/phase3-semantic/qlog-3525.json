@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3525",
+  "query": "so.. context_status being run infrequently, is also a read only function... blending read patterns in a write pool, isnt that a messy architecture?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5582503283610915,
+          "similarity": 0.5605064034461975,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.5532187387598069,
+          "similarity": 0.5723192095756531,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.5358199454218772,
+          "similarity": 0.5516709089279175,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5268989561411537,
+          "similarity": 0.5280441641807556,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.4917615788659556,
+          "similarity": 0.5057876110076904,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5582503283610915,
+          "similarity": 0.5605064034461975,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.5532187387598069,
+          "similarity": 0.5723192095756531,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.5358199454218772,
+          "similarity": 0.5516709089279175,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5268989561411537,
+          "similarity": 0.5280441641807556,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1435,
+          "title": "Capability gate must be co-located with the feature it guards, not the handler entry point",
+          "category": "lesson-learned",
+          "final_score": 0.4917615788659556,
+          "similarity": 0.5057876110076904,
+          "confidence": 0.5407991269108934,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

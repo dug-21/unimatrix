@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-cfe648bb-1773279432000",
+  "query": "knowledge import restore backup schema compatibility embedding",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.3716997733482948,
+          "similarity": 0.447762131690979,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.3665599822998047,
+          "similarity": 0.4394099712371826,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.36430564293494594,
+          "similarity": 0.4357466697692871,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.3634645755474384,
+          "similarity": 0.4343799352645874,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 330,
+          "title": "ADR-004: Cargo Feature Flag for Backend Selection",
+          "category": "decision",
+          "final_score": 0.3539379560030424,
+          "similarity": 0.41889917850494385,
+          "confidence": 0.5415820187615271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.45711672648270724,
+          "similarity": 0.447762131690979,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.4561899676322937,
+          "similarity": 0.4343799352645874,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.4483424025101675,
+          "similarity": 0.4357466697692871,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.43619207387734266,
+          "similarity": 0.4394099712371826,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 330,
+          "title": "ADR-004: Cargo Feature Flag for Backend Selection",
+          "category": "decision",
+          "final_score": 0.4219241948809301,
+          "similarity": 0.41889917850494385,
+          "confidence": 0.5415820187615271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.45711672648270724,
+          "similarity": 0.447762131690979,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.4561899676322937,
+          "similarity": 0.4343799352645874,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.4483424025101675,
+          "similarity": 0.4357466697692871,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.43619207387734266,
+          "similarity": 0.4394099712371826,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 330,
+          "title": "ADR-004: Cargo Feature Flag for Backend Selection",
+          "category": "decision",
+          "final_score": 0.4219241948809301,
+          "similarity": 0.41889917850494385,
+          "confidence": 0.5415820187615271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5149293736850514,
+          "similarity": 0.4343799352645874,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5148894155947963,
+          "similarity": 0.447762131690979,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.5040242122914762,
+          "similarity": 0.4357466697692871,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.4869881434358445,
+          "similarity": 0.4394099712371826,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 330,
+          "title": "ADR-004: Cargo Feature Flag for Backend Selection",
+          "category": "decision",
+          "final_score": 0.4694156421400075,
+          "similarity": 0.41889917850494385,
+          "confidence": 0.5415820187615271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5144535241408754,
+          "similarity": 0.447762131690979,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.5144063253836197,
+          "similarity": 0.4343799352645874,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.5035808516257476,
+          "similarity": 0.4357466697692871,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.4866791942657233,
+          "similarity": 0.4394099712371826,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 330,
+          "title": "ADR-004: Cargo Feature Flag for Backend Selection",
+          "category": "decision",
+          "final_score": 0.46908761315536424,
+          "similarity": 0.41889917850494385,
+          "confidence": 0.5415820187615271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.447762131690979,
+          "similarity": 0.447762131690979,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.4394099712371826,
+          "similarity": 0.4394099712371826,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.4357466697692871,
+          "similarity": 0.4357466697692871,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.4343799352645874,
+          "similarity": 0.4343799352645874,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 330,
+          "title": "ADR-004: Cargo Feature Flag for Backend Selection",
+          "category": "decision",
+          "final_score": 0.41889917850494385,
+          "similarity": 0.41889917850494385,
+          "confidence": 0.5415820187615271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 681,
+        "from_rank": 1,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 1146,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1166,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

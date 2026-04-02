@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2444",
+  "query": "we can provide better help text in the tool definition so agents better understand what to send?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4822731489538704,
+          "similarity": 0.412868857383728,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.47004974618180895,
+          "similarity": 0.42604464292526245,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.4585304889270614,
+          "similarity": 0.4065077304840088,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1005,
+          "title": "ADR-002: Structured Agent Report Stewardship Block",
+          "category": "decision",
+          "final_score": 0.449098274347685,
+          "similarity": 0.4158790707588196,
+          "confidence": 0.5534395007168315,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.43052792844440535,
+          "similarity": 0.4041861891746521,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4822731489538704,
+          "similarity": 0.412868857383728,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1010,
+          "title": "Structured Report Block with Fixed Heading and Bullet Prefixes for Machine Parsing",
+          "category": "pattern",
+          "final_score": 0.47004974618180895,
+          "similarity": 0.42604464292526245,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3404,
+          "title": "ADR-006 col-025: CONTEXT_GET_INSTRUCTION — Static Header on format_index_table Output",
+          "category": "decision",
+          "final_score": 0.4585304889270614,
+          "similarity": 0.4065077304840088,
+          "confidence": 0.5924288549677256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1005,
+          "title": "ADR-002: Structured Agent Report Stewardship Block",
+          "category": "decision",
+          "final_score": 0.449098274347685,
+          "similarity": 0.4158790707588196,
+          "confidence": 0.5534395007168315,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 766,
+          "title": "IMPLEMENTATION-BRIEF is not a technical document",
+          "category": "lesson-learned",
+          "final_score": 0.43052792844440535,
+          "similarity": 0.4041861891746521,
+          "confidence": 0.5197383926710261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

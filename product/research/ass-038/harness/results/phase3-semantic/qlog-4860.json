@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-4860",
+  "query": "back over to issue 409.. currently scoping.  Looks like we gave it bad information... maintain:true is no longer supported.  ALL maintenance is on the background tick in 1 form or another: 1. co_access cleanup — the issue replaces the hard time cutoff   \n  with cycle-activity logic. But crt-035 just shipped bidirectional\n   promotion. Is the co_access GC logic still needed now that      \n  signals get promoted to GRAPH_EDGES, or is it scope creep?     \n  2. Entry auto-deprecation — the ROADMAP notes is_adaptive() from\n  #445 \"for entry auto-deprecation\" in the context of #409. But the\n   issue body doesn't mention entry auto-deprecation at all. Is\n  that in scope or was it a speculative connection?                \n  3. maintain=true only vs. background tick — the issue says all GC\n   remains opt-in via maintain=true. That's fine for the 152 MB    \n  observations problem short-term, but is there appetite to also\n  add a background-tick path (or is that deliberately deferred)?   \n  4. Eval gate — there's a distribution gate for scoring changes,\n  but this is pure GC. Should there be a gate (e.g. verify         \n  observations row count drops as expected, no knowledge record\n  loss)?                            ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.600135986675445,
+          "similarity": 0.6400891542434692,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.5462901770237679,
+          "similarity": 0.6026057004928589,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.5342172937974651,
+          "similarity": 0.6162682175636292,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.600135986675445,
+          "similarity": 0.6400891542434692,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3975,
+          "title": "Use context_correct to supersede an ADR — never context_deprecate then context_store separately",
+          "category": "lesson-learned",
+          "final_score": 0.5462901770237679,
+          "similarity": 0.6026057004928589,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.5342172937974651,
+          "similarity": 0.6162682175636292,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 40,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 13,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

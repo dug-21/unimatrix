@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5becb974-1774986053000",
+  "query": "RelationType variant extension enum graph",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5162424120150114,
+          "similarity": 0.6018605828285217,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4932299130968325,
+          "similarity": 0.49254655838012695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.46173343530929034,
+          "similarity": 0.45244789123535156,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.45938570246418464,
+          "similarity": 0.4479871988296509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3441,
+          "title": "Procedure: Rust enum with logical default — use derive(Default) + #[default] on variant, never manual impl",
+          "category": "procedure",
+          "final_score": 0.4575457637644965,
+          "similarity": 0.43658697605133057,
+          "confidence": 0.5467856787160185,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5162424120150114,
+          "similarity": 0.6018605828285217,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4932299130968325,
+          "similarity": 0.49254655838012695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.46173343530929034,
+          "similarity": 0.45244789123535156,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.45938570246418464,
+          "similarity": 0.4479871988296509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3441,
+          "title": "Procedure: Rust enum with logical default — use derive(Default) + #[default] on variant, never manual impl",
+          "category": "procedure",
+          "final_score": 0.4575457637644965,
+          "similarity": 0.43658697605133057,
+          "confidence": 0.5467856787160185,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

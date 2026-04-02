@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1495",
+  "query": "OK.. its time to work on bugfix issue 323.  I want to add to this scope slightly... the test methodology should be updated @docs/testing/eval-harness.md and in unimatrix, and in memory.  We've decided to use cargo install when modifying the local repository prod binary for unimatrix.  Bottom line, I want to have more clear guardrails for when the production binary gets modified, to do a better job insulating our local operations from our development work.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5733328639511641,
+          "similarity": 0.6267685890197754,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.5694705700411692,
+          "similarity": 0.5912182331085205,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5606759570972238,
+          "similarity": 0.5682344436645508,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5459646687851466,
+          "similarity": 0.5913156270980835,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.5428878769510516,
+          "similarity": 0.5677478313446045,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5733328639511641,
+          "similarity": 0.6267685890197754,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.5694705700411692,
+          "similarity": 0.5912182331085205,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1372,
+          "title": "Bugfix spawn prompts should include distilled library API signatures from investigation phase",
+          "category": "lesson-learned",
+          "final_score": 0.5606759570972238,
+          "similarity": 0.5682344436645508,
+          "confidence": 0.6386426783145353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5459646687851466,
+          "similarity": 0.5913156270980835,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.5428878769510516,
+          "similarity": 0.5677478313446045,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

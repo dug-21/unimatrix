@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773933254000",
+  "query": "pre-built artifacts design session implementation brief zero rework zero scope drift",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5192599518189069,
+          "similarity": 0.48781096935272217,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.506332860653448,
+          "similarity": 0.5632877945899963,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.49926499442763705,
+          "similarity": 0.4944286346435547,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1120,
+          "title": "Design-Only Features Naturally Produce High Session Counts and Mutation Spread",
+          "category": "lesson-learned",
+          "final_score": 0.4908084538130414,
+          "similarity": 0.5057789087295532,
+          "confidence": 0.5382245050217507,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.4863174081285919,
+          "similarity": 0.47585636377334595,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 981,
+          "title": "NULL feature_cycle in sessions breaks downstream retrospective pipeline silently",
+          "category": "lesson-learned",
+          "final_score": 0.5192599518189069,
+          "similarity": 0.48781096935272217,
+          "confidence": 0.6411184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2397,
+          "title": "Incremental Scope Discussion Produces Incomplete First Design Pass",
+          "category": "lesson-learned",
+          "final_score": 0.506332860653448,
+          "similarity": 0.5632877945899963,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.49926499442763705,
+          "similarity": 0.4944286346435547,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1120,
+          "title": "Design-Only Features Naturally Produce High Session Counts and Mutation Spread",
+          "category": "lesson-learned",
+          "final_score": 0.4908084538130414,
+          "similarity": 0.5057789087295532,
+          "confidence": 0.5382245050217507,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.4863174081285919,
+          "similarity": 0.47585636377334595,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

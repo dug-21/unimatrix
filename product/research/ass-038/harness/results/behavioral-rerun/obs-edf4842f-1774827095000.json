@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-edf4842f-1774827095000",
+  "query": "write_pool_server synchronous handler write analytics queue fire-and-forget",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.5954799171820251,
+          "similarity": 0.6604369878768921,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5821919175439466,
+          "similarity": 0.6111897230148315,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.5769799028012018,
+          "similarity": 0.6382832527160645,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5768748629177288,
+          "similarity": 0.623623251914978,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.5323245492117391,
+          "similarity": 0.6136083006858826,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.5954799171820251,
+          "similarity": 0.6604369878768921,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.5821919175439466,
+          "similarity": 0.6111897230148315,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2299,
+          "title": "Partial audit-write migration leaves block_in_place contention on write_pool when only some call sites are converted",
+          "category": "lesson-learned",
+          "final_score": 0.5769799028012018,
+          "similarity": 0.6382832527160645,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2266,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = pool starvation (-32603)",
+          "category": "lesson-learned",
+          "final_score": 0.5768748629177288,
+          "similarity": 0.623623251914978,
+          "confidence": 0.60348426804101,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2251,
+          "title": "AuditLog::log_event() must not be called from async context — use log_event_async() + fire-and-forget",
+          "category": "pattern",
+          "final_score": 0.5323245492117391,
+          "similarity": 0.6136083006858826,
+          "confidence": 0.496869061166317,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5132",
+  "query": "approved to proceed, but update the fix documentaion prior to starting development: The two-part change is intentional and inseparable. Just filtering AND goal IS \n  NOT NULL while keeping DESC would give you \"latest non-null goal wins\" — which \n  preserves goal correction but is still fragile (any future non-null second     \n  start would silently override). Combining the filter with ASC makes first-wins\n  the explicit semantic. The trade-off is correctly documented.\n\n  The existing test rename is the most important detail.                         \n  test_uds_truncate_then_overwrite_last_writer_wins was asserting the buggy\n  behavior — if the implementer adds the new test but doesn't flip the old one,  \n  the test suite will fail on the fix. The rename to              \n  test_goal_correction_first_written_goal_is_preserved also communicates the\n  semantic shift clearly to future readers.\n\n  One missing validation step: after delivery, run context_cycle_review on       \n  crt-036. That's the real-world case that exposed this bug — it had two\n  cycle_start rows, the second without a goal, and the review came back goalless.\n   Verifying that the fix returns the correct goal on the existing production\n  data is the acceptance check that no unit test can substitute for.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.6305883817971186,
+          "similarity": 0.7564722895622253,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.537603435767589,
+          "similarity": 0.5746073722839355,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.5367632813284884,
+          "similarity": 0.5595664381980896,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.6305883817971186,
+          "similarity": 0.7564722895622253,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.537603435767589,
+          "similarity": 0.5746073722839355,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.5367632813284884,
+          "similarity": 0.5595664381980896,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

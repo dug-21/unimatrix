@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-edf4842f-1774827087000",
+  "query": "serde serialization RetrospectiveReport observation memoization JSON storage",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5181374851616735,
+          "similarity": 0.484122633934021,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3795,
+          "title": "ADR-003 crt-033: Direct serde derives on RetrospectiveReport — no DTO shim required",
+          "category": "decision",
+          "final_score": 0.5132134493789177,
+          "similarity": 0.5406525731086731,
+          "confidence": 0.5492185438732436,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.502038495320847,
+          "similarity": 0.4967893362045288,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.49011195948431197,
+          "similarity": 0.5073034167289734,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.4890392349423709,
+          "similarity": 0.45976853370666504,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5181374851616735,
+          "similarity": 0.484122633934021,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3795,
+          "title": "ADR-003 crt-033: Direct serde derives on RetrospectiveReport — no DTO shim required",
+          "category": "decision",
+          "final_score": 0.5132134493789177,
+          "similarity": 0.5406525731086731,
+          "confidence": 0.5492185438732436,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 923,
+          "title": "Serde Alias for Unidirectional Field Renames in Non-Persisted Types",
+          "category": "pattern",
+          "final_score": 0.502038495320847,
+          "similarity": 0.4967893362045288,
+          "confidence": 0.5815482927215437,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 920,
+          "title": "ADR-003 col-020b: Serde Alias for Unidirectional Backward Compatibility",
+          "category": "decision",
+          "final_score": 0.49011195948431197,
+          "similarity": 0.5073034167289734,
+          "confidence": 0.5341561518445992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.4890392349423709,
+          "similarity": 0.45976853370666504,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

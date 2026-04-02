@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774575785000",
+  "query": "write_pool_server read_pool pool selection diagnostic context_status precedent",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.5630717316207013,
+          "similarity": 0.5910398960113525,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5598360436519152,
+          "similarity": 0.5906246304512024,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5432322793217527,
+          "similarity": 0.5319721102714539,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5339859537742265,
+          "similarity": 0.5320485830307007,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.5033167635644555,
+          "similarity": 0.5404322147369385,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.5630717316207013,
+          "similarity": 0.5910398960113525,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5598360436519152,
+          "similarity": 0.5906246304512024,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5432322793217527,
+          "similarity": 0.5319721102714539,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2060,
+          "title": "ADR-003 nxs-011: Migration Connection Sequencing — Dedicated non-pooled connection before pool construction",
+          "category": "decision",
+          "final_score": 0.5339859537742265,
+          "similarity": 0.5320485830307007,
+          "confidence": 0.6178924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.5033167635644555,
+          "similarity": 0.5404322147369385,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

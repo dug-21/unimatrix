@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4824",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] On main. Stewardship assessment:\n- **#3889**: Good — back-fill pattern, well-tagged ✓\n- **#3890**: Good — ADR-001 eventually-consistent tick ✓  \n- **#3891**: Good — ADR-006 corrected and active ✓\n- **#3892**: Weak — PPR trap pattern, **no tags** — needs tagging\n- **#3894**: Good — schema version cascade checklist, well-tagged ✓\n- **#3830**: Deprecated (corrected → #3891), expected in search ✓\n\nOne entry to fix. Now spawning the architect for Phase 2.\n[tool: mcp__unimatrix__context_get(crt-035-retro) → #3830 | ADR-006 crt-034: Edge Directionality — v1 One Direction, Follow-up Back-fills Both + Cycle Safety | decision | [adr, crt-034]]\n[tool: mcp__unimatrix__context_get(crt-035-retro) → #3894 | Schema Version Cascade: Complete checklist for CURRENT_SCHEMA_VERSION bump including column-count, parity, and back-fill row-count tests | pattern | [back-fill, col-023, col-028, crt-033, crt-035, migration, new-table, schema-version, server.rs, sqlite_parity, test-cascade, unimatrix-store]]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.5530700607896718,
+          "similarity": 0.5661418437957764,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5503101575528928,
+          "similarity": 0.548884391784668,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.5322319088943787,
+          "similarity": 0.5619767904281616,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.5280772352457321,
+          "similarity": 0.5521755218505859,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.5135009834783936,
+          "similarity": 0.5582072734832764,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.5530700607896718,
+          "similarity": 0.5661418437957764,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5503101575528928,
+          "similarity": 0.548884391784668,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3565,
+          "title": "ADR-003: Phase Is a Soft Vocabulary Key — Governed by query_log Migration, Not Schema (nan-009)",
+          "category": "decision",
+          "final_score": 0.5322319088943787,
+          "similarity": 0.5619767904281616,
+          "confidence": 0.5703769092445115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1004,
+          "title": "ADR-001: Three-Tier Stewardship Section Template",
+          "category": "decision",
+          "final_score": 0.5280772352457321,
+          "similarity": 0.5521755218505859,
+          "confidence": 0.5731017501661503,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3623,
+          "title": "ADR correction cascade: changing an ADR requires revalidating all six dependent design documents",
+          "category": "procedure",
+          "final_score": 0.5135009834783936,
+          "similarity": 0.5582072734832764,
+          "confidence": 0.5249208501795307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

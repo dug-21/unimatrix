@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2723",
+  "query": "No references can be misaligned.  clean up the 4096 references.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.4230794247695495,
+          "similarity": 0.34604567289352417,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.42301847187955155,
+          "similarity": 0.35553985834121704,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.4169842206128357,
+          "similarity": 0.3185645341873169,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.40012427165563214,
+          "similarity": 0.3129308819770813,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.3871425248057426,
+          "similarity": 0.3178809881210327,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 605,
+          "title": "Human Checkpoint Catches Domain-Coupling in Validation Scope",
+          "category": "lesson-learned",
+          "final_score": 0.4230794247695495,
+          "similarity": 0.34604567289352417,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3611,
+          "title": "Interface signature correction must update all dependent design docs simultaneously",
+          "category": "lesson-learned",
+          "final_score": 0.42301847187955155,
+          "similarity": 0.35553985834121704,
+          "confidence": 0.5688503403284729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 723,
+          "title": "Architecture and Specification documents must be cross-validated before implementation handoff",
+          "category": "lesson-learned",
+          "final_score": 0.4169842206128357,
+          "similarity": 0.3185645341873169,
+          "confidence": 0.6052935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.40012427165563214,
+          "similarity": 0.3129308819770813,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.3871425248057426,
+          "similarity": 0.3178809881210327,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

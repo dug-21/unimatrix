@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4324",
+  "query": "Sec review of the Issue 444 fix.  your thoughts? F-1 (low, non-blocking): heal_pass_batch_size missing range enforcement in validate()\n\nLocation: crates/unimatrix-server/src/infra/config.rs\n\nThe field comment documents \"Valid range: [1, 1000]\" but InferenceConfig::validate() does not enforce it. Every other bounded field in this struct has a corresponding check (e.g., max_graph_inference_per_tick [1, 1000], graph_inference_k [1, 100], query_log_lookback_days [1, 3650]). A user who sets heal_pass_batch_size = 0 will bind LIMIT 0 to the heal-pass query, silently disabling it — contrary to documented intent and without any diagnostic signal at startup.\n\nThe failure mode is benign (heal pass skips silently rather than crashing), so this is non-blocking. Recommend adding a >= 1 (and optionally <= 1000) check inside validate() in a follow-up, consistent with the procedure documented in entry #3759.\n\nF-2 (low, non-blocking): New SQL queries use bare integer literals for status discriminants\n\nLocation: crates/unimatrix-server/src/services/status.rs lines 699, 937, 986\n\nNew queries use status = 0 and status = 3 as bare literals. The Status enum carries #[repr(u8)] with stable discriminants, so there is no correctness risk today. The established codebase pattern binds via .bind(Status::Active as u8 as i64) (e.g., read.rs:1168) to make the coupling explicit and catch future enum changes at compile time. No security implication; code hygiene observation only.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.5837648093064799,
+          "similarity": 0.6579229235649109,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5453202421719733,
+          "similarity": 0.5630446076393127,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5404411712182366,
+          "similarity": 0.5676043033599854,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5172494451419737,
+          "similarity": 0.54742830991745,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.5083598295672012,
+          "similarity": 0.5473943948745728,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.5837648093064799,
+          "similarity": 0.6579229235649109,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5453202421719733,
+          "similarity": 0.5630446076393127,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5404411712182366,
+          "similarity": 0.5676043033599854,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5172494451419737,
+          "similarity": 0.54742830991745,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.5083598295672012,
+          "similarity": 0.5473943948745728,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

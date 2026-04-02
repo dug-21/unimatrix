@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3807",
+  "query": "so.. in reality.. this auto refinement should inherently help improve retrieval quality, though it may take a while to work through 2179 entries... correct?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.48927746414148643,
+          "similarity": 0.4368326663970947,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4730851951828545,
+          "similarity": 0.43598806858062744,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.4720315358307212,
+          "similarity": 0.4419700503349304,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4703246844872465,
+          "similarity": 0.43074309825897217,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.46847681125099283,
+          "similarity": 0.4287722706794739,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.48927746414148643,
+          "similarity": 0.4368326663970947,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 60,
+          "title": "ADR-003: Manual Secondary Indexes via Separate Tables",
+          "category": "decision",
+          "final_score": 0.4730851951828545,
+          "similarity": 0.43598806858062744,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.4720315358307212,
+          "similarity": 0.4419700503349304,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.4703246844872465,
+          "similarity": 0.43074309825897217,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.46847681125099283,
+          "similarity": 0.4287722706794739,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

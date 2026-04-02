@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cfcbd371-1774921443000",
+  "query": "input validation trust boundary access control write pool SQL bind parameterized",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.4739713714770507,
+          "similarity": 0.41716206073760986,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.46610012706875437,
+          "similarity": 0.4343600273132324,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.4631618731578355,
+          "similarity": 0.42794370651245117,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.45879593037666355,
+          "similarity": 0.4021838307380676,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.4380997713984277,
+          "similarity": 0.3979593515396118,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.4739713714770507,
+          "similarity": 0.41716206073760986,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.46610012706875437,
+          "similarity": 0.4343600273132324,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.4631618731578355,
+          "similarity": 0.42794370651245117,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 308,
+          "title": "Validation Function Convention",
+          "category": "convention",
+          "final_score": 0.45879593037666355,
+          "similarity": 0.4021838307380676,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 358,
+          "title": "ADR-004: Mandatory Named Parameters for Multi-Column SQL",
+          "category": "decision",
+          "final_score": 0.4380997713984277,
+          "similarity": 0.3979593515396118,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

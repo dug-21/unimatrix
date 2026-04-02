@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5414d404-1773838878000",
+  "query": "Internal error -32603 MCP store operation not completed",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4755563148781484,
+          "similarity": 0.43977320194244385,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.46771644794242995,
+          "similarity": 0.42455601692199707,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.45176931751887794,
+          "similarity": 0.44806718826293945,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.4450928587096086,
+          "similarity": 0.4686571955680847,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3760,
+          "title": "context_store failures during heavy compilation phases — contention or timing issue",
+          "category": "lesson-learned",
+          "final_score": 0.44399836244858093,
+          "similarity": 0.44596147537231445,
+          "confidence": 0.4966220189714134,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4755563148781484,
+          "similarity": 0.43977320194244385,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.46771644794242995,
+          "similarity": 0.42455601692199707,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.45176931751887794,
+          "similarity": 0.44806718826293945,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.4450928587096086,
+          "similarity": 0.4686571955680847,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3760,
+          "title": "context_store failures during heavy compilation phases — contention or timing issue",
+          "category": "lesson-learned",
+          "final_score": 0.44399836244858093,
+          "similarity": 0.44596147537231445,
+          "confidence": 0.4966220189714134,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

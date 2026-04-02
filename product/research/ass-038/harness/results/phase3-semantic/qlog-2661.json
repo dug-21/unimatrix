@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2661",
+  "query": "we already have a sophisticated/fused scoring mechanism and are poised to add GNN to learn the best weight distributions as one of the next focal areas.  For context_briefing, I like the task wins and goal is fallback, on injection, goal is the best signal they'd have ususually",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.48783897308844826,
+          "similarity": 0.46433019638061523,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.4772656117310534,
+          "similarity": 0.4668804407119751,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.4735584447675255,
+          "similarity": 0.42003631591796875,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4706886140905463,
+          "similarity": 0.45644354820251465,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.4575222794552717,
+          "similarity": 0.4461139440536499,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.48783897308844826,
+          "similarity": 0.46433019638061523,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.4772656117310534,
+          "similarity": 0.4668804407119751,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2971,
+          "title": "ADR-003 crt-024: Default Fusion Weights for the Six-Term Formula",
+          "category": "decision",
+          "final_score": 0.4735584447675255,
+          "similarity": 0.42003631591796875,
+          "confidence": 0.6138924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4706886140905463,
+          "similarity": 0.45644354820251465,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.4575222794552717,
+          "similarity": 0.4461139440536499,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a02f1841-1774917162000",
+  "query": "compaction_count saturating_add u32 session state hot path performance cost",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.5604013171936821,
+          "similarity": 0.5192564129829407,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.539484345543329,
+          "similarity": 0.4922884702682495,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.4938753528509042,
+          "similarity": 0.4792935848236084,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.47737511385770576,
+          "similarity": 0.43881887197494507,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.46466266986389426,
+          "similarity": 0.44118189811706543,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.49538213202560694,
+          "similarity": 0.5192564129829407,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.47821634248644324,
+          "similarity": 0.4922884702682495,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.44405872742163083,
+          "similarity": 0.4792935848236084,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.4291460738088246,
+          "similarity": 0.43881887197494507,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.420052937909199,
+          "similarity": 0.44118189811706543,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.5601341424910149,
+          "similarity": 0.5192564129829407,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.5391778788207635,
+          "similarity": 0.4922884702682495,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.49378066604553217,
+          "similarity": 0.4792935848236084,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.47712474865067483,
+          "similarity": 0.43881887197494507,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.4645101973200837,
+          "similarity": 0.44118189811706543,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.4156962541433481,
+          "similarity": 0.5192564129829407,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.39910059708815354,
+          "similarity": 0.4922884702682495,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.39110374450683594,
+          "similarity": 0.4792935848236084,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.36765039884127104,
+          "similarity": 0.44118189811706543,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.3661962289076585,
+          "similarity": 0.43881887197494507,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.49538213202560694,
+          "similarity": 0.5192564129829407,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.47821634248644324,
+          "similarity": 0.4922884702682495,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.44405872742163083,
+          "similarity": 0.4792935848236084,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.4291460738088246,
+          "similarity": 0.43881887197494507,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.420052937909199,
+          "similarity": 0.44118189811706543,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.5192564129829407,
+          "similarity": 0.5192564129829407,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3405,
+          "title": "ADR-005 col-025: Goal Byte-Length Guard — One Constant, Path-Specific Violation Behavior",
+          "category": "decision",
+          "final_score": 0.4922884702682495,
+          "similarity": 0.4922884702682495,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.4792935848236084,
+          "similarity": 0.4792935848236084,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.44118189811706543,
+          "similarity": 0.44118189811706543,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.43881887197494507,
+          "similarity": 0.43881887197494507,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

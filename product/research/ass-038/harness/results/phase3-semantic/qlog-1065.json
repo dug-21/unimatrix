@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1065",
+  "query": "so.. lets think through this once more... 1. The UNIMATRIX_SESSION_AGENT - represents the LLM, and must be set.  Otherwise, I'd go so far as to not allow any access, not READ/SEARCH.  I would not allow unknown clients to get information about the project.   Now, here is a little twist.  I'm not sure if thats the same identity as agent_id, which is actually used/structured more inside of Unimatrix today as a role, and in a way, if used properly by the agents, additional inforamation about the specialty of different agents the LLM will use.  So the authentication does not directly equate to agent_id.  I'm hoping this does not complicate this",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.56171916163489,
+          "similarity": 0.6063382625579834,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.49684627272847615,
+          "similarity": 0.569817841053009,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.485997740988823,
+          "similarity": 0.546701192855835,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4688784046934499,
+          "similarity": 0.546701192855835,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.46775418101082944,
+          "similarity": 0.5445153117179871,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.56171916163489,
+          "similarity": 0.6063382625579834,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.49684627272847615,
+          "similarity": 0.569817841053009,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.485997740988823,
+          "similarity": 0.546701192855835,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4688784046934499,
+          "similarity": 0.546701192855835,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3747,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.46775418101082944,
+          "similarity": 0.5445153117179871,
+          "confidence": 0.42031090314655584,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

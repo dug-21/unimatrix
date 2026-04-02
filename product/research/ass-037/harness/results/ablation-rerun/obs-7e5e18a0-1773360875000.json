@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-7e5e18a0-1773360875000",
+  "query": "RecordEvent wire protocol HookRequest observation pipeline",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5888369701249259,
+          "similarity": 0.6945310831069946,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5098320432833034,
+          "similarity": 0.5471500158309937,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.49901746740173397,
+          "similarity": 0.5330970883369446,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.4829796717974057,
+          "similarity": 0.48931682109832764,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.47060371633669756,
+          "similarity": 0.4857172966003418,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.6714888724158792,
+          "similarity": 0.6945310831069946,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5774998617779661,
+          "similarity": 0.5471500158309937,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5640340642438559,
+          "similarity": 0.5330970883369446,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.5463135866730737,
+          "similarity": 0.48931682109832764,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.5296798756973946,
+          "similarity": 0.4857172966003418,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5235575896043044,
+          "similarity": 0.6945310831069946,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.4328615482036884,
+          "similarity": 0.5471500158309937,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.42421359282273513,
+          "similarity": 0.5330970883369446,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.3972718899066632,
+          "similarity": 0.48931682109832764,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.39505679790790266,
+          "similarity": 0.4857172966003418,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.5888369701249259,
+          "similarity": 0.6945310831069946,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5098320432833034,
+          "similarity": 0.5471500158309937,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.49901746740173397,
+          "similarity": 0.5330970883369446,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.4829796717974057,
+          "similarity": 0.48931682109832764,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.47060371633669756,
+          "similarity": 0.4857172966003418,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.6945310831069946,
+          "similarity": 0.6945310831069946,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5471500158309937,
+          "similarity": 0.5471500158309937,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.5330970883369446,
+          "similarity": 0.5330970883369446,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.48931682109832764,
+          "similarity": 0.48931682109832764,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.4857172966003418,
+          "similarity": 0.4857172966003418,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 763,
+          "title": "Server-Side Observation Intercept Pattern",
+          "category": "pattern",
+          "final_score": 0.6716384971606266,
+          "similarity": 0.6945310831069946,
+          "confidence": 0.6385714285714285,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.5773027848562324,
+          "similarity": 0.5471500158309937,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.563833174789915,
+          "similarity": 0.5330970883369446,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.5459434778057052,
+          "similarity": 0.48931682109832764,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2909,
+          "title": "ADR-007 col-023: Ingest Security Bounds for Untyped External Event Payloads",
+          "category": "decision",
+          "final_score": 0.5293944044045565,
+          "similarity": 0.4857172966003418,
+          "confidence": 0.5924835601217557,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

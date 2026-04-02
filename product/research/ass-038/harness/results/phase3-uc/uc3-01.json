@@ -1,0 +1,134 @@
+{
+  "scenario_id": "uc3-01",
+  "query": "I need to implement a new optional ML inference provider in unimatrix-server that can be absent without blocking startup. What pattern and ADR should I follow?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5431166566462519,
+          "similarity": 0.5661969184875488,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5334442778755965,
+          "similarity": 0.5494388937950134,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.5269455469444649,
+          "similarity": 0.5544439554214478,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5021924469050724,
+          "similarity": 0.5366747379302979,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2572,
+          "title": "ADR-001: Rayon Dependency Confined to unimatrix-server Only",
+          "category": "decision",
+          "final_score": 0.4997086315092516,
+          "similarity": 0.5319874286651611,
+          "confidence": 0.5249413874320245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5431166566462519,
+          "similarity": 0.5661969184875488,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5334442778755965,
+          "similarity": 0.5494388937950134,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.5269455469444649,
+          "similarity": 0.5544439554214478,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5021924469050724,
+          "similarity": 0.5366747379302979,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2572,
+          "title": "ADR-001: Rayon Dependency Confined to unimatrix-server Only",
+          "category": "decision",
+          "final_score": 0.4997086315092516,
+          "similarity": 0.5319874286651611,
+          "confidence": 0.5249413874320245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

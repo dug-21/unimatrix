@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a02f1841-1774916851000",
+  "query": "Rust as cast wrapping truncation vs saturation integer overflow",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.597858518395438,
+          "similarity": 0.7518054246902466,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.4646086703157566,
+          "similarity": 0.4907057285308838,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.43705288006136794,
+          "similarity": 0.4323338270187378,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.43419269580546577,
+          "similarity": 0.43808913230895996,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.428617823205891,
+          "similarity": 0.4314877986907959,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.6782562581221456,
+          "similarity": 0.7518054246902466,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5209623192048733,
+          "similarity": 0.4907057285308838,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.4888633817490601,
+          "similarity": 0.4323338270187378,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.4843733930360354,
+          "similarity": 0.43808913230895996,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.47736879668545856,
+          "similarity": 0.4314877986907959,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.597858518395438,
+          "similarity": 0.7518054246902466,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.4646086703157566,
+          "similarity": 0.4907057285308838,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.43705288006136794,
+          "similarity": 0.4323338270187378,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.43419269580546577,
+          "similarity": 0.43808913230895996,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.428617823205891,
+          "similarity": 0.4314877986907959,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.7518054246902466,
+          "similarity": 0.7518054246902466,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.4907057285308838,
+          "similarity": 0.4907057285308838,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.43808913230895996,
+          "similarity": 0.43808913230895996,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.4323338270187378,
+          "similarity": 0.4323338270187378,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.4314877986907959,
+          "similarity": 0.4314877986907959,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.558803338270921,
+          "similarity": 0.7518054246902466,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.39812660217285156,
+          "similarity": 0.4907057285308838,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.36574715834397536,
+          "similarity": 0.43808913230895996,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.36220543201153094,
+          "similarity": 0.4323338270187378,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.36168479919433594,
+          "similarity": 0.4314877986907959,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3901,
+          "title": "Rust `as` cast u64→i64 wraps (not saturates) — use try_from/unwrap_or for saturation intent",
+          "category": "lesson-learned",
+          "final_score": 0.6787338501128475,
+          "similarity": 0.7518054246902466,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3903,
+          "title": "saturating_add omitted on u32 histogram counter while file uses saturating_sub elsewhere",
+          "category": "lesson-learned",
+          "final_score": 0.5207658478368604,
+          "similarity": 0.4907057285308838,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3453,
+          "title": "tracing-subscriber with_env_filter(&str) ignores RUST_LOG — use EnvFilter::try_from_default_env() for runtime filter control",
+          "category": "lesson-learned",
+          "final_score": 0.4884963067183437,
+          "similarity": 0.4323338270187378,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3706,
+          "title": "Byte-index slicing &s[..N] panics on multi-byte UTF-8 — use .chars().take(N).collect()",
+          "category": "lesson-learned",
+          "final_score": 0.48407284588845695,
+          "similarity": 0.43808913230895996,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.47707086812705163,
+          "similarity": 0.4314877986907959,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-482",
+  "query": "221 of them?  Those, yes, should be committed in a housekeeping commit... but there aren't 221 of them",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.38494730633209995,
+          "similarity": 0.30136072635650635,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.3782048593146825,
+          "similarity": 0.26817452907562256,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3915,
+          "title": "ADR-001 crt-036: Per-Cycle Transaction Granularity for Activity GC Pass",
+          "category": "decision",
+          "final_score": 0.37323467885537653,
+          "similarity": 0.2507568597793579,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.3588298026560144,
+          "similarity": 0.27148211002349854,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.3549003780297787,
+          "similarity": 0.2653895616531372,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3708,
+          "title": "bugfix-430: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.38494730633209995,
+          "similarity": 0.30136072635650635,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.3782048593146825,
+          "similarity": 0.26817452907562256,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3915,
+          "title": "ADR-001 crt-036: Per-Cycle Transaction Granularity for Activity GC Pass",
+          "category": "decision",
+          "final_score": 0.37323467885537653,
+          "similarity": 0.2507568597793579,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.3588298026560144,
+          "similarity": 0.27148211002349854,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.3549003780297787,
+          "similarity": 0.2653895616531372,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

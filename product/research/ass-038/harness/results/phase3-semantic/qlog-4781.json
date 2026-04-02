@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4781",
+  "query": "So... I want your assessment of the most efficient & safe way of cleaning up these PR's... don't start anything.. just assess and come up with a plan (bugfix protocol, independently, feature scope): Batch cleanup PR — small ready-to-fix bugs:                                                  \n                                                                  \n  These are all tiny, no design needed, could ship as one PR:\n                                                                                               \n  - #337 merge_configs doesn't re-validate InferenceConfig                                     \n  - #345 saturating_add for histogram counter                                                  \n  - #346 sanitize_session_id in CompactPayload                                                 \n  - #378 escape markdown in cycle review formatter                \n  - #379 pipe-escape category/feature_cycle in Knowledge Reuse table                           \n  - #380 misleading comment on obs.ts cast",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.5110808158768718,
+          "similarity": 0.4863622784614563,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5087980358295503,
+          "similarity": 0.5125414133071899,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.5028117701064202,
+          "similarity": 0.5071956515312195,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3910,
+          "title": "Multi-pass cleanup: all passes on the same reference table must apply identical status filters",
+          "category": "pattern",
+          "final_score": 0.4992672592121372,
+          "similarity": 0.5196185111999512,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.46548284872749957,
+          "similarity": 0.4856727719306946,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3002,
+          "title": "ADR-005 crt-025: outcome Category Retirement — Ingest Block Only, No Data Deletion",
+          "category": "decision",
+          "final_score": 0.5110808158768718,
+          "similarity": 0.4863622784614563,
+          "confidence": 0.6209875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5087980358295503,
+          "similarity": 0.5125414133071899,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.5028117701064202,
+          "similarity": 0.5071956515312195,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3910,
+          "title": "Multi-pass cleanup: all passes on the same reference table must apply identical status filters",
+          "category": "pattern",
+          "final_score": 0.4992672592121372,
+          "similarity": 0.5196185111999512,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.46548284872749957,
+          "similarity": 0.4856727719306946,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

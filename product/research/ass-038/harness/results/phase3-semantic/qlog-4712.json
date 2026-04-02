@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4712",
+  "query": "run it again w/out force:true",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.4059541979077296,
+          "similarity": 0.27603989839553833,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1368,
+          "title": "How to open database with retry after stale process termination",
+          "category": "procedure",
+          "final_score": 0.3636856622312419,
+          "similarity": 0.24369752407073975,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.3624625414032856,
+          "similarity": 0.24444490671157837,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.3603498704546547,
+          "similarity": 0.2404308319091797,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.34418343184384836,
+          "similarity": 0.2806504964828491,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.4059541979077296,
+          "similarity": 0.27603989839553833,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1368,
+          "title": "How to open database with retry after stale process termination",
+          "category": "procedure",
+          "final_score": 0.3636856622312419,
+          "similarity": 0.24369752407073975,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.3624625414032856,
+          "similarity": 0.24444490671157837,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.3603498704546547,
+          "similarity": 0.2404308319091797,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1684,
+          "title": "Background Task Panic Supervisor: Two-Level tokio::spawn with is_cancelled() Guard",
+          "category": "pattern",
+          "final_score": 0.34418343184384836,
+          "similarity": 0.2806504964828491,
+          "confidence": 0.4618543200292326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

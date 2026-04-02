@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774611332000",
+  "query": "Rust sibling module creation file-based module procedure",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.5500409575471019,
+          "similarity": 0.6055389046669006,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5392124657536365,
+          "similarity": 0.5390535593032837,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 301,
+          "title": "How to restructure a flat Rust crate into module groups",
+          "category": "procedure",
+          "final_score": 0.533512893642735,
+          "similarity": 0.5441460609436035,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5303693037960064,
+          "similarity": 0.5974071621894836,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3636,
+          "title": "Use #[path] attribute when declaring a submodule inside a file-based module (not mod.rs)",
+          "category": "pattern",
+          "final_score": 0.5099109243844894,
+          "similarity": 0.5115517377853394,
+          "confidence": 0.5818271693502722,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.5500409575471019,
+          "similarity": 0.6055389046669006,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5392124657536365,
+          "similarity": 0.5390535593032837,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 301,
+          "title": "How to restructure a flat Rust crate into module groups",
+          "category": "procedure",
+          "final_score": 0.533512893642735,
+          "similarity": 0.5441460609436035,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5303693037960064,
+          "similarity": 0.5974071621894836,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3636,
+          "title": "Use #[path] attribute when declaring a submodule inside a file-based module (not mod.rs)",
+          "category": "pattern",
+          "final_score": 0.5099109243844894,
+          "similarity": 0.5115517377853394,
+          "confidence": 0.5818271693502722,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

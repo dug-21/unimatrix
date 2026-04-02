@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4237",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] All three updated. Re-running vision guardian against the corrected artifacts.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4715514359311982,
+          "similarity": 0.39560914039611816,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 979,
+          "title": "Retrospective findings: nxs-009",
+          "category": "lesson-learned",
+          "final_score": 0.460541135586371,
+          "similarity": 0.4013979434967041,
+          "confidence": 0.6051860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.45523996366339736,
+          "similarity": 0.4179230332374573,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1118,
+          "title": "Versioned Sentinel Markers for Idempotent File Mutation",
+          "category": "pattern",
+          "final_score": 0.4500695617074686,
+          "similarity": 0.4133552312850952,
+          "confidence": 0.5596813370844217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1091,
+          "title": "ADR-002 nan-003: Versioned Sentinel + Head-Check Fallback for Init Idempotency",
+          "category": "decision",
+          "final_score": 0.44621837365901285,
+          "similarity": 0.40721333026885986,
+          "confidence": 0.5580022566903781,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.4715514359311982,
+          "similarity": 0.39560914039611816,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 979,
+          "title": "Retrospective findings: nxs-009",
+          "category": "lesson-learned",
+          "final_score": 0.460541135586371,
+          "similarity": 0.4013979434967041,
+          "confidence": 0.6051860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.45523996366339736,
+          "similarity": 0.4179230332374573,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1118,
+          "title": "Versioned Sentinel Markers for Idempotent File Mutation",
+          "category": "pattern",
+          "final_score": 0.4500695617074686,
+          "similarity": 0.4133552312850952,
+          "confidence": 0.5596813370844217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1091,
+          "title": "ADR-002 nan-003: Versioned Sentinel + Head-Check Fallback for Init Idempotency",
+          "category": "decision",
+          "final_score": 0.44621837365901285,
+          "similarity": 0.40721333026885986,
+          "confidence": 0.5580022566903781,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

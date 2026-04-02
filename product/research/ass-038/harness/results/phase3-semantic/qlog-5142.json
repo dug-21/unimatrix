@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5142",
+  "query": "is anything supposed to clean these up? 2026-03-31T21:51:47.639062Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=141 target_id=1045 relation_type=CoAccess\n2026-03-31T21:51:47.639084Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1045 target_id=141 relation_type=CoAccess\n2026-03-31T21:51:47.639086Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=167 target_id=1045 relation_type=CoAccess\n2026-03-31T21:51:47.639087Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1045 target_id=167 relation_type=CoAccess\n2026-03-31T21:51:47.639089Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=141 target_id=1105 relation_type=CoAccess\n2026-03-31T21:51:47.639090Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=141 relation_type=CoAccess\n2026-03-31T21:51:47.639091Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=167 target_id=1105 relation_type=CoAccess\n2026-03-31T21:51:47.639092Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=167 relation_type=CoAccess\n2026-03-31T21:51:47.639094Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1045 target_id=1105 relation_type=CoAccess\n2026-03-31T21:51:47.639095Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=1045 relation_type=CoAccess\n2026-03-31T21:51:47.639096Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=213 target_id=485 relation_type=CoAccess\n2026-03-31T21:51:47.639097Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=485 target_id=213 relation_type=CoAccess\n2026-03-31T21:51:47.639098Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1101 target_id=1105 relation_type=CoAccess\n2026-03-31T21:51:47.639099Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=1101 relation_type=CoAccess\n2026-03-31T21:51:47.639100Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=79 target_id=217 relation_type=CoAccess\n2026-03-31T21:51:47.639101Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=217 target_id=79 relation_type=CoAccess\n2026-03-31T21:51:47.639107Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=215 target_id=703 relation_type=CoAccess\n2026-03-31T21:51:47.639108Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=703 target_id=215 relation_type=CoAccess\n2026-03-31T21:51:47.639109Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=607 target_id=654 relation_type=CoAccess\n2026-03-31T21:51:47.639110Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=654 target_id=607 relation_type=CoAccess\n2026-03-31T21:51:47.639111Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=167 target_id=607 relation_type=CoAccess\n2026-03-31T21:51:47.639112Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=607 target_id=167 relation_type=CoAccess\n2026-03-31T21:51:47.639113Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=1006 target_id=1045 relation_type=CoAccess\n2026-03-31T21:51:47.639114Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1045 target_id=1006 relation_type=CoAccess\n2026-03-31T21:51:47.639115Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=697 target_id=1322 relation_type=CoAccess\n2026-03-31T21:51:47.639116Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1322 target_id=697 relation_type=CoAccess\n2026-03-31T21:51:47.639117Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=1775 relation_type=CoAccess\n2026-03-31T21:51:47.639118Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1775 target_id=1105 relation_type=CoAccess\n2026-03-31T21:51:47.639119Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=141 target_id=1775 relation_type=CoAccess\n2026-03-31T21:51:47.639120Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1775 target_id=141 relation_type=CoAccess\n2026-03-31T21:51:47.639121Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=167 target_id=1775 relation_type=CoAccess\n2026-03-31T21:51:47.639123Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1775 target_id=167 relation_type=CoAccess",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.5857595258001868,
+          "similarity": 0.6617128849029541,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5751217663341864,
+          "similarity": 0.613057553768158,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3910,
+          "title": "Multi-pass cleanup: all passes on the same reference table must apply identical status filters",
+          "category": "pattern",
+          "final_score": 0.5606288606903123,
+          "similarity": 0.6362055540084839,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5462064147671561,
+          "similarity": 0.627497673034668,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5414974472138092,
+          "similarity": 0.5839149355888367,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.5857595258001868,
+          "similarity": 0.6617128849029541,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3659,
+          "title": "ADR-004 crt-029: Separate query_existing_supports_pairs() Store Helper for Pre-Filter",
+          "category": "decision",
+          "final_score": 0.5751217663341864,
+          "similarity": 0.613057553768158,
+          "confidence": 0.6138197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3910,
+          "title": "Multi-pass cleanup: all passes on the same reference table must apply identical status filters",
+          "category": "pattern",
+          "final_score": 0.5606288606903123,
+          "similarity": 0.6362055540084839,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3913,
+          "title": "ADR-001 bugfix-458: GRAPH_EDGES compaction must filter on status != 3 (quarantined), not just entry existence",
+          "category": "decision",
+          "final_score": 0.5462064147671561,
+          "similarity": 0.627497673034668,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.5414974472138092,
+          "similarity": 0.5839149355888367,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

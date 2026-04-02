@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-f094870a-1775006808000",
+  "query": "large file Rust editing discipline read full context 2000 lines before editing",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.5578063307310405,
+          "similarity": 0.680832028388977,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5208919332897627,
+          "similarity": 0.5447644591331482,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3015,
+          "title": "Edit Tool Re-Read Required After Cargo Fmt in Parallel Swarm: Edits May Not Persist",
+          "category": "pattern",
+          "final_score": 0.5190247945442648,
+          "similarity": 0.5676578283309937,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.5029704865397241,
+          "similarity": 0.521213710308075,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.5578063307310405,
+          "similarity": 0.680832028388977,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5208919332897627,
+          "similarity": 0.5447644591331482,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3015,
+          "title": "Edit Tool Re-Read Required After Cargo Fmt in Parallel Swarm: Edits May Not Persist",
+          "category": "pattern",
+          "final_score": 0.5190247945442648,
+          "similarity": 0.5676578283309937,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3348,
+          "title": "Tail-Bytes Read Strategy for Append-Only Files: seek_back = window.min(file_len)",
+          "category": "pattern",
+          "final_score": 0.5029704865397241,
+          "similarity": 0.521213710308075,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

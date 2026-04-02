@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774576593000",
+  "query": "parallel Vec mask application single indexed pass results_with_scores final_scores suppress filter",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.5721036885325611,
+          "similarity": 0.6130374073982239,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3629,
+          "title": "ADR-004: Single Indexed Pass for Mask Application to Parallel Vecs (col-030)",
+          "category": "decision",
+          "final_score": 0.5690712927554368,
+          "similarity": 0.644791305065155,
+          "confidence": 0.5520630731002502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.4892847026370024,
+          "similarity": 0.471251904964447,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.47271431153414134,
+          "similarity": 0.48143768310546875,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.4611178231336519,
+          "similarity": 0.42403483390808105,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.5721036885325611,
+          "similarity": 0.6130374073982239,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3629,
+          "title": "ADR-004: Single Indexed Pass for Mask Application to Parallel Vecs (col-030)",
+          "category": "decision",
+          "final_score": 0.5690712927554368,
+          "similarity": 0.644791305065155,
+          "confidence": 0.5520630731002502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.4892847026370024,
+          "similarity": 0.471251904964447,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3645,
+          "title": "Ranking-aware suppression test cases require explicit algorithm trace — expected values cannot be intuited",
+          "category": "lesson-learned",
+          "final_score": 0.47271431153414134,
+          "similarity": 0.48143768310546875,
+          "confidence": 0.5238850125848571,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.4611178231336519,
+          "similarity": 0.42403483390808105,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

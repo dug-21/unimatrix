@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1609",
+  "query": "right now we still have both quantized models... do we need to update that?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.39934086819224335,
+          "similarity": 0.3076949715614319,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.3919898301550552,
+          "similarity": 0.3023254871368408,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 652,
+          "title": "ADR-004: Persistence backward compat via serde(default) — no version bump (crt-012)",
+          "category": "decision",
+          "final_score": 0.3911500198044887,
+          "similarity": 0.29340124130249023,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.37887595409176944,
+          "similarity": 0.30137503147125244,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.37338188280423923,
+          "similarity": 0.29173576831817627,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.39934086819224335,
+          "similarity": 0.3076949715614319,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.3919898301550552,
+          "similarity": 0.3023254871368408,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 652,
+          "title": "ADR-004: Persistence backward compat via serde(default) — no version bump (crt-012)",
+          "category": "decision",
+          "final_score": 0.3911500198044887,
+          "similarity": 0.29340124130249023,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.37887595409176944,
+          "similarity": 0.30137503147125244,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 633,
+          "title": "ADR-002: Self-Contained Migration Deserializer for v8→v9",
+          "category": "decision",
+          "final_score": 0.37338188280423923,
+          "similarity": 0.29173576831817627,
+          "confidence": 0.5252711557283977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

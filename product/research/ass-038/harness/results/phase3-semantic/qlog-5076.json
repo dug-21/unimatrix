@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5076",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Working tree clean. Spawning Gate 3b.\n[tool: Bash(git add crates/unimatrix-server/src/services/status.rs product/features/crt-037/agents/crt-037-agent-6-graph-ppr-report.) → [feature/crt-037 df12a0a] chore: crt-037 wave 2 agent reports + whitespace fix in status.rs (#466)\n 3 files changed, 148 insertions(+), 3 deletions(-)\n create mode 100644 product/features/crt-037/agents/crt-037-agent-6-graph-ppr-report.md\n create mode 100644 product/features/crt-037/agents/crt-037-a]\n[Assistant] Whitespace-only formatting change in a crt-036 test. Committing it along with Wave 2 reports before the gate.\n[tool: Bash(git diff crates/unimatrix-server/src/services/status.rs | head -60) → diff --git a/crates/unimatrix-server/src/services/status.rs b/crates/unimatrix-server/src/services/status.rs\nindex 94d2e88..6cb4b47 100644\n--- a/crates/unimatrix-server/src/services/status.rs\n+++ b/crates/unimatrix-server/src/services/status.rs\n@@ -3431,9 +3431,9 @@ mod crt_036_gc_block_tests {\n    ]\n[Assistant] Both self-committed. Need to check the `status.rs` modification before Gate 3b — protocol requires all production files committed before the gate.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5493853112007613,
+          "similarity": 0.5995981693267822,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2463,
+          "title": "Gate 3c: always verify committed code, not working tree state",
+          "category": "lesson-learned",
+          "final_score": 0.508477858924323,
+          "similarity": 0.565238893032074,
+          "confidence": 0.5012414841773427,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.5069735007273695,
+          "similarity": 0.5190157294273376,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.4857718474739475,
+          "similarity": 0.5215665102005005,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.47715660346181765,
+          "similarity": 0.5275975465774536,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5493853112007613,
+          "similarity": 0.5995981693267822,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2463,
+          "title": "Gate 3c: always verify committed code, not working tree state",
+          "category": "lesson-learned",
+          "final_score": 0.508477858924323,
+          "similarity": 0.565238893032074,
+          "confidence": 0.5012414841773427,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3347,
+          "title": "Background Agent Silent Write Failure: Verify File System State Before Advancing to Gate 3b",
+          "category": "lesson-learned",
+          "final_score": 0.5069735007273695,
+          "similarity": 0.5190157294273376,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.4857718474739475,
+          "similarity": 0.5215665102005005,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.47715660346181765,
+          "similarity": 0.5275975465774536,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

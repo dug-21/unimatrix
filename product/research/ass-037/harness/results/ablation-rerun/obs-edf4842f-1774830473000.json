@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-edf4842f-1774830473000",
+  "query": "StatusReport struct literal sites field addition",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.49800785421302357,
+          "similarity": 0.5610845685005188,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.4700800938221945,
+          "similarity": 0.4806693196296692,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.44125928408143494,
+          "similarity": 0.4078289866447449,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4141284150324595,
+          "similarity": 0.4293328523635864,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 600,
+          "title": "ADR-001: pre_quarantine_status stored as Option<u8>",
+          "category": "decision",
+          "final_score": 0.4136345446235932,
+          "similarity": 0.3944971561431885,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.49800785421302357,
+          "similarity": 0.5610845685005188,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.4700800938221945,
+          "similarity": 0.4806693196296692,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.44125928408143494,
+          "similarity": 0.4078289866447449,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4141284150324595,
+          "similarity": 0.4293328523635864,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 600,
+          "title": "ADR-001: pre_quarantine_status stored as Option<u8>",
+          "category": "decision",
+          "final_score": 0.4136345446235932,
+          "similarity": 0.3944971561431885,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.5599121131540759,
+          "similarity": 0.5610845685005188,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.5291392807002953,
+          "similarity": 0.4806693196296692,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.49646002496152536,
+          "similarity": 0.4078289866447449,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 600,
+          "title": "ADR-001: pre_quarantine_status stored as Option<u8>",
+          "category": "decision",
+          "final_score": 0.46000191029188275,
+          "similarity": 0.3944971561431885,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4575084884657551,
+          "similarity": 0.4293328523635864,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.5599044500472364,
+          "similarity": 0.5610845685005188,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.5294560778314759,
+          "similarity": 0.4806693196296692,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.4970393127936612,
+          "similarity": 0.4078289866447449,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 600,
+          "title": "ADR-001: pre_quarantine_status stored as Option<u8>",
+          "category": "decision",
+          "final_score": 0.46043004593991343,
+          "similarity": 0.3944971561431885,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.45769264295008305,
+          "similarity": 0.4293328523635864,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.4414366575387808,
+          "similarity": 0.5610845685005188,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.39195035054133487,
+          "similarity": 0.4806693196296692,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.36035867837759167,
+          "similarity": 0.4293328523635864,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.3471255302429199,
+          "similarity": 0.4078289866447449,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 600,
+          "title": "ADR-001: pre_quarantine_status stored as Option<u8>",
+          "category": "decision",
+          "final_score": 0.33892132685734677,
+          "similarity": 0.3944971561431885,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.5610845685005188,
+          "similarity": 0.5610845685005188,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 325,
+          "title": "ADR-001 vnc-009: Intermediate StatusReportJson for backward-compatible JSON serialization",
+          "category": "decision",
+          "final_score": 0.4806693196296692,
+          "similarity": 0.4806693196296692,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4293328523635864,
+          "similarity": 0.4293328523635864,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 320,
+          "title": "Intermediate Serialization Struct for Backward-Compatible Nested JSON",
+          "category": "pattern",
+          "final_score": 0.4078289866447449,
+          "similarity": 0.4078289866447449,
+          "confidence": 0.6244826358635417,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 600,
+          "title": "ADR-001: pre_quarantine_status stored as Option<u8>",
+          "category": "decision",
+          "final_score": 0.3944971561431885,
+          "similarity": 0.3944971561431885,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3887,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 600,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

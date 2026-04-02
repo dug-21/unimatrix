@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4734",
+  "query": "back to issue 455: security review - thoughts?  Non-blocking notes from security review:                             \n  1. Test file co_access_promotion_tick_tests.rs is 636 lines —\n  accepted by Gate 3b as a documented split pattern                    \n  2. R-01 write-failure test uses no-op simulation (no genuine SQL\n  error injection) — test coverage gap only                       \n  3. Follow-up issue needed for bidirectional CoAccess edges +         \n  bootstrap-era back-fill (ADR-006)                           \n                                                        ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2800,
+          "title": "Circuit breaker / cap logic must be extracted as a testable unit function from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5265163800788876,
+          "similarity": 0.5123312473297119,
+          "confidence": 0.6257855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3580,
+          "title": "Gate 3b: file size violations discovered at gate — 500-line limit not self-checked by implementation agent",
+          "category": "lesson-learned",
+          "final_score": 0.5126473047940967,
+          "similarity": 0.5137460827827454,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5009370770285616,
+          "similarity": 0.48519665002822876,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.46664570397620186,
+          "similarity": 0.48788219690322876,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2800,
+          "title": "Circuit breaker / cap logic must be extracted as a testable unit function from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5265163800788876,
+          "similarity": 0.5123312473297119,
+          "confidence": 0.6257855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3580,
+          "title": "Gate 3b: file size violations discovered at gate — 500-line limit not self-checked by implementation agent",
+          "category": "lesson-learned",
+          "final_score": 0.5126473047940967,
+          "similarity": 0.5137460827827454,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5009370770285616,
+          "similarity": 0.48519665002822876,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.46664570397620186,
+          "similarity": 0.48788219690322876,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

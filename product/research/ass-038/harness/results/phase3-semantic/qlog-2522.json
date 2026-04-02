@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2522",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Investigate clippy failures in unimatrix-store) → ]\n[Assistant] Cycle started. Entry #3257 is directly relevant (clippy triage procedure). Now spawning the investigator in a worktree.\n[tool: mcp__unimatrix__context_cycle(start) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5008182496870769,
+          "similarity": 0.4994656443595886,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.4777564689816146,
+          "similarity": 0.4865926504135132,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.47625675020719827,
+          "similarity": 0.5034878253936768,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.469930815144589,
+          "similarity": 0.49146854877471924,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.4654723877153898,
+          "similarity": 0.4829975366592407,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3500,
+          "title": "ToolSearch must complete before any context_get or dependent MCP tool calls in discovery phase",
+          "category": "lesson-learned",
+          "final_score": 0.5008182496870769,
+          "similarity": 0.4994656443595886,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.4777564689816146,
+          "similarity": 0.4865926504135132,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.47625675020719827,
+          "similarity": 0.5034878253936768,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.469930815144589,
+          "similarity": 0.49146854877471924,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.4654723877153898,
+          "similarity": 0.4829975366592407,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

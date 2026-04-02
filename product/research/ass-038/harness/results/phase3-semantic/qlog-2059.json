@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2059",
+  "query": "I think we can eliminate WARN-2: Fetch(https://code.claude.com/docs/en/hooks)\n  ⎿  Received 111.5KB (200 OK)                                                                                                                                                         \n                                                                                                                                                                                       \n● Definitive answer: Yes, SubagentStart supports context injection.\n                                                                                                                                                                                       \n  Return this JSON from your hook's stdout:                                                                                                                                            \n   \n  {                                                                                                                                                                                    \n    \"hookSpecificOutput\": {                                                 \n      \"hookEventName\": \"SubagentStart\",\n      \"additionalContext\": \"your injected text here\"\n    }                                                                                                                                                                                  \n  }\n                                                                                                                                                                                       \n  Key details:                                                              \n  - additionalContext — the string is added to the subagent's context window before it starts working\n  - Non-blocking — cannot prevent subagent creation (unlike PreToolUse which can block)                                                                                                \n  - Matcher support — filter by agent type (Bash, Explore, Plan, or any custom agent name from .claude/agents/)\n  - Input includes agent_id and agent_type, so your hook script can dynamically tailor the injected context based on which agent is being spawned                                      \n                                                                                                                                                                                       \n  The earlier subagent's research was actually correct — I was wrong to flag it as uncertain.                                                          , WARN-3 - should update all of the specification and architecture, WARN-1 - it should be added to the goals, but more importantly, it needs to be in the specification and architecture documents",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5830802414979983,
+          "similarity": 0.6286619901657104,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.5760804359360613,
+          "similarity": 0.6283811926841736,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5521835413755574,
+          "similarity": 0.542522132396698,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5375222751572458,
+          "similarity": 0.5460102558135986,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.532977661976472,
+          "similarity": 0.5232412815093994,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3230,
+          "title": "SubagentStart hook routing to ContextSearch — implementation pattern",
+          "category": "pattern",
+          "final_score": 0.5830802414979983,
+          "similarity": 0.6286619901657104,
+          "confidence": 0.6131292409721235,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3251,
+          "title": "ADR-006 crt-027: SubagentStart stdout uses hookSpecificOutput JSON envelope",
+          "category": "decision",
+          "final_score": 0.5760804359360613,
+          "similarity": 0.6283811926841736,
+          "confidence": 0.5945309079919184,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3243,
+          "title": "ADR-002 crt-027: SubagentStart Routing to ContextSearch and UserPromptSubmit Word-Count Guard",
+          "category": "decision",
+          "final_score": 0.5521835413755574,
+          "similarity": 0.542522132396698,
+          "confidence": 0.6523237088812303,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.5375222751572458,
+          "similarity": 0.5460102558135986,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3242,
+          "title": "ADR-001 crt-027: Optional `source` Field on `HookRequest::ContextSearch`",
+          "category": "decision",
+          "final_score": 0.532977661976472,
+          "similarity": 0.5232412815093994,
+          "confidence": 0.6277375374941395,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

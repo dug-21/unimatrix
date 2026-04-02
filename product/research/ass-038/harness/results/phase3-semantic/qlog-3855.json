@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3855",
+  "query": "1. Rank-based.                            \n\n  Knowledge engine access patterns are power-law\n   distributed — a handful of entries dominate\n  access counts in any given phase. Min-max with\n   a 0.5 floor collapses most entries to the  \n  floor with one or two outliers near 1.0, which\n   gives PPR a degenerate personalization vector\n   (almost uniform with a spike). Rank-based\n  spreads signal evenly across the bucket\n  regardless of the access count distribution,\n  giving PageRank a richer gradient to traverse.\n   The outlier resistance is precisely what you\n  need here.\n\n  2. Fix in col-031 scope.\n\n  The AC-12 regression gate is the validation   \n  that the frequency table is actually doing\n  something. If eval scenarios carry no phase,  \n  AC-12 will pass trivially — not because the \n  signal is neutral, but because it was never\n  activated in the first place. That's a vacuous\n   gate. The #398 PPR gate requires #414\n  frequency table active — if active is\n  untestable, that prerequisite check is\n  meaningless. The extract.rs change is bounded:\n   add current_phase to the scenario extraction,\n   nothing else. The risk is low; the benefit is\n   a real gate rather than a noise check.\n\n  3. Configurable default at 0.05.\n\n  The cold-start degradation already handles the\n   sparse-data risk: when query history is thin,\n   the frequency table returns near-uniform     \n  weights, and 0.05 × near-uniform ≈ zero net \n  effect on ranking. You only get real signal\n  when there's enough history to build a\n  meaningful table — which is exactly when you\n  want the weight live. Waiting for eval data\n  before enabling means #414 ships inert and the\n   PPR gate's frequency-table prerequisite is\n  again vacuous. Make it configurable so\n  operators can tune it post-deployment, but\n  ship with 0.05 active. That's the same order\n  of magnitude as w_phase_histogram (0.02) but\n  larger, which is correct since the frequency\n  table is a durable cross-session signal vs.\n  the ephemeral session histogram.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5553762036947012,
+          "similarity": 0.5905399322509766,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5060813491440542,
+          "similarity": 0.4949144124984741,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.49289377585488514,
+          "similarity": 0.4904435873031616,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.4921170023604614,
+          "similarity": 0.4967883825302124,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.47650402368217337,
+          "similarity": 0.47001200914382935,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 43,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5553762036947012,
+          "similarity": 0.5905399322509766,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5060813491440542,
+          "similarity": 0.4949144124984741,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.49289377585488514,
+          "similarity": 0.4904435873031616,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.4921170023604614,
+          "similarity": 0.4967883825302124,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.47650402368217337,
+          "similarity": 0.47001200914382935,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

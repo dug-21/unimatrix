@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-704",
+  "query": "2 nuances: Both of those issues are, for the current time) mitigated considering MCP only supports stdio.  AKA.. human is adding unimatrix to a single repo.   IMO, this effectively mitigates the risk FOR NOW. . In principle, you are 100% correct...   The challenge I had was how to instruct people that had no knowledge of Unimatrix, how to instruct their agents on the proper agent_id to pass... and felt that everyone would simply likely implement \"human\" for every call to simplify and reduce the friction.  I am open to the middle ground, since I'm hoping to move beyond stdio in the future.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5856911772667163,
+          "similarity": 0.6518850922584534,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5582701629955521,
+          "similarity": 0.5720939636230469,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5185912709605541,
+          "similarity": 0.5212181806564331,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5036514033851482,
+          "similarity": 0.4931538701057434,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.4715392241802555,
+          "similarity": 0.5073856711387634,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5856911772667163,
+          "similarity": 0.6518850922584534,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5582701629955521,
+          "similarity": 0.5720939636230469,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5185912709605541,
+          "similarity": 0.5212181806564331,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5036514033851482,
+          "similarity": 0.4931538701057434,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.4715392241802555,
+          "similarity": 0.5073856711387634,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

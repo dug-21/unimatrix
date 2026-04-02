@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4148",
+  "query": "fix as scoped:  Root Cause: \"duties\" and \"reference\" are stale holdovers in INITIAL_CATEGORIES. Duties  \n  was replaced by file-based agent definitions; reference was never used. Additionally,   \n  INITIAL_CATEGORIES is duplicated across categories.rs and config.rs, requiring manual   \n  sync on every category change.                                                          \n                                                                                          \n  Fix Scope (as you specified):                                                           \n  1. INITIAL_CATEGORIES: [&str; 7] → [&str; 5] in categories.rs, remove duties/reference  \n  entries                                                                                 \n  2. Make categories.rs::INITIAL_CATEGORIES pub(crate)                                    \n  3. Remove duplicate INITIAL_CATEGORIES from config.rs; import from                      \n  crate::infra::categories instead                                  \n  4. All downstream test + harness updates (8 test edits in categories.rs, 1-2 in         \n  config.rs, builtin_claude_code_pack() in domain/mod.rs, domain_pack_tests.rs, Python\n  harness)                                                                                \n                                                                  \n  Design Review: APPROVED WITH NOTES — 4 non-blocking implementation notes:               \n  - A: Must add use crate::infra::categories::INITIAL_CATEGORIES; to config.rs (currently\n  no import from categories in that file)                                                 \n  - B: [&str; 5] size literal update needed in categories.rs; config deletion handles\n  itself — compiler enforces both                                                         \n  - C: config.rs:2849 — test_default_config_toml_empty_parses_defaults references the     \n  local constant by name; needs updating to the imported one                         \n  - D: Grep categories.rs test module for all hardcoded 7 — at least 4 assertions, not    \n  just 2                            ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5926033832461307,
+          "similarity": 0.6746938824653625,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5225705256057364,
+          "similarity": 0.5407949686050415,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5127856202333347,
+          "similarity": 0.5405412912368774,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5072426931904821,
+          "similarity": 0.498102068901062,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.4957224563985665,
+          "similarity": 0.4937259554862976,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3715,
+          "title": "Category retirement in INITIAL_CATEGORIES requires updates in 4 independent locations",
+          "category": "lesson-learned",
+          "final_score": 0.5926033832461307,
+          "similarity": 0.6746938824653625,
+          "confidence": 0.5732179224318372,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5225705256057364,
+          "similarity": 0.5407949686050415,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.5127856202333347,
+          "similarity": 0.5405412912368774,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3523,
+          "title": "ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k",
+          "category": "decision",
+          "final_score": 0.5072426931904821,
+          "similarity": 0.498102068901062,
+          "confidence": 0.5937986402297916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 925,
+          "title": "Clean first-pass delivery from precise scope decomposition and file-aligned parallelism",
+          "category": "lesson-learned",
+          "final_score": 0.4957224563985665,
+          "similarity": 0.4937259554862976,
+          "confidence": 0.568781016672827,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

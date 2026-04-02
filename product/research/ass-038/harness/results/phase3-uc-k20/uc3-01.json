@@ -1,0 +1,434 @@
+{
+  "scenario_id": "uc3-01",
+  "query": "I need to implement a new optional ML inference provider in unimatrix-server that can be absent without blocking startup. What pattern and ADR should I follow?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5431166566462519,
+          "similarity": 0.5661969184875488,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5334442778755965,
+          "similarity": 0.5494388937950134,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.5269455469444649,
+          "similarity": 0.5544439554214478,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5187643116311376,
+          "similarity": 0.4896516799926758,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.5119614423337581,
+          "similarity": 0.5089876055717468,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5107239638678752,
+          "similarity": 0.4978431463241577,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5098830689964153,
+          "similarity": 0.5049940347671509,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.5070792202788053,
+          "similarity": 0.4951344132423401,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.5049759865548507,
+          "similarity": 0.5113635063171387,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5021924469050724,
+          "similarity": 0.5366747379302979,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2572,
+          "title": "ADR-001: Rayon Dependency Confined to unimatrix-server Only",
+          "category": "decision",
+          "final_score": 0.4997086315092516,
+          "similarity": 0.5319874286651611,
+          "confidence": 0.5249413874320245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.4989925308103592,
+          "similarity": 0.49749553203582764,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.49015178212106514,
+          "similarity": 0.47789299488067627,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.4876280196173103,
+          "similarity": 0.47110772132873535,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.4827489089702476,
+          "similarity": 0.47898900508880615,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.4789079550507591,
+          "similarity": 0.49472248554229736,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.4781496439549813,
+          "similarity": 0.4910764694213867,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 291,
+          "title": "ADR-002: Mutex<HashMap> for rate limiter, no DashMap dependency",
+          "category": "decision",
+          "final_score": 0.4698744950209409,
+          "similarity": 0.4970284700393677,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4660372755043781,
+          "similarity": 0.4910902976989746,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.46009273628560876,
+          "similarity": 0.4691600799560547,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.7460326647147849
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5431166566462519,
+          "similarity": 0.5661969184875488,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5334442778755965,
+          "similarity": 0.5494388937950134,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.5269455469444649,
+          "similarity": 0.5544439554214478,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5187643116311376,
+          "similarity": 0.4896516799926758,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2587,
+          "title": "ADR-004: Eval Infrastructure Lives in unimatrix-server, Not a New Crate",
+          "category": "decision",
+          "final_score": 0.5119614423337581,
+          "similarity": 0.5089876055717468,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 755,
+          "title": "Dependency Inversion via Trait-in-Consumer for Crate Independence",
+          "category": "pattern",
+          "final_score": 0.5107239638678752,
+          "similarity": 0.4978431463241577,
+          "confidence": 0.6036176928925792,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.5098830689964153,
+          "similarity": 0.5049940347671509,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.5070792202788053,
+          "similarity": 0.4951344132423401,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.5049759865548507,
+          "similarity": 0.5113635063171387,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5021924469050724,
+          "similarity": 0.5366747379302979,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2572,
+          "title": "ADR-001: Rayon Dependency Confined to unimatrix-server Only",
+          "category": "decision",
+          "final_score": 0.4997086315092516,
+          "similarity": 0.5319874286651611,
+          "confidence": 0.5249413874320245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.4989925308103592,
+          "similarity": 0.49749553203582764,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.49015178212106514,
+          "similarity": 0.47789299488067627,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.4876280196173103,
+          "similarity": 0.47110772132873535,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.4827489089702476,
+          "similarity": 0.47898900508880615,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.4789079550507591,
+          "similarity": 0.49472248554229736,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.4781496439549813,
+          "similarity": 0.4910764694213867,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 291,
+          "title": "ADR-002: Mutex<HashMap> for rate limiter, no DashMap dependency",
+          "category": "decision",
+          "final_score": 0.4698744950209409,
+          "similarity": 0.4970284700393677,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4660372755043781,
+          "similarity": 0.4910902976989746,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1916,
+          "title": "ADR-006 vnc-005: unimatrix stop Subcommand via Existing terminate_and_wait",
+          "category": "decision",
+          "final_score": 0.46009273628560876,
+          "similarity": 0.4691600799560547,
+          "confidence": 0.5071658842665743,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.7460326647147848
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": -1.1102230246251565e-16
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1646",
+  "query": "from the UDS prompt path... also interested in things we're not using from extra... if we can somehow use this to help understand what's happening",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.4987021882779309,
+          "similarity": 0.47356849908828735,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.49597971314919054,
+          "similarity": 0.45000267028808594,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 290,
+          "title": "ADR-001: UsageService scope — access counting only, injection logs remain UDS-specific",
+          "category": "decision",
+          "final_score": 0.4907864056875717,
+          "similarity": 0.4762144684791565,
+          "confidence": 0.5803995747531855,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.48890332377999823,
+          "similarity": 0.444316565990448,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.48173568433010694,
+          "similarity": 0.4400157332420349,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.4987021882779309,
+          "similarity": 0.47356849908828735,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.49597971314919054,
+          "similarity": 0.45000267028808594,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 290,
+          "title": "ADR-001: UsageService scope — access counting only, injection logs remain UDS-specific",
+          "category": "decision",
+          "final_score": 0.4907864056875717,
+          "similarity": 0.4762144684791565,
+          "confidence": 0.5803995747531855,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1273,
+          "title": "ADR-001 col-022: Reuse RecordEvent for Cycle Lifecycle Wire Protocol",
+          "category": "decision",
+          "final_score": 0.48890332377999823,
+          "similarity": 0.444316565990448,
+          "confidence": 0.6208567845593554,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3402,
+          "title": "ADR-003 col-025: SubagentStart Injection Routes to IndexBriefingService When Goal Is Present",
+          "category": "decision",
+          "final_score": 0.48173568433010694,
+          "similarity": 0.4400157332420349,
+          "confidence": 0.6075458099788121,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

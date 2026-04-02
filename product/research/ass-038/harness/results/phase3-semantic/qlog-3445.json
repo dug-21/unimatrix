@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3445",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Good — 4 entries found for nan-009 (#3562, #3563, #3565, #3569). All high quality: three ADRs with correct tags and category, one lesson (markdown injection). No low-quality entries to deprecate.\n\n**Phase 1 Interim Results:**\n\n```\nCycle: nan-009 | 2 sessions | 2308 records | 3h 18m\n\nGATE FAILURES (rework signals):\n- Gate 3a REWORKABLE FAIL: 2 agent reports missing Knowledge Stewardship blocks\n- Gate 3b REWORKABLE FAIL: 14 missing phase tests + render.rs (544 lines) + tests.rs (1054 lines) over 500-line limit\n\nHOTSPOTS (6 warnings, 4 info):\n- F-03 compile_cycles: 81 cycles — iterative per-field changes during implementation\n- F-05 tool_failure_hotspot: context_store failed 19×, context_search failed 9× (Write capability restriction)\n- F-06 cold_restart: 43-min gap → 46 re-reads\n- F-01/F-02 context_load/file_breadth: 157KB pre-read, 99 files accessed before first write\n- F-04 mutation_spread: 68 files (expected for design-heavy feature)\n\nBASELINE OUTLIERS:\n- knowledge_entries_stored: 26.0 vs mean 7.6 (+2.0σ) — positive (large design artifact set)\n\nWHAT WENT WELL:\n- Zero coordinator respawns, zero post-completion work, zero sleep hacks\n- Low permission friction (1 vs 16.1 mean)\n\nSTEWARDSHIP: 4 entries (#3562, #3563, #3565, #3569) — all high quality, no deprecations needed\n```\n\nNow spawning the architect for Phase 2.\n[tool: mcp__unimatrix__context_search(nan-009 ADR dual type guard phase vocabulary) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.6270942688186241,
+          "similarity": 0.7139292359352112,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5871864980283162,
+          "similarity": 0.6129980087280273,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5481880375641806,
+          "similarity": 0.6043041944503784,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1120,
+          "title": "Design-Only Features Naturally Produce High Session Counts and Mutation Spread",
+          "category": "lesson-learned",
+          "final_score": 0.5360904161575623,
+          "similarity": 0.5918146371841431,
+          "confidence": 0.5382245050217507,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.5074598244616859,
+          "similarity": 0.5851736664772034,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.6270942688186241,
+          "similarity": 0.7139292359352112,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5871864980283162,
+          "similarity": 0.6129980087280273,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5481880375641806,
+          "similarity": 0.6043041944503784,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1120,
+          "title": "Design-Only Features Naturally Produce High Session Counts and Mutation Spread",
+          "category": "lesson-learned",
+          "final_score": 0.5360904161575623,
+          "similarity": 0.5918146371841431,
+          "confidence": 0.5382245050217507,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.5074598244616859,
+          "similarity": 0.5851736664772034,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

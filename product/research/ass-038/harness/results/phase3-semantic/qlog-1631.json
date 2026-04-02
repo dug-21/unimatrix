@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1631",
+  "query": "OK.. my short (long) list of immediate priorities continues on the thread of advanced intelligence.  On my short list: W1-5, W3-1, and issue 329.  At the moment, I'm trying to decide what order we should do these in",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.46353349464373883,
+          "similarity": 0.4058787226676941,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.46009175458861806,
+          "similarity": 0.36839139461517334,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.4367226563073271,
+          "similarity": 0.3755981922149658,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4146853156297581,
+          "similarity": 0.3541507124900818,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.4120766795612023,
+          "similarity": 0.3602268695831299,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.46353349464373883,
+          "similarity": 0.4058787226676941,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.46009175458861806,
+          "similarity": 0.36839139461517334,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.4367226563073271,
+          "similarity": 0.3755981922149658,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.4146853156297581,
+          "similarity": 0.3541507124900818,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.4120766795612023,
+          "similarity": 0.3602268695831299,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3736",
+  "query": "The unimatrix section in claude.md needs enhancement.  The 1 thing thats missing that every agent/subagent needs to know is how to use context_get for a single item lookup.  Add this pattern directly in the Unimatrix section (instead of a skill, just add the full example pattern.  I'm seeing many agents use \"3267\" quotes around the item number... that fails. so add the complete code example for all agents to follow.  Use to get full details of any item in Unimatrix",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5099228546577541,
+          "similarity": 0.5134679079055786,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.4730268374088683,
+          "similarity": 0.5220627188682556,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4686824661981094,
+          "similarity": 0.513802170753479,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4515631299027363,
+          "similarity": 0.513802170753479,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4463135644338486,
+          "similarity": 0.5037567615509033,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5099228546577541,
+          "similarity": 0.5134679079055786,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.4730268374088683,
+          "similarity": 0.5220627188682556,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3722,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4686824661981094,
+          "similarity": 0.513802170753479,
+          "confidence": 0.4667064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3745,
+          "title": "Convention: agents access crates/unimatrix-server/src/services/",
+          "category": "convention",
+          "final_score": 0.4515631299027363,
+          "similarity": 0.513802170753479,
+          "confidence": 0.4202396800881714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4463135644338486,
+          "similarity": 0.5037567615509033,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

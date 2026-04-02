@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2152",
+  "query": "we run our sessions with skipping permission checks... the permission retries are something else entirely... look into what exactly they are pls",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5196522618924566,
+          "similarity": 0.5240857601165771,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.5169959013162498,
+          "similarity": 0.4896867275238037,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.5070541673439429,
+          "similarity": 0.5349494814872742,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4730417130021549,
+          "similarity": 0.44778645038604736,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2364,
+          "title": "Retrospective findings: dsn-001",
+          "category": "lesson-learned",
+          "final_score": 0.4388310733301617,
+          "similarity": 0.43703675270080566,
+          "confidence": 0.49534612375214526,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5196522618924566,
+          "similarity": 0.5240857601165771,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.5169959013162498,
+          "similarity": 0.4896867275238037,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.5070541673439429,
+          "similarity": 0.5349494814872742,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3425,
+          "title": "ADR-005 col-026: compile_cycles Recommendation Text Correction",
+          "category": "decision",
+          "final_score": 0.4730417130021549,
+          "similarity": 0.44778645038604736,
+          "confidence": 0.572846863311496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2364,
+          "title": "Retrospective findings: dsn-001",
+          "category": "lesson-learned",
+          "final_score": 0.4388310733301617,
+          "similarity": 0.43703675270080566,
+          "confidence": 0.49534612375214526,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

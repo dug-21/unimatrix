@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5149",
+  "query": "please complete these quick updates: 1. Phase 8 cap-break ordering comment — one-line comment, trivial\n  2. debug_assert! weight finitude — either promote to if !weight.is_finite() { continue; }",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.4736477146653262,
+          "similarity": 0.45309150218963623,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.4634753864772053,
+          "similarity": 0.42031943798065186,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3923,
+          "title": "config.rs: cross-level custom preset prohibition enforced at per-file validation, not at merge",
+          "category": "pattern",
+          "final_score": 0.4230730741902401,
+          "similarity": 0.4248388409614563,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3886,
+          "title": "test-design normalization: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.41410718666879753,
+          "similarity": 0.40780365467071533,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.4736477146653262,
+          "similarity": 0.45309150218963623,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3206,
+          "title": "FusionWeights additive field: dual exemption from sum-check and NLI-absent denominator",
+          "category": "pattern",
+          "final_score": 0.4634753864772053,
+          "similarity": 0.42031943798065186,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3923,
+          "title": "config.rs: cross-level custom preset prohibition enforced at per-file validation, not at merge",
+          "category": "pattern",
+          "final_score": 0.4230730741902401,
+          "similarity": 0.4248388409614563,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3886,
+          "title": "test-design normalization: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.41410718666879753,
+          "similarity": 0.40780365467071533,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

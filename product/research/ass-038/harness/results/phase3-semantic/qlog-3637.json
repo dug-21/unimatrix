@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3637",
+  "query": "also just closed out 413.  Have now started scoping 395.  Here's the scope evaluation and question: col-030: Contradicts Collision Suppression — product/features/col-030/SCOPE.md\n\n  Problem: The search pipeline may surface two entries with a Contradicts edge between them in\n  the same response. The higher-ranked entry's contradiction is served silently alongside it — a\n   \"knowledge collision.\" The fix is a post-scoring filter that drops the lower-ranked member of\n   each conflicting pair.\n\n  Key findings:\n  - Infrastructure is ~90% there: Contradicts edges already exist in GRAPH_EDGES,\n  TypedRelationGraph already loads them, edges_of_type already exists — they're just never\n  queried in the search path today\n  - Insertion point: Step 10b — after floors (Step 10), before ScoredEntry construction (Step\n  11)\n  - No schema changes, no new deps, no scoring formula changes\n  - typed_graph clone is already in scope in search.rs from Step 6 — no new lock needed\n  - Eval gate: zero-regression check (existing scenarios have no Contradicts edges, so\n  suppression is a no-op → gate passes trivially, proving non-regression)\n  - Pure function suppress_contradicts(result_ids, graph) -> Vec<bool> in graph.rs, fully\n  unit-testable\n\n  Open questions for you:\n  1. Edge direction: Does nli_detection.rs write Contradicts edges bidirectionally (A→B and B→A)\n   or unidirectionally? Proposed approach checks both directions for safety — confirm this is\n  correct.\n  2. context_lookup scope: Confirmed out of scope (suppression only applies to ranked lists)?\n  Current SCOPE.md says yes — no warning on single-entry fetch.\n  3. Audit log enrichment: Should Step 12 audit event record suppressed-entry count? (trivially\n  addable, currently out of scope)",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.5859334091802726,
+          "similarity": 0.6393138766288757,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5611827240563505,
+          "similarity": 0.5910723209381104,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5611574157369266,
+          "similarity": 0.585064172744751,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.5506153096642583,
+          "similarity": 0.5949388742446899,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.544926715537275,
+          "similarity": 0.5907704830169678,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3616,
+          "title": "Post-scoring filter in SearchService::search: insertion point, parallel Vec invariant, and SR-01 boundary",
+          "category": "pattern",
+          "final_score": 0.5859334091802726,
+          "similarity": 0.6393138766288757,
+          "confidence": 0.6056565725909177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5611827240563505,
+          "similarity": 0.5910723209381104,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5611574157369266,
+          "similarity": 0.585064172744751,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3906,
+          "title": "GRAPH_EDGES compaction must exclude quarantined entries (status=3), not just fully-deleted entries",
+          "category": "lesson-learned",
+          "final_score": 0.5506153096642583,
+          "similarity": 0.5949388742446899,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.544926715537275,
+          "similarity": 0.5907704830169678,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

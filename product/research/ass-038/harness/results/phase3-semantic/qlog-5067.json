@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5067",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Wave 2 — spawning graph_ppr.rs and nli_detection_tick.rs in parallel.\n[tool: Bash(git add product/features/crt-037/agents/crt-037-agent-3-graph-report.md product/features/crt-037/agents/crt-037-agent-4-) → [feature/crt-037 b829a34] chore: add crt-037 wave 1 agent reports (#466)\n 5 files changed, 425 insertions(+)\n create mode 100644 product/features/crt-037/agents/crt-037-agent-1-pseudocode-report.md\n create mode 100644 product/features/crt-037/agents/crt-037-agent-2-testplan-report.md\n create mode 10]\n[Assistant] Wave 1 agents self-committed. Adding agent reports, then Wave 2.\n[tool: Bash(git log --oneline -8) → 7f2bb76 impl(config): extend InferenceConfig with Informs edge detection fields (#463)\nf77b091 impl(graph): add RelationType::Informs variant with as_str/from_str and tests (crt-037)\n29f1063 impl(read): add query_existing_informs_pairs with directional dedup (crt-037)\n8405cdd pseudocode: crt-037 com]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5296037697355968,
+          "similarity": 0.5394989848136902,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.524933836026046,
+          "similarity": 0.5192406177520752,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.49440090803418335,
+          "similarity": 0.5417265892028809,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.4702924961213978,
+          "similarity": 0.48326122760772705,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.465888204196897,
+          "similarity": 0.4818442463874817,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5296037697355968,
+          "similarity": 0.5394989848136902,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.524933836026046,
+          "similarity": 0.5192406177520752,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3756,
+          "title": "Wave structure for multi-component features: parallel independent components first, sequential dependents second",
+          "category": "pattern",
+          "final_score": 0.49440090803418335,
+          "similarity": 0.5417265892028809,
+          "confidence": 0.49662162294581086,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3926,
+          "title": "Batch bugfix swarm procedure: parallel investigators + parallel architects + single rust-dev + single tester",
+          "category": "procedure",
+          "final_score": 0.4702924961213978,
+          "similarity": 0.48326122760772705,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.465888204196897,
+          "similarity": 0.4818442463874817,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1975",
+  "query": "no",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.3185121878795343,
+          "similarity": 0.12063300609588623,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 972,
+          "title": "Retrospective findings: crt-004",
+          "category": "lesson-learned",
+          "final_score": 0.29859695182114543,
+          "similarity": 0.1020050048828125,
+          "confidence": 0.5933274336819485,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.28990168635484104,
+          "similarity": 0.10622292757034302,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.2826693083110381,
+          "similarity": 0.10368615388870239,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3864,
+          "title": "Retrospective findings: col-028",
+          "category": "lesson-learned",
+          "final_score": 0.2655988461845799,
+          "similarity": 0.1032378077507019,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.3185121878795343,
+          "similarity": 0.12063300609588623,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 972,
+          "title": "Retrospective findings: crt-004",
+          "category": "lesson-learned",
+          "final_score": 0.29859695182114543,
+          "similarity": 0.1020050048828125,
+          "confidence": 0.5933274336819485,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 202,
+          "title": "claude-flow Feedback Loop Analysis: Stub Intelligence vs Aspirational Learning",
+          "category": "pattern",
+          "final_score": 0.28990168635484104,
+          "similarity": 0.10622292757034302,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.2826693083110381,
+          "similarity": 0.10368615388870239,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3864,
+          "title": "Retrospective findings: col-028",
+          "category": "lesson-learned",
+          "final_score": 0.2655988461845799,
+          "similarity": 0.1032378077507019,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

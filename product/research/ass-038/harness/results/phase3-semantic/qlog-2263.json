@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2263",
+  "query": "you did not actually kill the server processes, the old version still running",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.49846847746176204,
+          "similarity": 0.489284873008728,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1368,
+          "title": "How to open database with retry after stale process termination",
+          "category": "procedure",
+          "final_score": 0.4431316893846585,
+          "similarity": 0.39464497566223145,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.4065090346413812,
+          "similarity": 0.3219524621963501,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 340,
+          "title": "ADR-003: Wave execution order (7 waves with compilation gates)",
+          "category": "decision",
+          "final_score": 0.38813322612662005,
+          "similarity": 0.32268810272216797,
+          "confidence": 0.5210928955977289,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.38184796014999156,
+          "similarity": 0.3181675672531128,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.49846847746176204,
+          "similarity": 0.489284873008728,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1368,
+          "title": "How to open database with retry after stale process termination",
+          "category": "procedure",
+          "final_score": 0.4431316893846585,
+          "similarity": 0.39464497566223145,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.4065090346413812,
+          "similarity": 0.3219524621963501,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 340,
+          "title": "ADR-003: Wave execution order (7 waves with compilation gates)",
+          "category": "decision",
+          "final_score": 0.38813322612662005,
+          "similarity": 0.32268810272216797,
+          "confidence": 0.5210928955977289,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1199,
+          "title": "ADR-002: Binary Rename from unimatrix-server to unimatrix",
+          "category": "decision",
+          "final_score": 0.38184796014999156,
+          "similarity": 0.3181675672531128,
+          "confidence": 0.5104907957598162,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

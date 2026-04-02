@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-3772",
+  "query": "confirming these are the correct changes for this design: Changes applied across all 7 artifacts:                                                                            \n                                                                                                                     \n  Change 1 — Tick writes no Contradicts:                                    \n  - write_inferred_edges_with_cap is Supports-only, no contradiction_threshold parameter                             \n  - AC-10 replaced with AC-10a: any Contradicts write in nli_detection_tick.rs is a gate-blocking defect\n  - R-01 downgraded from Critical → eliminated by design. Risk count: 2 Critical (down from 3)                       \n                                                                                                                     \n  Change 2 — R-02 ordering explicit:                                                                                 \n  - AC-06c now reads: cap source candidates to max_graph_inference_per_tick during select_source_candidates (Phase 3,\n   metadata-only), then call get_embedding in Phase 4 only for the already-capped list. Order: cap first, then fetch.\n                                                                                                                     \n  Change 3 — R-09 named everywhere:                                                                                  \n  - ARCHITECTURE.md: named constraint in rayon dispatch section with full prohibition list (no .await, no \n  Handle::current(), no tokio::) and grep commands                                                                   \n  - SPECIFICATION.md: constraint C-14 added       \n  - RISK-TEST-STRATEGY.md: R-09 fully rewritten with detection method + 4 test scenarios + independent validator     \n  requirement                                                                                                   \n  - IMPLEMENTATION-BRIEF.md: pre-merge Gate 7 added (grep command + independent review requirement)                  \n  - ACCEPTANCE-MAP.md: AC-R09 row added                                                            \n                                                                                                                     \n  Unimatrix housekeeping: Entry #3593 deprecated (wrong pool ADR).          \n                                                                                                                     ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.6048915388780958,
+          "similarity": 0.6846190690994263,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5860688666302083,
+          "similarity": 0.6207223534584045,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5727552037608471,
+          "similarity": 0.6241296529769897,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.557913467507878,
+          "similarity": 0.6131964325904846,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.6048915388780958,
+          "similarity": 0.6846190690994263,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5860688666302083,
+          "similarity": 0.6207223534584045,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5727552037608471,
+          "similarity": 0.6241296529769897,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.557913467507878,
+          "similarity": 0.6131964325904846,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

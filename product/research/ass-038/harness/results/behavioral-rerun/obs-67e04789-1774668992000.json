@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-67e04789-1774668992000",
+  "query": "store.insert bypasses OUTCOME_INDEX population hook writes missing outcome index",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.5882218190350961,
+          "similarity": 0.7088881134986877,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.5512275874837008,
+          "similarity": 0.6501455307006836,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.47368210092246743,
+          "similarity": 0.405021071434021,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.44477098136674054,
+          "similarity": 0.40971922874450684,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.437656823058142,
+          "similarity": 0.40150880813598633,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.5882218190350961,
+          "similarity": 0.7088881134986877,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.5512275874837008,
+          "similarity": 0.6501455307006836,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.47368210092246743,
+          "similarity": 0.405021071434021,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.44477098136674054,
+          "similarity": 0.40971922874450684,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.437656823058142,
+          "similarity": 0.40150880813598633,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

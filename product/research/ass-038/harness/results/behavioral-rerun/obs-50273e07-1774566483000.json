@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-50273e07-1774566483000",
+  "query": "unit test patterns store layer SQL functions",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 748,
+          "title": "TestHarness Server Integration Pattern",
+          "category": "pattern",
+          "final_score": 0.4851065946247397,
+          "similarity": 0.4408286213874817,
+          "confidence": 0.6155341548564627,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.47129086540569654,
+          "similarity": 0.41876137256622314,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.4684667775149193,
+          "similarity": 0.4244121313095093,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.4682827183351218,
+          "similarity": 0.423331618309021,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.44884151330623323,
+          "similarity": 0.40406495332717896,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 748,
+          "title": "TestHarness Server Integration Pattern",
+          "category": "pattern",
+          "final_score": 0.4851065946247397,
+          "similarity": 0.4408286213874817,
+          "confidence": 0.6155341548564627,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.47129086540569654,
+          "similarity": 0.41876137256622314,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.4684667775149193,
+          "similarity": 0.4244121313095093,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2271,
+          "title": "SqlxStore test setup: PoolConfig::test_default(), async open/close, --features test-support for integration tests",
+          "category": "procedure",
+          "final_score": 0.4682827183351218,
+          "similarity": 0.423331618309021,
+          "confidence": 0.5948650664681581,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2149,
+          "title": "How to write unimatrix-store tests with SqlxStore (post nxs-011)",
+          "category": "procedure",
+          "final_score": 0.44884151330623323,
+          "similarity": 0.40406495332717896,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

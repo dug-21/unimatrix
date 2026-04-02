@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4303",
+  "query": "I'm debating here on this.  Here is a list of the knowledge written by the retro architect.  Knowledge extracted:\n\n  ┌───────┬─────────────────┬─────────────────────────────────────────────────────────────────────────────┐\n  │   #   │      Type       │                                    Title                                    │\n  ├───────┼─────────────────┼─────────────────────────────────────────────────────────────────────────────┤\n  │ #3752 │ pattern (new)   │ Node-ID-sorted accumulation for deterministic graph scoring                 │\n  ├───────┼─────────────────┼─────────────────────────────────────────────────────────────────────────────┤\n  │ #3753 │ pattern (new)   │ Use pre-cloned snapshot for new pipeline steps — never re-acquire lock      │\n  ├───────┼─────────────────┼─────────────────────────────────────────────────────────────────────────────┤\n  │ #3756 │ pattern (new)   │ Wave structure: parallel independents first, sequential dependents second   │\n  ├───────┼─────────────────┼─────────────────────────────────────────────────────────────────────────────┤\n  │ #3759 │ procedure (new) │ How to add InferenceConfig fields (incl. TOML Deserialize-only gotcha)      │\n  ├───────┼─────────────────┼─────────────────────────────────────────────────────────────────────────────┤\n  │ #3754 │ lesson (new)    │ Graph algorithm direction semantics: conceptual direction ≠ Direction enum  │\n  │       │                 │ value                                                                       │\n  ├───────┼─────────────────┼─────────────────────────────────────────────────────────────────────────────┤\n  │ #3755 │ lesson (new)    │ Large file compile-cycle amplification — batch type defs before first       │\n  │       │                 │ compile                                                                     │\n  ├───────┼─────────────────┼─────────────────────────────────────────────────────────────────────────────┤\n  │ #3760 │ lesson (new)    │ context_store failures cluster during heavy cargo compilation (contention   │\n  │       │                 │ hypothesis)                                                                 │\n  ├───────┼─────────────────┼─────────────────────────────────────────────────────────────────────────────┤\n  │ #3757 │ lesson          │ Agent stewardship section — 4th instance; structural grep check recommended │\n  │       │ (updated)       │                                                                             │\n  ├───────┼─────────────────┼─────────────────────────────────────────────────────────────────────────────┤\n  │ #3758 │ lesson          │ Agents defaulting to Bash grep — 4th above-threshold feature; not           │\n  │       │ (updated)       │ self-correcting                                                             │\n  └───────┴─────────────────┴─────────────────────────────────────────────────────────────────────────────┘\\\nTake for example 3757.  Its a valuable lesson the human should react to to improve the process (one of the core reasons of the retro itself).  Its valuable.. at a point in time.  Compared against decisions, patterns, etc... its value will diminish over time.  I'm trying to decide STRATEGICALLY, in a generic knowledge platform that supports many domains... how we want to address this issue.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.5043430798799589,
+          "similarity": 0.500446617603302,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.4969582760949337,
+          "similarity": 0.49046897888183594,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.49438209011248513,
+          "similarity": 0.5055745840072632,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2395,
+          "title": "Two-Level TOML Config Merge: Global + Per-Project with Replace Semantics",
+          "category": "pattern",
+          "final_score": 0.4844635359270645,
+          "similarity": 0.491491436958313,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4770483375271659,
+          "similarity": 0.4960973262786865,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3743,
+          "title": "InferenceConfig TOML tests must use flat top-level fields — no [section] header",
+          "category": "pattern",
+          "final_score": 0.5043430798799589,
+          "similarity": 0.500446617603302,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 88,
+          "title": "ADR-005: Output Framing with KNOWLEDGE DATA Markers",
+          "category": "decision",
+          "final_score": 0.4969582760949337,
+          "similarity": 0.49046897888183594,
+          "confidence": 0.576788208140769,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.49438209011248513,
+          "similarity": 0.5055745840072632,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2395,
+          "title": "Two-Level TOML Config Merge: Global + Per-Project with Replace Semantics",
+          "category": "pattern",
+          "final_score": 0.4844635359270645,
+          "similarity": 0.491491436958313,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4770483375271659,
+          "similarity": 0.4960973262786865,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

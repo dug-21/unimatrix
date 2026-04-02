@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3118",
+  "query": "yes... start the bigfix protocol for 391",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.40791886819683965,
+          "similarity": 0.30047738552093506,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.40420285238134424,
+          "similarity": 0.31000685691833496,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.38206327055102673,
+          "similarity": 0.33738136291503906,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.3693264629387517,
+          "similarity": 0.29142576456069946,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.3635142127364135,
+          "similarity": 0.32188087701797485,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 246,
+          "title": "ADR-005: Wire Protocol Uses Length-Prefixed JSON (Not JSON-RPC)",
+          "category": "decision",
+          "final_score": 0.40791886819683965,
+          "similarity": 0.30047738552093506,
+          "confidence": 0.6065263772186579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.40420285238134424,
+          "similarity": 0.31000685691833496,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.38206327055102673,
+          "similarity": 0.33738136291503906,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 192,
+          "title": "ASS-014 RQ-1: Unified Data Model — Parallel Table Tier with Daemon Memory",
+          "category": "decision",
+          "final_score": 0.3693264629387517,
+          "similarity": 0.29142576456069946,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.3635142127364135,
+          "similarity": 0.32188087701797485,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4174",
+  "query": "Here's the design compiled for issue 439: Root Cause: Missing observability — nli_scores: Vec<NliScores> is fully materialized after the rayon scoring barrier but its distribution is never inspected or logged. The completion log fires\n  after the edge write with only edges_written/pairs_scored, leaving threshold tuning blind.                                                                                                         \n                                                                            \n  Affected Files: crates/unimatrix-server/src/services/nli_detection_tick.rs                                                                                                                         \n                                                                            \n  Proposed Fix:                                                                                                                                                                                      \n  1. Extract a private helper fn nli_score_stats(scores: &[NliScores]) -> (f32, f32, f32) (returning (max, mean, p75)) with an empty-slice guard returning (0.0, 0.0, 0.0)\n  2. p75 nearest-rank: (((0.75 * n as f32).ceil() as usize).saturating_sub(1)).min(n - 1) — consistent with compute_observed_spread in status.rs                                                     \n  3. Emit tracing::debug!(nli_score_max, nli_score_mean, nli_score_p75, threshold = config.supports_edge_threshold, pairs = n, \"graph inference tick: nli score distribution\") between the\n  length-mismatch guard (line ~267) and write_pairs construction (line ~276)                                                                                                                         \n  4. Unit tests covering: empty slice, single element, multi-element with known expected values                                                                                                      \n                                                                                                                                                                                                     \n  Design Review: APPROVED WITH NOTES                                                                                                                                                                 \n  - No hot-path risk — pure CPU on a bounded vec (≤100 elements), no I/O, no locks                                                                                                                   \n  - The empty-slice guard must be explicit in the helper (not just relied on by the call site)                                                                                                       \n  - .min(n - 1) must be present in the p75 formula (not just saturating_sub(1))                                                                                                                      \n  - Keep f32 throughout — NLI scores are at the ONNX boundary             ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.5956170674722395,
+          "similarity": 0.6732833981513977,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5654803000116823,
+          "similarity": 0.6103073358535767,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.5586547090350421,
+          "similarity": 0.5843037962913513,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2743,
+          "title": "Extract NLI sort logic as pub(crate) pure function to enable unit tests without ONNX model",
+          "category": "pattern",
+          "final_score": 0.5494039305443243,
+          "similarity": 0.5873302221298218,
+          "confidence": 0.5807674941491351,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2731,
+          "title": "NliProviderExt: add health check to wrapped type, not as trait in consuming crate",
+          "category": "pattern",
+          "final_score": 0.5355084738974157,
+          "similarity": 0.5830358862876892,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3723,
+          "title": "Tick completion log without score distribution makes threshold tuning a blind guess",
+          "category": "lesson-learned",
+          "final_score": 0.5956170674722395,
+          "similarity": 0.6732833981513977,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5654803000116823,
+          "similarity": 0.6103073358535767,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.5586547090350421,
+          "similarity": 0.5843037962913513,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2743,
+          "title": "Extract NLI sort logic as pub(crate) pure function to enable unit tests without ONNX model",
+          "category": "pattern",
+          "final_score": 0.5494039305443243,
+          "similarity": 0.5873302221298218,
+          "confidence": 0.5807674941491351,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2731,
+          "title": "NliProviderExt: add health check to wrapped type, not as trait in consuming crate",
+          "category": "pattern",
+          "final_score": 0.5355084738974157,
+          "similarity": 0.5830358862876892,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

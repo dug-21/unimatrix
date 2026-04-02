@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4847",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Architect design review for #378 and #379) → ]\n[tool: Agent(Architect design review for #346) → ]\n[tool: Agent(Architect design review for #345) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4413565372947623,
+          "similarity": 0.34187251329421997,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 102,
+          "title": "ADR-005: Audit Log Reverse Scan for Rate Tracking",
+          "category": "decision",
+          "final_score": 0.4207126405310174,
+          "similarity": 0.3448498249053955,
+          "confidence": 0.5778631315764826,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3334,
+          "title": "ADR-002 crt-028: Tool-Use/Tool-Result Pairing via Adjacent-Record Scan",
+          "category": "decision",
+          "final_score": 0.41813163695852684,
+          "similarity": 0.3498598337173462,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.3969265204535053,
+          "similarity": 0.32544976472854614,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1005,
+          "title": "ADR-002: Structured Agent Report Stewardship Block",
+          "category": "decision",
+          "final_score": 0.3927773121947019,
+          "similarity": 0.30886924266815186,
+          "confidence": 0.5534395007168315,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.4413565372947623,
+          "similarity": 0.34187251329421997,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 102,
+          "title": "ADR-005: Audit Log Reverse Scan for Rate Tracking",
+          "category": "decision",
+          "final_score": 0.4207126405310174,
+          "similarity": 0.3448498249053955,
+          "confidence": 0.5778631315764826,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3334,
+          "title": "ADR-002 crt-028: Tool-Use/Tool-Result Pairing via Adjacent-Record Scan",
+          "category": "decision",
+          "final_score": 0.41813163695852684,
+          "similarity": 0.3498598337173462,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.3969265204535053,
+          "similarity": 0.32544976472854614,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1005,
+          "title": "ADR-002: Structured Agent Report Stewardship Block",
+          "category": "decision",
+          "final_score": 0.3927773121947019,
+          "similarity": 0.30886924266815186,
+          "confidence": 0.5534395007168315,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

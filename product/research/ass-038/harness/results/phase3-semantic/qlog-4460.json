@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4460",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Good — I've found 4 of the 5 stored entries. All look high quality. Now building the retrospective briefing for Phase 2.\n\n```\nRETROSPECTIVE BRIEFING for crt-031\n====================================\n\nSessions: 2, Records: 2560, Tool calls: ~1236, Duration: 3h 50m\n\nHOTSPOTS (10 detected):\n- [warning] compile_cycles: 98 compile/check cycles (threshold likely ~30). Peak: 15 in 5min at +195m. 36 clusters.\n- [warning] context_load: Loaded 101 KB before first write/edit. 2 clusters in develop/1.\n- [warning] file_breadth: Accessed 80 distinct files. Peak: 20 in 5min at +0m.\n- [warning] mutation_spread: Mutations across 70 files. 11 clusters in scope/1.\n- [warning] tool_failure_hotspot: context_get failed 38x, Read 14x, context_store 14x. 11 clusters.\n- [info] edit_bloat: Avg Edit response 98.9 KB (2x typical, threshold 50 KB).\n- [info] reread_rate: 58 files re-read multiple times.\n- [info] design_artifact_count: 49 design artifacts created.\n- [info] search_via_bash: 25.7% of Bash calls are search (87/338).\n- [info] output_parsing_struggle: cargo build piped through 8 filters in 3 min.\n\nBASELINE OUTLIERS:\n- edit_bloat_total_kb: 7120.8 vs mean 1970.3 (1.7σ) — Outlier\n- total_context_loaded_kb: 12262.4 vs mean 4094.2 (1.5σ) — Outlier\n\nRECOMMENDATIONS FROM RETROSPECTIVE:\n- [compile_cycles] Batch field additions before compiling — complete type definitions in-memory before each build to avoid cascading type errors across multiple struct changes\n\nREWORK SIGNALS:\n- design-review pass 1 FAIL: Vision alignment + synthesis needed rework before gate passed\n- design had 2 passes: 1h 20m second pass (354 records)\n- Scope expanded mid-session: boosted_categories de-hardcoding added after initial design (not in original scope)\n```\n[tool: mcp__unimatrix__context_search(eval profile layer boosted categories hardcoded literal removal) → #3523 | ADR-004 nan-008: Emit tracing::warn! When configured_categories Is Empty in compute_cc_at_k | decision | [adr, cc-at-k, diagnostics, empty-guard, nan-008, sr-02, tracing] | 0.42\n#3610 | Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features | pattern | [7-component, ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.5728579437075886,
+          "similarity": 0.6038899421691895,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.570899591530933,
+          "similarity": 0.610220193862915,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5692697061326303,
+          "similarity": 0.5812738537788391,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.568416560281639,
+          "similarity": 0.5868076682090759,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5178549404223817,
+          "similarity": 0.5851797461509705,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 388,
+          "title": "Retrospective findings: col-012",
+          "category": "lesson-learned",
+          "final_score": 0.5728579437075886,
+          "similarity": 0.6038899421691895,
+          "confidence": 0.6207716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.570899591530933,
+          "similarity": 0.610220193862915,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5692697061326303,
+          "similarity": 0.5812738537788391,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.568416560281639,
+          "similarity": 0.5868076682090759,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.5178549404223817,
+          "similarity": 0.5851797461509705,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

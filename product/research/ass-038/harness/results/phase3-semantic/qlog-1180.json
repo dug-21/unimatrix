@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1180",
+  "query": "So.. this is a research request, probably ass-023.  What I'd like you to research.  We've built an agent_id capability into unimatrix, and it works more like a role, as a part of access controls.  Unimatrix has the infrastructure to apply coarse grained role access to knowledge requests... read, write, search.  We at this time have chosen NOT to leverage this capability, primariliy because the LLM have control of agent_id... (as a field), and that fact #1 makes it not a security gate, and #2 just ends up causing friction for the LLM while it tries to figure out how to make unimatrix do what it wants it to do.  Your mission, should you choose to accept it, is to devise any way to provide any additional guardrailes to LLM's for waht they will be able to do.  There is a future effort where we're going to support HTTP protocol with Oauth... But this is still registered at the LLM instance level.  This may be the only way we can go... but I'm interested in any other research on securing llm activities",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5678014705546962,
+          "similarity": 0.6178946495056152,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5531122593744808,
+          "similarity": 0.5622939467430115,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5031199008956961,
+          "similarity": 0.4902030825614929,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.4808125919130304,
+          "similarity": 0.5393538475036621,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.4566751254923759,
+          "similarity": 0.493607759475708,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.5678014705546962,
+          "similarity": 0.6178946495056152,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5531122593744808,
+          "similarity": 0.5622939467430115,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5031199008956961,
+          "similarity": 0.4902030825614929,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.4808125919130304,
+          "similarity": 0.5393538475036621,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.4566751254923759,
+          "similarity": 0.493607759475708,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-b1ecc03a-1773959740000",
+  "query": "crt-022 rayon thread pool embedding migration",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.497542095983716,
+          "similarity": 0.45443058013916016,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2572,
+          "title": "ADR-001: Rayon Dependency Confined to unimatrix-server Only",
+          "category": "decision",
+          "final_score": 0.4771043228789609,
+          "similarity": 0.48903924226760864,
+          "confidence": 0.5249413874320245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.4676732002798051,
+          "similarity": 0.45034515857696533,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.45666681970399725,
+          "similarity": 0.4699332118034363,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.4490450685653309,
+          "similarity": 0.4469999074935913,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 180,
+          "title": "ADR-004: Graph Compaction Atomicity",
+          "category": "decision",
+          "final_score": 0.497542095983716,
+          "similarity": 0.45443058013916016,
+          "confidence": 0.6298562888998578,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2572,
+          "title": "ADR-001: Rayon Dependency Confined to unimatrix-server Only",
+          "category": "decision",
+          "final_score": 0.4771043228789609,
+          "similarity": 0.48903924226760864,
+          "confidence": 0.5249413874320245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.4676732002798051,
+          "similarity": 0.45034515857696533,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.45666681970399725,
+          "similarity": 0.4699332118034363,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.4490450685653309,
+          "similarity": 0.4469999074935913,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3d9b719e-1774217370000",
+  "query": "session state accumulator histogram scoring",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.517931219698831,
+          "similarity": 0.5137344002723694,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5003651475887925,
+          "similarity": 0.46753382682800293,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.46871927006316083,
+          "similarity": 0.4138753414154053,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.44381441725653703,
+          "similarity": 0.41400933265686035,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.44089369384966415,
+          "similarity": 0.3914259672164917,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3162,
+          "title": "ADR-002 crt-026: Pre-Resolve Histogram in Handler vs. Arc<SessionRegistry> on SearchService",
+          "category": "decision",
+          "final_score": 0.517931219698831,
+          "similarity": 0.5137344002723694,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.5003651475887925,
+          "similarity": 0.46753382682800293,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.46871927006316083,
+          "similarity": 0.4138753414154053,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.44381441725653703,
+          "similarity": 0.41400933265686035,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3209,
+          "title": "crt-026 ADR delivery validation: all four decisions confirmed as implemented",
+          "category": "decision",
+          "final_score": 0.44089369384966415,
+          "similarity": 0.3914259672164917,
+          "confidence": 0.5661029301398148,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

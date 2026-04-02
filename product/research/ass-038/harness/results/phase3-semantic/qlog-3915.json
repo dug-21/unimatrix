@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3915",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Stage 3a — spawning pseudocode and test plan agents in parallel.\n[tool: mcp__unimatrix__context_cycle(start) → Acknowledged: cycle_started for topic 'col-031' with goal: 'Activate w_phase_explicit=0.05 by building PhaseFreqTable — non-parametric (phase, category) frequency index from query_log; publish phase_affinity_score API contract; fix replay.rs eval harness gap (AC-16).'. Attribution is applied via t]\n[tool: ToolSearch(select:mcp__unimatrix__context_cycle) → ]\n[tool: Bash(git branch --show-current && git log --oneline -3) → feature/col-031\n0980f5e design(col-031): clean design artifacts — second pass (#414)\nbd465bb refactor(col-031): fix rank formula + ts type; wipe stale design artifacts (#414)\n0160eeb refactor(col-031): rewrite SCOPE.md clean — all design corrections incorporated (#414)]\n[Assistant] Good. Now I'll check branch state and declare the feature cycle, then spawn Stage 3a.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.597354346905631,
+          "similarity": 0.6382683515548706,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5752300764975723,
+          "similarity": 0.592598557472229,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3555,
+          "title": "Eval harness phase gap: scenarios SQL omits query_log.phase despite column existing since col-028",
+          "category": "pattern",
+          "final_score": 0.5730929783853089,
+          "similarity": 0.6390928626060486,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5462381842333204,
+          "similarity": 0.573177695274353,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5230843595284181,
+          "similarity": 0.5962253212928772,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.597354346905631,
+          "similarity": 0.6382683515548706,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5752300764975723,
+          "similarity": 0.592598557472229,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3555,
+          "title": "Eval harness phase gap: scenarios SQL omits query_log.phase despite column existing since col-028",
+          "category": "pattern",
+          "final_score": 0.5730929783853089,
+          "similarity": 0.6390928626060486,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5462381842333204,
+          "similarity": 0.573177695274353,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5230843595284181,
+          "similarity": 0.5962253212928772,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

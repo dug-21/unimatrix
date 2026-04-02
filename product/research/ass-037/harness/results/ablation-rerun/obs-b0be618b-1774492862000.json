@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-b0be618b-1774492862000",
+  "query": "eval harness type definitions ScoredEntry ProfileResult",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.516405406317725,
+          "similarity": 0.6032992005348206,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5121504417473348,
+          "similarity": 0.5689747929573059,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5076474960002048,
+          "similarity": 0.5722106099128723,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.4845734854640354,
+          "similarity": 0.5231499075889587,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.4623543272085348,
+          "similarity": 0.482036828994751,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.516405406317725,
+          "similarity": 0.6032992005348206,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5121504417473348,
+          "similarity": 0.5689747929573059,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5076474960002048,
+          "similarity": 0.5722106099128723,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.4845734854640354,
+          "similarity": 0.5231499075889587,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.4623543272085348,
+          "similarity": 0.482036828994751,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5811619903846412,
+          "similarity": 0.6032992005348206,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5784801666593378,
+          "similarity": 0.5689747929573059,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5720456209172908,
+          "similarity": 0.5722106099128723,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.5450411249428702,
+          "similarity": 0.5231499075889587,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.5184798253757519,
+          "similarity": 0.482036828994751,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.5810173027366009,
+          "similarity": 0.6032992005348206,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5785422932848414,
+          "similarity": 0.5689747929573059,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5720445425578425,
+          "similarity": 0.5722106099128723,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.5451842047948565,
+          "similarity": 0.5231499075889587,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.518718014894582,
+          "similarity": 0.482036828994751,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.4674148926368127,
+          "similarity": 0.6032992005348206,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.4482834522540753,
+          "similarity": 0.5722106099128723,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.44629218028141904,
+          "similarity": 0.5689747929573059,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.4180922508239746,
+          "similarity": 0.5231499075889587,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.3927918947660006,
+          "similarity": 0.482036828994751,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3610,
+          "title": "Eval Harness Extension: 7-Component Decomposition for Per-Profile Gate Features",
+          "category": "pattern",
+          "final_score": 0.6032992005348206,
+          "similarity": 0.6032992005348206,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5722106099128723,
+          "similarity": 0.5722106099128723,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5689747929573059,
+          "similarity": 0.5689747929573059,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.5231499075889587,
+          "similarity": 0.5231499075889587,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.482036828994751,
+          "similarity": 0.482036828994751,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

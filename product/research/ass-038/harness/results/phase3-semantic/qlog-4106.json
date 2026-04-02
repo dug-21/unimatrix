@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4106",
+  "query": "Your agent ID: 437-investigator\n\nBug report (GH Issue #437): recurring_friction and dead_knowledge extractors write KM signals to ENTRIES instead of maintenance_recommendations.\n\nTwo extractors produce ProposedEntry objects written to ENTRIES as lesson-learned entries:\n- crates/unimatrix-observe/src/extraction/recurring_friction.rs\n- crates/unimatrix-observe/src/extraction/dead_knowledge.rs\n\nFix needed: route both to maintenance_recommendations, remove ENTRIES write path, quarantine existing background-tick entries.\n\nRelated: #430 (same wrong write path class).\n\nPrior knowledge (Unimatrix #3252): ExtractionRule must not perform side effects.\n\nTasks:\n1. Read both extractor files\n2. Trace call chain from extractor to ENTRIES write\n3. Find where maintenance_recommendations is populated\n4. Propose minimal fix with specific file/function changes\n5. Identify missing tests\n\nWrite agent report to /workspaces/unimatrix/product/features/bugfix-437/agents/437-investigator-report.md\nPost diagnosis as GH Issue #437 comment",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5875215581325425,
+          "similarity": 0.6150758266448975,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.5449740655535317,
+          "similarity": 0.5912168025970459,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5302107261153077,
+          "similarity": 0.5720547437667847,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5261694601460506,
+          "similarity": 0.5983219742774963,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5875215581325425,
+          "similarity": 0.6150758266448975,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2687,
+          "title": "Bug fix agents must write report files even when Unimatrix entries are confirmed in return values",
+          "category": "lesson-learned",
+          "final_score": 0.5449740655535317,
+          "similarity": 0.5912168025970459,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5302107261153077,
+          "similarity": 0.5720547437667847,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5261694601460506,
+          "similarity": 0.5983219742774963,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

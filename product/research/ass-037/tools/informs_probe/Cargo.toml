@@ -1,0 +1,18 @@
+[workspace]
+
+[package]
+name = "informs-probe"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "informs-probe"
+path = "src/main.rs"
+
+[dependencies]
+hnsw_rs = { version = "0.3", features = ["simdeez_f"] }
+anndists = "0.1"
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+[patch.crates-io]
+anndists = { path = "../../../../../patches/anndists" }

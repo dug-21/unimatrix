@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4868",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(gh issue comment 458 --body \"## Fix Execution — Complete\n\n- Summary: Extended orphaned-edge compaction SQL to filter o) → https://github.com/dug-21/unimatrix/issues/458#issuecomment-4159150446]\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'bugfix-458'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[tool: Bash(cd /workspaces/unimatrix/.claude/worktrees/agent-a9517219 && git log --oneline -5 && echo \"---\" && git status) → dc18750 fix(background): exclude quarantined entries from GRAPH_EDGES compaction (#458)\ne1bd215 [crt-035] Bidirectional CoAccess edges + bootstrap-era back-fill (#460)\nbfa5919 [crt-034] Recurring co_access → GRAPH_EDGES promotion tick (#457)\n3d7085f chore: add retro artifacts (vnc-012)\n50698ce cho]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.53556761928149,
+          "similarity": 0.5904338359832764,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.5329136975016566,
+          "similarity": 0.591391384601593,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.5222955346860383,
+          "similarity": 0.5909615159034729,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.5085182974965948,
+          "similarity": 0.5647847652435303,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5065129149085597,
+          "similarity": 0.5609745383262634,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.53556761928149,
+          "similarity": 0.5904338359832764,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.5329136975016566,
+          "similarity": 0.591391384601593,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.5222955346860383,
+          "similarity": 0.5909615159034729,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.5085182974965948,
+          "similarity": 0.5647847652435303,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5065129149085597,
+          "similarity": 0.5609745383262634,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

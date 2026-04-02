@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774002108000",
+  "query": "open question resolution discipline implementation prohibited path",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.5097426268228668,
+          "similarity": 0.5413760542869568,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.4100487505789443,
+          "similarity": 0.313229501247406,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.4090567663593348,
+          "similarity": 0.28543639183044434,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.40149648265623794,
+          "similarity": 0.2784806489944458,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.3909036154073333,
+          "similarity": 0.3051939606666565,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.509535872394997,
+          "similarity": 0.5413760542869568,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.4106815561301309,
+          "similarity": 0.313229501247406,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.4098647426634452,
+          "similarity": 0.28543639183044434,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.4023005077128511,
+          "similarity": 0.2784806489944458,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.39146380922916785,
+          "similarity": 0.3051939606666565,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.4599029966225661,
+          "similarity": 0.5413760542869568,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.3715843838410529,
+          "similarity": 0.313229501247406,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.3690040547855418,
+          "similarity": 0.28543639183044434,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.3629961305475376,
+          "similarity": 0.2784806489944458,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.3570089153431549,
+          "similarity": 0.3051939606666565,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.4293083410996657,
+          "similarity": 0.5413760542869568,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.288910462306096,
+          "similarity": 0.313229501247406,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.28396551425640404,
+          "similarity": 0.3051939606666565,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.2718070103571965,
+          "similarity": 0.28543639183044434,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.26752655322735125,
+          "similarity": 0.2784806489944458,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.5413760542869568,
+          "similarity": 0.5413760542869568,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.313229501247406,
+          "similarity": 0.313229501247406,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.3051939606666565,
+          "similarity": 0.3051939606666565,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.28543639183044434,
+          "similarity": 0.28543639183044434,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.2784806489944458,
+          "similarity": 0.2784806489944458,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.4599029966225661,
+          "similarity": 0.5413760542869568,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.3715843838410529,
+          "similarity": 0.313229501247406,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.3690040547855418,
+          "similarity": 0.28543639183044434,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.3629961305475376,
+          "similarity": 0.2784806489944458,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2657,
+          "title": "Knowledge Stewardship sections missing from pseudocode/test-plan agents — confirmed recurring (col-022, nan-007)",
+          "category": "lesson-learned",
+          "final_score": 0.3570089153431549,
+          "similarity": 0.3051939606666565,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

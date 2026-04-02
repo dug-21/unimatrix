@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bde10d2b-1773764016000",
+  "query": "async trait RPITIT object safety Rust native async fn trait",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5762239393862724,
+          "similarity": 0.6334918141365051,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5670430047636662,
+          "similarity": 0.6615120768547058,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.5643132867889992,
+          "similarity": 0.6124897599220276,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4977012531258376,
+          "similarity": 0.5297627449035645,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.48261442024591084,
+          "similarity": 0.5192034244537354,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5762239393862724,
+          "similarity": 0.6334918141365051,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5670430047636662,
+          "similarity": 0.6615120768547058,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.5643132867889992,
+          "similarity": 0.6124897599220276,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4977012531258376,
+          "similarity": 0.5297627449035645,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.48261442024591084,
+          "similarity": 0.5192034244537354,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

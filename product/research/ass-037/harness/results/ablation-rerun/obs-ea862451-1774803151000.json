@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-ea862451-1774803151000",
+  "query": "risk pattern RwLock concurrency parameter count background tick",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.4128751754760742,
+          "similarity": 0.5146721601486206,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4085521697998047,
+          "similarity": 0.5076472759246826,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.4052406457754282,
+          "similarity": 0.5022660493850708,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.39754676818847656,
+          "similarity": 0.4897634983062744,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.39543826763446516,
+          "similarity": 0.48633718490600586,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.573390040729135,
+          "similarity": 0.5146721601486206,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5491365102655685,
+          "similarity": 0.5076472759246826,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.524369094946977,
+          "similarity": 0.48633718490600586,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.517778890069462,
+          "similarity": 0.5022660493850708,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.51746298196994,
+          "similarity": 0.4897634983062744,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5146721601486206,
+          "similarity": 0.5146721601486206,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5076472759246826,
+          "similarity": 0.5076472759246826,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.5022660493850708,
+          "similarity": 0.5022660493850708,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.4897634983062744,
+          "similarity": 0.4897634983062744,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.48633718490600586,
+          "similarity": 0.48633718490600586,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5045178982561285,
+          "similarity": 0.5146721601486206,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.48634569147382006,
+          "similarity": 0.5076472759246826,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.46677871095465506,
+          "similarity": 0.48633718490600586,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.46311505200668446,
+          "similarity": 0.5022660493850708,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.4619918510285473,
+          "similarity": 0.4897634983062744,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5045178982561285,
+          "similarity": 0.5146721601486206,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.48634569147382006,
+          "similarity": 0.5076472759246826,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.46677871095465506,
+          "similarity": 0.48633718490600586,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.46311505200668446,
+          "similarity": 0.5022660493850708,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.4619918510285473,
+          "similarity": 0.4897634983062744,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.5730087557903005,
+          "similarity": 0.5146721601486206,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5488670996529653,
+          "similarity": 0.5076472759246826,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.5241221344921654,
+          "similarity": 0.48633718490600586,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.517678157337745,
+          "similarity": 0.5022660493850708,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.5172831151929032,
+          "similarity": 0.4897634983062744,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3890,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 1914,
+        "from_rank": 5,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3694,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

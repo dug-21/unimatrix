@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280654000",
+  "query": "outcome rework nan",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.35245491908146787,
+          "similarity": 0.41648924350738525,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.3441529640784631,
+          "similarity": 0.40299856662750244,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.33472479306734526,
+          "similarity": 0.38767778873443604,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.33303106748140776,
+          "similarity": 0.3849254846572876,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.3268561363220215,
+          "similarity": 0.3748912215232849,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.43473494395096896,
+          "similarity": 0.40299856662750244,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.42255198453232073,
+          "similarity": 0.3849254846572876,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.42125827834131196,
+          "similarity": 0.38767778873443604,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.40884462175369257,
+          "similarity": 0.41648924350738525,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4034112151565988,
+          "similarity": 0.3748912215232849,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.4880023266033665,
+          "similarity": 0.40299856662750244,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.47303220757522935,
+          "similarity": 0.3849254846572876,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.4710178533077493,
+          "similarity": 0.38767778873443604,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.4514709166180003,
+          "similarity": 0.41648924350738525,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.44784336416597237,
+          "similarity": 0.3748912215232849,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.41648924350738525,
+          "similarity": 0.41648924350738525,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.40299856662750244,
+          "similarity": 0.40299856662750244,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.38767778873443604,
+          "similarity": 0.38767778873443604,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.3849254846572876,
+          "similarity": 0.3849254846572876,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.3748912215232849,
+          "similarity": 0.3748912215232849,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.48855790673392774,
+          "similarity": 0.40299856662750244,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.47360806850933357,
+          "similarity": 0.3849254846572876,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.4715625596121501,
+          "similarity": 0.38767778873443604,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.4516995550043442,
+          "similarity": 0.41648924350738525,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.44832017555579395,
+          "similarity": 0.3748912215232849,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.43473494395096896,
+          "similarity": 0.40299856662750244,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.42255198453232073,
+          "similarity": 0.3849254846572876,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.42125827834131196,
+          "similarity": 0.38767778873443604,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3876,
+          "title": "Retrospective findings: nan-008",
+          "category": "lesson-learned",
+          "final_score": 0.40884462175369257,
+          "similarity": 0.41648924350738525,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4034112151565988,
+          "similarity": 0.3748912215232849,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 3876,
+        "from_rank": 4,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 2806,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 1166,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

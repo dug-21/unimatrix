@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2901",
+  "query": "approve and confirm insertion point and fallback",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.4251716970142565,
+          "similarity": 0.3168262243270874,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.41399064404101427,
+          "similarity": 0.33149194717407227,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.40757169755865386,
+          "similarity": 0.31514060497283936,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.4074447683332446,
+          "similarity": 0.33110493421554565,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.4017536442909879,
+          "similarity": 0.32279276847839355,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1260,
+          "title": "Conditional Protocol Step with Deterministic Trigger Criteria Table",
+          "category": "pattern",
+          "final_score": 0.4251716970142565,
+          "similarity": 0.3168262243270874,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.41399064404101427,
+          "similarity": 0.33149194717407227,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 93,
+          "title": "ADR-003: Deprecation Idempotency",
+          "category": "decision",
+          "final_score": 0.40757169755865386,
+          "similarity": 0.31514060497283936,
+          "confidence": 0.5846366005551472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.4074447683332446,
+          "similarity": 0.33110493421554565,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.4017536442909879,
+          "similarity": 0.32279276847839355,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

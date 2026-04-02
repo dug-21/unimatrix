@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9bb67ef4-1774001936000",
+  "query": "nan-007 pattern lesson SqlxStore open_readonly kendall_tau intersection eval profile",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2612,
+          "title": "Compute intersection before calling kendall_tau() on diverging eval result sets",
+          "category": "pattern",
+          "final_score": 0.538680531852595,
+          "similarity": 0.6082313060760498,
+          "confidence": 0.5218024349198297,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.5047899055869801,
+          "similarity": 0.49536168575286865,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2655,
+          "title": "ADR-002 (REVISED): EvalServiceLayer uses SqlxStore::open_readonly() — raw pool infeasible due to VectorIndex type constraint",
+          "category": "decision",
+          "final_score": 0.5025968777112526,
+          "similarity": 0.5320547819137573,
+          "confidence": 0.5326846939108897,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2065,
+          "title": "ADR-006: Convert ExtractionRule::evaluate() to async fn",
+          "category": "decision",
+          "final_score": 0.4635980809158834,
+          "similarity": 0.4454907178878784,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.4308511258603024,
+          "similarity": 0.4437822103500366,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2612,
+          "title": "Compute intersection before calling kendall_tau() on diverging eval result sets",
+          "category": "pattern",
+          "final_score": 0.538680531852595,
+          "similarity": 0.6082313060760498,
+          "confidence": 0.5218024349198297,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2586,
+          "title": "ADR-003: eval Module Uses test-support Feature to Access kendall_tau",
+          "category": "decision",
+          "final_score": 0.5047899055869801,
+          "similarity": 0.49536168575286865,
+          "confidence": 0.5910559069462767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2655,
+          "title": "ADR-002 (REVISED): EvalServiceLayer uses SqlxStore::open_readonly() — raw pool infeasible due to VectorIndex type constraint",
+          "category": "decision",
+          "final_score": 0.5025968777112526,
+          "similarity": 0.5320547819137573,
+          "confidence": 0.5326846939108897,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2065,
+          "title": "ADR-006: Convert ExtractionRule::evaluate() to async fn",
+          "category": "decision",
+          "final_score": 0.4635980809158834,
+          "similarity": 0.4454907178878784,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2654,
+          "title": "Open Question resolution discipline: implementer must not choose a path explicitly prohibited in the spec without architect sign-off",
+          "category": "lesson-learned",
+          "final_score": 0.4308511258603024,
+          "similarity": 0.4437822103500366,
+          "confidence": 0.4640498982636257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

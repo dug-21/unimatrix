@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4493",
+  "query": "now flip to 415 phase 2... here's the ADR summary: ## Context\n\nThe fusion scoring formula in `compute_fused_score` combines six weighted signals:\n\n```\nscore = w_sim * sim + w_nli * nli + w_conf * conf + w_coac * coac_norm + w_util * util + w_prov * prov\n```\n\n`w_coac` weights the direct co-access affinity boost: for a given query's candidate set, pairs that co-occur frequently in the CO_ACCESS table receive a proportional additive lift.\n\nWhen PPR (Personalized PageRank) was introduced in crt-030, co-access pairs were added as `GRAPH_EDGES.CoAccess` edges in the graph traversal. The PPR score therefore already incorporates co-access co-occurrence structure — the same signal that `w_coac * coac_norm` was providing — via graph propagation through `ppr_blend_weight`.\n\nPhase 1 measurement (crt-030 follow-up, 2026-03-29) ran two stable eval rounds comparing three scoring profiles over 4,349 and 4,467 scenarios respectively:\n\n| Profile | CC@5 | ICD | Avg latency |\n|---------|------|-----|------------|\n| pre-ppr | 0.4252 | 0.6376 | 7.8ms |\n| ppr-plus-direct (w_coac=0.10) | 0.4252 | 0.6376 | 7.9ms |\n| ppr-only (w_coac=0.0) | 0.4252 | 0.6376 | 7.8ms |\n\nZero measurable difference between ppr-plus-direct and ppr-only in aggregate metrics (CC@5, ICD) and per-query analysis. The direct co-access boost is redundant.\n\n## Decision\n\nChange `default_w_coac()` to return `0.0` and update the compiled-defaults struct literal to `w_coac: 0.0`.\n\nThe `w_coac` field remains in `InferenceConfig` — operators may still set it above `0.0` via config file if they wish. Only the compiled default changes.\n",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.6569642266461895,
+          "similarity": 0.7931981086730957,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 701,
+          "title": "ADR-001: W_COAC Disposition — Delete Dead Weight Constant (crt-013)",
+          "category": "decision",
+          "final_score": 0.6424480260819123,
+          "similarity": 0.7417677044868469,
+          "confidence": 0.6126907786696952,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.6125523732055583,
+          "similarity": 0.697209358215332,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 702,
+          "title": "ADR-002: Two-Mechanism Co-Access Architecture (crt-013)",
+          "category": "decision",
+          "final_score": 0.601904450911075,
+          "similarity": 0.6654847860336304,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5772987256619195,
+          "similarity": 0.6248890161514282,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.6569642266461895,
+          "similarity": 0.7931981086730957,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 701,
+          "title": "ADR-001: W_COAC Disposition — Delete Dead Weight Constant (crt-013)",
+          "category": "decision",
+          "final_score": 0.6424480260819123,
+          "similarity": 0.7417677044868469,
+          "confidence": 0.6126907786696952,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.6125523732055583,
+          "similarity": 0.697209358215332,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 702,
+          "title": "ADR-002: Two-Mechanism Co-Access Architecture (crt-013)",
+          "category": "decision",
+          "final_score": 0.601904450911075,
+          "similarity": 0.6654847860336304,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5772987256619195,
+          "similarity": 0.6248890161514282,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

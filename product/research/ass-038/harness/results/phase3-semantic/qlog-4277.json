@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4277",
+  "query": "after running overnight, here's the current status of our last maint tick: 2026-03-29T10:31:25.862095Z  INFO unimatrix_server::background: background tick starting\n2026-03-29T10:31:25.966877Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.1587 confidence_weight=0.1984\n2026-03-29T10:31:25.967417Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-29T10:31:25.967910Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-29T10:31:26.005355Z DEBUG unimatrix_server::background: typed graph state rebuilt (3748 entries)\n2026-03-29T10:31:26.005642Z DEBUG unimatrix_server::background: PhaseFreqTable rebuilt successfully\n2026-03-29T10:31:26.016490Z DEBUG unimatrix_server::background: contradiction scan starting tick=40\n2026-03-29T10:31:42.802079Z DEBUG unimatrix_server::background: contradiction scan complete; cache updated tick=40 pairs=0\n2026-03-29T10:31:42.832361Z  INFO unimatrix_server::background: auto-extracted entry stored entry_id=3749 rule=implicit-convention\n2026-03-29T10:31:42.832380Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-29T10:31:42.847248Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2147\n2026-03-29T10:31:42.848684Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2152\n2026-03-29T10:31:42.849148Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2160\n2026-03-29T10:31:45.707369Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: nli score distribution nli_score_max=0.14742489159107208 nli_score_mean=0.036759961396455765 nli_score_p75=0.05048137530684471 threshold=0.6000000238418579 pairs=100\n2026-03-29T10:31:45.707426Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 pairs_scored=100 source_candidates=100\n2026-03-29T10:31:45.707858Z  INFO unimatrix_server::background: background tick complete duration_secs=20",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5589434686040234,
+          "similarity": 0.5688087940216064,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.5519128669012557,
+          "similarity": 0.5560289621353149,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5449174456802924,
+          "similarity": 0.538108229637146,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5222873604661711,
+          "similarity": 0.5436120629310608,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5150006547794859,
+          "similarity": 0.5610933899879456,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5589434686040234,
+          "similarity": 0.5688087940216064,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.5519128669012557,
+          "similarity": 0.5560289621353149,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5449174456802924,
+          "similarity": 0.538108229637146,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5222873604661711,
+          "similarity": 0.5436120629310608,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2805,
+          "title": "Lazy-loading ONNX service handle: generalized state machine for any optional inference provider",
+          "category": "pattern",
+          "final_score": 0.5150006547794859,
+          "similarity": 0.5610933899879456,
+          "confidence": 0.5248683629901112,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

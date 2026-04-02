@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3527",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] ---\n\n**SESSION 1 COMPLETE — Design artifacts ready for review.**\n\nBranch: `feature/col-029`\nDraft PR: https://github.com/dug-21/unimatrix/pull/416\nGH Issue: dug-21/unimatrix#413\n\n**Artifacts:**\n- `SCOPE.md`, `SCOPE-RISK-ASSESSMENT.md`\n- `architecture/ARCHITECTURE.md` + 4 ADRs (stored in Unimatrix as entries #3591–#3594)\n- `specification/SPECIFICATION.md` (16 acceptance criteria)\n- `RISK-TEST-STRATEGY.md` (10 risks, 27 scenarios)\n- `IMPLEMENTATION-BRIEF.md`, `ACCEPTANCE-MAP.md`\n\n**Vision alignment:** 1 variance resolved — spec FR-11 corrected to non-fatal error handling (warn + zero defaults), matching architecture and Phase 4 co-access precedent.\n\n**Key design decisions:**\n| ADR | Decision |\n|-----|----------|\n| ADR-001 | `EDGE_SOURCE_NLI: &str = \"nli\"` constant in store crate + re-export — prevents silent mismatch with #412 |\n| ADR-002 | Two SQL queries (pure GRAPH_EDGES aggregates + entries JOIN for connectivity) |\n| ADR-003 | `write_pool_server()` for both queries — GRAPH_EDGES is write-active during NLI inference |\n| ADR-004 | Explicit double-JOIN with NULL guards for cross_category — no cartesian product risk |\n\n**Critical test risk (R-01):** double-count in `connected_entry_count` — a chain topology (A→B→C) is required to expose this; a star graph does not.\n\n**Open items for your attention:**\n- `read.rs` is already 1570 lines (threshold: 500). Architecture marks splitting as out of scope for col-029; a follow-up housekeeping issue may be warranted.\n- `nli_detection.rs` still has bare `\"nli\"` literals — ADR-001 defers migration of those to a follow-up.\n[tool: mcp__unimatrix__context_cycle(phase-end) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5949607766718866,
+          "similarity": 0.6647007465362549,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5914443342427679,
+          "similarity": 0.6596390008926392,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5755479921470773,
+          "similarity": 0.6309773325920105,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.559690850793265,
+          "similarity": 0.6080271005630493,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5514346466244127,
+          "similarity": 0.6047025918960571,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5949607766718866,
+          "similarity": 0.6647007465362549,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5914443342427679,
+          "similarity": 0.6596390008926392,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5755479921470773,
+          "similarity": 0.6309773325920105,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.559690850793265,
+          "similarity": 0.6080271005630493,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5514346466244127,
+          "similarity": 0.6047025918960571,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.6,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

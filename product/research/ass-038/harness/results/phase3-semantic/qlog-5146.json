@@ -1,0 +1,74 @@
+{
+  "scenario_id": "qlog-5146",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Validate bugfix #468) → ]\n[tool: Bash(gh issue comment 468 --body \"$(cat <<'EOF'\n## Fix Execution — Complete\n\n- Files modified: `crates/unimatrix-store/src/) → https://github.com/dug-21/unimatrix/issues/468#issuecomment-4165827124]\n[tool: TaskCreate(Gate 3: Validate fix for #468) → Task #5 created successfully: Gate 3: Validate fix for #468]\n[tool: TaskUpdate(4) → Updated task #4 status]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.5063144628123233,
+          "similarity": 0.5605974793434143,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5045650351172999,
+          "similarity": 0.5572735667228699,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.5063144628123233,
+          "similarity": 0.5605974793434143,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5045650351172999,
+          "similarity": 0.5572735667228699,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

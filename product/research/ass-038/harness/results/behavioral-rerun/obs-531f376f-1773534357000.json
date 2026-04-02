@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-531f376f-1773534357000",
+  "query": "generation counter clone avoidance HashMap snapshot cache",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.5833223321792286,
+          "similarity": 0.634641706943512,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.5705930549013967,
+          "similarity": 0.6292369365692139,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.47283526796859177,
+          "similarity": 0.4152270555496216,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2661,
+          "title": "Snapshot commands must copy all storage artifacts, not just the primary database",
+          "category": "lesson-learned",
+          "final_score": 0.4589938896377269,
+          "similarity": 0.4412427544593811,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.4573118058624499,
+          "similarity": 0.4169781804084778,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.5833223321792286,
+          "similarity": 0.634641706943512,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.5705930549013967,
+          "similarity": 0.6292369365692139,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 759,
+          "title": "ADR-017-002: HashMap Accumulator for Topic Signals",
+          "category": "decision",
+          "final_score": 0.47283526796859177,
+          "similarity": 0.4152270555496216,
+          "confidence": 0.6187999337010043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2661,
+          "title": "Snapshot commands must copy all storage artifacts, not just the primary database",
+          "category": "lesson-learned",
+          "final_score": 0.4589938896377269,
+          "similarity": 0.4412427544593811,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.4573118058624499,
+          "similarity": 0.4169781804084778,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

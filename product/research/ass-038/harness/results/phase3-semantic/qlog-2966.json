@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2966",
+  "query": "can you tell me in what directory will I find the production log file?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 425,
+          "title": "Three-Slot Model Registry (Production/Shadow/Previous)",
+          "category": "pattern",
+          "final_score": 0.4136916013056491,
+          "similarity": 0.30741429328918457,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.4094123513929018,
+          "similarity": 0.3127303123474121,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 867,
+          "title": "ADR-004 col-020: Explicit Tool-to-Field Mapping for File Path Extraction",
+          "category": "decision",
+          "final_score": 0.37539260149339704,
+          "similarity": 0.26959240436553955,
+          "confidence": 0.5623621978170213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.3667006789611247,
+          "similarity": 0.27920711040496826,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.356611903214472,
+          "similarity": 0.274219274520874,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 425,
+          "title": "Three-Slot Model Registry (Production/Shadow/Previous)",
+          "category": "pattern",
+          "final_score": 0.4136916013056491,
+          "similarity": 0.30741429328918457,
+          "confidence": 0.612285355987927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.4094123513929018,
+          "similarity": 0.3127303123474121,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 867,
+          "title": "ADR-004 col-020: Explicit Tool-to-Field Mapping for File Path Extraction",
+          "category": "decision",
+          "final_score": 0.37539260149339704,
+          "similarity": 0.26959240436553955,
+          "confidence": 0.5623621978170213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2660,
+          "title": "Offline A/B eval procedure: snapshot → scenarios → run → report",
+          "category": "procedure",
+          "final_score": 0.3667006789611247,
+          "similarity": 0.27920711040496826,
+          "confidence": 0.5250345423159553,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.356611903214472,
+          "similarity": 0.274219274520874,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

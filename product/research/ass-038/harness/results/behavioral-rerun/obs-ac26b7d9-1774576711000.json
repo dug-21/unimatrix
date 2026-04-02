@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774576711000",
+  "query": "module re-export pub use sibling wiring lib.rs not exposed",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.5323249242983409,
+          "similarity": 0.5659422874450684,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3601,
+          "title": "eval/report module split: sibling visibility requires pub(crate), mod declarations belong in mod.rs not leaf files",
+          "category": "pattern",
+          "final_score": 0.48645220030531433,
+          "similarity": 0.4908273220062256,
+          "confidence": 0.5477597979626739,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.4862870404100682,
+          "similarity": 0.4353269338607788,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.44400402641005643,
+          "similarity": 0.4663965702056885,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.43455154337867063,
+          "similarity": 0.4153534173965454,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.5323249242983409,
+          "similarity": 0.5659422874450684,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3601,
+          "title": "eval/report module split: sibling visibility requires pub(crate), mod declarations belong in mod.rs not leaf files",
+          "category": "pattern",
+          "final_score": 0.48645220030531433,
+          "similarity": 0.4908273220062256,
+          "confidence": 0.5477597979626739,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.4862870404100682,
+          "similarity": 0.4353269338607788,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.44400402641005643,
+          "similarity": 0.4663965702056885,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.43455154337867063,
+          "similarity": 0.4153534173965454,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

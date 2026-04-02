@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773884142000",
+  "query": "sqlx compile-time query validation offline cache stale regeneration",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.5277580701027376,
+          "similarity": 0.5108157396316528,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.5158824977491544,
+          "similarity": 0.5025109648704529,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.5108301418356981,
+          "similarity": 0.4600222110748291,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.49551795398396203,
+          "similarity": 0.4411503076553345,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.4845685807168969,
+          "similarity": 0.43842095136642456,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.5276480549698084,
+          "similarity": 0.5108157396316528,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.5157956696135784,
+          "similarity": 0.5025109648704529,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.5105002202073807,
+          "similarity": 0.4600222110748291,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.49516491731949036,
+          "similarity": 0.4411503076553345,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.48426892078604966,
+          "similarity": 0.43842095136642456,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.4105019936194787,
+          "similarity": 0.5108157396316528,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.4053913629972018,
+          "similarity": 0.5025109648704529,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.3792444375845102,
+          "similarity": 0.4600222110748291,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.3676309585571289,
+          "similarity": 0.4411503076553345,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.3659513546870305,
+          "similarity": 0.43842095136642456,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.47099628961996964,
+          "similarity": 0.5108157396316528,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.4617508887079877,
+          "similarity": 0.5025109648704529,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.4550349755570678,
+          "similarity": 0.4600222110748291,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.4425309598779819,
+          "similarity": 0.4411503076553345,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.43435860533419807,
+          "similarity": 0.43842095136642456,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.5108157396316528,
+          "similarity": 0.5108157396316528,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.5025109648704529,
+          "similarity": 0.5025109648704529,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.4600222110748291,
+          "similarity": 0.4600222110748291,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.4411503076553345,
+          "similarity": 0.4411503076553345,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.43842095136642456,
+          "similarity": 0.43842095136642456,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.47099628961996964,
+          "similarity": 0.5108157396316528,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.4617508887079877,
+          "similarity": 0.5025109648704529,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3917,
+          "title": "ADR-003 crt-036: PhaseFreqTable / K-cycle Alignment via Tick-Time Diagnostic Warning",
+          "category": "decision",
+          "final_score": 0.4550349755570678,
+          "similarity": 0.4600222110748291,
+          "confidence": 0.5834129000655109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3766,
+          "title": "Security reviewer rated InferenceConfig validate() gap and bare SQL status literals as non-blocking; human upgraded both to blocking — rework required",
+          "category": "lesson-learned",
+          "final_score": 0.4425309598779819,
+          "similarity": 0.4411503076553345,
+          "confidence": 0.5731860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.43435860533419807,
+          "similarity": 0.43842095136642456,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

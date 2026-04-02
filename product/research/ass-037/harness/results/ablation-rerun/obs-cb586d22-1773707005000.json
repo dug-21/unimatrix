@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-cb586d22-1773707005000",
+  "query": "Unix domain socket MCP transport server startup auto-start",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.516388013318462,
+          "similarity": 0.4686540365219116,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.45260700512562346,
+          "similarity": 0.3702923059463501,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.44675176639954983,
+          "similarity": 0.3887979984283447,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.44031887214625487,
+          "similarity": 0.3495522737503052,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.420551911165852,
+          "similarity": 0.3763993978500366,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.38455633016733026,
+          "similarity": 0.4686540365219116,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.33541415287898135,
+          "similarity": 0.3887979984283447,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.32778424483079177,
+          "similarity": 0.3763993978500366,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.3240260344285232,
+          "similarity": 0.3702923059463501,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.31126293769249547,
+          "similarity": 0.3495522737503052,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4686540365219116,
+          "similarity": 0.4686540365219116,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.3887979984283447,
+          "similarity": 0.3887979984283447,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.3763993978500366,
+          "similarity": 0.3763993978500366,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.3702923059463501,
+          "similarity": 0.3702923059463501,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.3495522737503052,
+          "similarity": 0.3495522737503052,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.5160780524301726,
+          "similarity": 0.4686540365219116,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.4520724940919918,
+          "similarity": 0.3702923059463501,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4463754432309056,
+          "similarity": 0.3887979984283447,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.43972947865017725,
+          "similarity": 0.3495522737503052,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.42026520653393107,
+          "similarity": 0.3763993978500366,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.45970084088358737,
+          "similarity": 0.4686540365219116,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.40620598273055064,
+          "similarity": 0.3702923059463501,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4032618582645538,
+          "similarity": 0.3887979984283447,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.3957717692601504,
+          "similarity": 0.3495522737503052,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.38328777798155195,
+          "similarity": 0.3763993978500366,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.45970084088358737,
+          "similarity": 0.4686540365219116,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.40620598273055064,
+          "similarity": 0.3702923059463501,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2582,
+          "title": "MCP UDS transport uses newline-delimited JSON (not length-prefix); hook IPC uses 4-byte BE length prefix",
+          "category": "pattern",
+          "final_score": 0.4032618582645538,
+          "similarity": 0.3887979984283447,
+          "confidence": 0.5295428635012714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.3957717692601504,
+          "similarity": 0.3495522737503052,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.38328777798155195,
+          "similarity": 0.3763993978500366,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 193,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 1928,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 2961,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2582,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

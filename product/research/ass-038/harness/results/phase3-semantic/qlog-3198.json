@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3198",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] SCOPE.md is complete and ready for your review.\n\n---\n\n**col-028: Unified Phase Signal Capture** — combining #394 + #397\n\n**Two gaps, one root cause**:\n- **Gap 1 (in-memory)**: All four read-side MCP tools hard-code `current_phase: None`; access weights are wrong for get (1→2) and briefing (1→0)\n- **Gap 2 (persistent)**: `query_log` has no `phase` column; downstream analytics get phase-free data even after Gap 1 is fixed\n\n**20 acceptance criteria** spanning both dimensions.\n\n**All five design decisions confirmed as facts** (D-01–D-05), including:\n- D-01: Dedup collision is real and confirmed — briefing at weight-0 must return before `filter_access` in `record_briefing_usage`\n- D-05: access_count arithmetic confirmed — EC-04's \"weight 0 drops access\" is a contract claim, not enforced by the flat_map path; D-01 guard is the actual enforcement\n\n**Scope boundary decisions worth noting**:\n- UDS `insert_query_log` call site excluded (no session registry reference in that scope) — those rows continue writing `phase = NULL`\n- `QueryLogRecord::new()` has 15+ test callers in `eval/scenarios/tests.rs` — mechanical but non-trivial churn\n- `row_to_query_log` uses positional column indices — adding `phase` at index 9 requires updating both scan methods and the deserializer\n\n**No open questions.**\n\nDo you approve this SCOPE.md to proceed to Phase 1b (scope risk assessment)?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5428342643608356,
+          "similarity": 0.5772102475166321,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.538793144642708,
+          "similarity": 0.5437874794006348,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.5349662837096739,
+          "similarity": 0.5586307048797607,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.5312315767618813,
+          "similarity": 0.5404761433601379,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5312098538330339,
+          "similarity": 0.5490149259567261,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5428342643608356,
+          "similarity": 0.5772102475166321,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2998,
+          "title": "ADR-001 crt-025: Phase Snapshot at Enqueue Time for FeatureEntry Analytics Path",
+          "category": "decision",
+          "final_score": 0.538793144642708,
+          "similarity": 0.5437874794006348,
+          "confidence": 0.6141707077435865,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.5349662837096739,
+          "similarity": 0.5586307048797607,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.5312315767618813,
+          "similarity": 0.5404761433601379,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3519,
+          "title": "ADR-007 col-028: query_log.phase Column Appended as Last Positional Parameter; Atomic Change Unit",
+          "category": "decision",
+          "final_score": 0.5312098538330339,
+          "similarity": 0.5490149259567261,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 41,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

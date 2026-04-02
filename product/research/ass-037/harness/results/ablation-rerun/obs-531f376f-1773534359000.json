@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-531f376f-1773534359000",
+  "query": "write lock scope before SQL synchronous store quarantine spawn_blocking",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.48148078234360003,
+          "similarity": 0.5066689252853394,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.47414328504201153,
+          "similarity": 0.48018646240234375,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.47257153206682273,
+          "similarity": 0.5049999356269836,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.4523348913106579,
+          "similarity": 0.5009538531303406,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.4513368708581086,
+          "similarity": 0.4813774824142456,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5425551007377512,
+          "similarity": 0.5066689252853394,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5350803459005704,
+          "similarity": 0.48018646240234375,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.5304903444420132,
+          "similarity": 0.5049999356269836,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5036606578038505,
+          "similarity": 0.4813774824142456,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.5031112377665559,
+          "similarity": 0.5009538531303406,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5423220736244236,
+          "similarity": 0.5066689252853394,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5347238921116207,
+          "similarity": 0.48018646240234375,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.5303248223068506,
+          "similarity": 0.5049999356269836,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.5035159618597621,
+          "similarity": 0.4813774824142456,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.5030972287754116,
+          "similarity": 0.5009538531303406,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.40795010786790115,
+          "similarity": 0.5066689252853394,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.406923037308913,
+          "similarity": 0.5049999356269836,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.4044331403879019,
+          "similarity": 0.5009538531303406,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.39238614302415115,
+          "similarity": 0.4813774824142456,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.39165320763221156,
+          "similarity": 0.48018646240234375,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.5066689252853394,
+          "similarity": 0.5066689252853394,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.5049999356269836,
+          "similarity": 0.5049999356269836,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.5009538531303406,
+          "similarity": 0.5009538531303406,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.4813774824142456,
+          "similarity": 0.4813774824142456,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.48018646240234375,
+          "similarity": 0.48018646240234375,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1758,
+          "title": "Extract spawn_blocking body into named sync helper for unit testability",
+          "category": "pattern",
+          "final_score": 0.48148078234360003,
+          "similarity": 0.5066689252853394,
+          "confidence": 0.5938210656697679,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.47414328504201153,
+          "similarity": 0.48018646240234375,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.47257153206682273,
+          "similarity": 0.5049999356269836,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1494,
+          "title": "Snapshot-before-spawn pattern: read RwLock guard, clone scalars, drop guard before spawn_blocking",
+          "category": "pattern",
+          "final_score": 0.4523348913106579,
+          "similarity": 0.5009538531303406,
+          "confidence": 0.506193215818292,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2249,
+          "title": "write_pool max_connections=1 + drain task + synchronous block_in_place audit write = deadlock",
+          "category": "lesson-learned",
+          "final_score": 0.4513368708581086,
+          "similarity": 0.4813774824142456,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2249,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 1494,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

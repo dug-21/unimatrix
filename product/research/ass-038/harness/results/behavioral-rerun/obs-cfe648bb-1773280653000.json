@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280653000",
+  "query": "SQLite migration direct SQL insert bulk data",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.5773277105331365,
+          "similarity": 0.6150378584861755,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5763133495235717,
+          "similarity": 0.6139170527458191,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.561948985049599,
+          "similarity": 0.5767030715942383,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5501987120137549,
+          "similarity": 0.5758491158485413,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.518254526815515,
+          "similarity": 0.5212485790252686,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 344,
+          "title": "Store::open() + Raw SQL Hybrid for Bulk Data Import",
+          "category": "pattern",
+          "final_score": 0.5773277105331365,
+          "similarity": 0.6150378584861755,
+          "confidence": 0.6169782736096913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 374,
+          "title": "How to perform an in-place SQLite schema migration (column decomposition)",
+          "category": "procedure",
+          "final_score": 0.5763133495235717,
+          "similarity": 0.6139170527458191,
+          "confidence": 0.6158261590699533,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 681,
+          "title": "Create-New-Then-Swap Schema Migration for SQLite",
+          "category": "pattern",
+          "final_score": 0.561948985049599,
+          "similarity": 0.5767030715942383,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.5501987120137549,
+          "similarity": 0.5758491158485413,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.518254526815515,
+          "similarity": 0.5212485790252686,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

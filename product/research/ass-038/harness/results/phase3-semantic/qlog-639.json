@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-639",
+  "query": "questions: 1. C-Pair accumulation, 2- Zero signal, 3- Treat as abandoned 4- Lets discuss this further, 5- implicit_votes_applied on sessions is OK.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.5210405013172421,
+          "similarity": 0.5517430305480957,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.5162584271214989,
+          "similarity": 0.5116395354270935,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.5019897085809099,
+          "similarity": 0.48980188369750977,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.48555438484897473,
+          "similarity": 0.4381338357925415,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.47523421388636766,
+          "similarity": 0.4382701516151428,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1612,
+          "title": "ADR-001 crt-020: Pair Accumulation Counter Location — Dedicated implicit_unhelpful_pending Table",
+          "category": "decision",
+          "final_score": 0.5210405013172421,
+          "similarity": 0.5517430305480957,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.5162584271214989,
+          "similarity": 0.5116395354270935,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.5019897085809099,
+          "similarity": 0.48980188369750977,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.48555438484897473,
+          "similarity": 0.4381338357925415,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.47523421388636766,
+          "similarity": 0.4382701516151428,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

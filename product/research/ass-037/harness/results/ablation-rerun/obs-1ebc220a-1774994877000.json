@@ -1,0 +1,321 @@
+{
+  "scenario_id": "obs-1ebc220a-1774994877000",
+  "query": "batch Rust struct field addition compile cycles reduce build",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5685946345329285,
+          "similarity": 0.5685946345329285,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.52168869972229,
+          "similarity": 0.52168869972229,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.502400815486908,
+          "similarity": 0.502400815486908,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.4883851408958435,
+          "similarity": 0.4883851408958435,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5690689234981511,
+          "similarity": 0.52168869972229,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5611897335662566,
+          "similarity": 0.5685946345329285,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.5366143109963436,
+          "similarity": 0.502400815486908,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.49857973268951983,
+          "similarity": 0.4883851408958435,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5693785981633528,
+          "similarity": 0.52168869972229,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5611413355207228,
+          "similarity": 0.5685946345329285,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.5368379286140523,
+          "similarity": 0.502400815486908,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.4986463640084329,
+          "similarity": 0.4883851408958435,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5020964572134635,
+          "similarity": 0.52168869972229,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.49944544691745,
+          "similarity": 0.5685946345329285,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.47701054909644586,
+          "similarity": 0.502400815486908,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.44818414669870416,
+          "similarity": 0.4883851408958435,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.4460582366356483,
+          "similarity": 0.5685946345329285,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.4171930459829477,
+          "similarity": 0.52168869972229,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.40532357876117414,
+          "similarity": 0.502400815486908,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.396698548243596,
+          "similarity": 0.4883851408958435,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3439,
+          "title": "Batch structural changes before compiling — multi-file struct extension and bugfixes both benefit from complete-then-compile discipline",
+          "category": "lesson-learned",
+          "final_score": 0.5020964572134635,
+          "similarity": 0.52168869972229,
+          "confidence": 0.6375070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.49944544691745,
+          "similarity": 0.5685946345329285,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 882,
+          "title": "Best-Effort Optional Computation for Pipeline Extensions",
+          "category": "pattern",
+          "final_score": 0.47701054909644586,
+          "similarity": 0.502400815486908,
+          "confidence": 0.5860338045099729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.44818414669870416,
+          "similarity": 0.4883851408958435,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6666666666666666,
+    "rank_changes": [
+      {
+        "entry_id": 3439,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3973,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": -0.5,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

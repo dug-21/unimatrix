@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2754",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] You're right — that's the core gap. Adding `query_count: u32` in-memory solves the hot-path problem, but the GNN trains on **historical session data**. If `query_count` is never written to disk, every historical session reconstruction has `query_count = 0` and the model can never learn that signal.\n\nOQ-01 has the same problem for `category_counts` and proposes `session_category_snapshots` as the fix. OQ-02 needs an equivalent persistence layer. The researcher found the in-memory increment correctly but stopped short of the actual research question.\n\nSending the researcher back to address this.\n[Assistant] The researcher has completed Phase 1. Here's what was found:\n\n**SCOPE.md**: `product/research/ass-032/SCOPE.md`\n\n**Key Findings:**\n- **No schema migration needed** — `query_count` is purely in-memory, following the same no-persistence contract as `category_counts`\n- **Insertion point confirmed** — `context_search` handler (`tools.rs:288-402`), after step 6 (usage recording), guarded by `session_id` presence\n- **Option A is unambiguously correct** — even an indexed `COUNT(*)` from `query_log` is a DB read on the hot path, which the architecture prohibits\n- **`record_category_store` is the template** — new `increment_query_count` on `SessionRegistry` is structurally identical\n- **Scope is smaller than OQ-02 implied** — zero DB touches, no migration, no new `AnalyticsWrite` variant; just one field, one method, one call site, and tests\n\n**Two open questions for you before I proceed:**\n\n**OQ-A (scope boundary):** Should `query_count` also increment in the UDS hook-triggered search path (`uds/listener.rs`)? The `query_log` table captures both MCP and hook-triggered searches. If W3-1 wants the count to match `query_log` semantics, both paths need it. If MCP-only is acceptable, one call site suffices.\n\n**OQ-B (convention):** When building the session context vector, should `query_count` be read before or after incrementing for the current call? Recommendation is increment-first (count includes current call), but training and inference must use the same convention.\n\nReview `product/research/ass-032/SCOPE.md` and let me know your answers to OQ-A and OQ-B — then I'll proceed to Phase 1b (scope risk assessment).\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.5918534440840496,
+          "similarity": 0.6769325137138367,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.5335709598520403,
+          "similarity": 0.6150401830673218,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5316426766617486,
+          "similarity": 0.5559462308883667,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.5296825760701075,
+          "similarity": 0.5672007203102112,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.5282860712128218,
+          "similarity": 0.5591532588005066,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.5918534440840496,
+          "similarity": 0.6769325137138367,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3922,
+          "title": "SessionState in-memory counter pattern: pure u32 field, incremented in MCP handler, never persisted",
+          "category": "pattern",
+          "final_score": 0.5335709598520403,
+          "similarity": 0.6150401830673218,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5316426766617486,
+          "similarity": 0.5559462308883667,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.5296825760701075,
+          "similarity": 0.5672007203102112,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.5282860712128218,
+          "similarity": 0.5591532588005066,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

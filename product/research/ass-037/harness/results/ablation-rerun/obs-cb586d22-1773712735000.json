@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-cb586d22-1773712735000",
+  "query": "SocketGuard RAII drop shutdown UDS socket cleanup",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 245,
+          "title": "ADR-004: Socket Lifecycle Uses Unconditional Unlink After PidGuard",
+          "category": "decision",
+          "final_score": 0.5582933246171023,
+          "similarity": 0.6732235550880432,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.4360952641049794,
+          "similarity": 0.4647061824798584,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.41206993198394776,
+          "similarity": 0.4421398639678955,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.41192291408702736,
+          "similarity": 0.4095916748046875,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.40196400092588197,
+          "similarity": 0.41375184059143066,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 245,
+          "title": "ADR-004: Socket Lifecycle Uses Unconditional Unlink After PidGuard",
+          "category": "decision",
+          "final_score": 0.6319251194698629,
+          "similarity": 0.6732235550880432,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.48424752537225746,
+          "similarity": 0.4647061824798584,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.45629563968188386,
+          "similarity": 0.4095916748046875,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.4535371923446655,
+          "similarity": 0.4421398639678955,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.44233710666334536,
+          "similarity": 0.41375184059143066,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 245,
+          "title": "ADR-004: Socket Lifecycle Uses Unconditional Unlink After PidGuard",
+          "category": "decision",
+          "final_score": 0.6732235550880432,
+          "similarity": 0.6732235550880432,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.4647061824798584,
+          "similarity": 0.4647061824798584,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.4421398639678955,
+          "similarity": 0.4421398639678955,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.41375184059143066,
+          "similarity": 0.41375184059143066,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.4095916748046875,
+          "similarity": 0.4095916748046875,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 245,
+          "title": "ADR-004: Socket Lifecycle Uses Unconditional Unlink After PidGuard",
+          "category": "decision",
+          "final_score": 0.5104452646695651,
+          "similarity": 0.6732235550880432,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.3821268815260667,
+          "similarity": 0.4647061824798584,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.36823991628793573,
+          "similarity": 0.4421398639678955,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.3507703634408804,
+          "similarity": 0.41375184059143066,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.3482102614182692,
+          "similarity": 0.4095916748046875,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 245,
+          "title": "ADR-004: Socket Lifecycle Uses Unconditional Unlink After PidGuard",
+          "category": "decision",
+          "final_score": 0.5582933246171023,
+          "similarity": 0.6732235550880432,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.4360952641049794,
+          "similarity": 0.4647061824798584,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.41206993198394776,
+          "similarity": 0.4421398639678955,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.41192291408702736,
+          "similarity": 0.4095916748046875,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.40196400092588197,
+          "similarity": 0.41375184059143066,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 245,
+          "title": "ADR-004: Socket Lifecycle Uses Unconditional Unlink After PidGuard",
+          "category": "decision",
+          "final_score": 0.6316551950540578,
+          "similarity": 0.6732235550880432,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.4843752465676327,
+          "similarity": 0.4647061824798584,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.45660089435428386,
+          "similarity": 0.4095916748046875,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.45361168468699736,
+          "similarity": 0.4421398639678955,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.44252393846773697,
+          "similarity": 0.41375184059143066,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 2616,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3921,
+        "from_rank": 4,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

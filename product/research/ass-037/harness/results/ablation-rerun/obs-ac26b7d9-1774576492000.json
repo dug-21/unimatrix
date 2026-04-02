@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774576492000",
+  "query": "graph.rs module split file size limit sibling module re-export",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.6079190373420715,
+          "similarity": 0.6079190373420715,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.5317370295524597,
+          "similarity": 0.5317370295524597,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.519447922706604,
+          "similarity": 0.519447922706604,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5186648368835449,
+          "similarity": 0.5186648368835449,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.515516459941864,
+          "similarity": 0.515516459941864,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5697866152609876,
+          "similarity": 0.6079190373420715,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.5570175995036184,
+          "similarity": 0.5317370295524597,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.549413925834928,
+          "similarity": 0.515516459941864,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5452742340355633,
+          "similarity": 0.519447922706604,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.49771102177928755,
+          "similarity": 0.5186648368835449,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5695373837441179,
+          "similarity": 0.6079190373420715,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.5571828319869594,
+          "similarity": 0.5317370295524597,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.5496354778995886,
+          "similarity": 0.515516459941864,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.5454430334560141,
+          "similarity": 0.519447922706604,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.49757406873939053,
+          "similarity": 0.5186648368835449,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.4702578691335825,
+          "similarity": 0.6079190373420715,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.42337663357074445,
+          "similarity": 0.5317370295524597,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.4158141062809871,
+          "similarity": 0.519447922706604,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.41533220731295073,
+          "similarity": 0.5186648368835449,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4133947445796086,
+          "similarity": 0.515516459941864,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5083714536808625,
+          "similarity": 0.6079190373420715,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.49392870827281754,
+          "similarity": 0.5317370295524597,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4872713096084048,
+          "similarity": 0.515516459941864,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.4844976331398534,
+          "similarity": 0.519447922706604,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.44956573843038056,
+          "similarity": 0.5186648368835449,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5083714536808625,
+          "similarity": 0.6079190373420715,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3631,
+          "title": "Inline #[cfg(test)] in new sibling module when parent test file is already oversized",
+          "category": "pattern",
+          "final_score": 0.49392870827281754,
+          "similarity": 0.5317370295524597,
+          "confidence": 0.593533978321959,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.4872713096084048,
+          "similarity": 0.515516459941864,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.4844976331398534,
+          "similarity": 0.519447922706604,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.44956573843038056,
+          "similarity": 0.5186648368835449,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 3731,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 3740,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3643,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

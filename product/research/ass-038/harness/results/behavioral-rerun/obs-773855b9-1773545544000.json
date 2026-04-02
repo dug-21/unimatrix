@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-773855b9-1773545544000",
+  "query": "implicit vote injection log session outcome helpfulness",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.5084280140843536,
+          "similarity": 0.5020346641540527,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.47938838653726423,
+          "similarity": 0.4474056363105774,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.4785063822931843,
+          "similarity": 0.4399106502532959,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4773765616739235,
+          "similarity": 0.442340612411499,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.45468950592075275,
+          "similarity": 0.45361554622650146,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.5084280140843536,
+          "similarity": 0.5020346641540527,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.47938838653726423,
+          "similarity": 0.4474056363105774,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.4785063822931843,
+          "similarity": 0.4399106502532959,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.4773765616739235,
+          "similarity": 0.442340612411499,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.45468950592075275,
+          "similarity": 0.45361554622650146,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3843",
+  "query": "so there's a smattering of untracked changes in the git status.  1 grouping is ASS-032, but others are leftovers, or protocol updates.  please commit and push",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 552,
+          "title": "Skill File as Single Source of Truth with Protocol References",
+          "category": "pattern",
+          "final_score": 0.4701288436225243,
+          "similarity": 0.429851233959198,
+          "confidence": 0.5905622413194261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.46226207720482193,
+          "similarity": 0.47495460510253906,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.46219710733890784,
+          "similarity": 0.4453160762786865,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.4505006201395373,
+          "similarity": 0.4259120225906372,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.42246689495287437,
+          "similarity": 0.4236871004104614,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 552,
+          "title": "Skill File as Single Source of Truth with Protocol References",
+          "category": "pattern",
+          "final_score": 0.4701288436225243,
+          "similarity": 0.429851233959198,
+          "confidence": 0.5905622413194261,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.46226207720482193,
+          "similarity": 0.47495460510253906,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.46219710733890784,
+          "similarity": 0.4453160762786865,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.4505006201395373,
+          "similarity": 0.4259120225906372,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.42246689495287437,
+          "similarity": 0.4236871004104614,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

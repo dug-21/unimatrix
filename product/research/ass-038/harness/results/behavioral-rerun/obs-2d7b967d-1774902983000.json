@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-2d7b967d-1774902983000",
+  "query": "INSERT OR IGNORE conditional UPDATE weight refresh loop graph edges SQL pattern",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3884,
+          "title": "unimatrix-server graph edges: pattern",
+          "category": "pattern",
+          "final_score": 0.6042808001325956,
+          "similarity": 0.729644238948822,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.500099625561129,
+          "similarity": 0.5014553666114807,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.4823506453823738,
+          "similarity": 0.4874769449234009,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.4625407552140298,
+          "similarity": 0.468532919883728,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3884,
+          "title": "unimatrix-server graph edges: pattern",
+          "category": "pattern",
+          "final_score": 0.6042808001325956,
+          "similarity": 0.729644238948822,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.500099625561129,
+          "similarity": 0.5014553666114807,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.4823506453823738,
+          "similarity": 0.4874769449234009,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.4625407552140298,
+          "similarity": 0.468532919883728,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

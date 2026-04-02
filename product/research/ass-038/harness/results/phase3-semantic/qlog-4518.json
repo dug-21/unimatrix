@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4518",
+  "query": "new eval run after 415 was fullyg implemented: Phase 3 confirmation — all gates passed:           \n\n  ┌──────────────────┬────────┬──────────┬────────┐              \n  │      Metric      │ Value  │   Gate   │ Result │\n  ├──────────────────┼────────┼──────────┼────────┤              \n  │ CC@k             │ 0.4616 │ ≥ 0.3659 │ PASSED │            \n  ├──────────────────┼────────┼──────────┼────────┤\n  │ ICD              │ 0.6844 │ ≥ 0.5341 │ PASSED │              \n  ├──────────────────┼────────┼──────────┼────────┤\n  │ MRR              │ 0.4194 │ ≥ 0.35   │ PASSED │              \n  ├──────────────────┼────────┼──────────┼────────┤            \n  │ Zero regressions │ ✓      │ —        │ PASSED │\n  └──────────────────┴────────┴──────────┴────────┘              \n  \n  The MRR floor now passes cleanly (0.4194 vs 0.35 floor) — the  \n  earlier failures were soft-GT staleness. w_coac=0.0 is stable.\n  Issue #415 is done.                                    ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.537752459181842,
+          "similarity": 0.5570548176765442,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5069151359434214,
+          "similarity": 0.4929332733154297,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.4980713852823999,
+          "similarity": 0.5014054179191589,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.48882073675367443,
+          "similarity": 0.4776288866996765,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.45164343131215945,
+          "similarity": 0.479122519493103,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.537752459181842,
+          "similarity": 0.5570548176765442,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.5069151359434214,
+          "similarity": 0.4929332733154297,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.4980713852823999,
+          "similarity": 0.5014054179191589,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3557,
+          "title": "Eval Harness New Field: Dual-Direction Serde Test + Non-Trivial Round-Trip Value",
+          "category": "pattern",
+          "final_score": 0.48882073675367443,
+          "similarity": 0.4776288866996765,
+          "confidence": 0.5730435901890072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3935,
+          "title": "Tracing-test AC deferred from Gate 3b: structural coverage without exercising production code path",
+          "category": "lesson-learned",
+          "final_score": 0.45164343131215945,
+          "similarity": 0.479122519493103,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

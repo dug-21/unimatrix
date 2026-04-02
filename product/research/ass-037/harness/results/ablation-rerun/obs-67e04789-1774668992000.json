@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-67e04789-1774668992000",
+  "query": "store.insert bypasses OUTCOME_INDEX population hook writes missing outcome index",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.5323926852299616,
+          "similarity": 0.7088881134986877,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.49624340350811297,
+          "similarity": 0.6501455307006836,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.34828875615046573,
+          "similarity": 0.40971922874450684,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.345397582420936,
+          "similarity": 0.405021071434021,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.3432361896221454,
+          "similarity": 0.40150880813598633,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.5581869178927703,
+          "similarity": 0.7088881134986877,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.5238671448582053,
+          "similarity": 0.6501455307006836,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.44321407299643933,
+          "similarity": 0.405021071434021,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.4200077440232392,
+          "similarity": 0.40971922874450684,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4136283279284862,
+          "similarity": 0.40150880813598633,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.6285377868084423,
+          "similarity": 0.7088881134986877,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.5870783311065814,
+          "similarity": 0.6501455307006836,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.4993809112284153,
+          "similarity": 0.405021071434021,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.46730881196400736,
+          "similarity": 0.40971922874450684,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4593560100719369,
+          "similarity": 0.40150880813598633,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.6280126212745192,
+          "similarity": 0.7088881134986877,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.5866661271876658,
+          "similarity": 0.6501455307006836,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.4999976422074637,
+          "similarity": 0.405021071434021,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.46768521446871003,
+          "similarity": 0.40971922874450684,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4597340963591,
+          "similarity": 0.40150880813598633,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.7088881134986877,
+          "similarity": 0.7088881134986877,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.6501455307006836,
+          "similarity": 0.6501455307006836,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.40971922874450684,
+          "similarity": 0.40971922874450684,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.405021071434021,
+          "similarity": 0.405021071434021,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.40150880813598633,
+          "similarity": 0.40150880813598633,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.5581869178927703,
+          "similarity": 0.7088881134986877,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.5238671448582053,
+          "similarity": 0.6501455307006836,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2125,
+          "title": "Analytics drain unsuitable for writes that callers read back immediately",
+          "category": "pattern",
+          "final_score": 0.44321407299643933,
+          "similarity": 0.405021071434021,
+          "confidence": 0.6356784575980962,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3929,
+          "title": "observation_phase_metrics requires observation_metrics parent row — insert parent first",
+          "category": "pattern",
+          "final_score": 0.4200077440232392,
+          "similarity": 0.40971922874450684,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.4136283279284862,
+          "similarity": 0.40150880813598633,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3929,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2125,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

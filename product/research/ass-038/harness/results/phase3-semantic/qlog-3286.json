@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3286",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] API error on validator. Re-spawning Gate 3a.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.4872612388708413,
+          "similarity": 0.44824647903442383,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.4721917722516563,
+          "similarity": 0.4314396381378174,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.47064424823362516,
+          "similarity": 0.39895099401474,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.4687071843324008,
+          "similarity": 0.40820997953414917,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1609,
+          "title": "ServiceError variant names must be verified against error.rs -- no ServiceError::Internal exists",
+          "category": "lesson-learned",
+          "final_score": 0.44726841710769616,
+          "similarity": 0.41977083683013916,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 683,
+          "title": "Validator must commit gate reports to branch before signaling pass",
+          "category": "lesson-learned",
+          "final_score": 0.4872612388708413,
+          "similarity": 0.44824647903442383,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 90,
+          "title": "ADR-007: New ServerError Variants for Validation and Scanning",
+          "category": "decision",
+          "final_score": 0.4721917722516563,
+          "similarity": 0.4314396381378174,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.47064424823362516,
+          "similarity": 0.39895099401474,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3373,
+          "title": "ADR-003 col-024: Structured Log Event on Primary-Path Fallback Activation",
+          "category": "decision",
+          "final_score": 0.4687071843324008,
+          "similarity": 0.40820997953414917,
+          "confidence": 0.6176195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1609,
+          "title": "ServiceError variant names must be verified against error.rs -- no ServiceError::Internal exists",
+          "category": "lesson-learned",
+          "final_score": 0.44726841710769616,
+          "similarity": 0.41977083683013916,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

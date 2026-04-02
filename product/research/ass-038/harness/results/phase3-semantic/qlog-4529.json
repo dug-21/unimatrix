@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4529",
+  "query": "now working on scope of 451.  Thoughts? crt-033: CYCLE_REVIEW_INDEX — Memoized Cycle Review Summaries   \n                                                                  \n  Problem: context_cycle_review recomputes from scratch every     \n  call. When GH #409 purges raw signals after K cycles, old cycle \n  reviews disappear silently. No purge gate exists today.         \n                                                                  \n  Solution: New cycle_review_index table (schema v17→18),         \n  check-first/store-if-missing logic in the handler, force:       \n  Option<bool> param, and pending_cycle_reviews in context_status.\n                                                                \n  Key touchpoints found:                                          \n  - tools.rs:241 — RetrospectiveParams (add force)                \n  - tools.rs:1258–1912 — handler (add step 2.5 cache check + step \n  8a store)                                                      \n  - tools.rs:1341–1407 — force+purged path intercepts the         \n  empty-observations branch                                     \n  - migration.rs:19 — bump CURRENT_SCHEMA_VERSION 17→18           \n  - services/status.rs:819 — add Phase 7b for                   \n  pending_cycle_reviews                                           \n  - status.rs:11 — add field to StatusReport + JSON projection    \n                                                                  \n  Open questions for you:                                         \n                                                                  \n  1. CycleReviewRecord location — new cycle_review_index.rs module\n   vs inline on SqlxStore? (researcher recommends new module)     \n  2. CURRENT_DETECTION_RULES_VERSION location — unimatrix-observe \n  (where rules live) vs hardcoded int in the handler (avoids      \n  cross-crate dependency)?\n  3. RetrospectiveReport serde completeness — needs compile       \n  verification at delivery; any known non-serializable fields?    \n  4. Stale-detection policy — when stored schema_version\n  mismatches current rules version: re-compute silently, or always\n   return stored record? (spec implies latter)                  \n  5. pending_cycle_reviews scope — only cycle_events-based cycles,\n   or also include old observation_metrics-based cycles with no   \n  review row?\n  6. context_status perf — always compute pending_cycle_reviews,  \n  or gate behind a parameter?    ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.6046342632385895,
+          "similarity": 0.7038748860359192,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.6009671521509132,
+          "similarity": 0.6708627343177795,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5635173592747468,
+          "similarity": 0.6081191301345825,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.5629304300114873,
+          "similarity": 0.6288148164749146,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3930,
+          "title": "list_purgeable_cycles includes already-purged cycles (raw_signals_available=0 not filtered)",
+          "category": "pattern",
+          "final_score": 0.5615442435412464,
+          "similarity": 0.6252884268760681,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.6046342632385895,
+          "similarity": 0.7038748860359192,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.6009671521509132,
+          "similarity": 0.6708627343177795,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3421,
+          "title": "ADR-001 col-026: is_in_progress as Option<bool>, Not bool",
+          "category": "decision",
+          "final_score": 0.5635173592747468,
+          "similarity": 0.6081191301345825,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.5629304300114873,
+          "similarity": 0.6288148164749146,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3930,
+          "title": "list_purgeable_cycles includes already-purged cycles (raw_signals_available=0 not filtered)",
+          "category": "pattern",
+          "final_score": 0.5615442435412464,
+          "similarity": 0.6252884268760681,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 40,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 17,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

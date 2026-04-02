@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-50273e07-1774566339000",
+  "query": "StatusReport maintenance path AddColumn struct field migration",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.3669899060175969,
+          "similarity": 0.44010859727859497,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.3590386464045598,
+          "similarity": 0.42718780040740967,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.3573912840623122,
+          "similarity": 0.4245108366012573,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.3561479128324069,
+          "similarity": 0.42249035835266113,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.35299851344181943,
+          "similarity": 0.41737258434295654,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.44799783590500536,
+          "similarity": 0.42718780040740967,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.4363154829614411,
+          "similarity": 0.4245108366012573,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.42895996395802966,
+          "similarity": 0.41737258434295654,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.42871074913909474,
+          "similarity": 0.42249035835266113,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4195162874899638,
+          "similarity": 0.44010859727859497,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.44799783590500536,
+          "similarity": 0.42718780040740967,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.4363154829614411,
+          "similarity": 0.4245108366012573,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.42895996395802966,
+          "similarity": 0.41737258434295654,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.42871074913909474,
+          "similarity": 0.42249035835266113,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.4195162874899638,
+          "similarity": 0.44010859727859497,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.5038890671061518,
+          "similarity": 0.42718780040740967,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.4882019461654872,
+          "similarity": 0.4245108366012573,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.4788206250024989,
+          "similarity": 0.41737258434295654,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.4780155344303417,
+          "similarity": 0.42249035835266113,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.46387597409735115,
+          "similarity": 0.44010859727859497,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.5043903825747711,
+          "similarity": 0.42718780040740967,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.48861822792734494,
+          "similarity": 0.4245108366012573,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.4792222461832803,
+          "similarity": 0.41737258434295654,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.47837844407790836,
+          "similarity": 0.42249035835266113,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.46403131642949985,
+          "similarity": 0.44010859727859497,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3887,
+          "title": "Cascading struct field addition drives compile cycles: complete type definitions before first build",
+          "category": "lesson-learned",
+          "final_score": 0.44010859727859497,
+          "similarity": 0.44010859727859497,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 100,
+          "title": "ADR-003: Schema Migration V1 to V2",
+          "category": "decision",
+          "final_score": 0.42718780040740967,
+          "similarity": 0.42718780040740967,
+          "confidence": 0.6146797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1263,
+          "title": "How to add new fields to the v6+ normalized schema",
+          "category": "procedure",
+          "final_score": 0.4245108366012573,
+          "similarity": 0.4245108366012573,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3798,
+          "title": "StatusReport struct literal locations — four files require updates when adding fields (8+ sites in mod.rs alone)",
+          "category": "pattern",
+          "final_score": 0.42249035835266113,
+          "similarity": 0.42249035835266113,
+          "confidence": 0.5582185665425472,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.41737258434295654,
+          "similarity": 0.41737258434295654,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.0,
+    "rank_changes": [
+      {
+        "entry_id": 3887,
+        "from_rank": 5,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 2844,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 1263,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 100,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

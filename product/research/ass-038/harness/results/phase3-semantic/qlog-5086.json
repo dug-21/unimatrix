@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5086",
+  "query": "after delivery... sec review findings: Finding 1 — Phase 8 cap-break ordering dependency (low, non-blocking)\n\nLocation: nli_detection_tick.rs:594-596\n\nPhase 8 iterates the full merged_pairs vec (which contains both SupportsContradict and Informs variants) with a cap break. The break is safe because Phase 6 appends Supports pairs first and Informs pairs second, so the break only fires within the Supports block. However, this ordering invariant is implicit — it lives in Phase 6's fetch order, not at the break site.\n\nRecommendation: Add a comment at the Phase 8 break noting the ordering dependency: \"Informs variants appear after SupportsContradict in merged_pairs (Phase 6 fetch order). Break only fires within Supports block.\" This prevents a future Phase 6 ordering change from silently causing Phase 8b to miss Informs variants. Not blocking.\n\nFinding 2 — debug_assert for weight finitude (low, non-blocking)\n\nLocation: nli_detection_tick.rs:642\n\ndebug_assert!(weight.is_finite()) is elided in release builds. Input constraints (cosine in (-1,1), ppr_weight in [0,1] validated at startup) make non-finite weight practically impossible. Consider a belt-and-suspenders if !weight.is_finite() { continue; } guard before write_nli_edge to keep production consistent with debug. Not blocking.\n\n",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5544412773536518,
+          "similarity": 0.6065992712974548,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.5327008596222161,
+          "similarity": 0.565292477607727,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5073818609418639,
+          "similarity": 0.5663905739784241,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0986122886681096
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5544412773536518,
+          "similarity": 0.6065992712974548,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3970,
+          "title": "Shared tick cap starves low-priority candidate type when high-priority fills the budget",
+          "category": "lesson-learned",
+          "final_score": 0.5327008596222161,
+          "similarity": 0.565292477607727,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5073818609418639,
+          "similarity": 0.5663905739784241,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0986122886681096
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

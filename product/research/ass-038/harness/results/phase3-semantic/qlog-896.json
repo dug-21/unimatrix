@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-896",
+  "query": "any pros/cons to consider, other than what you just shared related to sqlx vs rusqlite?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.5121839851731008,
+          "similarity": 0.5794935822486877,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2045,
+          "title": "rusqlite exposure surface at sqlx migration time: 312 rusqlite API call sites across store + server",
+          "category": "pattern",
+          "final_score": 0.4567841737739591,
+          "similarity": 0.45235079526901245,
+          "confidence": 0.5221987641450141,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2088,
+          "title": "rusqlite + sqlx cannot coexist — libsqlite3-sys links conflict blocks simultaneous Cargo dependency",
+          "category": "pattern",
+          "final_score": 0.4509324722915311,
+          "similarity": 0.4828035831451416,
+          "confidence": 0.4628115917268109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.4256008241629937,
+          "similarity": 0.3489360809326172,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.416770306452545,
+          "similarity": 0.3673743009567261,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.5121839851731008,
+          "similarity": 0.5794935822486877,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2045,
+          "title": "rusqlite exposure surface at sqlx migration time: 312 rusqlite API call sites across store + server",
+          "category": "pattern",
+          "final_score": 0.4567841737739591,
+          "similarity": 0.45235079526901245,
+          "confidence": 0.5221987641450141,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2088,
+          "title": "rusqlite + sqlx cannot coexist — libsqlite3-sys links conflict blocks simultaneous Cargo dependency",
+          "category": "pattern",
+          "final_score": 0.4509324722915311,
+          "similarity": 0.4828035831451416,
+          "confidence": 0.4628115917268109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.4256008241629937,
+          "similarity": 0.3489360809326172,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.416770306452545,
+          "similarity": 0.3673743009567261,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

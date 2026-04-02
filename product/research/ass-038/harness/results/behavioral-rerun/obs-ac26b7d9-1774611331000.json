@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774611331000",
+  "query": "tracing debug macro Option type format specifier",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.5602786981183742,
+          "similarity": 0.6344903707504272,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.469271071841873,
+          "similarity": 0.41585421562194824,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.46239416537940226,
+          "similarity": 0.4254554510116577,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.457919640520729,
+          "similarity": 0.43470168113708496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.4330857799615664,
+          "similarity": 0.4135493040084839,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3646,
+          "title": "tracing::debug! requires ? format specifier for Option fields — bare field = val fails to compile",
+          "category": "lesson-learned",
+          "final_score": 0.5602786981183742,
+          "similarity": 0.6344903707504272,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2903,
+          "title": "ADR-001 col-023: Replace HookType Enum with String-Based ObservationEvent Fields",
+          "category": "decision",
+          "final_score": 0.469271071841873,
+          "similarity": 0.41585421562194824,
+          "confidence": 0.6082297441108723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 276,
+          "title": "ADR-003: Generic format_status_change Replaces Three Identical Formatters",
+          "category": "decision",
+          "final_score": 0.46239416537940226,
+          "similarity": 0.4254554510116577,
+          "confidence": 0.5758478045845811,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.457919640520729,
+          "similarity": 0.43470168113708496,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2396,
+          "title": "Option<T> for Optional Config Fields: Type-Level Absence vs. Zero Distinction",
+          "category": "pattern",
+          "final_score": 0.4330857799615664,
+          "similarity": 0.4135493040084839,
+          "confidence": 0.5133052541692747,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

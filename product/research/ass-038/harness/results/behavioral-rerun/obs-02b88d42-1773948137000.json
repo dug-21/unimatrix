@@ -1,0 +1,114 @@
+{
+  "scenario_id": "obs-02b88d42-1773948137000",
+  "query": "shared rayon pool monopolisation contradiction scan",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.5883516651860708,
+          "similarity": 0.677963376045227,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.4789424308714284,
+          "similarity": 0.4717566967010498,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3741,
+          "title": "ADR-008: Step 6d Latency Budget and RayonPool Offload (DEFERRED) — crt-030",
+          "category": "decision",
+          "final_score": 0.4773835311189588,
+          "similarity": 0.4664895534515381,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.47495784280190956,
+          "similarity": 0.4962341785430908,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.5883516651860708,
+          "similarity": 0.677963376045227,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3355,
+          "title": "Regression test pattern for rayon-dispatched functions: RayonError::Cancelled as panic probe",
+          "category": "procedure",
+          "final_score": 0.4789424308714284,
+          "similarity": 0.4717566967010498,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3741,
+          "title": "ADR-008: Step 6d Latency Budget and RayonPool Offload (DEFERRED) — crt-030",
+          "category": "decision",
+          "final_score": 0.4773835311189588,
+          "similarity": 0.4664895534515381,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.47495784280190956,
+          "similarity": 0.4962341785430908,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

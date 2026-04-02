@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "profiles": {
+    "combined-ppr-enabled": {
+      "distribution_change": false,
+      "distribution_targets": null
+    },
+    "combined-ppr-disabled": {
+      "distribution_change": false,
+      "distribution_targets": null
+    }
+  }
+}

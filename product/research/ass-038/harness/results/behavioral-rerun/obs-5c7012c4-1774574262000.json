@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-5c7012c4-1774574262000",
+  "query": "pub(super) visibility submodule re-export pattern trap",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.6051280765332716,
+          "similarity": 0.7042682766914368,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 365,
+          "title": "How to flatten a Rust submodule to crate root",
+          "category": "procedure",
+          "final_score": 0.4896505632356095,
+          "similarity": 0.46600115299224854,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.4826614467227096,
+          "similarity": 0.42843830585479736,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3256,
+          "title": "Swarm agent compile isolation: stub caller handler when deleting owned pub types across agent boundaries",
+          "category": "pattern",
+          "final_score": 0.47246919050767966,
+          "similarity": 0.4695872664451599,
+          "confidence": 0.5401488507420451,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3636,
+          "title": "Use #[path] attribute when declaring a submodule inside a file-based module (not mod.rs)",
+          "category": "pattern",
+          "final_score": 0.46850006412207035,
+          "similarity": 0.43287110328674316,
+          "confidence": 0.5818271693502722,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.6051280765332716,
+          "similarity": 0.7042682766914368,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 365,
+          "title": "How to flatten a Rust submodule to crate root",
+          "category": "procedure",
+          "final_score": 0.4896505632356095,
+          "similarity": 0.46600115299224854,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 299,
+          "title": "Sequential Module Migration Pattern: Re-Export Bridges for Large Crate Restructuring",
+          "category": "pattern",
+          "final_score": 0.4826614467227096,
+          "similarity": 0.42843830585479736,
+          "confidence": 0.6265977755976443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3256,
+          "title": "Swarm agent compile isolation: stub caller handler when deleting owned pub types across agent boundaries",
+          "category": "pattern",
+          "final_score": 0.47246919050767966,
+          "similarity": 0.4695872664451599,
+          "confidence": 0.5401488507420451,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3636,
+          "title": "Use #[path] attribute when declaring a submodule inside a file-based module (not mod.rs)",
+          "category": "pattern",
+          "final_score": 0.46850006412207035,
+          "similarity": 0.43287110328674316,
+          "confidence": 0.5818271693502722,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

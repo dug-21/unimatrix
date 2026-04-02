@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-cb586d22-1773712826000",
+  "query": "PendingEntriesAnalysis upsert Mutex server.rs pattern",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.4965057373046875,
+          "similarity": 0.4965057373046875,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.4002453684806824,
+          "similarity": 0.4002453684806824,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.39875686168670654,
+          "similarity": 0.39875686168670654,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.39346158504486084,
+          "similarity": 0.39346158504486084,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1759,
+          "title": "Extraction tick batch size controls mutex hold duration: EXTRACTION_BATCH_SIZE constant pattern",
+          "category": "lesson-learned",
+          "final_score": 0.392808198928833,
+          "similarity": 0.392808198928833,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.5031922905341941,
+          "similarity": 0.4965057373046875,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5021280044856773,
+          "similarity": 0.39875686168670654,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.48083955510861315,
+          "similarity": 0.39346158504486084,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1759,
+          "title": "Extraction tick batch size controls mutex hold duration: EXTRACTION_BATCH_SIZE constant pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4756076047465664,
+          "similarity": 0.392808198928833,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.47094406675953726,
+          "similarity": 0.4002453684806824,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.5031488713573791,
+          "similarity": 0.4965057373046875,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.5014567632986708,
+          "similarity": 0.39875686168670654,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.48027216569261466,
+          "similarity": 0.39346158504486084,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1759,
+          "title": "Extraction tick batch size controls mutex hold duration: EXTRACTION_BATCH_SIZE constant pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4750699462672304,
+          "similarity": 0.392808198928833,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.47048498430318103,
+          "similarity": 0.4002453684806824,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.40169583834134615,
+          "similarity": 0.4965057373046875,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.3424586882958045,
+          "similarity": 0.4002453684806824,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.3415426841148963,
+          "similarity": 0.39875686168670654,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.338284052335299,
+          "similarity": 0.39346158504486084,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1759,
+          "title": "Extraction tick batch size controls mutex hold duration: EXTRACTION_BATCH_SIZE constant pattern",
+          "category": "lesson-learned",
+          "final_score": 0.3378819685715896,
+          "similarity": 0.392808198928833,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.4520762214823905,
+          "similarity": 0.4965057373046875,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.44431875053147246,
+          "similarity": 0.39875686168670654,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.42843036051090816,
+          "similarity": 0.39346158504486084,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1759,
+          "title": "Extraction tick batch size controls mutex hold duration: EXTRACTION_BATCH_SIZE constant pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4245718405245578,
+          "similarity": 0.392808198928833,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.42170534638771157,
+          "similarity": 0.4002453684806824,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1941,
+          "title": "PendingEntriesAnalysis two-level bucket: mix upsert() for new entries with direct get_mut() for in-place field increments",
+          "category": "pattern",
+          "final_score": 0.4520762214823905,
+          "similarity": 0.4965057373046875,
+          "confidence": 0.5127445094334893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1367,
+          "title": "spawn_blocking_with_timeout for MCP Handler Mutex Acquisition",
+          "category": "pattern",
+          "final_score": 0.44431875053147246,
+          "similarity": 0.39875686168670654,
+          "confidence": 0.649801065627064,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 384,
+          "title": "ADR-003 col-012: Silent Event Loss When Server Unavailable is Accepted",
+          "category": "decision",
+          "final_score": 0.42843036051090816,
+          "similarity": 0.39346158504486084,
+          "confidence": 0.6056652266282593,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1759,
+          "title": "Extraction tick batch size controls mutex hold duration: EXTRACTION_BATCH_SIZE constant pattern",
+          "category": "lesson-learned",
+          "final_score": 0.4245718405245578,
+          "similarity": 0.392808198928833,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.42170534638771157,
+          "similarity": 0.4002453684806824,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 3298,
+        "from_rank": 5,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1367,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 1759,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 384,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

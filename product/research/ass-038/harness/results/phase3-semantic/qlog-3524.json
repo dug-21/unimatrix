@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3524",
+  "query": "now back to 413... does reading from a write pool make sense to you? ## ADR-003: write_pool_server() for Graph Cohesion SQL Queries\n\n### Context\n\n`unimatrix-store` exposes two SQLite connection pools:\n\n- `read_pool()` — a read-only pool intended for high-concurrency query paths\n  (search, lookup, get). Uses `SqliteConnectOptions` with `read_only: true`.\n- `write_pool_server()` — a write-capable pool exposed to the server crate for\n  operations that need write access or must serialise with writes.\n\nThe `compute_status_aggregates()` function — the direct precedent for\n`compute_graph_cohesion_metrics()` — uses `read_pool()` for its aggregate queries\n(confirmed at lines 959, 983 of `read.rs`). This appears to allow read-only queries\nto use the lighter pool.\n\nHowever, `query_bootstrap_contradicts()` and other GRAPH_EDGES-reading functions use\n`write_pool_server()`. The SCOPE.md constraint explicitly states: \"all queries use\n`write_pool_server()`\" and cites this as confirmed by `compute_status_aggregates`\n(though `compute_status_aggregates` actually uses `read_pool()`).\n\nThe risk of using `read_pool()` for `compute_graph_cohesion_metrics()`:\n- GRAPH_EDGES is written by the NLI inference service, which uses `write_pool_server()`\n  through the write path. Under SQLite WAL mode, read connections may see a\n  slightly stale snapshot depending on checkpoint state.\n- `context_status` is a diagnostic tool. Operators invoke it to see current state.\n  Returning stale cohesion values (e.g., showing 0 inferred edges right after NLI\n  inference ran) would be confusing.\n- Consistency: other GRAPH_EDGES queries (`query_bootstrap_contradicts`,\n  `find_nli_count_for_circuit_breaker`) already use `write_pool_server()`. Using a\n  different pool for cohesion creates an inconsistent query pattern on the same table.\n\n### Decision\n\nUse `write_pool_server()` for both SQL queries in `compute_graph_cohesion_metrics()`.\n\nThis matches the pattern of all other GRAPH_EDGES-reading methods in `read.rs` and\nensures the cohesion snapshot is consistent with the current write state.\n\nNote: the SCOPE.md assertion that `compute_status_aggregates` uses `write_pool_server()`\nis incorrect — it uses `read_pool()`. The architecture documents the actual decision\nseparately. Cohesion queries use `write_pool_server()` because GRAPH_EDGES is a\nwrite-active table during inference runs, not because of a universal rule.\n\n### Consequences\n\nEasier:\n- Cohesion metrics reflect the same GRAPH_EDGES state as writes from NLI inference\n- Consistent with existing GRAPH_EDGES query methods\n- No pool contention with `context_status`'s other operations, which also use\n  `write_pool_server()` for Phase 1 aggregates\n\nHarder:\n- `write_pool_server()` has a stricter acquire timeout (5s vs 2s for `read_pool()`).\n  Under high write load this could slow down `context_status`. Acceptable trade-off\n  given the diagnostic, infrequent nature of this call.\n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.669849123556351,
+          "similarity": 0.7939169406890869,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5878023349363063,
+          "similarity": 0.6867852807044983,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5842783431998643,
+          "similarity": 0.6756986379623413,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.577890299232678,
+          "similarity": 0.6821219325065613,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5735712918812824,
+          "similarity": 0.6910408139228821,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.669849123556351,
+          "similarity": 0.7939169406890869,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5878023349363063,
+          "similarity": 0.6867852807044983,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5842783431998643,
+          "similarity": 0.6756986379623413,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2145,
+          "title": "ADR-001 nxs-011: Pool Acquire Timeout Values — write_pool max_connections corrected to 1",
+          "category": "decision",
+          "final_score": 0.577890299232678,
+          "similarity": 0.6821219325065613,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.5735712918812824,
+          "similarity": 0.6910408139228821,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

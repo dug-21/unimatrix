@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5274",
+  "query": "security review for 476 included: Write-time gap (GH #477, non-blocking) — Co_access events continue to be written regardless of endpoint quarantine status. The tick-side JOIN is the authoritative gate and is correct. The deferred risk is post-restoration burst promotion: if an entry is un-quarantined, it re-enters the active pool with its full accumulated co_access count, bypassing normal slow-build signal accumulation. This is a data-integrity concern, not a security vulnerability. GH #477 tracks the write-time guard as defense-in-depth. Recommend confirming the restoration-burst scenario is documented in #477.\\\nfull summary of fix: Fix Summary:                                                                                    \n  - Root cause: promotion SELECT had no JOINs to entries, so quarantined-endpoint pairs were\n  re-inserted every tick after compaction deleted them                                            \n  - Files changed: co_access_promotion_tick.rs (SQL fix + third bind),\n  co_access_promotion_tick_tests.rs (3 new regression tests), analytics.rs (clarifying comment +  \n  #477 reference)                                                                                 \n  - New tests: test_quarantine_one_endpoint_no_edges_promoted,\n  test_quarantine_both_endpoints_no_edges_promoted,                                               \n  test_quarantine_mixed_batch_only_active_pairs_promoted_with_correct_weight                      \n  - All tests passing: 4264 unit + 22/22 smoke ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.6109304793587959,
+          "similarity": 0.7620232701301575,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5762561700178265,
+          "similarity": 0.5947175025939941,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5626869128676271,
+          "similarity": 0.6337594985961914,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.6109304793587959,
+          "similarity": 0.7620232701301575,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5762561700178265,
+          "similarity": 0.5947175025939941,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5626869128676271,
+          "similarity": 0.6337594985961914,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -12,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

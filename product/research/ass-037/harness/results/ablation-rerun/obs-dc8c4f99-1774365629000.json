@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-dc8c4f99-1774365629000",
+  "query": "named unit conversion helper column boundary type mismatch seconds milliseconds",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3385,
+          "title": "Named unit-conversion helper at table boundaries to prevent silent unit-mismatch bugs",
+          "category": "pattern",
+          "final_score": 0.5991398153710805,
+          "similarity": 0.6510788798332214,
+          "confidence": 0.5241167222590993,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.5609760311001795,
+          "similarity": 0.5533515214920044,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.5133211053422702,
+          "similarity": 0.4544363021850586,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.4387850992199221,
+          "similarity": 0.3552735447883606,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.412427672295456,
+          "similarity": 0.3272280693054199,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3385,
+          "title": "Named unit-conversion helper at table boundaries to prevent silent unit-mismatch bugs",
+          "category": "pattern",
+          "final_score": 0.6510788798332214,
+          "similarity": 0.6510788798332214,
+          "confidence": 0.5241167222590993,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.5533515214920044,
+          "similarity": 0.5533515214920044,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4544363021850586,
+          "similarity": 0.4544363021850586,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.3552735447883606,
+          "similarity": 0.3552735447883606,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.3272280693054199,
+          "similarity": 0.3272280693054199,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3385,
+          "title": "Named unit-conversion helper at table boundaries to prevent silent unit-mismatch bugs",
+          "category": "pattern",
+          "final_score": 0.5327744565943405,
+          "similarity": 0.6510788798332214,
+          "confidence": 0.5241167222590993,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.4982725242395986,
+          "similarity": 0.5533515214920044,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4567312307300021,
+          "similarity": 0.4544363021850586,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.39546064241383355,
+          "similarity": 0.3552735447883606,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.37426216430369574,
+          "similarity": 0.3272280693054199,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3385,
+          "title": "Named unit-conversion helper at table boundaries to prevent silent unit-mismatch bugs",
+          "category": "pattern",
+          "final_score": 0.5988003443615241,
+          "similarity": 0.6510788798332214,
+          "confidence": 0.5241167222590993,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.5610258644963114,
+          "similarity": 0.5533515214920044,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.5137059733367619,
+          "similarity": 0.4544363021850586,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.4393309263730696,
+          "similarity": 0.3552735447883606,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.4129845324457177,
+          "similarity": 0.3272280693054199,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3385,
+          "title": "Named unit-conversion helper at table boundaries to prevent silent unit-mismatch bugs",
+          "category": "pattern",
+          "final_score": 0.49681777220505935,
+          "similarity": 0.6510788798332214,
+          "confidence": 0.5241167222590993,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.436677859379695,
+          "similarity": 0.5533515214920044,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.3758069551908053,
+          "similarity": 0.4544363021850586,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.3147837198697604,
+          "similarity": 0.3552735447883606,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.2975249657264123,
+          "similarity": 0.3272280693054199,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3385,
+          "title": "Named unit-conversion helper at table boundaries to prevent silent unit-mismatch bugs",
+          "category": "pattern",
+          "final_score": 0.5327744565943405,
+          "similarity": 0.6510788798332214,
+          "confidence": 0.5241167222590993,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3372,
+          "title": "ADR-002 col-024: Named Conversion Helper for Timestamp Unit Mismatch",
+          "category": "decision",
+          "final_score": 0.4982725242395986,
+          "similarity": 0.5533515214920044,
+          "confidence": 0.5719892116453213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3422,
+          "title": "ADR-002 col-026: cycle_ts_to_obs_millis Is Mandatory for PhaseStats Timestamp Conversion",
+          "category": "decision",
+          "final_score": 0.4567312307300021,
+          "similarity": 0.4544363021850586,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3543,
+          "title": "Nullable column addition in test helpers is a compile-silent spec violation: raw SQL INSERT helpers must be explicitly updated",
+          "category": "lesson-learned",
+          "final_score": 0.39546064241383355,
+          "similarity": 0.3552735447883606,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.37426216430369574,
+          "similarity": 0.3272280693054199,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

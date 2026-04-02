@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4012",
+  "query": "so I think I found where all of the noice in this database is coming from: Right. The problem is unambiguous: write_auto_outcome_entry() calls store_clone.insert(entry) — it's writing session telemetry directly into the ENTRIES table, the main knowledge store. Every    \n  session close produces a row with a UUID title, a one-line content string, and an embedding computed against it.                                                                                   \n                                                                                                                                                                                                     \n  The consequences:                                                                                                                                                                                  \n  - Session outcome entries pollute semantic search (they show up as noise in results)                                                                                                               \n  - Embeddings are computed and stored for every one — wasted vector space                                                                                                                           \n  - They accumulate indefinitely with Status::Active                      \n  - The OUTCOME_INDEX table (from col-001) already exists for exactly this kind of structured operational data and isn't being used here    ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.5455712762739459,
+          "similarity": 0.6278520822525024,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.5437473373781819,
+          "similarity": 0.5930936932563782,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.5382353005662854,
+          "similarity": 0.5926079154014587,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.5296522974547175,
+          "similarity": 0.5599280595779419,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.5189785257988414,
+          "similarity": 0.5888723134994507,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3707,
+          "title": "store.insert() does not populate OUTCOME_INDEX — only insert_with_audit and StoreService do",
+          "category": "lesson-learned",
+          "final_score": 0.5455712762739459,
+          "similarity": 0.6278520822525024,
+          "confidence": 0.5124762038114213,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.5437473373781819,
+          "similarity": 0.5930936932563782,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1144,
+          "title": "ADR-002: Direct SQL INSERT for Import, Not Store API",
+          "category": "decision",
+          "final_score": 0.5382353005662854,
+          "similarity": 0.5926079154014587,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.5296522974547175,
+          "similarity": 0.5599280595779419,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3709,
+          "title": "store.insert() does NOT auto-populate OUTCOME_INDEX — route outcome writes through the MCP path",
+          "category": "pattern",
+          "final_score": 0.5189785257988414,
+          "similarity": 0.5888723134994507,
+          "confidence": 0.4959812650262116,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

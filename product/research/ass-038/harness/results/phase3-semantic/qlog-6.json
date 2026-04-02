@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-6",
+  "query": "ugh... now I'm relooking at this... So, the 1 new calculation I like in col-020 is knowledge reuse..., the others I think we may already be abe to calculate, or maybe not have as much meaning as we think.. (although, it is possible that the LLM is doing the analysis, instead of Unimatrix doing it as a summary today, that would have value)... but I do see issue 91 being maybe the FIRST feature we delivery in Wave 3 from @product/PRODUCT-VISION.md .  So... tell me.. you listed metrics that came out of the retrospective... did you calculate them, or did Unimatrix? If you had to calculate those, then I'd say col020 stays where it is, and we do Issue 91 immediately afterwards...",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.5111037944474253,
+          "similarity": 0.5332323908805847,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 865,
+          "title": "ADR-002 col-020: Idempotent Counter Updates via Absolute-Set",
+          "category": "decision",
+          "final_score": 0.5074389150602506,
+          "similarity": 0.5053704977035522,
+          "confidence": 0.5839477727298916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5070462476706786,
+          "similarity": 0.5127975940704346,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.49881396430304736,
+          "similarity": 0.48616349697113037,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.4985408866728608,
+          "similarity": 0.501295804977417,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.5111037944474253,
+          "similarity": 0.5332323908805847,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 865,
+          "title": "ADR-002 col-020: Idempotent Counter Updates via Absolute-Set",
+          "category": "decision",
+          "final_score": 0.5074389150602506,
+          "similarity": 0.5053704977035522,
+          "confidence": 0.5839477727298916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 921,
+          "title": "ADR-004 col-020b: FeatureKnowledgeReuse Computation Stays Server-Side",
+          "category": "decision",
+          "final_score": 0.5070462476706786,
+          "similarity": 0.5127975940704346,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2969,
+          "title": "ADR-001 crt-024: Six-Term Formula Canonicalization",
+          "category": "decision",
+          "final_score": 0.49881396430304736,
+          "similarity": 0.48616349697113037,
+          "confidence": 0.5879757645780854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.4985408866728608,
+          "similarity": 0.501295804977417,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

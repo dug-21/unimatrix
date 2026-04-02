@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1067",
+  "query": "1. Internal, 2. is this still a concern based on the latest design change... if not, adjust the scope dfinition document, if so, explain it to me, 3. Probably simplist to have daemon read directly..  I've been starting usually through bridge mode, but the daemon would have to read the environment.  Now, that may mean I need to restart a claude session tso that it picks up a changed settings.json setting, but so be it.  that should be fine.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.44748262373044356,
+          "similarity": 0.42455172538757324,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.44433107908712166,
+          "similarity": 0.39508944749832153,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.44161077766127954,
+          "similarity": 0.3680856227874756,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.43944663140917994,
+          "similarity": 0.38595879077911377,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1205,
+          "title": "Binary Renames Must Be Atomic with Hook/Config Infrastructure Updates",
+          "category": "lesson-learned",
+          "final_score": 0.4167611754364523,
+          "similarity": 0.36100059747695923,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1910,
+          "title": "Tokio+fork ordering is a recurring pre-architecture risk in daemon features",
+          "category": "pattern",
+          "final_score": 0.44748262373044356,
+          "similarity": 0.42455172538757324,
+          "confidence": 0.5366646567146709,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1928,
+          "title": "Daemon-Mode Integration Test Fixture Pattern: daemon_server + tmp_project",
+          "category": "pattern",
+          "final_score": 0.44433107908712166,
+          "similarity": 0.39508944749832153,
+          "confidence": 0.5701994325245854,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.44161077766127954,
+          "similarity": 0.3680856227874756,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.43944663140917994,
+          "similarity": 0.38595879077911377,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1205,
+          "title": "Binary Renames Must Be Atomic with Hook/Config Infrastructure Updates",
+          "category": "lesson-learned",
+          "final_score": 0.4167611754364523,
+          "similarity": 0.36100059747695923,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

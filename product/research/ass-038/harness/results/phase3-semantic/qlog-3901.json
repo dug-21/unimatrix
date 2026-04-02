@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3901",
+  "query": "/btw... most recent tick processing:  background tick starting\n2026-03-27T23:12:01.776310Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.5958 confidence_weight=0.2500\n2026-03-27T23:12:01.776838Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-27T23:12:01.777819Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-27T23:12:01.818780Z DEBUG unimatrix_server::background: typed graph state rebuilt (3684 entries)\n2026-03-27T23:12:01.826230Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-27T23:12:01.865364Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2148\n2026-03-27T23:12:01.865963Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2151\n2026-03-27T23:12:01.869444Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2160\n2026-03-27T23:12:04.952652Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=1 pairs_scored=100 source_candidates=100\n2026-03-27T23:12:04.953451Z  INFO unimatrix_server::background: background tick complete duration_secs=3",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5562608693362939,
+          "similarity": 0.5645795464515686,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5474981802124896,
+          "similarity": 0.5915126204490662,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.5396541576503927,
+          "similarity": 0.5675376653671265,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5306821674846155,
+          "similarity": 0.5729504823684692,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.52439091379239,
+          "similarity": 0.565497100353241,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5562608693362939,
+          "similarity": 0.5645795464515686,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3883,
+          "title": "GRAPH_EDGES tick writes: use write_pool_server() directly; insert between orphaned-edge compaction and TypedGraphState rebuild",
+          "category": "pattern",
+          "final_score": 0.5474981802124896,
+          "similarity": 0.5915126204490662,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1777,
+          "title": "compute_report() repurposed as tick data loader inflates maintenance tick cost with 5 wasted phases",
+          "category": "lesson-learned",
+          "final_score": 0.5396541576503927,
+          "similarity": 0.5675376653671265,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5306821674846155,
+          "similarity": 0.5729504823684692,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.52439091379239,
+          "similarity": 0.565497100353241,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

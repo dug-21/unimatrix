@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-899",
+  "query": "do we have to go to sqlx is the questino",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.433486272225475,
+          "similarity": 0.39913463592529297,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.4212113974708164,
+          "similarity": 0.3639286756515503,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.3942610401652795,
+          "similarity": 0.32425034046173096,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.3764392064395964,
+          "similarity": 0.3215785026550293,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2088,
+          "title": "rusqlite + sqlx cannot coexist — libsqlite3-sys links conflict blocks simultaneous Cargo dependency",
+          "category": "pattern",
+          "final_score": 0.35640044680373173,
+          "similarity": 0.30319273471832275,
+          "confidence": 0.4628115917268109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2452,
+          "title": "Gate 3b false positive: sqlx-data.json not required when codebase uses runtime-only sqlx::query()",
+          "category": "lesson-learned",
+          "final_score": 0.433486272225475,
+          "similarity": 0.39913463592529297,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2061,
+          "title": "ADR-004 nxs-011: sqlx-data.json Placement — Single workspace-level file",
+          "category": "decision",
+          "final_score": 0.4212113974708164,
+          "similarity": 0.3639286756515503,
+          "confidence": 0.5519613993471442,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2269,
+          "title": "Manual BEGIN/COMMIT/ROLLBACK against sqlx pool does not guarantee connection identity",
+          "category": "lesson-learned",
+          "final_score": 0.3942610401652795,
+          "similarity": 0.32425034046173096,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.3764392064395964,
+          "similarity": 0.3215785026550293,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2088,
+          "title": "rusqlite + sqlx cannot coexist — libsqlite3-sys links conflict blocks simultaneous Cargo dependency",
+          "category": "pattern",
+          "final_score": 0.35640044680373173,
+          "similarity": 0.30319273471832275,
+          "confidence": 0.4628115917268109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

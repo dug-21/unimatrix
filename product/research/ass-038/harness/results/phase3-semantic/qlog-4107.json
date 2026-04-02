@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4107",
+  "query": "Your agent ID: 437-design-reviewer\n\nDESIGN REVIEW — proposed bug fix approach only. Do NOT implement.\n\nBug report (GH Issue #437): recurring_friction and dead_knowledge extractors write KM signals to ENTRIES instead of maintenance_recommendations.\n\n**Corrected scope from investigator**: dead_knowledge.rs was already fixed in GH #351. Only recurring_friction.rs is the live bug.\n\nInvestigator's proposed fix approach (read full report at /workspaces/unimatrix/product/features/bugfix-437/agents/437-investigator-report.md):\n\n1. recurring_friction.rs: Remove ExtractionRule impl and existing_entry_with_title(). Add compute_friction_recommendations(observations: &[ObservationRecord]) -> Vec<String> — same detection logic but returns strings instead of ProposedEntry. No store access.\n\n2. extraction/mod.rs: Remove RecurringFrictionRule from default_extraction_rules() (4→3 rules). Remove 'recurring-friction' from min_features_for_rule().\n\n3. background.rs TickMetadata: Add pub friction_signals: Vec<String> field.\n\n4. background.rs run_single_tick(): After extraction_tick timeout block, call compute_friction_recommendations via spawn_blocking, write result to tick_metadata.lock().friction_signals.\n\n5. mcp/tools.rs context_status handler: Append tick_meta.friction_signals to report.maintenance_recommendations (unconditional, not lambda-gated).\n\n6. One-shot migration: run_recurring_friction_migration_v1(store) after run_dead_knowledge_migration_v1. Counter key 'recurring_friction_migration_v1'. Query topic='process-improvement', filter tag='recurring-friction' + status==Active, set Status::Quarantined. Cap 200. Non-fatal.\n\nAffected files: crates/unimatrix-observe/src/extraction/recurring_friction.rs, extraction/mod.rs, crates/unimatrix-server/src/background.rs, crates/unimatrix-server/src/mcp/tools.rs\n\nPlease review the proposed fix for:\n1. Hot-path risks — does the fix introduce DB reads, locks, or I/O on a background tick, request handler, or other hot path?\n2. Blast radius — worst case if the fix has a subtle bug\n3. Architectural fit — does the approach follow established patterns? Query Unimatrix for relevant ADRs and conventions.\n4. Missing constraints — caps, idempotency guards, error recovery steps missing?\n5. Security surface — any new trust boundaries, input validation gaps, privilege changes?\n\nReturn:\n- Design assessment: APPROVED / APPROVED WITH NOTES / REWORK NEEDED\n- Findings: list of concerns with severity (blocking / non-blocking)\n- Revised fix approach (if REWORK NEEDED)\n- Knowledge Stewardship block with Queried: and Stored:/Declined: entries\n\nWrite your agent report to /workspaces/unimatrix/product/features/bugfix-437/agents/437-design-reviewer-report.md",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5689867723097244,
+          "similarity": 0.579859733581543,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5238327781574156,
+          "similarity": 0.5599366426467896,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.4938297995614498,
+          "similarity": 0.5615883469581604,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.4894748444306223,
+          "similarity": 0.5510022044181824,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5689867723097244,
+          "similarity": 0.579859733581543,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5238327781574156,
+          "similarity": 0.5599366426467896,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.4938297995614498,
+          "similarity": 0.5615883469581604,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.4894748444306223,
+          "similarity": 0.5510022044181824,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

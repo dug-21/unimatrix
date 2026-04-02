@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-219",
+  "query": "Your agent ID: nan-003-agent-1-architect\n\nDesign the architecture for nan-003 (Unimatrix Onboarding Skills: /unimatrix-init and /unimatrix-seed).\n\nRead these artifacts:\n- SCOPE.md: product/features/nan-003/SCOPE.md\n- Scope Risk Assessment: product/features/nan-003/SCOPE-RISK-ASSESSMENT.md\n- Product vision: product/PRODUCT-VISION.md\n- Existing skill examples in .claude/skills/ (read several to understand the format)\n- Existing agent definitions in .claude/agents/uni/ (understand orientation patterns)\n\nAddress SR-XX risks from the scope risk assessment in your architecture decisions where applicable.\n\nProduce:\n- architecture/ARCHITECTURE.md at product/features/nan-003/architecture/ARCHITECTURE.md\n- ADR files in product/features/nan-003/architecture/ for key decisions\n\nFocus on: component structure, skill file design, CLAUDE.md block template, state machine for seed levels, idempotency mechanism, agent scan algorithm, entry quality gates.\n\nReturn: ARCHITECTURE.md path, ADR file paths, key decisions, open questions.\n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5874127139244776,
+          "similarity": 0.7068199515342712,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5800717179482396,
+          "similarity": 0.6467507481575012,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5707427860215647,
+          "similarity": 0.5809611678123474,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5541398889258509,
+          "similarity": 0.5887605547904968,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1254,
+          "title": "ADR-001 nan-005: README as Single File with Capability-First Section Order",
+          "category": "decision",
+          "final_score": 0.5161995092079481,
+          "similarity": 0.5866611003875732,
+          "confidence": 0.4915970958678977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1257,
+          "title": "ADR-004 nan-005: Content Boundary -- README vs CLAUDE.md vs Onboarding Skills",
+          "category": "decision",
+          "final_score": 0.5874127139244776,
+          "similarity": 0.7068199515342712,
+          "confidence": 0.5132345784603377,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5800717179482396,
+          "similarity": 0.6467507481575012,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5707427860215647,
+          "similarity": 0.5809611678123474,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5541398889258509,
+          "similarity": 0.5887605547904968,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1254,
+          "title": "ADR-001 nan-005: README as Single File with Capability-First Section Order",
+          "category": "decision",
+          "final_score": 0.5161995092079481,
+          "similarity": 0.5866611003875732,
+          "confidence": 0.4915970958678977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bd98afa6-1773804598000",
+  "query": "SQLite WAL write pool concurrent writers SQLITE_BUSY",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2130,
+          "title": "sqlx write_pool: set max_connections=1 to prevent SQLITE_BUSY_SNAPSHOT with fire-and-forget writes",
+          "category": "lesson-learned",
+          "final_score": 0.6428711935566068,
+          "similarity": 0.7513151168823242,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6326770093318173,
+          "similarity": 0.7720471620559692,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2270,
+          "title": "SqlxStore dual-pool WAL architecture: read_pool=N, write_pool=1, PRAGMAs per-connection via SqliteConnectOptions",
+          "category": "pattern",
+          "final_score": 0.6265029536374328,
+          "similarity": 0.7306501269340515,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6260604462866369,
+          "similarity": 0.7550846338272095,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6116991283094729,
+          "similarity": 0.7634837031364441,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2130,
+          "title": "sqlx write_pool: set max_connections=1 to prevent SQLITE_BUSY_SNAPSHOT with fire-and-forget writes",
+          "category": "lesson-learned",
+          "final_score": 0.6428711935566068,
+          "similarity": 0.7513151168823242,
+          "confidence": 0.6002002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2147,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6326770093318173,
+          "similarity": 0.7720471620559692,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2270,
+          "title": "SqlxStore dual-pool WAL architecture: read_pool=N, write_pool=1, PRAGMAs per-connection via SqliteConnectOptions",
+          "category": "pattern",
+          "final_score": 0.6265029536374328,
+          "similarity": 0.7306501269340515,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2153,
+          "title": "SqlxStore dual-pool architecture: read_pool plus write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6260604462866369,
+          "similarity": 0.7550846338272095,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2150,
+          "title": "SqlxStore dual-pool architecture: read_pool + write_pool WAL separation",
+          "category": "pattern",
+          "final_score": 0.6116991283094729,
+          "similarity": 0.7634837031364441,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

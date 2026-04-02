@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3748",
+  "query": "What are your thoughts on the design recommendations based on my scope-risk analyst: Design Recommendations\nSR-01 / SR-08: Specify a named variant (or reuse) of write_edges_with_cap for the tick path with the same cap-logic extraction pattern as crt-023. Do not inline cap logic. Include explicit threshold floor: tick contradiction threshold must equal nli_contradiction_threshold, never lower.\nSR-02: Define a max_source_candidates_per_tick bound (or document that source selection is bounded to max_graph_inference_per_tick sources) in the spec constraints section; make it testable via AC.\nSR-03: Spec AC-02 must state supports_candidate_threshold >= supports_edge_threshold is rejected (strict >=), matching the nli_contradiction_threshold < nli_auto_quarantine_threshold guard precedent.\nSR-06: Add a spec constraint confirming compute_graph_cohesion_metrics pool choice (entry #3619). If it uses write_pool_server(), that is a pre-existing defect that should be surfaced now, not discovered during integration testing.\nSR-07: Add an explicit spec constraint and acceptance criterion: \"all InferenceConfig { ... } struct literal constructions in existing tests updated to use ..InferenceConfig::default()\" (entry #2730).",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5988564431111247,
+          "similarity": 0.6731523871421814,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5817729057441843,
+          "similarity": 0.6323046684265137,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2800,
+          "title": "Circuit breaker / cap logic must be extracted as a testable unit function from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5700731644075491,
+          "similarity": 0.5950891375541687,
+          "confidence": 0.6257855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5535244273206873,
+          "similarity": 0.5807215571403503,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.548087696037089,
+          "similarity": 0.5772613883018494,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5988564431111247,
+          "similarity": 0.6731523871421814,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5817729057441843,
+          "similarity": 0.6323046684265137,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2800,
+          "title": "Circuit breaker / cap logic must be extracted as a testable unit function from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5700731644075491,
+          "similarity": 0.5950891375541687,
+          "confidence": 0.6257855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5535244273206873,
+          "similarity": 0.5807215571403503,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.548087696037089,
+          "similarity": 0.5772613883018494,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

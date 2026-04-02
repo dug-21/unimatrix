@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1642",
+  "query": "take the next number",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.38479583857187827,
+          "similarity": 0.24669259786605835,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.3676640787079002,
+          "similarity": 0.18847084045410156,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.35355769974229845,
+          "similarity": 0.23173338174819946,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.321611289144207,
+          "similarity": 0.19300824403762817,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.3210279996545735,
+          "similarity": 0.18184316158294678,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 57,
+          "title": "ADR-006: Vote Correction Atomicity",
+          "category": "decision",
+          "final_score": 0.38479583857187827,
+          "similarity": 0.24669259786605835,
+          "confidence": 0.620599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1542,
+          "title": "Background Tick Writers: Define Error Semantics for Consecutive Counters Before Implementation",
+          "category": "pattern",
+          "final_score": 0.3676640787079002,
+          "similarity": 0.18847084045410156,
+          "confidence": 0.6572727272727271,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 818,
+          "title": "ADR-010-001: AUTOINCREMENT for query_log Primary Key",
+          "category": "decision",
+          "final_score": 0.35355769974229845,
+          "similarity": 0.23173338174819946,
+          "confidence": 0.5571803539459539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1090,
+          "title": "ADR-001 nan-003: Hard STOP Gates for /unimatrix-seed State Machine",
+          "category": "decision",
+          "final_score": 0.321611289144207,
+          "similarity": 0.19300824403762817,
+          "confidence": 0.5257902933376647,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.3210279996545735,
+          "similarity": 0.18184316158294678,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

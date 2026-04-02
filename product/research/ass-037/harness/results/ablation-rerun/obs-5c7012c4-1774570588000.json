@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-5c7012c4-1774570588000",
+  "query": "nan-010 per-profile section 5 rendering",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.545628205480883,
+          "similarity": 0.6669360995292664,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.459284996599241,
+          "similarity": 0.48663878440856934,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.454140729363092,
+          "similarity": 0.4763672351837158,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.45345256613444035,
+          "similarity": 0.449296772480011,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4093157342359091,
+          "similarity": 0.40278351306915283,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.615226089334907,
+          "similarity": 0.6669360995292664,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5138760149618222,
+          "similarity": 0.48663878440856934,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.5093174290487813,
+          "similarity": 0.449296772480011,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.5077948822966059,
+          "similarity": 0.4763672351837158,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4533593182244985,
+          "similarity": 0.40278351306915283,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.6148881154120681,
+          "similarity": 0.6669360995292664,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5140540360765495,
+          "similarity": 0.48663878440856934,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.5097097209217799,
+          "similarity": 0.449296772480011,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.5080002917548601,
+          "similarity": 0.4763672351837158,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4536898790425073,
+          "similarity": 0.40278351306915283,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.5065760612487793,
+          "similarity": 0.6669360995292664,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.39562386732835036,
+          "similarity": 0.48663878440856934,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.38930291395920974,
+          "similarity": 0.4763672351837158,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.37264416768000674,
+          "similarity": 0.449296772480011,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.344020623427171,
+          "similarity": 0.40278351306915283,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.6669360995292664,
+          "similarity": 0.6669360995292664,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.48663878440856934,
+          "similarity": 0.48663878440856934,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.4763672351837158,
+          "similarity": 0.4763672351837158,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.449296772480011,
+          "similarity": 0.449296772480011,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.40278351306915283,
+          "similarity": 0.40278351306915283,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.545628205480883,
+          "similarity": 0.6669360995292664,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.459284996599241,
+          "similarity": 0.48663878440856934,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.454140729363092,
+          "similarity": 0.4763672351837158,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.45345256613444035,
+          "similarity": 0.449296772480011,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.4093157342359091,
+          "similarity": 0.40278351306915283,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3583,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3522,
+        "from_rank": 3,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cb586d22-1773712735000",
+  "query": "SocketGuard RAII drop shutdown UDS socket cleanup",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 245,
+          "title": "ADR-004: Socket Lifecycle Uses Unconditional Unlink After PidGuard",
+          "category": "decision",
+          "final_score": 0.5914809639957358,
+          "similarity": 0.6732235550880432,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.459704167981566,
+          "similarity": 0.4647061824798584,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.43485343179067504,
+          "similarity": 0.4095916748046875,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.4321788757725765,
+          "similarity": 0.4421398639678955,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.42225826073429096,
+          "similarity": 0.41375184059143066,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 245,
+          "title": "ADR-004: Socket Lifecycle Uses Unconditional Unlink After PidGuard",
+          "category": "decision",
+          "final_score": 0.5914809639957358,
+          "similarity": 0.6732235550880432,
+          "confidence": 0.5722718235769357,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3455,
+          "title": "UDS handle_connection: suppress expected I/O errors for fire-and-forget connections",
+          "category": "pattern",
+          "final_score": 0.459704167981566,
+          "similarity": 0.4647061824798584,
+          "confidence": 0.5124739095501674,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2616,
+          "title": "Two-socket / two-framing test patterns for dual-socket daemon harnesses",
+          "category": "pattern",
+          "final_score": 0.43485343179067504,
+          "similarity": 0.4095916748046875,
+          "confidence": 0.5237569222822788,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.4321788757725765,
+          "similarity": 0.4421398639678955,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 199,
+          "title": "ASS-014: Threat Model — Six Vectors with Layered Mitigations",
+          "category": "decision",
+          "final_score": 0.42225826073429096,
+          "similarity": 0.41375184059143066,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1396",
+  "query": "throw a gh issue out for thsi... this is supposed to help sell the value of Unimatrix... so we should change the way the metric is created to be more inclusive of any knowledge",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.4897510470715911,
+          "similarity": 0.4880717992782593,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.4627771818715871,
+          "similarity": 0.42822396755218506,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.4541873764687463,
+          "similarity": 0.4170241355895996,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.43721806160956667,
+          "similarity": 0.3834090828895569,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.4370458341570047,
+          "similarity": 0.40780484676361084,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.4897510470715911,
+          "similarity": 0.4880717992782593,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.4627771818715871,
+          "similarity": 0.42822396755218506,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3472,
+          "title": "Duplicated Pre-Post differential in metrics.rs and friction.rs must be updated atomically",
+          "category": "pattern",
+          "final_score": 0.4541873764687463,
+          "similarity": 0.4170241355895996,
+          "confidence": 0.5656169710014551,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2844,
+          "title": "UniversalMetrics Database Constraint — Migration Complexity for col-023",
+          "category": "pattern",
+          "final_score": 0.43721806160956667,
+          "similarity": 0.3834090828895569,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 918,
+          "title": "ADR-001 col-020b: normalize_tool_name as Private Function in session_metrics.rs",
+          "category": "decision",
+          "final_score": 0.4370458341570047,
+          "similarity": 0.40780484676361084,
+          "confidence": 0.5322603401924262,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

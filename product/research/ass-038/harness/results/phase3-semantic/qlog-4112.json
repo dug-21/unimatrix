@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4112",
+  "query": "Mostly yes, but two gaps worth flagging before coding starts:\n                                                                 \n  1. dead_knowledge.rs is missing from the plan                                                                        \n                                                                                                                       \n  The issue (#437) covers both recurring_friction and dead_knowledge extractors. The fix plan only addresses           \n  recurring_friction. dead_knowledge.rs produces \"Possible dead knowledge: {title}\" entries through the same           \n  ExtractionRule::evaluate() → ProposedEntry path. It needs the same treatment — remove the ExtractionRule impl,       \n  replace with compute_dead_knowledge_recommendations() -> Vec<String>, remove from default_extraction_rules(). The\n  plan should cover both or explicitly defer dead_knowledge with a reason.\n\n  2. How do friction_signals reach context_status?                                                                     \n   \n  The plan adds friction_signals: Vec<String> to TickMetadata (background tick) and then appends them in mcp/tools.rs. \n  But context_status is called on-demand, not as part of the tick. TickMetadata lives and dies within a single tick\n  execution.                                                                                                           \n                                                                \n  How does the signal cross from the tick to the status call? The plan needs to make this explicit — either:           \n  - A Arc<RwLock<Vec<String>>> shared between the tick and status service (simplest, same pattern as\n  PhaseFreqTableHandle)                                                                                                \n  - Stored in COUNTERS and read at status time                  \n  - Recomputed from observation data at status call time (no shared state needed, but costs a DB read)                 \n                                                                                                                       \n  The rest is sound: removing the ExtractionRule impl, 4→3 rules, COUNTERS-gated one-shot quarantine, and the          \n  regression test are all correct calls.                     - Rereview these additional concerns and re-evaluate plan",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5492701506141592,
+          "similarity": 0.5469083786010742,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5403709370890215,
+          "similarity": 0.5485711097717285,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5265995168482436,
+          "similarity": 0.5696934461593628,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5164434674706322,
+          "similarity": 0.5533351302146912,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2065,
+          "title": "ADR-006: Convert ExtractionRule::evaluate() to async fn",
+          "category": "decision",
+          "final_score": 0.5067373190224604,
+          "similarity": 0.5274552702903748,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5492701506141592,
+          "similarity": 0.5469083786010742,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5403709370890215,
+          "similarity": 0.5485711097717285,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5265995168482436,
+          "similarity": 0.5696934461593628,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5164434674706322,
+          "similarity": 0.5533351302146912,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2065,
+          "title": "ADR-006: Convert ExtractionRule::evaluate() to async fn",
+          "category": "decision",
+          "final_score": 0.5067373190224604,
+          "similarity": 0.5274552702903748,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 39,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1106",
+  "query": "yes, and if the architect actually created and stored ADR's for this in unimatrix, those need to be quarantined, and maybe 1 gets deprecated to reflect our new decision with rationale",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.524649882860209,
+          "similarity": 0.5311100482940674,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.5112154361673747,
+          "similarity": 0.5179139375686646,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5021276139890752,
+          "similarity": 0.511019229888916,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5020859418500887,
+          "similarity": 0.4985777735710144,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.49216187533220057,
+          "similarity": 0.5379419922828674,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.524649882860209,
+          "similarity": 0.5311100482940674,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.5112154361673747,
+          "similarity": 0.5179139375686646,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5021276139890752,
+          "similarity": 0.511019229888916,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.5020859418500887,
+          "similarity": 0.4985777735710144,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.49216187533220057,
+          "similarity": 0.5379419922828674,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

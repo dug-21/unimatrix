@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-3cd7df2a-1774783261000",
+  "query": "power iteration algorithm implementation pattern",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.4478228002967808,
+          "similarity": 0.37955808639526367,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3752,
+          "title": "Node-ID-sorted accumulation for deterministic power iteration",
+          "category": "pattern",
+          "final_score": 0.4208616711342701,
+          "similarity": 0.3904373049736023,
+          "confidence": 0.5131426716878729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.41421636707617726,
+          "similarity": 0.31183624267578125,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.40769885703013276,
+          "similarity": 0.3195939064025879,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.38894553900737017,
+          "similarity": 0.28690749406814575,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3744,
+          "title": "PPR power iteration uses Direction::Outgoing (reverse walk) despite ADR-003 saying Incoming",
+          "category": "pattern",
+          "final_score": 0.4478228002967808,
+          "similarity": 0.37955808639526367,
+          "confidence": 0.6018646202408856,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3752,
+          "title": "Node-ID-sorted accumulation for deterministic power iteration",
+          "category": "pattern",
+          "final_score": 0.4208616711342701,
+          "similarity": 0.3904373049736023,
+          "confidence": 0.5131426716878729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.41421636707617726,
+          "similarity": 0.31183624267578125,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.40769885703013276,
+          "similarity": 0.3195939064025879,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.38894553900737017,
+          "similarity": 0.28690749406814575,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

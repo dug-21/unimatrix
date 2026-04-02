@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-88cecd44-1773700556000",
+  "query": "storage schema tables list ENTRIES indexes VECTOR_MAP COUNTERS",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.46202848199532703,
+          "similarity": 0.4701651334762573,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.45644226583686126,
+          "similarity": 0.49703657627105713,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.4536131460674327,
+          "similarity": 0.4546545743942261,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 360,
+          "title": "ADR-006: entry_tags Junction Table with Foreign Key CASCADE",
+          "category": "decision",
+          "final_score": 0.4435752845932793,
+          "similarity": 0.45315635204315186,
+          "confidence": 0.5566570285723444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.43004438194480193,
+          "similarity": 0.4442408084869385,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.4020225084744967,
+          "similarity": 0.49703657627105713,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.3854862359853891,
+          "similarity": 0.4701651334762573,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.37594127655029297,
+          "similarity": 0.4546545743942261,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 360,
+          "title": "ADR-006: entry_tags Junction Table with Foreign Key CASCADE",
+          "category": "decision",
+          "final_score": 0.3750192935650165,
+          "similarity": 0.45315635204315186,
+          "confidence": 0.5566570285723444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.36953280522273135,
+          "similarity": 0.4442408084869385,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.5194346680841492,
+          "similarity": 0.4701651334762573,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.509404850053905,
+          "similarity": 0.4546545743942261,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.5091328573965687,
+          "similarity": 0.49703657627105713,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 360,
+          "title": "ADR-006: entry_tags Junction Table with Foreign Key CASCADE",
+          "category": "decision",
+          "final_score": 0.49577427767281945,
+          "similarity": 0.45315635204315186,
+          "confidence": 0.5566570285723444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4780765234059106,
+          "similarity": 0.4442408084869385,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.49703657627105713,
+          "similarity": 0.49703657627105713,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.4701651334762573,
+          "similarity": 0.4701651334762573,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.4546545743942261,
+          "similarity": 0.4546545743942261,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 360,
+          "title": "ADR-006: entry_tags Junction Table with Foreign Key CASCADE",
+          "category": "decision",
+          "final_score": 0.45315635204315186,
+          "similarity": 0.45315635204315186,
+          "confidence": 0.5566570285723444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4442408084869385,
+          "similarity": 0.4442408084869385,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.46202848199532703,
+          "similarity": 0.4701651334762573,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.45644226583686126,
+          "similarity": 0.49703657627105713,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.4536131460674327,
+          "similarity": 0.4546545743942261,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 360,
+          "title": "ADR-006: entry_tags Junction Table with Foreign Key CASCADE",
+          "category": "decision",
+          "final_score": 0.4435752845932793,
+          "similarity": 0.45315635204315186,
+          "confidence": 0.5566570285723444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.43004438194480193,
+          "similarity": 0.4442408084869385,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 66,
+          "title": "ADR-004: Bidirectional In-Memory ID Map",
+          "category": "decision",
+          "final_score": 0.5191147360412407,
+          "similarity": 0.4701651334762573,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.5090543101165328,
+          "similarity": 0.49703657627105713,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 62,
+          "title": "ADR-005: Compound Tuple Keys for Index Tables",
+          "category": "decision",
+          "final_score": 0.5090493287833876,
+          "similarity": 0.4546545743942261,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 360,
+          "title": "ADR-006: entry_tags Junction Table with Foreign Key CASCADE",
+          "category": "decision",
+          "final_score": 0.4954975378960033,
+          "similarity": 0.45315635204315186,
+          "confidence": 0.5566570285723444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1498,
+          "title": "flat_map repeat + dedup-before-multiply for weighted access increment in UsageService",
+          "category": "pattern",
+          "final_score": 0.4778568109713718,
+          "similarity": 0.4442408084869385,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3804,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 62,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

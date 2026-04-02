@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-cb586d22-1773712830000",
+  "query": "UnimatrixServer Clone Arc-wrapped fields daemon session sharing",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.5463593412657108,
+          "similarity": 0.6796878576278687,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5271597494667205,
+          "similarity": 0.5720333456993103,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.48923781994458476,
+          "similarity": 0.5199189782142639,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.47333374378560206,
+          "similarity": 0.5046762228012085,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4587857704944364,
+          "similarity": 0.5025793313980103,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.6150638419416176,
+          "similarity": 0.6796878576278687,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.598669354209227,
+          "similarity": 0.5720333456993103,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.5516953019049552,
+          "similarity": 0.5199189782142639,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.5313936303620747,
+          "similarity": 0.5046762228012085,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5117461114562305,
+          "similarity": 0.5025793313980103,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.6796878576278687,
+          "similarity": 0.6796878576278687,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5720333456993103,
+          "similarity": 0.5720333456993103,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.5199189782142639,
+          "similarity": 0.5199189782142639,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.5046762228012085,
+          "similarity": 0.5046762228012085,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5025793313980103,
+          "similarity": 0.5025793313980103,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.5463593412657108,
+          "similarity": 0.6796878576278687,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5271597494667205,
+          "similarity": 0.5720333456993103,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.48923781994458476,
+          "similarity": 0.5199189782142639,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.47333374378560206,
+          "similarity": 0.5046762228012085,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.4587857704944364,
+          "similarity": 0.5025793313980103,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.5144232970017653,
+          "similarity": 0.6796878576278687,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.44817436658419096,
+          "similarity": 0.5720333456993103,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.4161039865933932,
+          "similarity": 0.5199189782142639,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.40672382941612834,
+          "similarity": 0.5046762228012085,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.40543343470646787,
+          "similarity": 0.5025793313980103,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1913,
+          "title": "ADR-003 vnc-005: UnimatrixServer Sharing via Clone (no Arc wrapper)",
+          "category": "decision",
+          "final_score": 0.6146414627541258,
+          "similarity": 0.6796878576278687,
+          "confidence": 0.5217180415059217,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5988434457681153,
+          "similarity": 0.5720333456993103,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.5519029902950905,
+          "similarity": 0.5199189782142639,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.5315682539409039,
+          "similarity": 0.5046762228012085,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2524,
+          "title": "AsyncEmbedService is unused in unimatrix-server — server uses EmbedAdapter directly",
+          "category": "pattern",
+          "final_score": 0.5118060250513824,
+          "similarity": 0.5025793313980103,
+          "confidence": 0.5249870159847712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

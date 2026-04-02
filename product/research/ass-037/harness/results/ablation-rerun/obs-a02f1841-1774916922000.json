@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-a02f1841-1774916922000",
+  "query": "sanitize_session_id UDS dispatch arm missing validation",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3902,
+          "title": "UDS dispatch arms: adding a session registry call triggers sanitize_session_id audit",
+          "category": "lesson-learned",
+          "final_score": 0.6903425433967147,
+          "similarity": 0.7872166633605957,
+          "confidence": 0.5504132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.6277757847309111,
+          "similarity": 0.7370051741600037,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5697005775183299,
+          "similarity": 0.5266109704971313,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.5550079946592479,
+          "similarity": 0.5190778970718384,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.5115878570194494,
+          "similarity": 0.5013241171836853,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3902,
+          "title": "UDS dispatch arms: adding a session registry call triggers sanitize_session_id audit",
+          "category": "lesson-learned",
+          "final_score": 0.5805948697603667,
+          "similarity": 0.7872166633605957,
+          "confidence": 0.5504132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.5496954917907715,
+          "similarity": 0.7370051741600037,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.4202221356905424,
+          "similarity": 0.5266109704971313,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.4155863981980544,
+          "similarity": 0.5190778970718384,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.4046609951899602,
+          "similarity": 0.5013241171836853,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3902,
+          "title": "UDS dispatch arms: adding a session registry call triggers sanitize_session_id audit",
+          "category": "lesson-learned",
+          "final_score": 0.7872166633605957,
+          "similarity": 0.7872166633605957,
+          "confidence": 0.5504132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.7370051741600037,
+          "similarity": 0.7370051741600037,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5266109704971313,
+          "similarity": 0.5266109704971313,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.5190778970718384,
+          "similarity": 0.5190778970718384,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.5013241171836853,
+          "similarity": 0.5013241171836853,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3902,
+          "title": "UDS dispatch arms: adding a session registry call triggers sanitize_session_id audit",
+          "category": "lesson-learned",
+          "final_score": 0.6897093792139443,
+          "similarity": 0.7872166633605957,
+          "confidence": 0.5504132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.6270618671529433,
+          "similarity": 0.7370051741600037,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5699822089367692,
+          "similarity": 0.5266109704971313,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.5552428318983813,
+          "similarity": 0.5190778970718384,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.51165494028635,
+          "similarity": 0.5013241171836853,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3902,
+          "title": "UDS dispatch arms: adding a session registry call triggers sanitize_session_id audit",
+          "category": "lesson-learned",
+          "final_score": 0.6087323093816306,
+          "similarity": 0.7872166633605957,
+          "confidence": 0.5504132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.5595025870800019,
+          "similarity": 0.7370051741600037,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5028878215465841,
+          "similarity": 0.5266109704971313,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.49161105588823767,
+          "similarity": 0.5190778970718384,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.45858603629317535,
+          "similarity": 0.5013241171836853,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3902,
+          "title": "UDS dispatch arms: adding a session registry call triggers sanitize_session_id audit",
+          "category": "lesson-learned",
+          "final_score": 0.6087323093816306,
+          "similarity": 0.7872166633605957,
+          "confidence": 0.5504132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3921,
+          "title": "UDS dispatch: all arms that use session_id must carry sanitize_session_id — consistency rule",
+          "category": "pattern",
+          "final_score": 0.5595025870800019,
+          "similarity": 0.7370051741600037,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5028878215465841,
+          "similarity": 0.5266109704971313,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 322,
+          "title": "Transport-Boundary Session ID Prefixing with Storage Stripping",
+          "category": "pattern",
+          "final_score": 0.49161105588823767,
+          "similarity": 0.5190778970718384,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.45858603629317535,
+          "similarity": 0.5013241171836853,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

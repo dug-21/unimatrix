@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-806",
+  "query": "now commit all of the research in ass-020, then ass-012",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.42408877612430484,
+          "similarity": 0.3611783981323242,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 382,
+          "title": "ADR-001 col-012: AUTOINCREMENT Primary Key for Observations Table",
+          "category": "decision",
+          "final_score": 0.4191153937603218,
+          "similarity": 0.3268551230430603,
+          "confidence": 0.5992344644307877,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.4097427360312794,
+          "similarity": 0.335487961769104,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.3899334068575233,
+          "similarity": 0.3720773458480835,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2161,
+          "title": "ADR-001 alc-003 test",
+          "category": "decision",
+          "final_score": 0.36917825112979463,
+          "similarity": 0.32736337184906006,
+          "confidence": 0.46296472185364257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 820,
+          "title": "ADR-010-003: Backfill topic_deliveries in Main Migration Transaction",
+          "category": "decision",
+          "final_score": 0.42408877612430484,
+          "similarity": 0.3611783981323242,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 382,
+          "title": "ADR-001 col-012: AUTOINCREMENT Primary Key for Observations Table",
+          "category": "decision",
+          "final_score": 0.4191153937603218,
+          "similarity": 0.3268551230430603,
+          "confidence": 0.5992344644307877,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.4097427360312794,
+          "similarity": 0.335487961769104,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 200,
+          "title": "ASS-014 Architecture Synthesis: Cortical Implant End-to-End Design",
+          "category": "decision",
+          "final_score": 0.3899334068575233,
+          "similarity": 0.3720773458480835,
+          "confidence": 0.4554230388303013,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2161,
+          "title": "ADR-001 alc-003 test",
+          "category": "decision",
+          "final_score": 0.36917825112979463,
+          "similarity": 0.32736337184906006,
+          "confidence": 0.46296472185364257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

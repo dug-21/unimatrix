@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-b0be618b-1774490666000",
+  "query": "Shannon entropy category diversity distribution metrics",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.5247246768667214,
+          "similarity": 0.5329983234405518,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.49706274585541765,
+          "similarity": 0.48863542079925537,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4013173232350752,
+          "similarity": 0.3390336036682129,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.3897015562255569,
+          "similarity": 0.31119489669799805,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.38632064013608336,
+          "similarity": 0.29577529430389404,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3525,
+          "title": "Shannon entropy implementations must skip zero-count categories to avoid ln(0) = -inf NaN propagation",
+          "category": "pattern",
+          "final_score": 0.5247246768667214,
+          "similarity": 0.5329983234405518,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3521,
+          "title": "ADR-002 nan-008: ICD Uses Raw Shannon Entropy with Max-Value Label in Report",
+          "category": "decision",
+          "final_score": 0.49706274585541765,
+          "similarity": 0.48863542079925537,
+          "confidence": 0.5796911376086263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.4013173232350752,
+          "similarity": 0.3390336036682129,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3177,
+          "title": "Synthetic Histogram Concentration Test Pattern for Small Additive Score Weights",
+          "category": "pattern",
+          "final_score": 0.3897015562255569,
+          "similarity": 0.31119489669799805,
+          "confidence": 0.5417686573293716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.38632064013608336,
+          "similarity": 0.29577529430389404,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

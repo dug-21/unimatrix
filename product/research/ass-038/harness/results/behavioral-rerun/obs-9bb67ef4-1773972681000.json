@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9bb67ef4-1773972681000",
+  "query": "file line limit 500 lines gate failure oversized module split",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3580,
+          "title": "Gate 3b: file size violations discovered at gate — 500-line limit not self-checked by implementation agent",
+          "category": "lesson-learned",
+          "final_score": 0.5745344937557281,
+          "similarity": 0.631331741809845,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5617416942487855,
+          "similarity": 0.6223790049552917,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.5582749969824045,
+          "similarity": 0.5654494166374207,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.5202315309540874,
+          "similarity": 0.579126238822937,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.47604322640855157,
+          "similarity": 0.4859928488731384,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3580,
+          "title": "Gate 3b: file size violations discovered at gate — 500-line limit not self-checked by implementation agent",
+          "category": "lesson-learned",
+          "final_score": 0.5745344937557281,
+          "similarity": 0.631331741809845,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5617416942487855,
+          "similarity": 0.6223790049552917,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1203,
+          "title": "Gate Validators Must Check All Files in One Pass to Prevent Cascading Rework",
+          "category": "lesson-learned",
+          "final_score": 0.5582749969824045,
+          "similarity": 0.5654494166374207,
+          "confidence": 0.6361043966130686,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3778,
+          "title": "When a test file split from a module still exceeds 500 lines, split tests.rs into tests.rs (pre-existing) + feature_tests.rs (new), sharing helpers via pub(super)",
+          "category": "pattern",
+          "final_score": 0.5202315309540874,
+          "similarity": 0.579126238822937,
+          "confidence": 0.5133052428426131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3605,
+          "title": "render.rs 500-line budget: cargo fmt expands inline calls — write compact then let fmt decide",
+          "category": "pattern",
+          "final_score": 0.47604322640855157,
+          "similarity": 0.4859928488731384,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

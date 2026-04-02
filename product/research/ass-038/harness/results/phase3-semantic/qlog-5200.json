@@ -1,0 +1,74 @@
+{
+  "scenario_id": "qlog-5200",
+  "query": "approved with these adjustments: The fix is clean and well-scoped. A few observations:                                                  \n   \n  The constant value: 25 is right. It's enough to make forward progress without materially adding to tick\n   duration — each informs pair still goes through NLI scoring which is the slow part.\n                                                                                                         \n  The test replacement note is the most interesting line: 5 existing tests encode the broken behavior.   \n  That's worth a close look when the implementation comes back — \"replaced\" tests should be verified to\n  actually assert the intended behavior, not just a different output of the same broken logic. The new   \n  test_phase5_informs_always_gets_dedicated_budget name is good — it pins the invariant directly.\n\n  One thing not in the summary: the random shuffle needs a seeded or deterministic path for tests. The   \n  shuffle precedent from #421 presumably handled this — worth confirming the rust-dev uses the same\n  pattern rather than introducing a new thread_rng call that makes tests flaky.                          \n                                                                  \n  Mild concern: removing remaining_capacity entirely is correct, but the log line at line 425–432 still  \n  references informs_candidates_accepted / informs_candidates_dropped. That accounting stays meaningful\n  and should still be logged — just calculated differently now (against MAX_INFORMS_PER_TICK rather than \n  remaining_capacity). Easy to miss in a minimal change.          \n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5407437853553287,
+          "similarity": 0.5750749707221985,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.49089948955335105,
+          "similarity": 0.5537090301513672,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5407437853553287,
+          "similarity": 0.5750749707221985,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.49089948955335105,
+          "similarity": 0.5537090301513672,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

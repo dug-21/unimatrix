@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-827",
+  "query": "I think its a simplified struct that would still ONLY work if Unimatrix was local using STDIO, but setup the structure on the backend consistently: Background\n\nASS-020 (security audit) identified that the current PERMISSIVE_AUTO_ENROLL = true + per-call agent_id self-reporting combination makes the capability system vestigial: any caller passes agent_id: \\\"human\\\" to get full access, and there is no way to prevent it on stdio transport.\n\nThe audit's Staged Identity Model describes a near-term bridge that eliminates both problems without waiting for OAuth/HTTPS:\n\n\"The env-var bridge eliminates the 'human everywhere' problem. The MCP server reads UNIMATRIX_SESSION_AGENT at startup as the session default; tool calls can override per-call if needed.\"\nA post-audit design session confirmed the approach and the decision to disable permissive auto-enroll, replacing it with env-var-configured session identity.\n\nDesign\n\nStage 2 — Env-var Bridge (this issue)\n\nMechanism    Detail\nUNIMATRIX_SESSION_AGENT    Env var in settings.json MCP config. Read at server startup. Becomes the default agent_id for all tool calls that omit agent_id.\nPERMISSIVE_AUTO_ENROLL    Convert from compile-time const to env-var-controlled (default false). Flip to true for local dev only, not the default.\nSession agent enrollment    At startup, if UNIMATRIX_SESSION_AGENT is set and the agent is not enrolled, auto-enroll it with [Read, Write, Search]. One enrollment, not per-call.\nHook differentiation    UDS hook calls continue to use \\\"hook\\\" / \\\"background\\\" as their source identities (already differentiated at the transport layer — no change needed).\nWhat this achieves\n\nNo per-call agent_id burden on callers — zero friction\nNo \\\"human\\\" workaround needed\nIdentity is now configured in one place (settings.json) and reflects the actual LLM session\nPERMISSIVE_AUTO_ENROLL = false means unknown/unnamed agents get [Read, Search] only — Write requires a configured identity\nSame enrollment pipeline and capability gates; only the binding point for identity changes\nForward-compatible: when HTTPS/OAuth arrives, UNIMATRIX_SESSION_AGENT slot is replaced by token claims — no structural changes\nScope\n\n\nRead UNIMATRIX_SESSION_AGENT env var at server startup\n\nUse as default agent_id in resolve_or_enroll() when per-call agent_id is absent or empty\n\nAuto-enroll session agent with [Read, Write, Search] at startup if not already enrolled\n\nConvert PERMISSIVE_AUTO_ENROLL from compile-time const to env-var (UNIMATRIX_PERMISSIVE_ENROLL, default false)\n\nUpdate settings.json documentation / example to show UNIMATRIX_SESSION_AGENT configuration\n\nFix [infra-001] 3 tools tests expect Write rejection but PERMISSIVE_AUTO_ENROLL grants Write #233 and [infra-001] test_multi_agent_interaction: restricted agent can now store after bugfix-228 permissive auto-enroll #238 — tests that assert Write rejection for unknown agents are now correct; permissive behavior should no longer be the default\nFiles\n\ncrates/unimatrix-server/src/infra/registry.rs — PERMISSIVE_AUTO_ENROLL, resolve_or_enroll()\ncrates/unimatrix-server/src/main.rs or server init — env var read + startup enrollment\ncrates/unimatrix-server/src/mcp/tools.rs — default agent_id injection from session config\nIntegration tests — update to reflect PERMISSIVE_AUTO_ENROLL = false default\nReferences\n\nASS-020 security audit: product/research/ass-020/SECURITY-AUDIT.md §Staged Identity Model\nalc-002 (context_enroll, Agent registry lacks enrollment tool — spawned agents blocked from writes #46) — enrollment pipeline this builds on\nPermissive auto-enroll for unknown agents #228 (CLOSED) — added PERMISSIVE_AUTO_ENROLL = true; this issue partially reverses that decision\n[infra-001] 3 tools tests expect Write rejection but PERMISSIVE_AUTO_ENROLL grants Write #233, [infra-001] test_multi_agent_interaction: restricted agent can now store after bugfix-228 permissive auto-enroll #238 — test failures that become fixable once permissive mode is off by default",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.6195159661633773,
+          "similarity": 0.7161521911621094,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5682183664337589,
+          "similarity": 0.5909955501556396,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.5498559872133804,
+          "similarity": 0.6262370944023132,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.5332545151548967,
+          "similarity": 0.638993501663208,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.516148875570044,
+          "similarity": 0.5921440124511719,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.6195159661633773,
+          "similarity": 0.7161521911621094,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5682183664337589,
+          "similarity": 0.5909955501556396,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.5498559872133804,
+          "similarity": 0.6262370944023132,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.5332545151548967,
+          "similarity": 0.638993501663208,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.516148875570044,
+          "similarity": 0.5921440124511719,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5191",
+  "query": "still looking at logging to see if we're infering cross feature category links 2026-03-31T23:33:58.730494Z  INFO unimatrix_server::background: background tick starting\n2026-03-31T23:33:58.853561Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.1585 confidence_weight=0.1981\n2026-03-31T23:33:58.854339Z  INFO unimatrix_server::services::status: cycle GC: pass starting k=50 purgeable_count=5 capped_to=10\n2026-03-31T23:33:58.855285Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=vnc-012 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T23:33:58.855980Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=crt-032 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T23:33:58.856682Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-311 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T23:33:58.857291Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-340 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T23:33:58.857910Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-342 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T23:33:58.932604Z  INFO unimatrix_server::services::status: cycle GC: unattributed cleanup observations_deleted=0 query_log_deleted=0 sessions_deleted=0 injection_log_deleted=0\n2026-03-31T23:33:58.932630Z  INFO unimatrix_server::services::status: cycle GC: pass complete cycles_pruned=5 cycles_skipped=0 total_rows_deleted=0\n2026-03-31T23:33:58.932910Z  INFO unimatrix_server::services::status: cycle GC: audit_log cleanup rows_deleted=0 cutoff_days=180\n2026-03-31T23:33:58.933356Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-31T23:33:58.933383Z DEBUG unimatrix_server::background: lifecycle guard: adaptive categories eligible for auto-deprecation (stub, #409) categories=[\"lesson-learned\"]\n2026-03-31T23:33:58.933889Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-31T23:33:58.934775Z  INFO unimatrix_server::background: background tick: GRAPH_EDGES orphaned-edge compaction complete rows_deleted=32\n2026-03-31T23:33:59.037339Z  INFO unimatrix_server::services::co_access_promotion_tick: co_access promotion tick complete promoted_pairs=200 edges_inserted=32 edges_updated=0\n2026-03-31T23:33:59.094249Z DEBUG unimatrix_server::background: typed graph state rebuilt (1477 entries)\n2026-03-31T23:33:59.096718Z DEBUG unimatrix_server::background: PhaseFreqTable rebuilt successfully\n2026-03-31T23:33:59.107067Z DEBUG unimatrix_server::background: contradiction scan starting tick=0\n2026-03-31T23:34:19.861192Z DEBUG unimatrix_server::background: contradiction scan complete; cache updated tick=0 pairs=0\n2026-03-31T23:34:19.882958Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-31T23:34:19.921076Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: merged cap accounting supports_candidates=100 informs_candidates_total=278 informs_candidates_accepted=0 informs_candidates_dropped=278\n2026-03-31T23:34:24.032234Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: nli score distribution nli_score_max=0.3594827651977539 nli_score_mean=0.06485188752412796 nli_score_p75=0.08736734837293625 threshold=0.6000000238418579 pairs=100\n2026-03-31T23:34:24.032299Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: Informs write complete informs_edges_written=0 informs_pairs_evaluated=0\n2026-03-31T23:34:24.032304Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 informs_edges_written=0 pairs_scored=100 source_candidates=100\n2026-03-31T23:34:24.033776Z  INFO unimatrix_server::background: background tick complete duration_secs=26",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5654881693143096,
+          "similarity": 0.5771926045417786,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 310,
+          "title": "Retrospective findings: vnc-008",
+          "category": "lesson-learned",
+          "final_score": 0.5394736793137319,
+          "similarity": 0.5359598398208618,
+          "confidence": 0.6272002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5335340785594367,
+          "similarity": 0.5250954031944275,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5213588403197145,
+          "similarity": 0.5552361607551575,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 977,
+          "title": "Retrospective findings: vnc-010",
+          "category": "lesson-learned",
+          "final_score": 0.4830464415497052,
+          "similarity": 0.5236414074897766,
+          "confidence": 0.4916383306495191,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 42,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5654881693143096,
+          "similarity": 0.5771926045417786,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 310,
+          "title": "Retrospective findings: vnc-008",
+          "category": "lesson-learned",
+          "final_score": 0.5394736793137319,
+          "similarity": 0.5359598398208618,
+          "confidence": 0.6272002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5335340785594367,
+          "similarity": 0.5250954031944275,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.5213588403197145,
+          "similarity": 0.5552361607551575,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 977,
+          "title": "Retrospective findings: vnc-010",
+          "category": "lesson-learned",
+          "final_score": 0.4830464415497052,
+          "similarity": 0.5236414074897766,
+          "confidence": 0.4916383306495191,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 45,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

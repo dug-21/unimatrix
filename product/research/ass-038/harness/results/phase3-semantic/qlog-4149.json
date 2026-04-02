@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4149",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(git checkout -b bugfix/436-retire-duties-reference-categories) → Switched to a new branch 'bugfix/436-retire-duties-reference-categories']\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'bugfix-436'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[Assistant] **DIAGNOSIS + DESIGN REVIEW COMPLETE — Awaiting approval.**\n\n---\n\n**Root Cause:** `\"duties\"` and `\"reference\"` are stale holdovers in `INITIAL_CATEGORIES`. Duties was replaced by file-based agent definitions; reference was never used. Additionally, `INITIAL_CATEGORIES` is duplicated across `categories.rs` and `config.rs`, requiring manual sync on every category change.\n\n**Fix Scope (as you specified):**\n1. `INITIAL_CATEGORIES: [&str; 7]` → `[&str; 5]` in `categories.rs`, remove `duties`/`reference` entries\n2. Make `categories.rs::INITIAL_CATEGORIES` `pub(crate)`\n3. Remove duplicate `INITIAL_CATEGORIES` from `config.rs`; import from `crate::infra::categories` instead\n4. All downstream test + harness updates (8 test edits in `categories.rs`, 1-2 in `config.rs`, `builtin_claude_code_pack()` in `domain/mod.rs`, `domain_pack_tests.rs`, Python harness)\n\n**Design Review: APPROVED WITH NOTES** — 4 non-blocking implementation notes:\n- **A**: Must add `use crate::infra::categories::INITIAL_CATEGORIES;` to `config.rs` (currently no import from categories in that file)\n- **B**: `[&str; 5]` size literal update needed in `categories.rs`; config deletion handles itself — compiler enforces both\n- **C**: `config.rs:2849` — `test_default_config_toml_empty_parses_defaults` references the local constant by name; needs updating to the imported one\n- **D**: Grep `categories.rs` test module for all hardcoded `7` — at least 4 assertions, not just 2\n\n**Risk:** Low. Startup-time failures only if something is missed; compiler + existing tests catch all drift. No hot-path exposure, no security surface change (`pub(crate)` actually narrows current `pub` exposure in `config.rs`).\n\n**Missing Test (resolved by this fix):** The duplicate constant required a runtime cross-check (`test_default_config_categories_match_initial_categories`). After deduplication, this becomes a compile-time guarantee — the runtime test can be removed or repurposed.\n\n---\n\nApprove to proceed with fix implementation?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5394183620581918,
+          "similarity": 0.5326210856437683,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5246221976531179,
+          "similarity": 0.6177821755409241,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5184884195751506,
+          "similarity": 0.5555638670921326,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5039902350573597,
+          "similarity": 0.5222358107566833,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1469,
+          "title": "context_cycle topic must be the canonical feature ID — free-form descriptions break retrospective attribution silently",
+          "category": "lesson-learned",
+          "final_score": 0.5394183620581918,
+          "similarity": 0.5326210856437683,
+          "confidence": 0.6318197175239947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5246221976531179,
+          "similarity": 0.6177821755409241,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.5184884195751506,
+          "similarity": 0.5555638670921326,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.5039902350573597,
+          "similarity": 0.5222358107566833,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

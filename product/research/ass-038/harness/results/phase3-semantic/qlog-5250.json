@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5250",
+  "query": "here is the recommendation on 476.  thoughts? DIAGNOSIS + DESIGN REVIEW COMPLETE — Awaiting approval.\n                                                                                                                  \n  Root Cause: The promotion SELECT in co_access_promotion_tick.rs (~line 215) has no status filter. Compaction\n  (step 2 in background.rs) correctly deletes GRAPH_EDGES where either endpoint is quarantined (status = 3).      \n  Promotion (step 3) then re-reads the same co_access rows with no JOIN to entries, re-inserts both directions for\n   the 32 quarantined-endpoint pairs, and the cycle repeats every tick.                                           \n                                                                                                                \n  Affected Files:                                                                                                 \n  - crates/unimatrix-store/src/co_access_promotion_tick.rs — primary fix\n  - crates/unimatrix-store/tests/co_access_promotion_tick_tests.rs — new tests                                    \n                                                                                                                \n  Proposed Fix (investigator's approach + architect amendments):                                                  \n  1. Add JOIN entries ea ON ea.id = ca.entry_id_a AND ea.status != ?3 and matching JOIN entries eb ON ... to both \n  the outer SELECT and the scalar max_count subquery.                                                             \n  2. Add .bind(Status::Quarantined as u8 as i64) as a third bind parameter (currently only 2 binds exist — missing\n   this would cause silent wrong results via SQL NULL).                                                           \n  3. Three new tests in co_access_promotion_tick_tests.rs: (a) one quarantined endpoint → 0 edges promoted, (b)   \n  both quarantined → 0 edges promoted, (c) mixed batch → only active-both-endpoints pairs promoted. Tests must \n  seed real entries rows with quarantined status, not rely on non-existent IDs as a proxy.                        \n  4. Write-time filter: withdrawn from this PR. The oscillation fix is tick-side only. A comment will be added at\n  the analytics write site documenting that quarantine filtering is intentionally deferred to the tick-side JOIN. \n  Stale-pair accumulation filed as a follow-up.                                                                   \n                                               \n  Design Review: APPROVED WITH NOTES — no blocking architectural concerns. The JOIN approach matches the existing \n  compaction pattern and runs on a background tick (no hot-path risk). Two amendments (subquery filter + third    \n  bind) are correctness-critical and addressed in the approach above.\n                                                                                                                  \n  Risk Assessment: Low. SQL change is narrow and bounded. Worst case of a subtle bug: promotion promotes nothing  \n  (safe — graph just doesn't grow) or promotes everything (reverts to current state). Third bind omission is the\n  highest-risk pitfall and is explicitly covered by the new tests.                                                \n                                                                                                                \n  Missing Test: Tests for quarantined-endpoint pairs in co_access_promotion_tick_tests.rs (zero exist today).  ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.6441548550552877,
+          "similarity": 0.7885485887527466,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.6033769940751138,
+          "similarity": 0.7361217737197876,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5904392412510332,
+          "similarity": 0.7115400433540344,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.6441548550552877,
+          "similarity": 0.7885485887527466,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.6033769940751138,
+          "similarity": 0.7361217737197876,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5904392412510332,
+          "similarity": 0.7115400433540344,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

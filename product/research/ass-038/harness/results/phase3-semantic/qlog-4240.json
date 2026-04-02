@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4240",
+  "query": "there are 9 crt-030 ADRs (should be in unimatrix) that you should review before we move to delivery",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.4700692917171049,
+          "similarity": 0.4597461223602295,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.46941725418457536,
+          "similarity": 0.4368025064468384,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3795,
+          "title": "ADR-003 crt-033: Direct serde derives on RetrospectiveReport — no DTO shim required",
+          "category": "decision",
+          "final_score": 0.4662471538856412,
+          "similarity": 0.45141661167144775,
+          "confidence": 0.5492185438732436,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.44000929286355095,
+          "similarity": 0.4243208169937134,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2161,
+          "title": "ADR-001 alc-003 test",
+          "category": "decision",
+          "final_score": 0.43496094870702007,
+          "similarity": 0.4523504972457886,
+          "confidence": 0.46296472185364257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 397,
+          "title": "ADR-005: ModelRegistry Versioning Strategy",
+          "category": "decision",
+          "final_score": 0.4700692917171049,
+          "similarity": 0.4597461223602295,
+          "confidence": 0.5476936170032428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3890,
+          "title": "ADR-001 (crt-035): Bidirectional Tick Updates Are Eventually Consistent, Not Atomic Per Pair",
+          "category": "decision",
+          "final_score": 0.46941725418457536,
+          "similarity": 0.4368025064468384,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3795,
+          "title": "ADR-003 crt-033: Direct serde derives on RetrospectiveReport — no DTO shim required",
+          "category": "decision",
+          "final_score": 0.4662471538856412,
+          "similarity": 0.45141661167144775,
+          "confidence": 0.5492185438732436,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.44000929286355095,
+          "similarity": 0.4243208169937134,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2161,
+          "title": "ADR-001 alc-003 test",
+          "category": "decision",
+          "final_score": 0.43496094870702007,
+          "similarity": 0.4523504972457886,
+          "confidence": 0.46296472185364257,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4736",
+  "query": "neither of these in reality should be tracked at all",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.3985580218053266,
+          "similarity": 0.2649441361427307,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3837,
+          "title": "Retrospective findings: bugfix-358",
+          "category": "lesson-learned",
+          "final_score": 0.36795214287398714,
+          "similarity": 0.271964430809021,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.35740082208733803,
+          "similarity": 0.2776615619659424,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3877,
+          "title": "Retrospective findings: nan-009",
+          "category": "lesson-learned",
+          "final_score": 0.35256550507796436,
+          "similarity": 0.2684744596481323,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.3405581375025055,
+          "similarity": 0.26916980743408203,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.3985580218053266,
+          "similarity": 0.2649441361427307,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3837,
+          "title": "Retrospective findings: bugfix-358",
+          "category": "lesson-learned",
+          "final_score": 0.36795214287398714,
+          "similarity": 0.271964430809021,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3848,
+          "title": "Retrospective findings: bugfix-421",
+          "category": "lesson-learned",
+          "final_score": 0.35740082208733803,
+          "similarity": 0.2776615619659424,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3877,
+          "title": "Retrospective findings: nan-009",
+          "category": "lesson-learned",
+          "final_score": 0.35256550507796436,
+          "similarity": 0.2684744596481323,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.3405581375025055,
+          "similarity": 0.26916980743408203,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

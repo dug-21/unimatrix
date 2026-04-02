@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4785",
+  "query": "These need to be explicitly defined in the test strategy and be included in gate-3b validation requirements: R-01 (High) — EXPLAIN QUERY PLAN gate: This is the correct handling for OQ-03. Can't verify  \n  index coverage without a real DB at design time. The deferred delivery gate is appropriate — \n  it's a one-line check that the delivery agent runs before merge. The architecture already    \n  argues the UNIQUE constraint covers the NOT EXISTS sub-join (Component 2, SR-04); R-01 is    \n  just confirmation. Not a design concern.                                                     \n\n  R-02 (Critical) — \"no duplicate\" grep gate: This is the most dangerous of the three.         \n  test_inserted_edge_is_one_directional was written with explicit intent — it's not an\n  accidental one-directional assertion, it's a named contract test. A delivery agent who       \n  updates all the numeric edge counts but misses this test will have a passing test suite that\n  asserts the wrong behavior. The grep gate must be non-negotiable and should be in the\n  delivery brief explicitly, not just the risk strategy.\n\n  R-08 (Critical) — N → 2N edge count blast radius: 8 existing tests + 3 new Group I tests is a\n   well-bounded scope. The risk is mechanical — if the delivery agent misses any of the 8, the\n  tests silently pass with stale assertions. The risk strategy's concrete list of affected     \n  tests (T-BLR-01 through T-BLR-08) gives the delivery agent a checklist, not just a general\n  warning. That's the right level of specificity., but otherwise approved to move to delivery",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5712510707641528,
+          "similarity": 0.5827206969261169,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5679899247484579,
+          "similarity": 0.5803537368774414,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2800,
+          "title": "Circuit breaker / cap logic must be extracted as a testable unit function from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5577390811515804,
+          "similarity": 0.5716543793678284,
+          "confidence": 0.6257855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5449919814879661,
+          "similarity": 0.5715062022209167,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.544557216050184,
+          "similarity": 0.5743749141693115,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3579,
+          "title": "Gate 3b: implementation wave delivers production code but zero mandatory tests — entire test modules absent",
+          "category": "lesson-learned",
+          "final_score": 0.5712510707641528,
+          "similarity": 0.5827206969261169,
+          "confidence": 0.6466519107511053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1204,
+          "title": "Test Plan Must Cross-Reference Pseudocode for Edge-Case Behavior Assertions",
+          "category": "lesson-learned",
+          "final_score": 0.5679899247484579,
+          "similarity": 0.5803537368774414,
+          "confidence": 0.6411816002066125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2800,
+          "title": "Circuit breaker / cap logic must be extracted as a testable unit function from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5577390811515804,
+          "similarity": 0.5716543793678284,
+          "confidence": 0.6257855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2577,
+          "title": "validate() implementation requires reading the test plan, not just the pseudocode — boundary tests must ship in the same pass",
+          "category": "lesson-learned",
+          "final_score": 0.5449919814879661,
+          "similarity": 0.5715062022209167,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3253,
+          "title": "Non-Negotiable Test Name Verification Pattern for Rewritten Test Suites",
+          "category": "pattern",
+          "final_score": 0.544557216050184,
+          "similarity": 0.5743749141693115,
+          "confidence": 0.5861197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

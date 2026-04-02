@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4159",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Gate report: PASS. No merge conflicts. Spawning security reviewer.\n[tool: Bash(head -5 product/features/bugfix-436/reports/gate-bugfix-report.md) → # Gate Bugfix Report: bugfix-436\n\n> Gate: Bugfix Validation\n> Date: 2026-03-28\n> Result: PASS]\n[tool: Bash(gh api repos/dug-21/unimatrix/pulls/440 2>&1 | python3 -c \"import json,sys; d=json.load(sys.stdin); print(d.get('head',{) → ]\n[tool: Glob(product/features/bugfix-436/reports/*) → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.47375800632650544,
+          "similarity": 0.4647945761680603,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.44973029910299445,
+          "similarity": 0.4220084547996521,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.44943159657073395,
+          "similarity": 0.43697744607925415,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.443023462152905,
+          "similarity": 0.42059993743896484,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.47375800632650544,
+          "similarity": 0.4647945761680603,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.44973029910299445,
+          "similarity": 0.4220084547996521,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.44943159657073395,
+          "similarity": 0.43697744607925415,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.443023462152905,
+          "similarity": 0.42059993743896484,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

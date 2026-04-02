@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-bd98afa6-1773804592000",
+  "query": "async fn trait RPITIT object safety migration Rust",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5747530851614228,
+          "similarity": 0.6761612296104431,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5531837953192108,
+          "similarity": 0.5897155404090881,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5407990159140947,
+          "similarity": 0.5420680046081543,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4937928510844525,
+          "similarity": 0.5223367810249329,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.48803825930504974,
+          "similarity": 0.5189127326011658,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5747530851614228,
+          "similarity": 0.6761612296104431,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.5531837953192108,
+          "similarity": 0.5897155404090881,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 240,
+          "title": "Rust Coding Conventions",
+          "category": "convention",
+          "final_score": 0.5407990159140947,
+          "similarity": 0.5420680046081543,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4937928510844525,
+          "similarity": 0.5223367810249329,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.48803825930504974,
+          "similarity": 0.5189127326011658,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

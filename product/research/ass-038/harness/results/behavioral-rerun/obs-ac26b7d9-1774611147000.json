@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-ac26b7d9-1774611147000",
+  "query": "graph_suppression module sibling path attribute Rust module resolution",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3636,
+          "title": "Use #[path] attribute when declaring a submodule inside a file-based module (not mod.rs)",
+          "category": "pattern",
+          "final_score": 0.6112609369629516,
+          "similarity": 0.7041167616844177,
+          "confidence": 0.5818271693502722,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5740987219984569,
+          "similarity": 0.6804930567741394,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3650,
+          "title": "TypedRelationGraph: typed edge weights, two-pass build with bootstrap exclusion, edges_of_type filter boundary",
+          "category": "pattern",
+          "final_score": 0.5439177250929274,
+          "similarity": 0.554465115070343,
+          "confidence": 0.6128265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.524877444680663,
+          "similarity": 0.5394619107246399,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5204259962253609,
+          "similarity": 0.6115983128547668,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3636,
+          "title": "Use #[path] attribute when declaring a submodule inside a file-based module (not mod.rs)",
+          "category": "pattern",
+          "final_score": 0.6112609369629516,
+          "similarity": 0.7041167616844177,
+          "confidence": 0.5818271693502722,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3647,
+          "title": "Creating a sibling module in a file-based unimatrix-engine parent module",
+          "category": "procedure",
+          "final_score": 0.5740987219984569,
+          "similarity": 0.6804930567741394,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3650,
+          "title": "TypedRelationGraph: typed edge weights, two-pass build with bootstrap exclusion, edges_of_type filter boundary",
+          "category": "pattern",
+          "final_score": 0.5439177250929274,
+          "similarity": 0.554465115070343,
+          "confidence": 0.6128265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3740,
+          "title": "Graph traversal submodule pattern: #[path] submodule of graph.rs, re-exported, not in lib.rs",
+          "category": "pattern",
+          "final_score": 0.524877444680663,
+          "similarity": 0.5394619107246399,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3643,
+          "title": "ADR-001: graph_suppression.rs Module Split for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.5204259962253609,
+          "similarity": 0.6115983128547668,
+          "confidence": 0.467444399962027,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

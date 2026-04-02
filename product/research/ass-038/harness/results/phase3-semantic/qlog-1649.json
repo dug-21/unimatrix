@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1649",
+  "query": "write that as another recommendation in ass-028",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.3978453460959934,
+          "similarity": 0.3225613832473755,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.39137909933920634,
+          "similarity": 0.2925676107406616,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.38829381968559085,
+          "similarity": 0.283583402633667,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.38757176458753595,
+          "similarity": 0.28432250022888184,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1093,
+          "title": "ADR-004 nan-003: Terminal-Only Output for Agent Orientation Recommendations",
+          "category": "decision",
+          "final_score": 0.38720093250827403,
+          "similarity": 0.32398492097854614,
+          "confidence": 0.516709786838821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 606,
+          "title": "ADR-001 col-014: Permissive Feature ID Validation Over Structural Format Enforcement",
+          "category": "decision",
+          "final_score": 0.3978453460959934,
+          "similarity": 0.3225613832473755,
+          "confidence": 0.54763539190716,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2908,
+          "title": "ADR-006 col-023: UniversalMetrics Typed Struct as Canonical Representation (Option A)",
+          "category": "decision",
+          "final_score": 0.39137909933920634,
+          "similarity": 0.2925676107406616,
+          "confidence": 0.5729323971483293,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.38829381968559085,
+          "similarity": 0.283583402633667,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3346,
+          "title": "Sole-Write-Gate Allowlist: Exhaustive Match with Wildcard Fallback and Single Write Site",
+          "category": "pattern",
+          "final_score": 0.38757176458753595,
+          "similarity": 0.28432250022888184,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1093,
+          "title": "ADR-004 nan-003: Terminal-Only Output for Agent Orientation Recommendations",
+          "category": "decision",
+          "final_score": 0.38720093250827403,
+          "similarity": 0.32398492097854614,
+          "confidence": 0.516709786838821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

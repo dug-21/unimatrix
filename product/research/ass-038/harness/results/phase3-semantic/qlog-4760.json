@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4760",
+  "query": "so.. we'll save that for another day.  back to the crt-034 completion: issue 459: here's the scope and questions.. thoughts? 1. Modify `run_co_access_promotion_tick` to write both `(entry_id_a, entry_id_b)` and\n   `(entry_id_b, entry_id_a)` as distinct `CoAccess`-typed edges in `GRAPH_EDGES` for each\n   qualifying pair going forward.\n2. Add a one-time schema migration (v18→v19) that back-fills the missing reverse edge for\n   every existing forward-only CoAccess edge whose `source = 'co_access'` in `GRAPH_EDGES`\n   (covers both bootstrap-era and crt-034 tick-era edges).\n3. Confirm via a Unimatrix knowledge update to entry #3830 that ADR-006's follow-up contract\n   is fulfilled: forward-edge layout was intentional, back-fill scope is bounded by\n   `source = 'co_access'` on `GRAPH_EDGES`, and cycle detection is unaffected. Here's the SCOPE.md for your review. Three open\n  questions need your input before I proceed to Phase\n  1b:\n\n  Q2 — back-fill created_by field: copy from forward\n  edge ('bootstrap'/'tick') or use a new 'back-fill'\n  sentinel?\n\n  Q3 — tick log semantics: report as individual edge\n  writes (up to 2× pairs) or pair promotions?\n\n  Q3 (OQ4) — AC-12 PPR test: extend existing\n  TypedGraphState tests or write new graph traversal\n  tests? (Researcher flagged this as needing\n  verification.)\n\n  The scope itself is clean — tight boundaries, clear\n  AC-01 through AC-14, no surprises beyond the gotcha\n  that back-fill must filter by source = 'co_access'\n  alone (not created_by = 'bootstrap'), because tick-era\n   forward-only edges also need the reverse written. this is crt-035",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.6742281704533084,
+          "similarity": 0.8144497275352478,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.601571480487676,
+          "similarity": 0.6878955364227295,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5550803876974514,
+          "similarity": 0.6193071007728577,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3882,
+          "title": "ADR-002 crt-034: Constants Location — unimatrix-store/src/read.rs alongside EDGE_SOURCE_NLI",
+          "category": "decision",
+          "final_score": 0.548516150215893,
+          "similarity": 0.6213861703872681,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.25,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.6742281704533084,
+          "similarity": 0.8144497275352478,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.601571480487676,
+          "similarity": 0.6878955364227295,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5550803876974514,
+          "similarity": 0.6193071007728577,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3882,
+          "title": "ADR-002 crt-034: Constants Location — unimatrix-store/src/read.rs alongside EDGE_SOURCE_NLI",
+          "category": "decision",
+          "final_score": 0.548516150215893,
+          "similarity": 0.6213861703872681,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.25,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

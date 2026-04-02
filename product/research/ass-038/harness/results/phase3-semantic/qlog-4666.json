@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-4666",
+  "query": "Solid scope. Clean \"what's out\" list. The constraints are right.\n  Here are my answers to the five questions:\n                                                                     \n  Q1: Weight delta (0.1) — named constant.                           \n  Agree with the researcher. This is an internal stability parameter,\n   not domain behavior. Config fields should be reserved for things  \n  operators legitimately tune across domains. A churn-suppression \n  threshold is an implementation detail.                             \n                                                                  \n  Q2: Cap default 200 — fine.\n  NLI uses 100 because it carries ML inference cost. Co_access\n  promotion is pure SQL — 200 is reasonable. One addition: the       \n  candidate query should use ORDER BY count DESC LIMIT N. With the\n  cap, you want the highest-signal pairs promoted first. Without the \n  order, the backlog drains arbitrarily.                          \n\n  Q3: Two-query (global normalization) — correct.\n  The bootstrap used MAX(count) OVER () — global normalization. Newly\n   promoted edges must use the same scale, otherwise their weights   \n  are inconsistent with bootstrapped edges and PPR weighting is\n  arbitrary. The extra round-trip is trivial (co_access is 0.34 MB). \n  Researcher is right.                                            \n\n  Q4: Defer stale edge GC to #409 — correct.                         \n  Scattering retention logic across two features is exactly the kind\n  of creep that makes #409 harder to reason about. The orphaned-edge \n  compaction already handles the structural case (edges pointing to\n  deleted entries). Defer.                                           \n                                                                  \n  Q5: No COUNTERS marker — confirmed.\n  The marker pattern is for one-shot operations. This is explicitly\n  recurring. Idempotency is structural: INSERT OR IGNORE for new     \n  edges, UPDATE WHERE delta > threshold for existing ones. No marker\n  needed.                                                            \n                                                                  \n  ---\n  One flag not in the questions:\n                                                                     \n  CoAccess edges in the bootstrap are written as source_id = \n  entry_id_a (min), target_id = entry_id_b (max) — one direction     \n  only. PPR traverses Direction::Outgoing, so seeding the min-id  \n  entry reaches the max-id entry, but not the reverse. For a         \n  symmetric signal (co_access by definition), this means half the \n  traversal paths are missing. The new tick should match the\n  bootstrap behavior for consistency in v1, but this asymmetry is\n  worth calling out as a known limitation — the correct fix is\n  writing both directions, which is a follow-up.\n\n  Scope is approved from a vision standpoint. Nothing missing,       \n  nothing over-built.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.6024161096945373,
+          "similarity": 0.6736157536506653,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5492152048414769,
+          "similarity": 0.5966697335243225,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.5435925670080131,
+          "similarity": 0.6038365960121155,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.6024161096945373,
+          "similarity": 0.6736157536506653,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5492152048414769,
+          "similarity": 0.5966697335243225,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.5435925670080131,
+          "similarity": 0.6038365960121155,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-5c7012c4-1774574365000",
+  "query": "Rust module split visibility pub(super) pattern",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.6261063448602551,
+          "similarity": 0.6684353947639465,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.5466670343891714,
+          "similarity": 0.53987056016922,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.5221377460363801,
+          "similarity": 0.5291957855224609,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 301,
+          "title": "How to restructure a flat Rust crate into module groups",
+          "category": "procedure",
+          "final_score": 0.5174683113680226,
+          "similarity": 0.46079736948013306,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3576,
+          "title": "compute_phase_stats grouping pattern: Option<String> stratification with empty-vec guard and sort override",
+          "category": "pattern",
+          "final_score": 0.4952444935682248,
+          "similarity": 0.4684622287750244,
+          "confidence": 0.5339299871584032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.5074987044701209,
+          "similarity": 0.6684353947639465,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.42838188318105846,
+          "similarity": 0.53987056016922,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.4218127910907452,
+          "similarity": 0.5291957855224609,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3576,
+          "title": "compute_phase_stats grouping pattern: Option<String> stratification with empty-vec guard and sort override",
+          "category": "pattern",
+          "final_score": 0.38443829463078427,
+          "similarity": 0.4684622287750244,
+          "confidence": 0.5339299871584032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 301,
+          "title": "How to restructure a flat Rust crate into module groups",
+          "category": "procedure",
+          "final_score": 0.37972145814162034,
+          "similarity": 0.46079736948013306,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.6684353947639465,
+          "similarity": 0.6684353947639465,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.53987056016922,
+          "similarity": 0.53987056016922,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.5291957855224609,
+          "similarity": 0.5291957855224609,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3576,
+          "title": "compute_phase_stats grouping pattern: Option<String> stratification with empty-vec guard and sort override",
+          "category": "pattern",
+          "final_score": 0.4684622287750244,
+          "similarity": 0.4684622287750244,
+          "confidence": 0.5339299871584032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 301,
+          "title": "How to restructure a flat Rust crate into module groups",
+          "category": "procedure",
+          "final_score": 0.46079736948013306,
+          "similarity": 0.46079736948013306,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.6258296844033683,
+          "similarity": 0.6684353947639465,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.5467114557893019,
+          "similarity": 0.53987056016922,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.522091615059347,
+          "similarity": 0.5291957855224609,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 301,
+          "title": "How to restructure a flat Rust crate into module groups",
+          "category": "procedure",
+          "final_score": 0.5178387096810154,
+          "similarity": 0.46079736948013306,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3576,
+          "title": "compute_phase_stats grouping pattern: Option<String> stratification with empty-vec guard and sort override",
+          "category": "pattern",
+          "final_score": 0.4954195410505333,
+          "similarity": 0.4684622287750244,
+          "confidence": 0.5339299871584032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.5537070125484502,
+          "similarity": 0.6684353947639465,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.4868805292300071,
+          "similarity": 0.53987056016922,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.46818073279484285,
+          "similarity": 0.5291957855224609,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 301,
+          "title": "How to restructure a flat Rust crate into module groups",
+          "category": "procedure",
+          "final_score": 0.46019658630189214,
+          "similarity": 0.46079736948013306,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3576,
+          "title": "compute_phase_stats grouping pattern: Option<String> stratification with empty-vec guard and sort override",
+          "category": "pattern",
+          "final_score": 0.44441011053503315,
+          "similarity": 0.4684622287750244,
+          "confidence": 0.5339299871584032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3602,
+          "title": "Rust submodule re-export: items must be pub, not pub(super)",
+          "category": "pattern",
+          "final_score": 0.5537070125484502,
+          "similarity": 0.6684353947639465,
+          "confidence": 0.5649643838882564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3568,
+          "title": "Splitting flat Rust test files: declare sibling modules in mod.rs, not in the file being split",
+          "category": "pattern",
+          "final_score": 0.4868805292300071,
+          "similarity": 0.53987056016922,
+          "confidence": 0.5564841638179903,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3428,
+          "title": "pub fn with pub(crate) type in generic bound triggers private_bounds warning — make type pub",
+          "category": "pattern",
+          "final_score": 0.46818073279484285,
+          "similarity": 0.5291957855224609,
+          "confidence": 0.5119428001120413,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 301,
+          "title": "How to restructure a flat Rust crate into module groups",
+          "category": "procedure",
+          "final_score": 0.46019658630189214,
+          "similarity": 0.46079736948013306,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3576,
+          "title": "compute_phase_stats grouping pattern: Option<String> stratification with empty-vec guard and sort override",
+          "category": "pattern",
+          "final_score": 0.44441011053503315,
+          "similarity": 0.4684622287750244,
+          "confidence": 0.5339299871584032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-531f376f-1773534356000",
+  "query": "Arc RwLock in-memory cache background tick sole writer state handle",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.6772244130863863,
+          "similarity": 0.6862815022468567,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.5503979589213299,
+          "similarity": 0.5120058059692383,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.5098350950855872,
+          "similarity": 0.47679609060287476,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.5044399315536215,
+          "similarity": 0.4795898199081421,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5005737085675978,
+          "similarity": 0.47012966871261597,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.677283225353662,
+          "similarity": 0.6862815022468567,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.5501486592268358,
+          "similarity": 0.5120058059692383,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.5096205560954397,
+          "similarity": 0.47679609060287476,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.5042785671922871,
+          "similarity": 0.4795898199081421,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.5003760199971108,
+          "similarity": 0.47012966871261597,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5924264654091427,
+          "similarity": 0.6862815022468567,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.4875760704976288,
+          "similarity": 0.5120058059692383,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.45550814717684746,
+          "similarity": 0.47679609060287476,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.4517769372682201,
+          "similarity": 0.4795898199081421,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4482843925787223,
+          "similarity": 0.47012966871261597,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5184809244596041,
+          "similarity": 0.6862815022468567,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.4112343421349159,
+          "similarity": 0.5120058059692383,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.39128604302039516,
+          "similarity": 0.4795898199081421,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.38956682498638445,
+          "similarity": 0.47679609060287476,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.38546441151545596,
+          "similarity": 0.47012966871261597,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5924264654091427,
+          "similarity": 0.6862815022468567,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.4875760704976288,
+          "similarity": 0.5120058059692383,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.45550814717684746,
+          "similarity": 0.47679609060287476,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.4517769372682201,
+          "similarity": 0.4795898199081421,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.4482843925787223,
+          "similarity": 0.47012966871261597,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.6862815022468567,
+          "similarity": 0.6862815022468567,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1561,
+          "title": "Generation-cached snapshot: avoid per-call HashMap clone via generation counter + Arc&lt;Mutex&lt;Snapshot&gt;&gt;",
+          "category": "pattern",
+          "final_score": 0.5120058059692383,
+          "similarity": 0.5120058059692383,
+          "confidence": 0.6052438917100323,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3694,
+          "title": "Phase snapshot extraction pattern: acquire read lock once pre-loop, clone to HashMap, release before scoring loop",
+          "category": "pattern",
+          "final_score": 0.4795898199081421,
+          "similarity": 0.4795898199081421,
+          "confidence": 0.5399400910471636,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1914,
+          "title": "ADR-004 vnc-005: Feature-Cycle-Keyed Accumulator with Mutex and TTL Eviction",
+          "category": "decision",
+          "final_score": 0.47679609060287476,
+          "similarity": 0.47679609060287476,
+          "confidence": 0.5570336729180336,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1762,
+          "title": "contradiction scan O(N) ONNX cost: cache in ContradictionScanCache, tick writes every 4th tick, context_status reads cache",
+          "category": "lesson-learned",
+          "final_score": 0.47012966871261597,
+          "similarity": 0.47012966871261597,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

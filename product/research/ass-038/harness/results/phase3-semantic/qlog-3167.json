@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3167",
+  "query": "1. UsageDedup + briefing → subsequent get silenced\n\n    This is a real correctness risk. The dedup fires before the access_weight multiplier (C-05\n    in the codebase), which means a weight-0 briefing appearance can burn the dedup slot and\n    silence a later context_get on the same entry — exactly the selection signal you want most.\n    The fix: weight-0 entries must bypass dedup entirely, or use a separate dedup bucket for\n    \"selections\" (confirmed_entries) distinct from \"offers\" (briefing). The simplest resolution\n    is a guard: if ctx.access_weight == 0 { skip dedup registration }. Briefing at weight-0\n    means \"we showed it, don't track it as an access\" — dedup registration is an access-side\n    concern and shouldn't fire at all.\n\n    2. context_lookup cardinality — request-side, not response-side\n\n    Use \"single ID in the request\" as the trigger. This reflects agent intent, not system\n    behavior. An agent sending one ID to lookup is making an explicit selection — they knew what\n     they wanted. Multiple IDs in the same request is batch retrieval, weaker individual signal.\n     \"Single entry returned\" is an artifact of filtering/status; it doesn't tell you the agent\n    specifically chose that entry. Request cardinality is the signal.\n\n    3. confirmed_entries — add now\n\n    Add the field now with no consumer. The cost is a HashSet<u64> on SessionState — negligible.\n     The risk of deferring: the field is session-ephemeral. You cannot retroactively reconstruct\n     which entries were confirmed in past sessions. If you wait for Thompson Sampling, you ship\n    with zero historical data. The data starts accumulating the moment the field exists. One\n    small PR now, Thompson Sampling inherits a populated dataset rather than a cold start.\n\n    4. Phase helper — free function\n\n    Free function taking &SessionRegistry. Four call sites, a critical signal collection path —\n    testability matters here. A private method on the handler struct couples testing to handler\n    construction. A free function taking &SessionRegistry can be unit-tested directly, and the\n    call site reads as intentional: \"I am explicitly capturing phase from the session registry\n    here.\" All four call sites are in tools.rs so method would work, but the testability\n    argument wins for something this important to the signal pipeline.\n\n    5. weight-0 path — verify the multiplier path\n\n    The risk is real: if usage.rs implements the increment as access_count += 1 with weight\n    applied elsewhere (as a confidence multiplier, not as the increment itself), then weight-0\n    won't zero out the access_count increment. You need to confirm the actual arithmetic is\n    access_count += access_weight (or equivalent), not access_count += 1; confidence_weight =\n    access_weight. Also check whether weight-0 entries still generate co-access pairs — they\n    probably should not, since co-access represents structural co-retrieval, and an\n    offered-but-not-selected entry shouldn't be paired. Verify both before shipping the briefing\n     weight change.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.6438071472518873,
+          "similarity": 0.7909383773803711,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.6291350275545442,
+          "similarity": 0.7674525380134583,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.617228763328536,
+          "similarity": 0.7383044362068176,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.5529526696674918,
+          "similarity": 0.6364505887031555,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.545617961336941,
+          "similarity": 0.607963502407074,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3515,
+          "title": "ADR-003 col-028: Weight-0 Guard in record_briefing_usage Precedes filter_access",
+          "category": "decision",
+          "final_score": 0.6438071472518873,
+          "similarity": 0.7909383773803711,
+          "confidence": 0.5461360034260212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3503,
+          "title": "UsageDedup fires before access_weight in record_mcp_usage but record_briefing_usage has no weight guard — weight-0 callers must add bypass explicitly",
+          "category": "pattern",
+          "final_score": 0.6291350275545442,
+          "similarity": 0.7674525380134583,
+          "confidence": 0.5398628776288227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.617228763328536,
+          "similarity": 0.7383044362068176,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3527,
+          "title": "D-01 guard: early-return before filter_access in record_briefing_usage prevents dedup slot burn",
+          "category": "pattern",
+          "final_score": 0.5529526696674918,
+          "similarity": 0.6364505887031555,
+          "confidence": 0.5202278338072559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.545617961336941,
+          "similarity": 0.607963502407074,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

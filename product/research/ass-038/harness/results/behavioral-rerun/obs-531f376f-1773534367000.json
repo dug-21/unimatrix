@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-531f376f-1773534367000",
+  "query": "env var parse testability avoid unsafe set_var Rust 2024",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.6686863409063158,
+          "similarity": 0.8143638968467712,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2132,
+          "title": "Compile-time bool → Runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5944779306370028,
+          "similarity": 0.700518786907196,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5674040709386238,
+          "similarity": 0.6803039312362671,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 725,
+          "title": "Parse-Clamp-Default: Env Var Configuration Without Config Struct",
+          "category": "pattern",
+          "final_score": 0.5666058861668374,
+          "similarity": 0.636229932308197,
+          "confidence": 0.5576017877268489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.5176456037117112,
+          "similarity": 0.5586810111999512,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.6686863409063158,
+          "similarity": 0.8143638968467712,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2132,
+          "title": "Compile-time bool → Runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5944779306370028,
+          "similarity": 0.700518786907196,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5674040709386238,
+          "similarity": 0.6803039312362671,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 725,
+          "title": "Parse-Clamp-Default: Env Var Configuration Without Config Struct",
+          "category": "pattern",
+          "final_score": 0.5666058861668374,
+          "similarity": 0.636229932308197,
+          "confidence": 0.5576017877268489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.5176456037117112,
+          "similarity": 0.5586810111999512,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

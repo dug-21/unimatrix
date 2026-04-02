@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-45c89139-1774116130000",
+  "query": "observation pipeline domain registry pattern unimatrix-observe",
+  "profiles": {
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.5558832110931871,
+          "similarity": 0.6403530836105347,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.52119937624692,
+          "similarity": 0.5891357660293579,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4985896457610362,
+          "similarity": 0.5546719431877136,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.4956783029634892,
+          "similarity": 0.5374009609222412,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.4882373555772553,
+          "similarity": 0.5193545818328857,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.4902172822218675,
+          "similarity": 0.6403530836105347,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.45869893294114333,
+          "similarity": 0.5891357660293579,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.43749042657705456,
+          "similarity": 0.5546719431877136,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.4268621297983023,
+          "similarity": 0.5374009609222412,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.4157566657433143,
+          "similarity": 0.5193545818328857,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.6403530836105347,
+          "similarity": 0.6403530836105347,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.5891357660293579,
+          "similarity": 0.5891357660293579,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.5546719431877136,
+          "similarity": 0.5546719431877136,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5374009609222412,
+          "similarity": 0.5374009609222412,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5193545818328857,
+          "similarity": 0.5193545818328857,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.6315697913425571,
+          "similarity": 0.6403530836105347,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.5889858334732865,
+          "similarity": 0.5891357660293579,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.5613316762222347,
+          "similarity": 0.5546719431877136,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5590289490751577,
+          "similarity": 0.5374009609222412,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5505851368871264,
+          "similarity": 0.5193545818328857,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.5558832110931871,
+          "similarity": 0.6403530836105347,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.52119937624692,
+          "similarity": 0.5891357660293579,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.4985896457610362,
+          "similarity": 0.5546719431877136,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.4956783029634892,
+          "similarity": 0.5374009609222412,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.4882373555772553,
+          "similarity": 0.5193545818328857,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.6316268257079336,
+          "similarity": 0.6403530836105347,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2929,
+          "title": "DomainPackRegistry: tracing crate not available in unimatrix-observe — use comment instead of warn!()",
+          "category": "pattern",
+          "final_score": 0.5889868070613128,
+          "similarity": 0.5891357660293579,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3471,
+          "title": "Adding a new Claude Code hook event type: registration + dispatcher + storage + detection",
+          "category": "pattern",
+          "final_score": 0.5612884312025299,
+          "similarity": 0.5546719431877136,
+          "confidence": 0.5708455805572646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.5588885075936451,
+          "similarity": 0.5374009609222412,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2935,
+          "title": "source_domain guard preamble in detect() and evaluate() — mandatory ADR-005 pattern",
+          "category": "pattern",
+          "final_score": 0.5503823410750858,
+          "similarity": 0.5193545818328857,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

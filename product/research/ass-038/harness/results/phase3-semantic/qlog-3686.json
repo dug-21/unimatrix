@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3686",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(git add crates/unimatrix-server/src/eval/profile/tests.rs crates/unimatrix-server/src/eval/report/tests_distribution_gat) → [feature/col-030 67e2d50] chore: cargo fmt whitespace in eval tests + col-030 agent report (#418)\n 3 files changed, 138 insertions(+), 22 deletions(-)\n create mode 100644 product/features/col-030/agents/col-030-agent-4-search-step10b-report.md]\n[Assistant] Whitespace-only reformatting in eval test files — committing them plus the agent report to clean the working tree before Gate 3b.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5237027500633664,
+          "similarity": 0.5678905844688416,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.5043878210971229,
+          "similarity": 0.5569368600845337,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.5037188373866833,
+          "similarity": 0.5556657910346985,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3873,
+          "title": "Retrospective findings: crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.5030373053299753,
+          "similarity": 0.5543708801269531,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.4961802615115516,
+          "similarity": 0.5413424968719482,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3846,
+          "title": "Retrospective findings: bugfix-407",
+          "category": "lesson-learned",
+          "final_score": 0.5237027500633664,
+          "similarity": 0.5678905844688416,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3878,
+          "title": "Retrospective findings: nan-010",
+          "category": "lesson-learned",
+          "final_score": 0.5043878210971229,
+          "similarity": 0.5569368600845337,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.5037188373866833,
+          "similarity": 0.5556657910346985,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3873,
+          "title": "Retrospective findings: crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.5030373053299753,
+          "similarity": 0.5543708801269531,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.4961802615115516,
+          "similarity": 0.5413424968719482,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 19,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-702",
+  "query": "<task-notification>\n<task-id>a5b190ca007f0f195</task-id>\n<tool-use-id>toolu_01EgUehkzq732BcQfgrUvhs7</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/f1e44af3-856d-4856-b88e-437c9e809707/tasks/a5b190ca007f0f195.output</output-file>\n<status>completed</status>\n<summary>Agent \"ASS-020 comprehensive security audit vs original design\" completed</summary>\n<result>Security audit complete.\n\n**Output:** `/workspaces/unimatrix/product/research/ass-020/SECURITY-AUDIT.md`\n**GH comment:** https://github.com/dug-21/unimatrix/issues/270#issuecomment-4062955880\n\n**Summary of findings:**\n\nTwo Critical findings dominate the risk profile:\n\n1. `PERMISSIVE_AUTO_ENROLL=true` at `infra/registry.rs:27` — every anonymous MCP agent receives Write capability. The code comment explicitly says \"In production this should be false.\" Introduced by PR #228, never reverted.\n\n2. `context_briefing` output has no `[KNOWLEDGE DATA]` framing in any response format (`mcp/response/briefing.rs:62–75`). Briefing is automatically injected into agent context at session start, making every stored convention and ADR a live prompt injection vector. This is the OWASP ASI06 surface in its most direct form.\n\nThree High findings: `context_retrospective` has no `require_cap()` guard (`tools.rs:1103`); read tools (search/lookup/get) also lack output framing (`entries.rs`); background tick bypasses SecurityGateway entirely via direct `store.insert()` (`background.rs:1023`).\n\nThe highest-ROI remediation path covers P1+P2+P3 with three small code changes (one constant flip, one function call addition, two response formatter additions). The full audit includes 10 findings across 5 security layers with file:line citations, intentional relaxation analysis, and a prioritized 10-item security debt backlog.</result>\n<usage><total_tokens>30660</total_tokens><tool_uses>49</tool_uses><duration_ms>329347</duration_ms></usage>\n</task-notification>\nFull transcript available at: /tmp/claude-1000/-workspaces-unimatrix/f1e44af3-856d-4856-b88e-437c9e809707/tasks/a5b190ca007f0f195.output",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5944987058219768,
+          "similarity": 0.6363637447357178,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.558243420211714,
+          "similarity": 0.6315807700157166,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5573917879384918,
+          "similarity": 0.6378997564315796,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.542312154719704,
+          "similarity": 0.6289930939674377,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.54148499910455,
+          "similarity": 0.627421498298645,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5944987058219768,
+          "similarity": 0.6363637447357178,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 975,
+          "title": "Retrospective findings: crt-013",
+          "category": "lesson-learned",
+          "final_score": 0.558243420211714,
+          "similarity": 0.6315807700157166,
+          "confidence": 0.5415453262664862,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5573917879384918,
+          "similarity": 0.6378997564315796,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.542312154719704,
+          "similarity": 0.6289930939674377,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3836,
+          "title": "Retrospective findings: bugfix-351b",
+          "category": "lesson-learned",
+          "final_score": 0.54148499910455,
+          "similarity": 0.627421498298645,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

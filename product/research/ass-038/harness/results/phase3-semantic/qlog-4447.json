@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4447",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] All three gate reports: PASS. Now spawn the security reviewer.\n[tool: Bash(ls product/features/crt-031/reports/ && echo \"---\" && head -5 product/features/crt-031/reports/gate-3a-report.md && echo) → gate-3a-report.md\ngate-3b-report.md\ngate-3c-report.md\n---\n# Gate 3a Report: crt-031\n\n> Gate: 3a (Design Review)\n> Date: 2026-03-29\n> Result: PASS\n...\n# Gate 3b Report: crt-031\n\n> Gate: 3b (Code Review)\n> Date: 2026-03-29\n> Result: PASS\n...\n# Gate 3c Report: crt-031\n\n> Gate: 3c (Risk-Based Final Vali]\n[tool: Bash(gh pr view 447 --json title,body,headRefName,baseRefName,state | head -50) → {\"baseRefName\":\"main\",\"body\":\"## crt-031: Category Lifecycle Policy (Pinned vs Adaptive)\\n\\nIntroduce a two-tier categorical lifecycle policy (`pinned` vs `adaptive`) that distinguishes knowledge categories eligible for automated management from those requiring explicit operator action. The policy i]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5222215640508175,
+          "similarity": 0.4918823838233948,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5015206662962026,
+          "similarity": 0.4470038414001465,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.4699437194276772,
+          "similarity": 0.4759504795074463,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4583006845195282,
+          "similarity": 0.4412071704864502,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.44662663920593626,
+          "similarity": 0.4522683620452881,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5222215640508175,
+          "similarity": 0.4918823838233948,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5015206662962026,
+          "similarity": 0.4470038414001465,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.4699437194276772,
+          "similarity": 0.4759504795074463,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4583006845195282,
+          "similarity": 0.4412071704864502,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.44662663920593626,
+          "similarity": 0.4522683620452881,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

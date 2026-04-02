@@ -1,0 +1,134 @@
+{
+  "scenario_id": "uc1-05",
+  "query": "How should signal fusion weights be ordered in the Unimatrix ranking formula, and what are the default values?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.5576337224662875,
+          "similarity": 0.5671452879905701,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.4474017390130024,
+          "similarity": 0.38749945163726807,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.4450532106446543,
+          "similarity": 0.3935120701789856,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.43302702800727344,
+          "similarity": 0.3845174312591553,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2610,
+          "title": "HashMap profile iteration order is non-deterministic — always sort keys before selecting baseline",
+          "category": "pattern",
+          "final_score": 0.42853486073857516,
+          "similarity": 0.4020878076553345,
+          "confidence": 0.5173263253542263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2964,
+          "title": "Signal fusion pattern: sequential sort passes cause NLI override by additive boosts",
+          "category": "pattern",
+          "final_score": 0.5576337224662875,
+          "similarity": 0.5671452879905701,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3207,
+          "title": "compute_fused_score extension pattern: adding a new scoring dimension to FusedScoreInputs and FusionWeights",
+          "category": "pattern",
+          "final_score": 0.4474017390130024,
+          "similarity": 0.38749945163726807,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.4450532106446543,
+          "similarity": 0.3935120701789856,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.43302702800727344,
+          "similarity": 0.3845174312591553,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2610,
+          "title": "HashMap profile iteration order is non-deterministic — always sort keys before selecting baseline",
+          "category": "pattern",
+          "final_score": 0.42853486073857516,
+          "similarity": 0.4020878076553345,
+          "confidence": 0.5173263253542263,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

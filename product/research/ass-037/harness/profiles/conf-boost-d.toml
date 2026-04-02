@@ -1,0 +1,12 @@
+[profile]
+name = "conf-boost-d"
+description = "Q4 boost: NLI+util+prov zeroed, w_sim=0.40 w_conf=0.45. Confidence-dominant. Tests whether over-weighting confidence hurts P@5."
+distribution_change = false
+
+[inference]
+w_nli  = 0.0
+w_sim  = 0.40
+w_conf = 0.45
+w_coac = 0.0
+w_util = 0.0
+w_prov = 0.0

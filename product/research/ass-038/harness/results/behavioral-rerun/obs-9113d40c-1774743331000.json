@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-9113d40c-1774743331000",
+  "query": "extracting stats from scored NLI results private testable helper max mean percentile",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.5069862973835834,
+          "similarity": 0.490390419960022,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2743,
+          "title": "Extract NLI sort logic as pub(crate) pure function to enable unit tests without ONNX model",
+          "category": "pattern",
+          "final_score": 0.4540045006207146,
+          "similarity": 0.4060713052749634,
+          "confidence": 0.5807674941491351,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.4463476235979652,
+          "similarity": 0.3993265628814697,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.4448695171317433,
+          "similarity": 0.3821679353713989,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.43822715715902805,
+          "similarity": 0.37896835803985596,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.5069862973835834,
+          "similarity": 0.490390419960022,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2743,
+          "title": "Extract NLI sort logic as pub(crate) pure function to enable unit tests without ONNX model",
+          "category": "pattern",
+          "final_score": 0.4540045006207146,
+          "similarity": 0.4060713052749634,
+          "confidence": 0.5807674941491351,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.4463476235979652,
+          "similarity": 0.3993265628814697,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2972,
+          "title": "ADR-004 crt-024: Formula as Extractable Pure Function",
+          "category": "decision",
+          "final_score": 0.4448695171317433,
+          "similarity": 0.3821679353713989,
+          "confidence": 0.5901202102555907,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3520,
+          "title": "ADR-001 nan-008: Add category: String to ScoredEntry in Both Type Copies",
+          "category": "decision",
+          "final_score": 0.43822715715902805,
+          "similarity": 0.37896835803985596,
+          "confidence": 0.5766617722318534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

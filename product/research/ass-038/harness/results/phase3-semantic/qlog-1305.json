@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1305",
+  "query": "So.. bash_for_search_count, is consistently high.  It seems to be a common pattern for my agents.  Any recommendations on guiding better behavior?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.5596552435828116,
+          "similarity": 0.6854543089866638,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2578,
+          "title": "Agents default to Bash for search instead of Grep/Glob tools -- reinforcement needed in spawn prompts",
+          "category": "lesson-learned",
+          "final_score": 0.5503141016858434,
+          "similarity": 0.645017683506012,
+          "confidence": 0.5008272995672723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3545,
+          "title": "Use Grep/Glob tools for content search — Bash search commands are a CLAUDE.md rule violation",
+          "category": "lesson-learned",
+          "final_score": 0.5250954595453085,
+          "similarity": 0.5779967904090881,
+          "confidence": 0.5281208324671399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.5158930241493593,
+          "similarity": 0.605827271938324,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3872,
+          "title": "Retrospective findings: crt-030",
+          "category": "lesson-learned",
+          "final_score": 0.5065525363119024,
+          "similarity": 0.5610498189926147,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3758,
+          "title": "Agents Default to Bash grep Instead of Grep Tool — Persists Across Features",
+          "category": "lesson-learned",
+          "final_score": 0.5596552435828116,
+          "similarity": 0.6854543089866638,
+          "confidence": 0.4684152197438264,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2578,
+          "title": "Agents default to Bash for search instead of Grep/Glob tools -- reinforcement needed in spawn prompts",
+          "category": "lesson-learned",
+          "final_score": 0.5503141016858434,
+          "similarity": 0.645017683506012,
+          "confidence": 0.5008272995672723,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3545,
+          "title": "Use Grep/Glob tools for content search — Bash search commands are a CLAUDE.md rule violation",
+          "category": "lesson-learned",
+          "final_score": 0.5250954595453085,
+          "similarity": 0.5779967904090881,
+          "confidence": 0.5281208324671399,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2399,
+          "title": "bash-for-search at 8.3σ in dsn-001: Spawn Prompt Reinforcement Required",
+          "category": "lesson-learned",
+          "final_score": 0.5158930241493593,
+          "similarity": 0.605827271938324,
+          "confidence": 0.463384962779227,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3872,
+          "title": "Retrospective findings: crt-030",
+          "category": "lesson-learned",
+          "final_score": 0.5065525363119024,
+          "similarity": 0.5610498189926147,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

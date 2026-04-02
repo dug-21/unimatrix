@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5016",
+  "query": "On the five questions:\n\n  OQ-1 (Cap budget): Combined is correct — but architecture must specify priority ordering. Informs candidates\n  should consume remaining capacity after Supports/Contradicts candidates are processed. The existing NLI pass\n  has higher precision signal; it shouldn't be crowded out in ticks where the Informs candidate pool is large.\n  \"Combined with Informs as second-priority\" rather than a flat merge of all candidates into one pool.\n\n  OQ-2 (Batch structure): Merge is correct — one rayon spawn maintains the W1-2 contract. The implementation\n  detail to resolve in architecture: the merged batch needs to tag each pair with its purpose\n  (Supports/Contradicts vs Informs) so Phase 8 and Phase 8b can route correctly. The pairs can't just be an\n  undifferentiated Vec — the write logic for each type is different (entailment threshold vs neutral threshold\n  + temporal filter).\n\n  OQ-3 (Dedup): Directional is correct — the temporal ordering filter (source.created_at < target.created_at)\n  means the reverse edge would never pass detection anyway. Symmetric dedup would be unnecessary and could\n  suppress valid edges if data ever had ordering anomalies. Directional is both semantically correct and\n  simpler.\n\n  OQ-4 (Neutral threshold): Fixed constant is correct — the 0.5 floor is a model property (NLI neutral score\n  reliability), not domain vocabulary. The three config fields cover all the domain-tunable knobs. Adding a\n  fourth for the neutral floor would be parameterizing the model, not the domain.\n\n  OQ-5 (Delivery gate): Post-delivery eval is correct — the graph needs several ticks to accumulate Informs\n  edges before ICD moves measurably. A hard ICD gate before merge would be brittle. The right gate structure:\n  functional correctness (Informs edges written for known cross-category pairs, temporal ordering respected) +\n  zero regression on CC@5/ICD/MRR. Then measure ICD delta at first tick and at ~3-tick accumulation as\n  post-delivery tracking. That's the signal the institutional memory bridge is working..  Proceed",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5771268030547315,
+          "similarity": 0.6977962851524353,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.526971609137758,
+          "similarity": 0.5241059064865112,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5074374500501582,
+          "similarity": 0.5027974843978882,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5053613815880889,
+          "similarity": 0.4955117702484131,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.25,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.5771268030547315,
+          "similarity": 0.6977962851524353,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3653,
+          "title": "Batch all NLI pairs into a single rayon_pool.spawn() per tick pass — never split across multiple dispatches",
+          "category": "pattern",
+          "final_score": 0.526971609137758,
+          "similarity": 0.5241059064865112,
+          "confidence": 0.6102002155360414,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2728,
+          "title": "Rayon W1-2 Compliance Test Pattern for NLI Inference Components",
+          "category": "pattern",
+          "final_score": 0.5074374500501582,
+          "similarity": 0.5027974843978882,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5053613815880889,
+          "similarity": 0.4955117702484131,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.25,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-545",
+  "query": "1. is there a better model that #1 helps to protect against 'tampering' which in this case is a LLM in a loop, but also doesn't take so long to activate because this is ultimately a low utilization methodology.. bayesian??  something like that?  I'm not sure if this is better then simply lowering the metric, No to option B.  2. implicit helpful for get.  Lookup could get a smaller minimal bump than get? 3. Need more discussion  4. Is there a way this gets smarter over time? 5. need more information",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.428226520098248,
+          "similarity": 0.35019809007644653,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.42698651763461526,
+          "similarity": 0.3563845157623291,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 865,
+          "title": "ADR-002 col-020: Idempotent Counter Updates via Absolute-Set",
+          "category": "decision",
+          "final_score": 0.426701568963208,
+          "similarity": 0.35196954011917114,
+          "confidence": 0.5839477727298916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4166441466281351,
+          "similarity": 0.37992703914642334,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 455,
+          "title": "ADR: Per-Model Training Lock via AtomicBool (crt-008 ADR-003)",
+          "category": "decision",
+          "final_score": 0.40535577078533125,
+          "similarity": 0.36430108547210693,
+          "confidence": 0.508392684314318,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.428226520098248,
+          "similarity": 0.35019809007644653,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.42698651763461526,
+          "similarity": 0.3563845157623291,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 865,
+          "title": "ADR-002 col-020: Idempotent Counter Updates via Absolute-Set",
+          "category": "decision",
+          "final_score": 0.426701568963208,
+          "similarity": 0.35196954011917114,
+          "confidence": 0.5839477727298916,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 408,
+          "title": "ADR-005: Three-Slot Model Versioning (crt-007)",
+          "category": "decision",
+          "final_score": 0.4166441466281351,
+          "similarity": 0.37992703914642334,
+          "confidence": 0.5167097706386193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 455,
+          "title": "ADR: Per-Model Training Lock via AtomicBool (crt-008 ADR-003)",
+          "category": "decision",
+          "final_score": 0.40535577078533125,
+          "similarity": 0.36430108547210693,
+          "confidence": 0.508392684314318,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

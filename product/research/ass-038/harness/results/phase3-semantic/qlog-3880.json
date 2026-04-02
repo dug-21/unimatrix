@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3880",
+  "query": "comments on the col-031 (414) design? Critical risks the delivery agent must address:                             \n  1. R-01 — Verify CAST(json_each.value AS INTEGER) against a live query_log  \n  row (AC-08 is the CI gate)                                                  \n  2. R-02 — Cold-start with phase=Some: ranking-preserving (not bit-for-bit   \n  identical) — test both None and Some+cold paths in AC-11                    \n  3. R-04/R-05 — AC-16 (extract.rs fix) must be complete before AC-12 (eval   \n  gate) can be declared — these are non-separable deliverables             \n  4. R-03 — Release PhaseFreqTableHandle read lock before the scoring loop    \n  begins                                                                  \n                                                                              \n  One open type question for delivery: PhaseFreqRow.freq — resolve whether\n  rusqlite returns i64 or u64 for COUNT(*) and reconcile SPECIFICATION.md vs  \n  ARCHITECTURE.md.                                              ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5505673950668196,
+          "similarity": 0.5814031958580017,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.5461309972633624,
+          "similarity": 0.5834740400314331,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.5457853377144174,
+          "similarity": 0.5909375548362732,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5430831543700901,
+          "similarity": 0.5587941408157349,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5296433801229649,
+          "similarity": 0.6086874604225159,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5505673950668196,
+          "similarity": 0.5814031958580017,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3682,
+          "title": "ADR-004 col-031: Lock Ordering for Three Arc<RwLock<_>> Handles on SearchService Hot Path",
+          "category": "decision",
+          "final_score": 0.5461309972633624,
+          "similarity": 0.5834740400314331,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3690,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12 (superseded by #3688)",
+          "category": "decision",
+          "final_score": 0.5457853377144174,
+          "similarity": 0.5909375548362732,
+          "confidence": 0.5657922668873145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5430831543700901,
+          "similarity": 0.5587941408157349,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3753,
+          "title": "Use pre-cloned lock snapshot for new pipeline steps — never re-acquire the lock",
+          "category": "pattern",
+          "final_score": 0.5296433801229649,
+          "similarity": 0.6086874604225159,
+          "confidence": 0.4966213740158821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1011",
+  "query": "Q2 - keeping this a store function seems cleaner choice.  Q1 - what does dyn Entrystore allow me to do in the future that I would not be able to if we go native",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.49654897527173725,
+          "similarity": 0.5004029273986816,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.4878573356589351,
+          "similarity": 0.45740050077438354,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.4838557762436265,
+          "similarity": 0.4510098695755005,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4825555560340825,
+          "similarity": 0.5009859204292297,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.4650036451558538,
+          "similarity": 0.43620169162750244,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.49654897527173725,
+          "similarity": 0.5004029273986816,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 336,
+          "title": "ADR-004: Import Uses Store::open() Then Raw SQL",
+          "category": "decision",
+          "final_score": 0.4878573356589351,
+          "similarity": 0.45740050077438354,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 61,
+          "title": "ADR-004: Synchronous API with spawn_blocking Delegation",
+          "category": "decision",
+          "final_score": 0.4838557762436265,
+          "similarity": 0.4510098695755005,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2146,
+          "title": "ADR-005 nxs-011: EntryStore trait fully eliminated — RPITIT migration outcome superseded by complete removal",
+          "category": "decision",
+          "final_score": 0.4825555560340825,
+          "similarity": 0.5009859204292297,
+          "confidence": 0.5226709086221816,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.4650036451558538,
+          "similarity": 0.43620169162750244,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

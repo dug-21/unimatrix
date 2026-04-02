@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3791",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] The crate changes were already committed by the impl agents themselves (commits `8af836c` and `7eb9495`). Wave 1 is fully committed. Launching Wave 2.\n[tool: Bash(git log --oneline -5 && git status --short crates/unimatrix-server/src/infra/config.rs crates/unimatrix-server/src/servi) → 0b684ba impl: wave 1 — InferenceConfig fields, store helpers, pub(crate) promotions (#412)\n8af836c impl(inference-config): add four InferenceConfig fields, validate guards, pub(crate) promotions, mod declaration (#412)\n7eb9495 impl(store-query-helpers): add query_entries_without_edges + query_exis]\n[tool: Bash(git show --stat HEAD | head -20) → commit 0b684ba43cb6839b196f254939e848d60b19aa3b\nAuthor: Doug Faist <angryweed@gmail.com>\nDate:   Fri Mar 27 13:59:08 2026 +0000\n\n    impl: wave 1 — InferenceConfig fields, store helpers, pub(crate) promotions (#412)\n    \n    Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>\n\n .../crt-029-a]\n[tool: Bash(git diff --cached --stat && git status --short crates/) → (Bash completed with no output)]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5596548944589309,
+          "similarity": 0.5965961217880249,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.5323640919310505,
+          "similarity": 0.541286289691925,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5212031344780422,
+          "similarity": 0.5245612263679504,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5132152991282484,
+          "similarity": 0.5308751463890076,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.5104598925979685,
+          "similarity": 0.5316398739814758,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.5596548944589309,
+          "similarity": 0.5965961217880249,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2957,
+          "title": "Wave-Based Refactor: Scope cargo test to Affected Crate Per Wave, Not Workspace",
+          "category": "procedure",
+          "final_score": 0.5323640919310505,
+          "similarity": 0.541286289691925,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.5212031344780422,
+          "similarity": 0.5245612263679504,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.5132152991282484,
+          "similarity": 0.5308751463890076,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 362,
+          "title": "ADR-008: Wave Ordering and Cross-Crate Synchronization",
+          "category": "decision",
+          "final_score": 0.5104598925979685,
+          "similarity": 0.5316398739814758,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

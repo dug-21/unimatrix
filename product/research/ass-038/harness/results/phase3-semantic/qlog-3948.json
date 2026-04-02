@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3948",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Our modified files are clippy-clean. Pre-existing issues are in unrelated crates. Spawning Gate 3b.\n[tool: Bash(cargo clippy -p unimatrix-store -- -D warnings 2>&1 | tail -3 && cargo clippy -p unimatrix-server --lib -- -D warnings 2) →     Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.11s]\n[Assistant] Pre-existing clippy issues in unimatrix-observe/unimatrix-engine — not from our changes. Let me verify no new issues in our specific files.\n[tool: Bash(cargo clippy -p unimatrix-server --lib -- -D warnings 2>&1 | tail -5) →     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using an array of `char`: `[',', '.', ';', ':', ')']`\n    |\n    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.93.0/index.html#manual_pattern_ch]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3257,
+          "title": "Bug fix clippy triage: scope to affected crates, not workspace, when pre-existing errors exist",
+          "category": "procedure",
+          "final_score": 0.6141295318263288,
+          "similarity": 0.6805176734924316,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5844869583029495,
+          "similarity": 0.7091252207756042,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.5728256891731687,
+          "similarity": 0.6672241687774658,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.5585317079142519,
+          "similarity": 0.6598102450370789,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.552467217646147,
+          "similarity": 0.6482877135276794,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3257,
+          "title": "Bug fix clippy triage: scope to affected crates, not workspace, when pre-existing errors exist",
+          "category": "procedure",
+          "final_score": 0.6141295318263288,
+          "similarity": 0.6805176734924316,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5844869583029495,
+          "similarity": 0.7091252207756042,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.5728256891731687,
+          "similarity": 0.6672241687774658,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.5585317079142519,
+          "similarity": 0.6598102450370789,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.552467217646147,
+          "similarity": 0.6482877135276794,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 41,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 15,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-3770",
+  "query": "read_pool is definitively correct.  any ADR conflicting with that should be immediately deprecated.  as for the risks: R-01 (false-positive Contradicts suppression) — the most dangerous. The tick runs NLI over candidate pairs     \n  primarily looking for entailment (Supports edges), but the same NLI pass sees contradiction scores too. If\n  write_inferred_edges_with_cap uses a contradiction threshold that's lower than nli_contradiction_threshold, it \n  will write Contradicts edges that the real-time path would have rejected — and those edges then silently\n  suppress search results via #395. AC-19† enforcing the threshold parameter be passed explicitly (not defaulted)\n   is the right call. I'd go further: the spec should forbid the tick from writing Contradicts edges at all in\n  #412. The tick's job is Supports edges. Contradiction detection already has its own dedicated path. Mixing them\n   in the tick creates two code paths that can drift out of calibration. Keep them separate.\n\n  R-02 (get_embedding O(N)) — correctly identified. The bound needs to be on source candidate selection before   \n  any get_embedding call, not after. An off-by-one in ordering (select candidates → call get_embedding → apply\n  max) vs (apply max → call get_embedding) is the exact footgun. The AC should specify the order explicitly: cap \n  the candidate list first, then fetch embeddings.                          \n\n  R-09 (Tokio handle inside rayon closure) — this is the sneaky one. It won't show at compile time and won't show\n   in unit tests that don't use the full runtime. The pattern to watch for: any tokio::runtime::Handle::current()\n   or .await inside a rayon_pool.spawn or rayon::spawn closure. The tick path likely touches rayon for CPU-bound \n  work (HNSW search, NLI batch). If the delivery agent routes any async DB call through that closure rather than\n  returning the result out, it panics at runtime under load. The reviewer should specifically grep for\n  Handle::current and .await inside rayon closures in the new tick code. This risk can't be caught by the\n  compiler or unit tests — it requires manual inspection.\\\n\\\nOur review agents(as well as coders) need to scan specifically for R-09 risk in the codebase.  The validator cannot be the same agent that coded it.  My requirement:  All design artifacts need to be completely in sync.  Any conflict in design documents needs to be completely eliminated prior to moving to the next phase.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.6076115537953181,
+          "similarity": 0.661653459072113,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.6029927231207458,
+          "similarity": 0.6810113191604614,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.5720026695930668,
+          "similarity": 0.6102995872497559,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5639330974380731,
+          "similarity": 0.6246337294578552,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.6076115537953181,
+          "similarity": 0.661653459072113,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.6029927231207458,
+          "similarity": 0.6810113191604614,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.5720026695930668,
+          "similarity": 0.6102995872497559,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5639330974380731,
+          "similarity": 0.6246337294578552,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.25,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

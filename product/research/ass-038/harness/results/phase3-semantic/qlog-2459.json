@@ -1,0 +1,74 @@
+{
+  "scenario_id": "qlog-2459",
+  "query": "<task-notification>\n<task-id>br3slp7s8</task-id>\n<tool-use-id>toolu_01NZMFfwGt3YhF2XPUZnHjnJ</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/d4042945-e914-4e8c-abd7-b451b1c6b21c/tasks/br3slp7s8.output</output-file>\n<status>killed</status>\n<summary>Background command \"Run tools suite, capture tail\" was stopped</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/d4042945-e914-4e8c-abd7-b451b1c6b21c/tasks/br3slp7s8.output",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5349172574093467,
+          "similarity": 0.6149427890777588,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5285565947984393,
+          "similarity": 0.6028575301170349,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5349172574093467,
+          "similarity": 0.6149427890777588,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5285565947984393,
+          "similarity": 0.6028575301170349,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

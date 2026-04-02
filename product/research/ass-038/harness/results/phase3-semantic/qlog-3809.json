@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3809",
+  "query": "question about crt-029: Two things are happening together:                                                                                     \n   \n  1. The source selection may not be rotating. If select_source_candidates orders isolated entries by ID ascending, ticks\n   1 and 2 are selecting the same ~65 real candidates (after skipping no-embedding entries). Those candidates' pairs were\n   already tried in tick 1 — the 6 that passed were written, the rest were below threshold. Tick 2 re-scores the same    \n  pairs and gets the same 0 results. The tick has no memory that a source candidate's neighbors were already\n  NLI-evaluated and rejected.\n\n  2. The corpus at 0.5/0.7 thresholds may only have 6 easy edges. The decision/pattern/procedure entries in this topic   \n  cluster may genuinely not have many high-entailment pairings beyond what was already captured. Lesson-learned entries\n  especially narrate specific events and don't entail each other in the NLI sense.                                       \n                                                                  \n  This is a design gap worth filing as a follow-up. The tick needs either rotation (shuffle/randomize source selection so\n   it doesn't retry the same exhausted candidates) or a \"pair attempted\" record to skip re-scoring pairs that were\n  already below threshold.                                                                                               \n                                                                  \n  Immediate practical question: Does source candidate selection randomize or is it deterministic? Check                  \n  select_source_candidates in nli_detection_tick.rs — if it's ORDER BY id or similar without randomization, that confirms\n   the stuck state. If it randomizes, tick 3 should show different candidates and possibly new edges. ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.6012506402174854,
+          "similarity": 0.649567723274231,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.566226412699874,
+          "similarity": 0.6029466390609741,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5654153080264062,
+          "similarity": 0.5814945697784424,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5452851341640913,
+          "similarity": 0.5911115407943726,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5382648839519965,
+          "similarity": 0.5445284247398376,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.6012506402174854,
+          "similarity": 0.649567723274231,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.566226412699874,
+          "similarity": 0.6029466390609741,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5654153080264062,
+          "similarity": 0.5814945697784424,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5452851341640913,
+          "similarity": 0.5911115407943726,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5382648839519965,
+          "similarity": 0.5445284247398376,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

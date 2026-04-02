@@ -1,0 +1,434 @@
+{
+  "scenario_id": "uc2-01",
+  "query": "What data type should be used for scoring weights and confidence values throughout the Unimatrix scoring pipeline?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2284,
+          "title": "ADR-001 dsn-001: ConfidenceParams Struct for Engine API",
+          "category": "decision",
+          "final_score": 0.48182269683261136,
+          "similarity": 0.4199641942977905,
+          "confidence": 0.6364270424059589,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 750,
+          "title": "Adding Pipeline Validation Tests",
+          "category": "procedure",
+          "final_score": 0.47761659322027983,
+          "similarity": 0.4127981662750244,
+          "confidence": 0.6352476583478676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4760775820369867,
+          "similarity": 0.40327155590057373,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.4727496451948039,
+          "similarity": 0.45091909170150757,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.4631755128982705,
+          "similarity": 0.4401092529296875,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.45856261390137376,
+          "similarity": 0.4109182357788086,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.45659173892143623,
+          "similarity": 0.4004744291305542,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.4555533300678767,
+          "similarity": 0.3822357654571533,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.4482183733225894,
+          "similarity": 0.4035240411758423,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4466813062348398,
+          "similarity": 0.41082966327667236,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4446626040810032,
+          "similarity": 0.35385894775390625,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.4402391862708527,
+          "similarity": 0.37543249130249023,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.43941211497486876,
+          "similarity": 0.36753201484680176,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.4351409224196655,
+          "similarity": 0.3885338306427002,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.423851081078508,
+          "similarity": 0.349931538105011,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4237883481031125,
+          "similarity": 0.3693523406982422,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.4237529261585864,
+          "similarity": 0.35304152965545654,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.4087453046019115,
+          "similarity": 0.3663215637207031,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.40567469289914304,
+          "similarity": 0.3604874014854431,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2608,
+          "title": "ConfidenceWeights fields are base/usage/fresh/help/corr/trust — pseudocode had wrong names",
+          "category": "pattern",
+          "final_score": 0.39733052953972914,
+          "similarity": 0.3802226781845093,
+          "confidence": 0.4638647542013946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.370515174287956
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2284,
+          "title": "ADR-001 dsn-001: ConfidenceParams Struct for Engine API",
+          "category": "decision",
+          "final_score": 0.48182269683261136,
+          "similarity": 0.4199641942977905,
+          "confidence": 0.6364270424059589,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 750,
+          "title": "Adding Pipeline Validation Tests",
+          "category": "procedure",
+          "final_score": 0.47761659322027983,
+          "similarity": 0.4127981662750244,
+          "confidence": 0.6352476583478676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 241,
+          "title": "Unimatrix Knowledge Categories",
+          "category": "convention",
+          "final_score": 0.4760775820369867,
+          "similarity": 0.40327155590057373,
+          "confidence": 0.6446797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2393,
+          "title": "ADR-005 dsn-001: Preset Enum Design and Weight Table",
+          "category": "decision",
+          "final_score": 0.4727496451948039,
+          "similarity": 0.45091909170150757,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.4631755128982705,
+          "similarity": 0.4401092529296875,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1042,
+          "title": "Pure Computation Engine Module Pattern",
+          "category": "pattern",
+          "final_score": 0.45856261390137376,
+          "similarity": 0.4109182357788086,
+          "confidence": 0.5862153294768595,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.45659173892143623,
+          "similarity": 0.4004744291305542,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 383,
+          "title": "ADR-002 col-012: ObservationSource Trait Preserves unimatrix-observe Independence",
+          "category": "decision",
+          "final_score": 0.4555533300678767,
+          "similarity": 0.3822357654571533,
+          "confidence": 0.6190222309597321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.4482183733225894,
+          "similarity": 0.4035240411758423,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.4466813062348398,
+          "similarity": 0.41082966327667236,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4446626040810032,
+          "similarity": 0.35385894775390625,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.4402391862708527,
+          "similarity": 0.37543249130249023,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.43941211497486876,
+          "similarity": 0.36753201484680176,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.4351409224196655,
+          "similarity": 0.3885338306427002,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1094,
+          "title": "ADR-005 nan-003: CLAUDE.md Block Lists Only unimatrix-* Skills",
+          "category": "decision",
+          "final_score": 0.423851081078508,
+          "similarity": 0.349931538105011,
+          "confidence": 0.5791221656345061,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 448,
+          "title": "How to add a new ndarray MLP model to unimatrix-learn",
+          "category": "procedure",
+          "final_score": 0.4237883481031125,
+          "similarity": 0.3693523406982422,
+          "confidence": 0.5512078867109594,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.4237529261585864,
+          "similarity": 0.35304152965545654,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.4087453046019115,
+          "similarity": 0.3663215637207031,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.40567469289914304,
+          "similarity": 0.3604874014854431,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2608,
+          "title": "ConfidenceWeights fields are base/usage/fresh/help/corr/trust — pseudocode had wrong names",
+          "category": "pattern",
+          "final_score": 0.39733052953972914,
+          "similarity": 0.3802226781845093,
+          "confidence": 0.4638647542013946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 1.0,
+      "icd": 1.370515174287956
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

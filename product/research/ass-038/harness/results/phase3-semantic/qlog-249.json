@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-249",
+  "query": "hooks where active... was on a worktree.. investigate root cause",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.5286863845350516,
+          "similarity": 0.5540894269943237,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.5021243991816142,
+          "similarity": 0.4852708578109741,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3972,
+          "title": "Retrospective findings: bugfix-473",
+          "category": "lesson-learned",
+          "final_score": 0.45037261757097735,
+          "similarity": 0.4543079733848572,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3840,
+          "title": "Retrospective findings: bugfix-367",
+          "category": "lesson-learned",
+          "final_score": 0.4490332070902774,
+          "similarity": 0.4517630934715271,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 767,
+          "title": "Do not touch worktrees you were not asked to touch",
+          "category": "lesson-learned",
+          "final_score": 0.5286863845350516,
+          "similarity": 0.5540894269943237,
+          "confidence": 0.5720210051746777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 525,
+          "title": "ADR-001: Worktree Isolation as Optional Layer with Fallback",
+          "category": "decision",
+          "final_score": 0.5021243991816142,
+          "similarity": 0.4852708578109741,
+          "confidence": 0.5982364294772757,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3972,
+          "title": "Retrospective findings: bugfix-473",
+          "category": "lesson-learned",
+          "final_score": 0.45037261757097735,
+          "similarity": 0.4543079733848572,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3840,
+          "title": "Retrospective findings: bugfix-367",
+          "category": "lesson-learned",
+          "final_score": 0.4490332070902774,
+          "similarity": 0.4517630934715271,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

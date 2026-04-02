@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4014",
+  "query": "at least 40, maybe more.  since col-010",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.415934026458168,
+          "similarity": 0.30684882402420044,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.40481115659021916,
+          "similarity": 0.29961276054382324,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.39001221942928077,
+          "similarity": 0.3004840612411499,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.3842927586707958,
+          "similarity": 0.3074374198913574,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.3684595456196109,
+          "similarity": 0.3115342855453491,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1271,
+          "title": "Context load and cold restart hotspots scale with component count -- normalize before flagging",
+          "category": "lesson-learned",
+          "final_score": 0.415934026458168,
+          "similarity": 0.30684882402420044,
+          "confidence": 0.6191797517804555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.40481115659021916,
+          "similarity": 0.29961276054382324,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2704,
+          "title": "ADR-005 crt-023: Bootstrap Promotion Idempotency via COUNTERS Table String Key",
+          "category": "decision",
+          "final_score": 0.39001221942928077,
+          "similarity": 0.3004840612411499,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1613,
+          "title": "ADR-002 crt-020: Cold-Start Batch Cap 500, Oldest-First Ordering",
+          "category": "decision",
+          "final_score": 0.3842927586707958,
+          "similarity": 0.3074374198913574,
+          "confidence": 0.5324554594045068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 194,
+          "title": "ASS-014 RQ-3: Existing Feature Impact Assessment — Key Findings",
+          "category": "decision",
+          "final_score": 0.3684595456196109,
+          "similarity": 0.3115342855453491,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

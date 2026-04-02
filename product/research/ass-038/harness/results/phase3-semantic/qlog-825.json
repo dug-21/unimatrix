@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-825",
+  "query": "yes... Lets record this security approach/evolution.  And separately, lets put together a quasi roadmap of everything we need to do in order to bridge the critical gap we currently have, to become more ubiquitous, and more flexible, and at the same time solve some of our scalability challenges, confidence challenges.  This includes addressing some of the most critical gaps where Unimatrix strayed from domain agnostic beginnings",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.47096789858121657,
+          "similarity": 0.4062196612358093,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.43515552566875804,
+          "similarity": 0.33510422706604004,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.41668453643282377,
+          "similarity": 0.313892126083374,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.4084584671639787,
+          "similarity": 0.3180925250053406,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.3832913134129191,
+          "similarity": 0.29332435131073,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 17,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.47096789858121657,
+          "similarity": 0.4062196612358093,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.43515552566875804,
+          "similarity": 0.33510422706604004,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 314,
+          "title": "Hybrid Gateway Injection: Security Enforcement in Service Layer",
+          "category": "pattern",
+          "final_score": 0.41668453643282377,
+          "similarity": 0.313892126083374,
+          "confidence": 0.611154990198559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 252,
+          "title": "ADR-001: Hybrid Gateway Injection Pattern",
+          "category": "decision",
+          "final_score": 0.4084584671639787,
+          "similarity": 0.3180925250053406,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.3832913134129191,
+          "similarity": 0.29332435131073,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4704",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Wave 2 — `co_access_promotion_tick`.\n[tool: Bash(git add product/features/crt-034/agents/ && git commit -m \"$(cat <<'EOF'\nchore: crt-034 wave 1 agent reports (#456)\n\nCo-) → [feature/crt-034 f6fcd52] chore: crt-034 wave 1 agent reports (#456)\n 2 files changed, 110 insertions(+)\n create mode 100644 product/features/crt-034/agents/crt-034-agent-3-store-constants-report.md\n create mode 100644 product/features/crt-034/agents/crt-034-agent-4-config-extension-report.md]\n[Assistant] The agents committed their own changes directly — Wave 1 is already in the log. Also picking up the agent reports.\n[tool: Bash(git log --oneline -8) → 22bef4a impl(config_extension): add max_co_access_promotion_per_tick to InferenceConfig (#455)\nda9f209 impl(store_constants): add EDGE_SOURCE_CO_ACCESS and CO_ACCESS_GRAPH_MIN_COUNT constants (#456)\nea7ec74 pseudocode: crt-034 component design + test plans (#456)\n7d0a39c design: crt-034 design revie]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4992090828782807,
+          "similarity": 0.5451539158821106,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.4962303134833481,
+          "similarity": 0.4760894179344177,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4760133340656997,
+          "similarity": 0.474861204624176,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.46641595938207425,
+          "similarity": 0.44195640087127686,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.45795239473644045,
+          "similarity": 0.49110954999923706,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.4992090828782807,
+          "similarity": 0.5451539158821106,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2906,
+          "title": "ADR-004 col-023: Wave-Based Refactor Plan for HookType Blast Radius",
+          "category": "decision",
+          "final_score": 0.4962303134833481,
+          "similarity": 0.4760894179344177,
+          "confidence": 0.5953545395484913,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4760133340656997,
+          "similarity": 0.474861204624176,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2477,
+          "title": "SM must commit all in-flight working tree diffs before invoking gate validators",
+          "category": "lesson-learned",
+          "final_score": 0.46641595938207425,
+          "similarity": 0.44195640087127686,
+          "confidence": 0.563191317078092,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.45795239473644045,
+          "similarity": 0.49110954999923706,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

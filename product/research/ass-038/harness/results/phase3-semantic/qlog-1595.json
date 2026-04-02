@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1595",
+  "query": "yeah.. I want to see these results, then likely compare these against the quantized versions",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2807,
+          "title": "Operator procedure: NLI model download, hash pinning, and eval run for crt-023 and future NLI features",
+          "category": "procedure",
+          "final_score": 0.41990146330544165,
+          "similarity": 0.3817119002342224,
+          "confidence": 0.5230012572087384,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4051039228534311,
+          "similarity": 0.29300618171691895,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.398782650735209,
+          "similarity": 0.28747880458831787,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.3971913910177981,
+          "similarity": 0.28745388984680176,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.3874848169903341,
+          "similarity": 0.29376596212387085,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2807,
+          "title": "Operator procedure: NLI model download, hash pinning, and eval run for crt-023 and future NLI features",
+          "category": "procedure",
+          "final_score": 0.41990146330544165,
+          "similarity": 0.3817119002342224,
+          "confidence": 0.5230012572087384,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1040,
+          "title": "ADR-003: Data Window Indicator for Ephemeral Classifications (crt-018)",
+          "category": "decision",
+          "final_score": 0.4051039228534311,
+          "similarity": 0.29300618171691895,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.398782650735209,
+          "similarity": 0.28747880458831787,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.3971913910177981,
+          "similarity": 0.28745388984680176,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 632,
+          "title": "ADR-001: MetricVector Types in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.3874848169903341,
+          "similarity": 0.29376596212387085,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-773855b9-1773545544000",
+  "query": "implicit vote injection log session outcome helpfulness",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.40509825486403245,
+          "similarity": 0.5020346641540527,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.375301874600924,
+          "similarity": 0.45361554622650146,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.3714803915757399,
+          "similarity": 0.4474056363105774,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.3683634537916917,
+          "similarity": 0.442340612411499,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.3668680924635667,
+          "similarity": 0.4399106502532959,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.5388313098589834,
+          "similarity": 0.5020346641540527,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.5063752555416484,
+          "similarity": 0.4474056363105774,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.5053894860923825,
+          "similarity": 0.4399106502532959,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.5041267454002676,
+          "similarity": 0.442340612411499,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.4787706242643708,
+          "similarity": 0.45361554622650146,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.5385923706011592,
+          "similarity": 0.5020346641540527,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.5059923359362518,
+          "similarity": 0.4474056363105774,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.5049642988466742,
+          "similarity": 0.4399106502532959,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.5037255367444963,
+          "similarity": 0.442340612411499,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.47860727960178717,
+          "similarity": 0.45361554622650146,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.4784367160511203,
+          "similarity": 0.5020346641540527,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.45088808877395653,
+          "similarity": 0.4474056363105774,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.4496345291711142,
+          "similarity": 0.4399106502532959,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.44888810110673055,
+          "similarity": 0.442340612411499,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.43121970812307736,
+          "similarity": 0.45361554622650146,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.4784367160511203,
+          "similarity": 0.5020346641540527,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.45088808877395653,
+          "similarity": 0.4474056363105774,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.4496345291711142,
+          "similarity": 0.4399106502532959,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.44888810110673055,
+          "similarity": 0.442340612411499,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.43121970812307736,
+          "similarity": 0.45361554622650146,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1611,
+          "title": "Implicit Vote Features: Real-Time + Background Path Disjointness Must Be Explicit",
+          "category": "pattern",
+          "final_score": 0.5020346641540527,
+          "similarity": 0.5020346641540527,
+          "confidence": 0.5913979465803131,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 203,
+          "title": "ASS-014: Confidence Signal Asymmetry — Auto-Positive, Flag-Negative, Never Auto-Downweight",
+          "category": "decision",
+          "final_score": 0.45361554622650146,
+          "similarity": 0.45361554622650146,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 99,
+          "title": "ADR-002: Server-Layer Deduplication with Vote Correction",
+          "category": "decision",
+          "final_score": 0.4474056363105774,
+          "similarity": 0.4474056363105774,
+          "confidence": 0.5906175687288927,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1616,
+          "title": "Background Tick Dedup Flags: Write Votes Before Marking Applied — Residual Double-Write Risk on Mark Failure",
+          "category": "pattern",
+          "final_score": 0.442340612411499,
+          "similarity": 0.442340612411499,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1614,
+          "title": "ADR-003 crt-020: Double-Count Prevention via implicit_votes_applied Flag on sessions",
+          "category": "decision",
+          "final_score": 0.4399106502532959,
+          "similarity": 0.4399106502532959,
+          "confidence": 0.5989306801482207,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 203,
+        "from_rank": 5,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 1614,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 99,
+        "from_rank": 2,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

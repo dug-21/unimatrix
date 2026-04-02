@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1489",
+  "query": "do we have documentation on how to use this new testing capability after this feature, either in unimatrix or a file?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 750,
+          "title": "Adding Pipeline Validation Tests",
+          "category": "procedure",
+          "final_score": 0.5617000185915502,
+          "similarity": 0.5725566744804382,
+          "confidence": 0.6352476583478676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.5313386781328774,
+          "similarity": 0.5713095664978027,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 748,
+          "title": "TestHarness Server Integration Pattern",
+          "category": "pattern",
+          "final_score": 0.5280223780551403,
+          "similarity": 0.5223686099052429,
+          "confidence": 0.6155341548564627,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5179023596792705,
+          "similarity": 0.5409912467002869,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5085836554115818,
+          "similarity": 0.5236420631408691,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 750,
+          "title": "Adding Pipeline Validation Tests",
+          "category": "procedure",
+          "final_score": 0.5617000185915502,
+          "similarity": 0.5725566744804382,
+          "confidence": 0.6352476583478676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 649,
+          "title": "ADR-001: Re-export pattern for type deduplication (crt-012)",
+          "category": "decision",
+          "final_score": 0.5313386781328774,
+          "similarity": 0.5713095664978027,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 748,
+          "title": "TestHarness Server Integration Pattern",
+          "category": "pattern",
+          "final_score": 0.5280223780551403,
+          "similarity": 0.5223686099052429,
+          "confidence": 0.6155341548564627,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 242,
+          "title": "ADR-001: Engine Extraction Boundary and Re-Export Strategy",
+          "category": "decision",
+          "final_score": 0.5179023596792705,
+          "similarity": 0.5409912467002869,
+          "confidence": 0.5614617667004673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5085836554115818,
+          "similarity": 0.5236420631408691,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.6,
+      "mrr": 1.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

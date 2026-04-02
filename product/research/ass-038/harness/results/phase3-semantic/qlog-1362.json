@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1362",
+  "query": "so.. I want a deep dive research spike (ass-025) on W1-3 from @product-vision.  I want yo uto collect research on our current export capability, determine how we can pull real live relevant data and deliver an evaluation test harness... what capabilities we should have in our test harness.  This is NOT, the start of any design process, therefore, do not commit any artifacts until I say so, and do not follow the protocols we have, as that will be our next step... but not riight now.  Ensure our capability is extends to this a/b testing.  As we begin adding all of these intelligence features, we really need to understand how the changes/additions/etc will actually affect our platform.  Me as the human also wants to see the results... The ability to simulate inbound actions including both through MCP and UDS paths, and review response examples and quality for both.  Research as necessary both in the codebase, using unimatrix or other tools, externally the best approaches we could select based on our current test capabilites/etc.  Lets work through the opportunity and determine what we need.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.5337550921420885,
+          "similarity": 0.539617121219635,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.5181132998873871,
+          "similarity": 0.49896514415740967,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.5163595701011332,
+          "similarity": 0.49561381340026855,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 750,
+          "title": "Adding Pipeline Validation Tests",
+          "category": "procedure",
+          "final_score": 0.5137644888324945,
+          "similarity": 0.4814791679382324,
+          "confidence": 0.6352476583478676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.5058438975780502,
+          "similarity": 0.48441213369369507,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 729,
+          "title": "Intelligence pipeline testing requires cross-crate integration tests, not server-level tests",
+          "category": "pattern",
+          "final_score": 0.5337550921420885,
+          "similarity": 0.539617121219635,
+          "confidence": 0.606453648357619,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1259,
+          "title": "How to design and deliver a workflow-only scope (no Rust code)",
+          "category": "procedure",
+          "final_score": 0.5181132998873871,
+          "similarity": 0.49896514415740967,
+          "confidence": 0.6220716080408941,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 238,
+          "title": "Testing Infrastructure Convention",
+          "category": "convention",
+          "final_score": 0.5163595701011332,
+          "similarity": 0.49561381340026855,
+          "confidence": 0.6220990997026924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 750,
+          "title": "Adding Pipeline Validation Tests",
+          "category": "procedure",
+          "final_score": 0.5137644888324945,
+          "similarity": 0.4814791679382324,
+          "confidence": 0.6352476583478676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2928,
+          "title": "String-Refactor Test Plan Patterns: Domain Isolation, Backward-Compat Snapshot, Static Grep Gates",
+          "category": "pattern",
+          "final_score": 0.5058438975780502,
+          "similarity": 0.48441213369369507,
+          "confidence": 0.6095589595780005,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -12,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

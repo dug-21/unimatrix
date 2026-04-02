@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-b1ecc03a-1773959854000",
+  "query": "ServiceLayer constructor signature extension test helpers update",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.5240496415442054,
+          "similarity": 0.5755240321159363,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.5102497829629836,
+          "similarity": 0.5210443735122681,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5076817975388087,
+          "similarity": 0.5185781717300415,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.4908744924190197,
+          "similarity": 0.47217613458633423,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.49077723301464393,
+          "similarity": 0.4364762306213379,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.5240496415442054,
+          "similarity": 0.5755240321159363,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.5102497829629836,
+          "similarity": 0.5210443735122681,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5076817975388087,
+          "similarity": 0.5185781717300415,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.4908744924190197,
+          "similarity": 0.47217613458633423,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.49077723301464393,
+          "similarity": 0.4364762306213379,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

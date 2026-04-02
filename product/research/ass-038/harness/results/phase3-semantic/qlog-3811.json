@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-3811",
+  "query": "we should file a gh issue for this: Do 1 and 2, skip 3.\n\n  Option 2 implementation note: don't pass the vector index into select_source_candidates and call get_embedding\n  (that's O(N) per entry, called during selection = expensive). Instead, compute a HashSet<u64> of IDs with\n  embeddings once before selection — the vector index's internal id_map.entry_to_data already has exactly this set\n  as a byproduct of its structure. Pass the set, check membership O(1) per candidate. The no-embedding entries\n  disappear from tier 1 permanently with zero runtime cost per tick.\n\n  Option 1: shuffle both tiers independently before take(max_sources). This gives non-deterministic progress through\n   the 2900+ real isolated candidates. Some ticks will find edges, most won't, but the tick is no longer stuck.\n\n  Option 3: not worth it yet. The combination of shuffle + no-embedding filter already eliminates both root causes.\n  A bloom filter adds schema or in-memory state for a benefit that's marginal once shuffle is in place — you're\n  trading occasional redundant NLI calls for persistent complexity. Revisit if it turns out a large fraction of\n  ticks still score 0 after 1+2 land.\n\n  One thing to flag: even with both fixes, the 0.7 NLI threshold against 2356 lesson-learned entries is structurally\n   hard. Lesson-learned entries are event narrations (\"when X happened, do Y\") — they don't entail each other in the\n   NLI sense even when semantically related. Expect the graph to fill well among the 988\n  decision/pattern/procedure/convention entries and remain sparse in the lesson-learned corpus at this threshold.\n  That's not a bug — it's the threshold doing its job. The graph cohesion trend will show this:\n  cross_category_edge_count rises, but isolated_entry_count plateau is higher than the entry count might suggest.\n\n  File this as a follow-up to #412. Options 1 and 2 are a bugfix-protocol candidate — small, targeted, no design\n  change beyond what was already scoped.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.6370406811856559,
+          "similarity": 0.7654470801353455,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.621514431301775,
+          "similarity": 0.6880689263343811,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5597470610076921,
+          "similarity": 0.6657856702804565,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.6370406811856559,
+          "similarity": 0.7654470801353455,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.621514431301775,
+          "similarity": 0.6880689263343811,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5597470610076921,
+          "similarity": 0.6657856702804565,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-700",
+  "query": "<task-notification>\n<task-id>af296bf9295b6d159</task-id>\n<tool-use-id>toolu_01QAhmX12T7FhZy5g9h73BUr</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/f1e44af3-856d-4856-b88e-437c9e809707/tasks/af296bf9295b6d159.output</output-file>\n<status>completed</status>\n<summary>Agent \"ASS-020 full availability and scalability review\" completed</summary>\n<result>The research is complete. Here is a summary of what was done and the key findings:\n\n---\n\n## ASS-020 Research Complete\n\nFour files written to `/workspaces/unimatrix/product/research/ass-020/`:\n- `FINDINGS.md` — 15 prioritized findings with file:line citations\n- `MUTEX-AUDIT.md` — Complete map of every `lock_conn()` call, hold time, and frequency\n- `TICK-AUDIT.md` — Full tick breakdown with spawn_blocking counts and timing estimates\n- `RECOMMENDATIONS.md` — Tactical fixes and architectural recommendations\n\nSummary posted to GH issue #270.\n\n---\n\n## Critical Findings\n\n**P1 (Critical)**: Two naked `.unwrap()` calls at `services/status.rs:638, 657` can permanently kill the background tick task on a JoinError. The tick loop's error handler at `background.rs:260` does not catch async task panics — once dead, the tick never restarts.\n\n**P2 (Critical)**: The tick runs three sequential 120-second windows (`maintenance_tick` → `SupersessionState rebuild` → `extraction_tick`), each independently timed. Total potential tick duration: 6 minutes. During any mutex-holding phase, concurrent MCP requests are blocked indefinitely.\n\n**P3 (Critical)**: `spawn_blocking_with_timeout` (30s) exists at `infra/timeout.rs` and is applied only to `context_retrospective`. Every other hot-path tool — search, store, briefing, status — uses bare `spawn_blocking` with no timeout. When the tick holds the mutex, these tasks block indefinitely, triggering the client timeout + reconnect cycle that manifests as the ~15 minute idle drop.\n\n**P4 (High)**: The contradiction scan in `compute_report()` Phase 2 (`status.rs:424–479`) re-embeds every active entry via ONNX and runs HNSW search per entry on **every maintenance tick**. O(N) ONNX calls, not rate-limited.\n\n**Root cause of regression**: crt-014 (+2–5s), crt-018b (+10–20s), and crt-019 (+3–8s) each added independently manageable costs. Combined, at current scale they push the tick to 40–90 seconds. At 3-5× volume they will routinely exceed the 120s timeout. Any I/O slowness (disk, SQLite WAL checkpoint) pushes them over today — explaining why the instability is intermittent rather than consistent.</result>\n<usage><total_tokens>165202</total_tokens><tool_uses>52</tool_uses><duration_ms>525658</duration_ms></usage>\n</task-notification>\nFull transcript available at: /tmp/claude-1000/-workspaces-unimatrix/f1e44af3-856d-4856-b88e-437c9e809707/tasks/af296bf9295b6d159.output",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.5847747051545099,
+          "similarity": 0.6282643675804138,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.5727250626066661,
+          "similarity": 0.6230244636535645,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5309662223615144,
+          "similarity": 0.6074358224868774,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.5232550126125938,
+          "similarity": 0.5927845239639282,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5215302110471223,
+          "similarity": 0.5895074009895325,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.5847747051545099,
+          "similarity": 0.6282643675804138,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 976,
+          "title": "Retrospective findings: crt-012",
+          "category": "lesson-learned",
+          "final_score": 0.5727250626066661,
+          "similarity": 0.6230244636535645,
+          "confidence": 0.5930759361415735,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5309662223615144,
+          "similarity": 0.6074358224868774,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3865,
+          "title": "Retrospective findings: col-029",
+          "category": "lesson-learned",
+          "final_score": 0.5232550126125938,
+          "similarity": 0.5927845239639282,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5215302110471223,
+          "similarity": 0.5895074009895325,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

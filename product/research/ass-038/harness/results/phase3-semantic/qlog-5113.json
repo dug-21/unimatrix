@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5113",
+  "query": "so.. 1st tick processing after crt-037: 2026-03-31T20:28:02.840432Z  INFO unimatrix_server::background: background tick starting\n2026-03-31T20:28:02.886027Z  INFO unimatrix_server::services::status: heal pass: re-embedding entries count=1\n2026-03-31T20:28:02.911826Z  INFO unimatrix_server::services::status: heal pass complete healed=1\n2026-03-31T20:28:18.516191Z  INFO hnsw_rs::hnsw: Hnsw max_nb_connection 16\n2026-03-31T20:28:18.516250Z  INFO hnsw_rs::hnsw: Hnsw nb elements 10000\n2026-03-31T20:28:18.516253Z  INFO hnsw_rs::hnsw: Hnsw ef_construction 200\n2026-03-31T20:28:18.516254Z  INFO hnsw_rs::hnsw: Hnsw distance \"anndists::dist::distances::DistDot\"\n2026-03-31T20:28:18.516255Z  INFO hnsw_rs::hnsw: Hnsw extend candidates false\n2026-03-31T20:28:18.850078Z  INFO hnsw_rs::hnsw: entering PointIndexation drop\n2026-03-31T20:28:18.859547Z  INFO hnsw_rs::hnsw:  drop sys time(s) 0 cpu time 0\n2026-03-31T20:28:18.861317Z  INFO unimatrix_server::services::status: cycle GC: pass starting k=50 purgeable_count=3 capped_to=10\n2026-03-31T20:28:18.863928Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=vnc-012 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T20:28:18.864785Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=crt-032 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T20:28:18.865701Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=bugfix-311 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T20:28:18.947741Z  INFO unimatrix_server::services::status: cycle GC: unattributed cleanup observations_deleted=0 query_log_deleted=0 sessions_deleted=0 injection_log_deleted=0\n2026-03-31T20:28:18.947769Z  INFO unimatrix_server::services::status: cycle GC: pass complete cycles_pruned=3 cycles_skipped=0 total_rows_deleted=0\n2026-03-31T20:28:18.948001Z  INFO unimatrix_server::services::status: cycle GC: audit_log cleanup rows_deleted=0 cutoff_days=180\n2026-03-31T20:28:18.948487Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-31T20:28:18.949284Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-31T20:28:18.950294Z  INFO unimatrix_server::background: background tick: GRAPH_EDGES orphaned-edge compaction complete rows_deleted=32\n2026-03-31T20:28:19.079287Z  INFO unimatrix_server::services::co_access_promotion_tick: co_access promotion tick complete promoted_pairs=200 edges_inserted=32 edges_updated=0\n2026-03-31T20:28:19.144371Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=141 target_id=1045 relation_type=CoAccess\n2026-03-31T20:28:19.144411Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1045 target_id=141 relation_type=CoAccess\n2026-03-31T20:28:19.144413Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=167 target_id=1045 relation_type=CoAccess\n2026-03-31T20:28:19.144414Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1045 target_id=167 relation_type=CoAccess\n2026-03-31T20:28:19.144415Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=141 target_id=1105 relation_type=CoAccess\n2026-03-31T20:28:19.144416Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=141 relation_type=CoAccess\n2026-03-31T20:28:19.144417Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=167 target_id=1105 relation_type=CoAccess\n2026-03-31T20:28:19.144418Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=167 relation_type=CoAccess\n2026-03-31T20:28:19.144419Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1045 target_id=1105 relation_type=CoAccess\n2026-03-31T20:28:19.144421Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=1045 relation_type=CoAccess\n2026-03-31T20:28:19.144422Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=213 target_id=485 relation_type=CoAccess\n2026-03-31T20:28:19.144423Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=485 target_id=213 relation_type=CoAccess\n2026-03-31T20:28:19.144424Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1101 target_id=1105 relation_type=CoAccess\n2026-03-31T20:28:19.144425Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=1101 relation_type=CoAccess\n2026-03-31T20:28:19.144439Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=79 target_id=217 relation_type=CoAccess\n2026-03-31T20:28:19.144441Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=217 target_id=79 relation_type=CoAccess\n2026-03-31T20:28:19.144442Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=215 target_id=703 relation_type=CoAccess\n2026-03-31T20:28:19.144443Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=703 target_id=215 relation_type=CoAccess\n2026-03-31T20:28:19.144454Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=607 target_id=654 relation_type=CoAccess\n2026-03-31T20:28:19.144455Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=654 target_id=607 relation_type=CoAccess\n2026-03-31T20:28:19.144456Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=167 target_id=607 relation_type=CoAccess\n2026-03-31T20:28:19.144458Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=607 target_id=167 relation_type=CoAccess\n2026-03-31T20:28:19.144459Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=1006 target_id=1045 relation_type=CoAccess\n2026-03-31T20:28:19.144460Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1045 target_id=1006 relation_type=CoAccess\n2026-03-31T20:28:19.144461Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=697 target_id=1322 relation_type=CoAccess\n2026-03-31T20:28:19.144463Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1322 target_id=697 relation_type=CoAccess\n2026-03-31T20:28:19.144464Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1105 target_id=1775 relation_type=CoAccess\n2026-03-31T20:28:19.144465Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1775 target_id=1105 relation_type=CoAccess\n2026-03-31T20:28:19.144467Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=141 target_id=1775 relation_type=CoAccess\n2026-03-31T20:28:19.144468Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1775 target_id=141 relation_type=CoAccess\n2026-03-31T20:28:19.144470Z  WARN unimatrix_engine::graph: build_typed_relation_graph: target_id not in entries snapshot, skipping edge source_id=167 target_id=1775 relation_type=CoAccess\n2026-03-31T20:28:19.144471Z  WARN unimatrix_engine::graph: build_typed_relation_graph: source_id not in entries snapshot, skipping edge source_id=1775 target_id=167 relation_type=CoAccess\n2026-03-31T20:28:39.869175Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-31T20:28:43.528253Z  INFO unimatrix_server::background: background tick complete duration_secs=41",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.538472692548035,
+          "similarity": 0.5299143195152283,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3875,
+          "title": "Retrospective findings: crt-034",
+          "category": "lesson-learned",
+          "final_score": 0.5133218400651336,
+          "similarity": 0.5280658602714539,
+          "confidence": 0.5674937655032859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.511729946487009,
+          "similarity": 0.5273566842079163,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.49912943976344293,
+          "similarity": 0.5272012948989868,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.497275732140792,
+          "similarity": 0.5434238910675049,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.538472692548035,
+          "similarity": 0.5299143195152283,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3875,
+          "title": "Retrospective findings: crt-034",
+          "category": "lesson-learned",
+          "final_score": 0.5133218400651336,
+          "similarity": 0.5280658602714539,
+          "confidence": 0.5674937655032859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.511729946487009,
+          "similarity": 0.5273566842079163,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.49912943976344293,
+          "similarity": 0.5272012948989868,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.497275732140792,
+          "similarity": 0.5434238910675049,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

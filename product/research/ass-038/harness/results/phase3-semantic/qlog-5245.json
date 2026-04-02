@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5245",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Two things jump out from this tick:\n\n**1. The 32 is a cycle, not a coincidence**\n\nLook at the ordering within the tick:\n```\nGRAPH_EDGES orphaned-edge compaction complete rows_deleted=32\nco_access_promotion_tick: edges_inserted=32\n```\n\nCompaction deletes 32, promotion inserts 32, next tick compaction deletes 32 again. The graph entry count hasn't moved (1486 both ticks). These two subsystems are fighting each other over the same 32 edges.\n\nThe likely cause: co_access promotion has no filter on entry status. It's promoting pairs that include quarantined entries. Compaction is correctly removing edges to quarantined entries. Promotion re-inserts them next tick. Same 32 pairs, every tick, forever.\n\nThe fix is in the promotion query — filter to pairs where both entries are `active` or `deprecated` (quarantined excluded), matching what TypedRelationGraph already does.\n\n**2. The threshold in the log is still 0.6**\n\n```\nthreshold=0.6000000238418579\n```\n\nThat's `0.6f32`. Your change to 0.45 hasn't taken effect. Either the config wasn't reloaded, or the threshold is being read from somewhere other than what you edited. Worth checking before the ASS-035 spike runs — you want to know what threshold you're actually running against.\n\n**3. The NLI max jumped to 0.4475**\n\nWith random candidate sampling, the max is volatile. 0.324 last tick, 0.447 this tick. If the 0.45 threshold were actually in effect, this pair would have missed by 0.0025. The score distribution tail is real — some pairs are in the useful range, they're just not being consistently sampled. That actually makes the ASS-035 extraction experiments more meaningful: a full-corpus scan (not random sampling) on extracted text might find several pairs above threshold.\n\nThe co_access/compaction cycle is the most urgent — it's burning write cycles every tick and blocking the graph from actually growing. Worth filing as a bug. Should I look at the promotion code to confirm the quarantine filter is missing?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.6543695539973717,
+          "similarity": 0.8079565167427063,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.5845145395603594,
+          "similarity": 0.7002831101417542,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5827450972530377,
+          "similarity": 0.696921169757843,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.6543695539973717,
+          "similarity": 0.8079565167427063,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.5845145395603594,
+          "similarity": 0.7002831101417542,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5827450972530377,
+          "similarity": 0.696921169757843,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-9b6485d3-1774615675000",
+  "query": "background tick NLI pair space candidate bound embedding lookup",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5532870292663574,
+          "similarity": 0.5532870292663574,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5138803124427795,
+          "similarity": 0.5138803124427795,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4901415705680847,
+          "similarity": 0.4901415705680847,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.48319458961486816,
+          "similarity": 0.48319458961486816,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.469554603099823,
+          "similarity": 0.469554603099823,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5164185831213179,
+          "similarity": 0.5532870292663574,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.49287581685860754,
+          "similarity": 0.5138803124427795,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.4720131065793915,
+          "similarity": 0.469554603099823,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.46248326135943313,
+          "similarity": 0.48319458961486816,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4426624391809041,
+          "similarity": 0.4901415705680847,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5859385425913817,
+          "similarity": 0.5532870292663574,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.5574883454487967,
+          "similarity": 0.5138803124427795,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.5331989106874173,
+          "similarity": 0.469554603099823,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.5187814773938427,
+          "similarity": 0.48319458961486816,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.49089535078084046,
+          "similarity": 0.4901415705680847,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5164185831213179,
+          "similarity": 0.5532870292663574,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.49287581685860754,
+          "similarity": 0.5138803124427795,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.4720131065793915,
+          "similarity": 0.469554603099823,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.46248326135943313,
+          "similarity": 0.48319458961486816,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4426624391809041,
+          "similarity": 0.4901415705680847,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5857265197775827,
+          "similarity": 0.5532870292663574,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.557205176403303,
+          "similarity": 0.5138803124427795,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.5327856359628226,
+          "similarity": 0.469554603099823,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.5185503937069662,
+          "similarity": 0.48319458961486816,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4908904561041342,
+          "similarity": 0.4901415705680847,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.43663817185621995,
+          "similarity": 0.5532870292663574,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.41238788458017206,
+          "similarity": 0.5138803124427795,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.3977794280418983,
+          "similarity": 0.4901415705680847,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2809,
+          "title": "NliProvider gotchas: softmax double-exp, pub(crate) visibility, label order, token_type_ids ONNX input",
+          "category": "pattern",
+          "final_score": 0.39350436283991885,
+          "similarity": 0.48319458961486816,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.3851105249845065,
+          "similarity": 0.469554603099823,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 2703,
+        "from_rank": 3,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2492,
+        "from_rank": 5,
+        "to_rank": 3
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

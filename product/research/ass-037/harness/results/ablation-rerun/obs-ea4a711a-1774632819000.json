@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-ea4a711a-1774632819000",
+  "query": "background tick hot-path lock contention synchronous operations rayon tokio",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5356885767337797,
+          "similarity": 0.5883936285972595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5195190655708314,
+          "similarity": 0.5466381311416626,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.49672298278127397,
+          "similarity": 0.4948745369911194,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4832431803062938,
+          "similarity": 0.5014422535896301,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 328,
+          "title": "ADR-002: Mutex<Connection> for Send + Sync Store",
+          "category": "decision",
+          "final_score": 0.47772623510138396,
+          "similarity": 0.5212656259536743,
+          "confidence": 0.5569780737484893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.608812274764494,
+          "similarity": 0.5883936285972595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5905588956746187,
+          "similarity": 0.5466381311416626,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5641791095207264,
+          "similarity": 0.4948745369911194,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5452004955458888,
+          "similarity": 0.5014422535896301,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 328,
+          "title": "ADR-002: Mutex<Connection> for Send + Sync Store",
+          "category": "decision",
+          "final_score": 0.5358752636879167,
+          "similarity": 0.5212656259536743,
+          "confidence": 0.5569780737484893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.6089457299682015,
+          "similarity": 0.5883936285972595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5908459594950957,
+          "similarity": 0.5466381311416626,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.5646320805830114,
+          "similarity": 0.4948745369911194,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5454864971273023,
+          "similarity": 0.5014422535896301,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 328,
+          "title": "ADR-002: Mutex<Connection> for Send + Sync Store",
+          "category": "decision",
+          "final_score": 0.5359707515162452,
+          "similarity": 0.5212656259536743,
+          "confidence": 0.5569780737484893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.45824223298292893,
+          "similarity": 0.5883936285972595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.4325465422410231,
+          "similarity": 0.5466381311416626,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 328,
+          "title": "ADR-002: Mutex<Connection> for Send + Sync Store",
+          "category": "decision",
+          "final_score": 0.4169326928945688,
+          "similarity": 0.5212656259536743,
+          "confidence": 0.5569780737484893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4047336945166955,
+          "similarity": 0.5014422535896301,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.4006920227637658,
+          "similarity": 0.4948745369911194,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5883936285972595,
+          "similarity": 0.5883936285972595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5466381311416626,
+          "similarity": 0.5466381311416626,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 328,
+          "title": "ADR-002: Mutex<Connection> for Send + Sync Store",
+          "category": "decision",
+          "final_score": 0.5212656259536743,
+          "similarity": 0.5212656259536743,
+          "confidence": 0.5569780737484893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5014422535896301,
+          "similarity": 0.5014422535896301,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.4948745369911194,
+          "similarity": 0.4948745369911194,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 771,
+          "title": "Blocking store.lock_conn() on tokio async runtime causes intermittent hangs",
+          "category": "lesson-learned",
+          "final_score": 0.5356885767337797,
+          "similarity": 0.5883936285972595,
+          "confidence": 0.6383058747838329,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5195190655708314,
+          "similarity": 0.5466381311416626,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1560,
+          "title": "Background-tick state cache pattern: Arc&lt;RwLock&lt;T&gt;&gt; shared through ServiceLayer, sole writer is the tick",
+          "category": "pattern",
+          "final_score": 0.49672298278127397,
+          "similarity": 0.4948745369911194,
+          "confidence": 0.6642857142857143,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4832431803062938,
+          "similarity": 0.5014422535896301,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 328,
+          "title": "ADR-002: Mutex<Connection> for Send + Sync Store",
+          "category": "decision",
+          "final_score": 0.47772623510138396,
+          "similarity": 0.5212656259536743,
+          "confidence": 0.5569780737484893,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

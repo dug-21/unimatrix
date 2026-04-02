@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4342",
+  "query": "Good feedback.. although, we may have a problem with our 444 maintenance fix: 2026-03-29T13:57:08.295061Z  INFO unimatrix_server::background: background tick starting\n2026-03-29T13:57:08.338822Z  INFO unimatrix_server::services::status: heal pass: re-embedding entries count=20\n2026-03-29T13:57:08.377795Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=72 dim=384\n2026-03-29T13:57:08.414480Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=73 dim=384\n2026-03-29T13:57:08.447339Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=74 dim=384\n2026-03-29T13:57:08.483194Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=76 dim=384\n2026-03-29T13:57:08.512614Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=77 dim=384\n2026-03-29T13:57:08.531690Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=78 dim=384\n2026-03-29T13:57:08.551615Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=80 dim=384\n2026-03-29T13:57:08.574867Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=81 dim=384\n2026-03-29T13:57:08.596656Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=83 dim=384\n2026-03-29T13:57:08.616501Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=84 dim=384\n2026-03-29T13:57:08.636907Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=85 dim=384\n2026-03-29T13:57:08.656247Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=86 dim=384\n2026-03-29T13:57:08.678078Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=87 dim=384\n2026-03-29T13:57:08.698051Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=88 dim=384\n2026-03-29T13:57:08.718779Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=89 dim=384\n2026-03-29T13:57:08.740872Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=90 dim=384\n2026-03-29T13:57:08.760722Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=91 dim=384\n2026-03-29T13:57:08.780478Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=92 dim=384\n2026-03-29T13:57:08.800389Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=93 dim=384\n2026-03-29T13:57:08.819994Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=94 dim=384\n2026-03-29T13:57:08.820002Z  INFO unimatrix_server::services::status: heal pass complete healed=20\n2026-03-29T13:57:08.914058Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.1586 confidence_weight=0.1983\n2026-03-29T13:57:08.914661Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-29T13:57:08.915156Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-29T13:57:08.952398Z DEBUG unimatrix_server::background: typed graph state rebuilt (1278 entries)\n2026-03-29T13:57:08.957077Z DEBUG unimatrix_server::background: PhaseFreqTable rebuilt successfully\n2026-03-29T13:57:08.973417Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-29T13:57:08.985379Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2157\n2026-03-29T13:57:08.989224Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2147\n2026-03-29T13:57:08.992693Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2133\n2026-03-29T13:57:08.993004Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2150\n2026-03-29T13:57:08.993808Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2160\n2026-03-29T13:57:13.078673Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: nli score distribution nli_score_max=0.3046536147594452 nli_score_mean=0.07905945926904678 nli_score_p75=0.10499465465545654 threshold=0.6000000238418579 pairs=100\n2026-03-29T13:57:13.078730Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 pairs_scored=100 source_candidates=100\n2026-03-29T13:57:13.079978Z  INFO unimatrix_server::background: background tick complete duration_secs=5\n2026-03-29T14:12:08.306171Z  INFO unimatrix_server::background: background tick starting\n2026-03-29T14:12:08.348893Z  INFO unimatrix_server::services::status: heal pass: re-embedding entries count=20\n2026-03-29T14:12:08.378129Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=95 dim=384\n2026-03-29T14:12:08.421180Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=96 dim=384\n2026-03-29T14:12:08.440204Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=97 dim=384\n2026-03-29T14:12:08.461035Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=98 dim=384\n2026-03-29T14:12:08.482099Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=99 dim=384\n2026-03-29T14:12:08.503513Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=100 dim=384\n2026-03-29T14:12:08.529240Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=101 dim=384\n2026-03-29T14:12:08.549032Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=102 dim=384\n2026-03-29T14:12:08.570281Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=103 dim=384\n2026-03-29T14:12:08.599824Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=177 dim=384\n2026-03-29T14:12:08.619382Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=178 dim=384\n2026-03-29T14:12:08.638599Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=179 dim=384\n2026-03-29T14:12:08.659148Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=180 dim=384\n2026-03-29T14:12:08.678954Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=181 dim=384\n2026-03-29T14:12:08.704599Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=183 dim=384\n2026-03-29T14:12:08.714137Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=184 dim=384\n2026-03-29T14:12:08.723135Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=185 dim=384\n2026-03-29T14:12:08.733121Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=186 dim=384\n2026-03-29T14:12:08.752395Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=188 dim=384\n2026-03-29T14:12:08.761054Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=189 dim=384\n2026-03-29T14:12:08.761060Z  INFO unimatrix_server::services::status: heal pass complete healed=20\n2026-03-29T14:12:08.799678Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.1586 confidence_weight=0.1983\n2026-03-29T14:12:08.800157Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-29T14:12:08.800688Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-29T14:12:08.846873Z DEBUG unimatrix_server::background: typed graph state rebuilt (1278 entries)\n2026-03-29T14:12:08.847153Z DEBUG unimatrix_server::background: PhaseFreqTable rebuilt successfully\n2026-03-29T14:12:08.855166Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-29T14:12:08.866187Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2157\n2026-03-29T14:12:08.868393Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2243\n2026-03-29T14:12:08.870796Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2154\n2026-03-29T14:12:08.872480Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2161\n2026-03-29T14:12:08.873955Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2152\n2026-03-29T14:12:08.874774Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: no embedding, skipping source entry_id=2262\n2026-03-29T14:12:11.766876Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: nli score distribution nli_score_max=0.3217340409755707 nli_score_mean=0.05951637402176857 nli_score_p75=0.06920816004276276 threshold=0.6000000238418579 pairs=100\n2026-03-29T14:12:11.766918Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 pairs_scored=100 source_candidates=100\n2026-03-29T14:12:11.767328Z  INFO unimatrix_server::background: background tick complete duration_secs=3",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5328762242248796,
+          "similarity": 0.5192810297012329,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5241717383472714,
+          "similarity": 0.5366923809051514,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5181938095893164,
+          "similarity": 0.5597226023674011,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5150986626815918,
+          "similarity": 0.5360205769538879,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.49552935368622353,
+          "similarity": 0.531211256980896,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5328762242248796,
+          "similarity": 0.5192810297012329,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3762,
+          "title": "run_maintenance() tick order: prune → heal → compact (never reverse)",
+          "category": "pattern",
+          "final_score": 0.5241717383472714,
+          "similarity": 0.5366923809051514,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5181938095893164,
+          "similarity": 0.5597226023674011,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3328,
+          "title": "Service Replacement in unimatrix-server Generates 26x Compile Cycles Without Targeted Test Scoping",
+          "category": "lesson-learned",
+          "final_score": 0.5150986626815918,
+          "similarity": 0.5360205769538879,
+          "confidence": 0.5609526887730522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.49552935368622353,
+          "similarity": 0.531211256980896,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4530",
+  "query": "Q1: CycleReviewRecord location — new module             \n\n  New cycle_review_index.rs module. SqlxStore is already doing too much;    \n  CYCLE_REVIEW_INDEX is a distinct concern (keyed archive ops, not entry\n  CRUD). The module boundary makes the separation explicit and keeps        \n  SqlxStore under 500 lines. Researcher is right.                 \n\n  Q2: CURRENT_DETECTION_RULES_VERSION — neither                             \n  \n  Don't import from unimatrix-observe and don't hardcode in the handler.    \n  Define a single SUMMARY_SCHEMA_VERSION: u32 const in cycle_review_index.rs\n   and bump it when either the detection rules or the JSON structure        \n  changes. The two versioning concerns (rules version, serialization format)\n   should be unified into one number — dual-versioning adds complexity with\n  no benefit at this scale. Keep the const local; no cross-crate coupling\n  for an integer.\n\n  Q3: RetrospectiveReport serde completeness\n\n  Not a design decision — compile-time gate item. Add to AC:                \n  \"RetrospectiveReport or a dedicated DTO is fully Serialize + Deserialize\n  (compile verification at delivery).\" If any field is non-serializable, a  \n  separate serializable DTO is required. Don't block scope on this — catch\n  it in implementation.\n\n  Q4: Stale-detection policy — always return stored record                  \n  \n  The spec's implied behavior is correct. Silent recompute breaks           \n  idempotency — same call, different time, different result depending on\n  invisible rules version state. Surface schema_version in the response so  \n  callers can see it and decide whether force=true is warranted. Something\n  like: \"computed with schema_version 1, current is 2 — use force=true to\n  recompute.\" The caller drives recompute explicitly; the tool never\n  surprises them.\n\n  Q5: pending_cycle_reviews scope — cycle_events only, within K-window\n\n  Old observation_metrics-based cycles predate the entire CYCLE_REVIEW_INDEX\n   design. Including them floods the list with history that can't be\n  remediated and isn't subject to #409's purge. pending_cycle_reviews has a \n  specific operational purpose: \"what to run retro on before signals\n  expire.\" Scope it to cycles within the K-window that have query_log rows\n  with feature_cycle set but no CYCLE_REVIEW_INDEX entry. No\n  pre-cycle_events archaeology.\n\n  Q6: context_status perf — always compute\n\n  The query is a set difference between two small tables — cheap. Gate it   \n  and it disappears from the normal status view, which defeats the purpose.\n  Pending reviews are a health signal; they belong in the always-on report. \n  Constrain the query to the K-window (matching Q5) so it stays fast as\n  query_log grows, and it's fine unconditionally.\\\nRevise scope to align",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.6278621388488204,
+          "similarity": 0.7523989081382751,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.5848702024819671,
+          "similarity": 0.6927641034126282,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.5801024340586803,
+          "similarity": 0.6614416241645813,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5652384557812765,
+          "similarity": 0.5736144781112671,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.5385670389494618,
+          "similarity": 0.5759721398353577,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3794,
+          "title": "ADR-002 crt-033: Unified SUMMARY_SCHEMA_VERSION const in cycle_review_index.rs",
+          "category": "decision",
+          "final_score": 0.6278621388488204,
+          "similarity": 0.7523989081382751,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.5848702024819671,
+          "similarity": 0.6927641034126282,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3800,
+          "title": "crt-033 memoization: check_stored_review returns Result, not Option — callers handle cache-miss via Err branch",
+          "category": "pattern",
+          "final_score": 0.5801024340586803,
+          "similarity": 0.6614416241645813,
+          "confidence": 0.5582185722098736,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3001,
+          "title": "ADR-004 crt-025: Phase Narrative as Optional Field on RetrospectiveReport",
+          "category": "decision",
+          "final_score": 0.5652384557812765,
+          "similarity": 0.5736144781112671,
+          "confidence": 0.643340839818798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 352,
+          "title": "ADR: Server-Store Decoupling Evaluated and Rejected",
+          "category": "decision",
+          "final_score": 0.5385670389494618,
+          "similarity": 0.5759721398353577,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

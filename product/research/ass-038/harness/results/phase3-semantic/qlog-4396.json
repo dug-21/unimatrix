@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4396",
+  "query": "this is the current config.toml: cat config.toml\n[knowledge]\ncategories = [\n  \"lesson-learned\",\n  \"decision\",\n  \"convention\",\n  \"pattern\",\n  \"procedure\",\n  \"duties\",\n  \"reference\",\n]\n\n[inference]\nnli_enabled = true\nnli_model_name = \"minilm2-q8\"\nnli_model_sha256 = \"449024a8711a3e655cad410cb2192158f9897fc2a32b65dbb817922351150db7\"\nnli_top_k = 20\nnli_post_store_k = 10\nnli_entailment_threshold = 0.6\nnli_contradiction_threshold = 0.6\nnli_auto_quarantine_threshold = 0.85\nmax_contradicts_per_tick = 10",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.5224713338246794,
+          "similarity": 0.5151456594467163,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.5223644332235983,
+          "similarity": 0.49513405561447144,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.504966515568205,
+          "similarity": 0.4865528345108032,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.48512326144740425,
+          "similarity": 0.4879828095436096,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2807,
+          "title": "Operator procedure: NLI model download, hash pinning, and eval run for crt-023 and future NLI features",
+          "category": "procedure",
+          "final_score": 0.48334257672723313,
+          "similarity": 0.5022500157356262,
+          "confidence": 0.5230012572087384,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2802,
+          "title": "ADR-003 crt-023: Config-Driven NLI Model Selection with Per-Variant Hash Pinning (updated: Q8 variants)",
+          "category": "decision",
+          "final_score": 0.5224713338246794,
+          "similarity": 0.5151456594467163,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2716,
+          "title": "ADR-007: NLI-Derived Auto-Quarantine Uses a Higher Confidence Threshold",
+          "category": "decision",
+          "final_score": 0.5223644332235983,
+          "similarity": 0.49513405561447144,
+          "confidence": 0.6390833821576648,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2970,
+          "title": "ADR-002 crt-024: apply_nli_sort Removal",
+          "category": "decision",
+          "final_score": 0.504966515568205,
+          "similarity": 0.4865528345108032,
+          "confidence": 0.6041193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3775,
+          "title": "ADR-001 crt-031: CategoryAllowlist lifecycle policy constructor, config model, and StatusService wiring",
+          "category": "decision",
+          "final_score": 0.48512326144740425,
+          "similarity": 0.4879828095436096,
+          "confidence": 0.5482162674377982,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2807,
+          "title": "Operator procedure: NLI model download, hash pinning, and eval run for crt-023 and future NLI features",
+          "category": "procedure",
+          "final_score": 0.48334257672723313,
+          "similarity": 0.5022500157356262,
+          "confidence": 0.5230012572087384,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

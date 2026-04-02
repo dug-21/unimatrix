@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3082",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(gh api repos/:owner/:repo/issues/389/comments -f body=\"## Test Verification — Complete\n\n- **Unit tests**: 3/3 new hook) → ]\n[Assistant] Clean pass. Posting Phase 3 comment and spawning the validator.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.4719990565311114,
+          "similarity": 0.41046977043151855,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.4719925600122391,
+          "similarity": 0.4134023189544678,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.468027120698285,
+          "similarity": 0.4190460443496704,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.45523874509420514,
+          "similarity": 0.4107787609100342,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2617,
+          "title": "Use render_long_help() not render_help() when asserting on multi-paragraph clap doc comment content in tests",
+          "category": "pattern",
+          "final_score": 0.4226860696859629,
+          "similarity": 0.4025249481201172,
+          "confidence": 0.5008265489760177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 699,
+          "title": "Silent data orphaning: hardcoded None in hook pipeline breaks entire feedback loop",
+          "category": "lesson-learned",
+          "final_score": 0.4719990565311114,
+          "similarity": 0.41046977043151855,
+          "confidence": 0.6233263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1265,
+          "title": "Dual-Path Validation: Shared Pure Function for MCP Tool + Hook Handler",
+          "category": "pattern",
+          "final_score": 0.4719925600122391,
+          "similarity": 0.4134023189544678,
+          "confidence": 0.6191193500982667,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3335,
+          "title": "ADR-003 crt-028: Graceful Degradation Contract — Transcript Block Only, BriefingContent Always Emits",
+          "category": "decision",
+          "final_score": 0.468027120698285,
+          "similarity": 0.4190460443496704,
+          "confidence": 0.6002935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3336,
+          "title": "ADR-004 crt-028: Source Field Allowlist for GH #354 — Allowlist Match, Default Fallback, No Length Cap",
+          "category": "decision",
+          "final_score": 0.45523874509420514,
+          "similarity": 0.4107787609100342,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2617,
+          "title": "Use render_long_help() not render_help() when asserting on multi-paragraph clap doc comment content in tests",
+          "category": "pattern",
+          "final_score": 0.4226860696859629,
+          "similarity": 0.4025249481201172,
+          "confidence": 0.5008265489760177,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

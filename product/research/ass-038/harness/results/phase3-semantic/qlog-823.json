@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-823",
+  "query": "in the claude code context... were were simply going to define an environment variable in settings.json... a very simple change, that provides some context",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.4755137802090029,
+          "similarity": 0.46127641201019287,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.4672033168487725,
+          "similarity": 0.4247380495071411,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.4376116670000446,
+          "similarity": 0.38926029205322266,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.43107971514338317,
+          "similarity": 0.43048036098480225,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.41539347971696894,
+          "similarity": 0.39482128620147705,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 247,
+          "title": "ADR-006: Defensive Parsing of Claude Code Hook JSON",
+          "category": "decision",
+          "final_score": 0.4755137802090029,
+          "similarity": 0.46127641201019287,
+          "confidence": 0.5602853862670182,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2904,
+          "title": "ADR-002 col-023: Domain Pack Registry via TOML Config at Startup",
+          "category": "decision",
+          "final_score": 0.4672033168487725,
+          "similarity": 0.4247380495071411,
+          "confidence": 0.5899260750078953,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 191,
+          "title": "claude-flow Hook Handler: Real vs Theater Analysis",
+          "category": "pattern",
+          "final_score": 0.4376116670000446,
+          "similarity": 0.38926029205322266,
+          "confidence": 0.5602883932098032,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 190,
+          "title": "claude-flow vs Unimatrix: Complementary Systems Analysis",
+          "category": "decision",
+          "final_score": 0.43107971514338317,
+          "similarity": 0.43048036098480225,
+          "confidence": 0.4836729968394656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.41539347971696894,
+          "similarity": 0.39482128620147705,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

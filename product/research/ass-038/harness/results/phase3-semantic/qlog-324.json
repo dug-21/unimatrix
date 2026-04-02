@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-324",
+  "query": "hmmm now second guessing.. is it bad behavior for npm install to update the local config, or should there be an npm command init.. that does all the wiring?  is that more standard behavior?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.46893852807929937,
+          "similarity": 0.4965568780899048,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1194,
+          "title": "JS Shim Routing Pattern: JS-Handled Commands vs Native Binary Passthrough",
+          "category": "pattern",
+          "final_score": 0.4440381781943399,
+          "similarity": 0.44791221618652344,
+          "confidence": 0.49394331768960353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1200,
+          "title": "ADR-003: Init Command Implemented in JavaScript, Not Rust",
+          "category": "decision",
+          "final_score": 0.42521042626363004,
+          "similarity": 0.41153883934020996,
+          "confidence": 0.49480138651526745,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1193,
+          "title": "npm optionalDependencies Pattern for Platform-Specific Rust Binary Distribution",
+          "category": "pattern",
+          "final_score": 0.4149184187851005,
+          "similarity": 0.3961883783340454,
+          "confidence": 0.4887951676537796,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1207,
+          "title": "Node.js Built-in Test Runner Requires Explicit Imports (Not Globals Like Mocha/Jest)",
+          "category": "lesson-learned",
+          "final_score": 0.38428895464920454,
+          "similarity": 0.35781657695770264,
+          "confidence": 0.46047490982255157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.46893852807929937,
+          "similarity": 0.4965568780899048,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1194,
+          "title": "JS Shim Routing Pattern: JS-Handled Commands vs Native Binary Passthrough",
+          "category": "pattern",
+          "final_score": 0.4440381781943399,
+          "similarity": 0.44791221618652344,
+          "confidence": 0.49394331768960353,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1200,
+          "title": "ADR-003: Init Command Implemented in JavaScript, Not Rust",
+          "category": "decision",
+          "final_score": 0.42521042626363004,
+          "similarity": 0.41153883934020996,
+          "confidence": 0.49480138651526745,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1193,
+          "title": "npm optionalDependencies Pattern for Platform-Specific Rust Binary Distribution",
+          "category": "pattern",
+          "final_score": 0.4149184187851005,
+          "similarity": 0.3961883783340454,
+          "confidence": 0.4887951676537796,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1207,
+          "title": "Node.js Built-in Test Runner Requires Explicit Imports (Not Globals Like Mocha/Jest)",
+          "category": "lesson-learned",
+          "final_score": 0.38428895464920454,
+          "similarity": 0.35781657695770264,
+          "confidence": 0.46047490982255157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

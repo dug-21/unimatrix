@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2823",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] That's the right concern to raise here. If `context_get` represents high-intent retrieval and `context_lookup` represents structured filtering behavior, training on search-only `query_count` might teach the GNN a noisy or incomplete picture of agent session patterns.\n\nThe spike needs to answer this properly before it can close. Sending the researcher to dig into it.\n[Assistant] Clean answer from the codebase itself:\n\n**`query_log` only records search calls** — there is no `tool_name` column and neither `context_get` nor `context_lookup` write to it at all.\n\n| Tool | `query_log`? |\n|---|---|\n| `context_search` (MCP) | Yes |\n| UDS hook search | Yes |\n| `context_lookup` | **No** |\n| `context_get` | **No** |\n\nSo the training reconstruction (`COUNT(*) FROM query_log WHERE session_id = ?`) already defines what \"query\" means: semantic search only. Any `SessionState.query_count` that included get or lookup calls would permanently diverge from training semantics — corrupting the GNN's session context vector.\n\n**Your intuition is right though** — `context_get` is a stronger intent signal and `context_lookup` carries category-restriction behavior. But acting on that requires either:\n1. Extending `query_log` with a `tool_name` column and wiring get/lookup to write there, OR\n2. Separate session-level counters (`get_count`, `lookup_count`) with their own persistence\n\nEither is a future spike (flagged as OQ-E in SCOPE.md). For W3-1, we're constrained to search-only to keep training/inference aligned with what already exists.\n\n**One thing OQ-A resolved cleanly**: the UDS hook path **must** also increment `query_count` — because it already writes to `query_log`, so training reconstruction counts those rows. Excluding UDS from the in-memory counter would cause inference to under-count in hook-driven sessions.\n\nReady to approve SCOPE.md and proceed to Phase 1b (scope risk assessment)?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.6637916151257811,
+          "similarity": 0.8220078945159912,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.5943953939585259,
+          "similarity": 0.6817622184753418,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5470905969799172,
+          "similarity": 0.5427672266960144,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5335430469073138,
+          "similarity": 0.5401121377944946,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5198135795162665,
+          "similarity": 0.5274709463119507,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3417,
+          "title": "query_log tool coverage: search-only, no context_get or context_lookup rows",
+          "category": "pattern",
+          "final_score": 0.6637916151257811,
+          "similarity": 0.8220078945159912,
+          "confidence": 0.5559945346042758,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3414,
+          "title": "query_log as GNN training reconstruction path — no snapshot table needed for query_count",
+          "category": "pattern",
+          "final_score": 0.5943953939585259,
+          "similarity": 0.6817622184753418,
+          "confidence": 0.5679843286369396,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3397,
+          "title": "ADR-002 col-025: synthesize_from_session Returns current_goal Directly",
+          "category": "decision",
+          "final_score": 0.5470905969799172,
+          "similarity": 0.5427672266960144,
+          "confidence": 0.6381498679511836,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5335430469073138,
+          "similarity": 0.5401121377944946,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.5198135795162665,
+          "similarity": 0.5274709463119507,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

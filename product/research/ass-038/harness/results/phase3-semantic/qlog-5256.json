@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5256",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Bash(git checkout -b bugfix/476-co-access-promotion-quarantine-filter) → Switched to a new branch 'bugfix/476-co-access-promotion-quarantine-filter']\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'bugfix-476'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[tool: Bash(gh issue create --title \"hygiene: add quarantine guard at co_access write time to prevent stale-pair accumulation\" --bod) → https://github.com/dug-21/unimatrix/issues/477]\n[Assistant] Weight update path confirmed clean: `promote_one_direction` reads from `GRAPH_EDGES` only (not `co_access`), and it's only called for rows returned by the outer SELECT. Once the quarantine filter is on the SELECT, neither INSERT nor UPDATE fires for quarantined-endpoint pairs. That audit item closes.\n\nFiling the follow-up issue now, then advancing to Phase 2.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5482736627475645,
+          "similarity": 0.6063743233680725,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.5174502562552225,
+          "similarity": 0.5844108462333679,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.5156008676219577,
+          "similarity": 0.5452114343643188,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5482736627475645,
+          "similarity": 0.6063743233680725,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3979,
+          "title": "co_access write-time path has no quarantine guard — correctness relies solely on tick-side JOIN filter",
+          "category": "lesson-learned",
+          "final_score": 0.5174502562552225,
+          "similarity": 0.5844108462333679,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3510,
+          "title": "UsageDedup shared access_counted set across AccessSource variants — weight-0 dedup bypass required",
+          "category": "pattern",
+          "final_score": 0.5156008676219577,
+          "similarity": 0.5452114343643188,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

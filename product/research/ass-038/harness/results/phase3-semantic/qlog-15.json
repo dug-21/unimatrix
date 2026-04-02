@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-15",
+  "query": "so... I think we're going to have to focus on the key benefits we're shooting for.  Primary, was actually long term knowledge retention for the project... so, context_search followed by a context_lookup is a signal if found something useful, ANY signals coming in has high value, The injection log is actually a little more opaque.. how do we know what we provided was valuable??  difficult.  The ONLY thing I could think of there is if we were also returning a confidence measure in that response that we could see.  Again, I don't want to build anything specific to my protocol, but alot of what we build that is truly feature specific goes into files, not unimatrix... so we have to account for that is still a good option",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.5387967640072764,
+          "similarity": 0.5703184604644775,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5311415757693133,
+          "similarity": 0.5355493426322937,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5036039930068618,
+          "similarity": 0.495513916015625,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.4996492426202398,
+          "similarity": 0.4803433418273926,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.4976253569861687,
+          "similarity": 0.49590879678726196,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.5387967640072764,
+          "similarity": 0.5703184604644775,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5311415757693133,
+          "similarity": 0.5355493426322937,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5036039930068618,
+          "similarity": 0.495513916015625,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.4996492426202398,
+          "similarity": 0.4803433418273926,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1563,
+          "title": "Design agents following an established pattern should query the pattern entry, not re-read source files",
+          "category": "lesson-learned",
+          "final_score": 0.4976253569861687,
+          "similarity": 0.49590879678726196,
+          "confidence": 0.5708276878377984,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

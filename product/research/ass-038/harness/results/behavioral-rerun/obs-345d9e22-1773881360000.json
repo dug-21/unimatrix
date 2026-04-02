@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-345d9e22-1773881360000",
+  "query": "config distribution crate boundary plain parameters Arc startup",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.5082165840119875,
+          "similarity": 0.4946366548538208,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.48892260020739065,
+          "similarity": 0.49560415744781494,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.469340682208098,
+          "similarity": 0.4427574872970581,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.44325535732596943,
+          "similarity": 0.42201489210128784,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4345666013941928,
+          "similarity": 0.4153820276260376,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2328,
+          "title": "dsn-001 Startup Config Injection: Non-Fatal Fallback with Arc&lt;ConfidenceParams&gt; Threading",
+          "category": "pattern",
+          "final_score": 0.5082165840119875,
+          "similarity": 0.4946366548538208,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3248,
+          "title": "Threading a new Arc parameter into existing ServiceLayer sub-services",
+          "category": "procedure",
+          "final_score": 0.48892260020739065,
+          "similarity": 0.49560415744781494,
+          "confidence": 0.5476411184946105,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2961,
+          "title": "Arc Startup Resource Threading into MCP Request Handlers via ServiceLayer (not new_default)",
+          "category": "pattern",
+          "final_score": 0.469340682208098,
+          "similarity": 0.4427574872970581,
+          "confidence": 0.569985441283326,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.44325535732596943,
+          "similarity": 0.42201489210128784,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3934,
+          "title": "How to add a new top-level config section to UnimatrixConfig",
+          "category": "procedure",
+          "final_score": 0.4345666013941928,
+          "similarity": 0.4153820276260376,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

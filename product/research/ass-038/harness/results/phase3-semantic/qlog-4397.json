@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4397",
+  "query": "revised scope had 2 questions, thoughts? Important structural point on OQ-6 (Default vs serde inconsistency): After the change, KnowledgeConfig::default() returns boosted_categories: [] but             \n  deserializing an empty TOML file gives [\"lesson-learned\"]. This is intentional — the operative default is serde-driven via a named function                      \n  (default_boosted_categories()), not the Rust Default trait. The SCOPE captures this but the approach needs one thing confirmed:                                  \n                                                                                                                                                                   \n  OQ-5 needs your call (eval harness path): The eval layer at layer.rs:277 needs to read from config rather than hardcoding. The EvalProfile struct carries a      \n  config_overrides: UnimatrixConfig. The question is whether that path is fully wired at the point in layer.rs where boosted_categories is constructed — if it is, \n  the fix is trivial. If not, it's a threading change in the eval layer. The architect will need to verify this before committing to approach. Recommend flagging  \n  it as an investigation item for the architect rather than blocking scope approval.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5470587101476406,
+          "similarity": 0.5839813351631165,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5450328620848074,
+          "similarity": 0.5763285160064697,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3777,
+          "title": "Field-level serde(default fn) only fires when struct section is present in TOML, not when absent",
+          "category": "pattern",
+          "final_score": 0.538664985112564,
+          "similarity": 0.6142188310623169,
+          "confidence": 0.5132066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.5331039355727052,
+          "similarity": 0.5775518417358398,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3818,
+          "title": "Navigating dependency source code (rmcp) to resolve dispatch behaviour adds significant file breadth",
+          "category": "lesson-learned",
+          "final_score": 0.5065277960425928,
+          "similarity": 0.5834028124809265,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3817,
+          "title": "Config field default lives in two independent sites — serde fn and Default impl must change atomically",
+          "category": "pattern",
+          "final_score": 0.5470587101476406,
+          "similarity": 0.5839813351631165,
+          "confidence": 0.5791860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5450328620848074,
+          "similarity": 0.5763285160064697,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3777,
+          "title": "Field-level serde(default fn) only fires when struct section is present in TOML, not when absent",
+          "category": "pattern",
+          "final_score": 0.538664985112564,
+          "similarity": 0.6142188310623169,
+          "confidence": 0.5132066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3928,
+          "title": "Test new nested config sections via toml::from_str::<UnimatrixConfig> with [section] header, not flat fields",
+          "category": "pattern",
+          "final_score": 0.5331039355727052,
+          "similarity": 0.5775518417358398,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3818,
+          "title": "Navigating dependency source code (rmcp) to resolve dispatch behaviour adds significant file breadth",
+          "category": "lesson-learned",
+          "final_score": 0.5065277960425928,
+          "similarity": 0.5834028124809265,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -12,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

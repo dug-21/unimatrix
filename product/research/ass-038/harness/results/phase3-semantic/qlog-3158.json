@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3158",
+  "query": "keep them independent.. would kind of like to see what each does independently",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.37409615827152154,
+          "similarity": 0.2587188482284546,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 185,
+          "title": "ADR-003: Independent Adaptation State Persistence",
+          "category": "decision",
+          "final_score": 0.37004888582105844,
+          "similarity": 0.2648589611053467,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.3602074209083821,
+          "similarity": 0.23021924495697021,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 665,
+          "title": "File::create truncates before flock — TOCTOU in lock-file guards",
+          "category": "lesson-learned",
+          "final_score": 0.347919920253435,
+          "similarity": 0.21945881843566895,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.33183016617181416,
+          "similarity": 0.23271334171295166,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 924,
+          "title": "Parallel Delivery Agents Grouped by File to Eliminate Merge Conflicts",
+          "category": "pattern",
+          "final_score": 0.37409615827152154,
+          "similarity": 0.2587188482284546,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 185,
+          "title": "ADR-003: Independent Adaptation State Persistence",
+          "category": "decision",
+          "final_score": 0.37004888582105844,
+          "similarity": 0.2648589611053467,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.3602074209083821,
+          "similarity": 0.23021924495697021,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 665,
+          "title": "File::create truncates before flock — TOCTOU in lock-file guards",
+          "category": "lesson-learned",
+          "final_score": 0.347919920253435,
+          "similarity": 0.21945881843566895,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.33183016617181416,
+          "similarity": 0.23271334171295166,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

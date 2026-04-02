@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-356",
+  "query": "now run /retro on nan-004 (please note - the binary name was changed mid project, which broke the hook feeds for a while)",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.4778532383112084,
+          "similarity": 0.4385371208190918,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4452702032320658,
+          "similarity": 0.40876030921936035,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1205,
+          "title": "Binary Renames Must Be Atomic with Hook/Config Infrastructure Updates",
+          "category": "lesson-learned",
+          "final_score": 0.43789864512968635,
+          "similarity": 0.401161789894104,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.42087042504191696,
+          "similarity": 0.4052274823188782,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.4163916578868403,
+          "similarity": 0.4026052951812744,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 243,
+          "title": "ADR-002: Hook Process Uses Blocking std I/O (No Tokio Runtime)",
+          "category": "decision",
+          "final_score": 0.4778532383112084,
+          "similarity": 0.4385371208190918,
+          "confidence": 0.5991200456745777,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.4452702032320658,
+          "similarity": 0.40876030921936035,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1205,
+          "title": "Binary Renames Must Be Atomic with Hook/Config Infrastructure Updates",
+          "category": "lesson-learned",
+          "final_score": 0.43789864512968635,
+          "similarity": 0.401161789894104,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1198,
+          "title": "ADR-001: Absolute Paths for Hook Command Resolution",
+          "category": "decision",
+          "final_score": 0.42087042504191696,
+          "similarity": 0.4052274823188782,
+          "confidence": 0.4920376075153773,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.4163916578868403,
+          "similarity": 0.4026052951812744,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

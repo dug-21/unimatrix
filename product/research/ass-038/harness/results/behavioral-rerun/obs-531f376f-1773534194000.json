@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-531f376f-1773534194000",
+  "query": "crt-018b effectiveness-driven retrieval",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5186030121127099,
+          "similarity": 0.49255120754241943,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5164421147552825,
+          "similarity": 0.49842119216918945,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.5149641340451216,
+          "similarity": 0.5235419869422913,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 482,
+          "title": "ADR-002: Successor Similarity via Stored Embedding Cosine",
+          "category": "decision",
+          "final_score": 0.4960328722578937,
+          "similarity": 0.48275697231292725,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.49238423803515585,
+          "similarity": 0.47265625,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2701,
+          "title": "ADR-002 crt-023: NLI Entailment Score Replaces rerank_score for Search Re-ranking Sort",
+          "category": "decision",
+          "final_score": 0.5186030121127099,
+          "similarity": 0.49255120754241943,
+          "confidence": 0.6325635935310422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 703,
+          "title": "ADR-003: Behavior-Based Status Penalty Tests (crt-013)",
+          "category": "decision",
+          "final_score": 0.5164421147552825,
+          "similarity": 0.49842119216918945,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1543,
+          "title": "ADR-001 crt-018b: Generation Counter in EffectivenessState to Avoid Per-Search HashMap Clone",
+          "category": "decision",
+          "final_score": 0.5149641340451216,
+          "similarity": 0.5235419869422913,
+          "confidence": 0.5784140967763429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 482,
+          "title": "ADR-002: Successor Similarity via Stored Embedding Cosine",
+          "category": "decision",
+          "final_score": 0.4960328722578937,
+          "similarity": 0.48275697231292725,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.49238423803515585,
+          "similarity": 0.47265625,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

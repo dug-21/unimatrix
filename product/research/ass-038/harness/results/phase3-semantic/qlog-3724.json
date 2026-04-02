@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3724",
+  "query": "wrong.  it is in a hash",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 74,
+          "title": "ADR-004: SHA-256 Content Hash",
+          "category": "decision",
+          "final_score": 0.4082974804172341,
+          "similarity": 0.3341761827468872,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.37633273112788457,
+          "similarity": 0.2679992914199829,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3575,
+          "title": "\"(unset)\" sort-last override for Option<String> group keys with ASCII-ordered sort",
+          "category": "pattern",
+          "final_score": 0.36519006061580417,
+          "similarity": 0.26382195949554443,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3752,
+          "title": "Node-ID-sorted accumulation for deterministic power iteration",
+          "category": "pattern",
+          "final_score": 0.35444361941460456,
+          "similarity": 0.2642430067062378,
+          "confidence": 0.5131426716878729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.3467794770000274,
+          "similarity": 0.26114726066589355,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 74,
+          "title": "ADR-004: SHA-256 Content Hash",
+          "category": "decision",
+          "final_score": 0.4082974804172341,
+          "similarity": 0.3341761827468872,
+          "confidence": 0.559412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.37633273112788457,
+          "similarity": 0.2679992914199829,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3575,
+          "title": "\"(unset)\" sort-last override for Option<String> group keys with ASCII-ordered sort",
+          "category": "pattern",
+          "final_score": 0.36519006061580417,
+          "similarity": 0.26382195949554443,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3752,
+          "title": "Node-ID-sorted accumulation for deterministic power iteration",
+          "category": "pattern",
+          "final_score": 0.35444361941460456,
+          "similarity": 0.2642430067062378,
+          "confidence": 0.5131426716878729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.3467794770000274,
+          "similarity": 0.26114726066589355,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-af1f3351-1774269589000",
+  "query": "service replacement migration delete old service wire new",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.4883306725545099,
+          "similarity": 0.4638007879257202,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.47929167494076585,
+          "similarity": 0.36879533529281616,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.4743763831548413,
+          "similarity": 0.3907151222229004,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.4721985985762377,
+          "similarity": 0.38840270042419434,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.4680927562951277,
+          "similarity": 0.36874866485595703,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.4638007879257202,
+          "similarity": 0.4638007879257202,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.3907151222229004,
+          "similarity": 0.3907151222229004,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.38840270042419434,
+          "similarity": 0.38840270042419434,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.36879533529281616,
+          "similarity": 0.36879533529281616,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.36874866485595703,
+          "similarity": 0.36874866485595703,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.43891240342726573,
+          "similarity": 0.4638007879257202,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4255407442634734,
+          "similarity": 0.36879533529281616,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.4235253021715915,
+          "similarity": 0.3907151222229004,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.4217734575644156,
+          "similarity": 0.38840270042419434,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.41737819850473284,
+          "similarity": 0.36874866485595703,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.3815697156465971,
+          "similarity": 0.4638007879257202,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.3365939213679387,
+          "similarity": 0.3907151222229004,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.335170892568735,
+          "similarity": 0.38840270042419434,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.32310482171865607,
+          "similarity": 0.36879533529281616,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.3230761014498197,
+          "similarity": 0.36874866485595703,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.43891240342726573,
+          "similarity": 0.4638007879257202,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4255407442634734,
+          "similarity": 0.36879533529281616,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.4235253021715915,
+          "similarity": 0.3907151222229004,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.4217734575644156,
+          "similarity": 0.38840270042419434,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.41737819850473284,
+          "similarity": 0.36874866485595703,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3326,
+          "title": "Three-Wave Service Replacement: Build-Migrate-Delete to Minimize Compile Cycles",
+          "category": "pattern",
+          "final_score": 0.48817138758938783,
+          "similarity": 0.4638007879257202,
+          "confidence": 0.5233733648813522,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4785741662417532,
+          "similarity": 0.36879533529281616,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.47383312821372475,
+          "similarity": 0.3907151222229004,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 367,
+          "title": "Two-phase migration (add-then-subtract) eliminates rework in backend replacements",
+          "category": "lesson-learned",
+          "final_score": 0.47165446936745814,
+          "similarity": 0.38840270042419434,
+          "confidence": 0.5919070245077281,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.46744766479227595,
+          "similarity": 0.36874866485595703,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 316,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 367,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 364,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

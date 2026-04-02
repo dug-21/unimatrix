@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-88cecd44-1773699015000",
+  "query": "HTTP transport MCP server multi-tenant deployment",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.32672324547400844,
+          "similarity": 0.37467527389526367,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.3074643428509052,
+          "similarity": 0.34337955713272095,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.30283040266770583,
+          "similarity": 0.335849404335022,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 296,
+          "title": "Service Extraction Procedure: Unified Pipeline from Duplicated Transport Handlers",
+          "category": "procedure",
+          "final_score": 0.30230206709641677,
+          "similarity": 0.33499085903167725,
+          "confidence": 0.6286188307974115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.30097081111027646,
+          "similarity": 0.3328275680541992,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.37467527389526367,
+          "similarity": 0.37467527389526367,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.34337955713272095,
+          "similarity": 0.34337955713272095,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.335849404335022,
+          "similarity": 0.335849404335022,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 296,
+          "title": "Service Extraction Procedure: Unified Pipeline from Duplicated Transport Handlers",
+          "category": "procedure",
+          "final_score": 0.33499085903167725,
+          "similarity": 0.33499085903167725,
+          "confidence": 0.6286188307974115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.3328275680541992,
+          "similarity": 0.3328275680541992,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.42848071356469714,
+          "similarity": 0.37467527389526367,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 296,
+          "title": "Service Extraction Procedure: Unified Pipeline from Duplicated Transport Handlers",
+          "category": "procedure",
+          "final_score": 0.4060810787550621,
+          "similarity": 0.33499085903167725,
+          "confidence": 0.6286188307974115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.39883391908779064,
+          "similarity": 0.34337955713272095,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.39374969673825894,
+          "similarity": 0.3328275680541992,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.3630127827976776,
+          "similarity": 0.335849404335022,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.42848071356469714,
+          "similarity": 0.37467527389526367,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 296,
+          "title": "Service Extraction Procedure: Unified Pipeline from Duplicated Transport Handlers",
+          "category": "procedure",
+          "final_score": 0.4060810787550621,
+          "similarity": 0.33499085903167725,
+          "confidence": 0.6286188307974115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.39883391908779064,
+          "similarity": 0.34337955713272095,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.39374969673825894,
+          "similarity": 0.3328275680541992,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.3630127827976776,
+          "similarity": 0.335849404335022,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4827504623539703,
+          "similarity": 0.37467527389526367,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 296,
+          "title": "Service Extraction Procedure: Unified Pipeline from Duplicated Transport Handlers",
+          "category": "procedure",
+          "final_score": 0.45589649446462666,
+          "similarity": 0.33499085903167725,
+          "confidence": 0.6286188307974115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.4451269911859165,
+          "similarity": 0.34337955713272095,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.43918315551778686,
+          "similarity": 0.3328275680541992,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.3966989759639672,
+          "similarity": 0.335849404335022,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.48204867541592666,
+          "similarity": 0.37467527389526367,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 296,
+          "title": "Service Extraction Procedure: Unified Pipeline from Duplicated Transport Handlers",
+          "category": "procedure",
+          "final_score": 0.45511139293584124,
+          "similarity": 0.33499085903167725,
+          "confidence": 0.6286188307974115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.4444662935621944,
+          "similarity": 0.34337955713272095,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.4384925348199713,
+          "similarity": 0.3328275680541992,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.39630384887546743,
+          "similarity": 0.335849404335022,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 296,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 197,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 319,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 685,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

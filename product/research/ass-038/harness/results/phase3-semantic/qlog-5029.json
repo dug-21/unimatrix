@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5029",
+  "query": "so... after 409 implemenation.. checking on background tick processing: 2026-03-31T14:27:29.935376Z  INFO unimatrix_server::background: background tick starting\n2026-03-31T14:27:29.991323Z  INFO unimatrix_server::services::status: heal pass: re-embedding entries count=1\n2026-03-31T14:27:30.028856Z DEBUG unimatrix_server::services::status: heal pass: entry healed entry_id=3937 dim=384\n2026-03-31T14:27:30.028877Z  INFO unimatrix_server::services::status: heal pass complete healed=1\n2026-03-31T14:27:30.121921Z DEBUG unimatrix_server::services::status: confidence state updated (Step 2b) alpha0=3.000 beta0=3.000 observed_spread=0.1572 confidence_weight=0.1965\n2026-03-31T14:27:30.122645Z  INFO unimatrix_server::services::status: cycle GC: pass starting k=50 purgeable_count=2 capped_to=10\n2026-03-31T14:27:30.123663Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=vnc-012 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T14:27:30.124554Z  INFO unimatrix_server::services::status: cycle GC: cycle pruned cycle_id=crt-032 observations_deleted=0 query_log_deleted=0 injection_log_deleted=0 sessions_deleted=0\n2026-03-31T14:27:30.308727Z  INFO unimatrix_server::services::status: cycle GC: unattributed cleanup observations_deleted=17500 query_log_deleted=112 sessions_deleted=0 injection_log_deleted=0\n2026-03-31T14:27:30.308740Z  INFO unimatrix_server::services::status: cycle GC: pass complete cycles_pruned=2 cycles_skipped=0 total_rows_deleted=17612\n2026-03-31T14:27:30.308858Z  INFO unimatrix_server::services::status: cycle GC: audit_log cleanup rows_deleted=0 cutoff_days=180\n2026-03-31T14:27:30.309132Z  INFO unimatrix_server::services::status: Session GC complete timed_out=0 deleted_sessions=0 deleted_log_entries=0\n2026-03-31T14:27:30.309138Z DEBUG unimatrix_server::background: lifecycle guard: adaptive categories eligible for auto-deprecation (stub, #409) categories=[\"lesson-learned\"]\n2026-03-31T14:27:30.309599Z  INFO unimatrix_server::background: maintenance tick complete\n2026-03-31T14:27:30.310403Z  INFO unimatrix_server::background: background tick: GRAPH_EDGES orphaned-edge compaction complete rows_deleted=32\n2026-03-31T14:27:30.414245Z  INFO unimatrix_server::services::co_access_promotion_tick: co_access promotion tick complete promoted_pairs=200 edges_inserted=36 edges_updated=2\n2026-03-31T14:27:30.458490Z DEBUG unimatrix_server::background: typed graph state rebuilt (1446 entries)\n2026-03-31T14:27:30.458731Z DEBUG unimatrix_server::background: PhaseFreqTable rebuilt successfully\n2026-03-31T14:27:30.481131Z  INFO unimatrix_server::background: extraction tick complete\n2026-03-31T14:27:32.014539Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(93005)\n2026-03-31T14:27:32.014624Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PreToolUse\" session_id=\"5becb974-975d-4314-85db-a447aab4cf1e\"\n2026-03-31T14:27:32.014662Z DEBUG unimatrix_server::uds::listener: UDS: broken pipe writing response (fire-and-forget client disconnected)\n2026-03-31T14:27:32.014693Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(93005)\n2026-03-31T14:27:32.014702Z DEBUG unimatrix_server::uds::listener: UDS: connection closed before header (fire-and-forget, empty queue)\n2026-03-31T14:27:32.072520Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(93007)\n2026-03-31T14:27:32.072546Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(93007)\n2026-03-31T14:27:32.072558Z DEBUG unimatrix_server::uds::listener: UDS: connection closed before header (fire-and-forget, empty queue)\n2026-03-31T14:27:32.072636Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PostToolUse\" session_id=\"5becb974-975d-4314-85db-a447aab4cf1e\"\n2026-03-31T14:27:32.072666Z DEBUG unimatrix_server::uds::listener: UDS: broken pipe writing response (fire-and-forget client disconnected)\n2026-03-31T14:27:32.756671Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(93009)\n2026-03-31T14:27:32.756697Z DEBUG unimatrix_server::uds::listener: UDS: connection closed before header (fire-and-forget, empty queue)\n2026-03-31T14:27:32.756714Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(93009)\n2026-03-31T14:27:32.758354Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PreToolUse\" session_id=\"5becb974-975d-4314-85db-a447aab4cf1e\"\n2026-03-31T14:27:32.758393Z DEBUG unimatrix_server::uds::listener: UDS: broken pipe writing response (fire-and-forget client disconnected)\n2026-03-31T14:27:32.850266Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(93011)\n2026-03-31T14:27:32.850310Z DEBUG unimatrix_server::uds::listener: UDS connection authenticated uid=1000 pid=Some(93011)\n2026-03-31T14:27:32.850319Z DEBUG unimatrix_server::uds::listener: UDS: connection closed before header (fire-and-forget, empty queue)\n2026-03-31T14:27:32.850370Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PostToolUse\" session_id=\"5becb974-975d-4314-85db-a447aab4cf1e\"\n2026-03-31T14:27:32.850402Z DEBUG unimatrix_server::uds::listener: UDS: broken pipe writing response (fire-and-forget client disconnected)\n2026-03-31T14:27:33.872815Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick: nli score distribution nli_score_max=0.2763518691062927 nli_score_mean=0.06516041606664658 nli_score_p75=0.0912620797753334 threshold=0.6000000238418579 pairs=100\n2026-03-31T14:27:33.872846Z DEBUG unimatrix_server::services::nli_detection_tick: graph inference tick complete edges_written=0 pairs_scored=100 source_candidates=100\n2026-03-31T14:27:33.873240Z  INFO unimatrix_server::background: background tick complete duration_secs=4",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5333769825840754,
+          "similarity": 0.5161813497543335,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.525311287056502,
+          "similarity": 0.5627458095550537,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.5057957798718877,
+          "similarity": 0.514259397983551,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.49129291792000684,
+          "similarity": 0.5149672627449036,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.48846156039222044,
+          "similarity": 0.51778244972229,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5333769825840754,
+          "similarity": 0.5161813497543335,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3461,
+          "title": "UDS Observation Log: operator-togglable debug visibility via unimatrix_server::obs target",
+          "category": "pattern",
+          "final_score": 0.525311287056502,
+          "similarity": 0.5627458095550537,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 513,
+          "title": "ADR-004: Non-Blocking Knowledge Queries with 5s Timeout",
+          "category": "decision",
+          "final_score": 0.5057957798718877,
+          "similarity": 0.514259397983551,
+          "confidence": 0.5667894053900511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3767,
+          "title": "ADR-002 correction: prune pass and heal pass are also unconditional since bugfix-444 (supersedes #3559, #178)",
+          "category": "decision",
+          "final_score": 0.49129291792000684,
+          "similarity": 0.5149672627449036,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3764,
+          "title": "Status-transition handlers must conditionally re-insert into VectorIndex when restoring an entry",
+          "category": "pattern",
+          "final_score": 0.48846156039222044,
+          "similarity": 0.51778244972229,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-edf4842f-1774827473000",
+  "query": "concurrent write race condition INSERT OR REPLACE duplicate",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.559534681898037,
+          "similarity": 0.5104894638061523,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5293244873271206,
+          "similarity": 0.4739668369293213,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.5160803486459368,
+          "similarity": 0.46693772077560425,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.47692801770572746,
+          "similarity": 0.4191319942474365,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.5104894638061523,
+          "similarity": 0.5104894638061523,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4739668369293213,
+          "similarity": 0.4739668369293213,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.46693772077560425,
+          "similarity": 0.46693772077560425,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.4191319942474365,
+          "similarity": 0.4191319942474365,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.49412451565472354,
+          "similarity": 0.5104894638061523,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4695054719761394,
+          "similarity": 0.4739668369293213,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.45935409121172566,
+          "similarity": 0.46693772077560425,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.4274141267747041,
+          "similarity": 0.4191319942474365,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.41030120849609375,
+          "similarity": 0.5104894638061523,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.38782574580265927,
+          "similarity": 0.4739668369293213,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.38350013586191034,
+          "similarity": 0.46693772077560425,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.3540812272291917,
+          "similarity": 0.4191319942474365,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.5592162064558819,
+          "similarity": 0.5104894638061523,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.5289650220647972,
+          "similarity": 0.4739668369293213,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.5157612406727528,
+          "similarity": 0.46693772077560425,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.47655271885210215,
+          "similarity": 0.4191319942474365,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2999,
+          "title": "ADR-002 crt-025: seq Is Advisory; Timestamp Is the True Ordering for CYCLE_EVENTS",
+          "category": "decision",
+          "final_score": 0.49412451565472354,
+          "similarity": 0.5104894638061523,
+          "confidence": 0.629599279172158,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 65,
+          "title": "ADR-003: RwLock Concurrency Model for VectorIndex",
+          "category": "decision",
+          "final_score": 0.4695054719761394,
+          "similarity": 0.4739668369293213,
+          "confidence": 0.6084068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 98,
+          "title": "ADR-001: Two-Transaction Retrieval Pattern",
+          "category": "decision",
+          "final_score": 0.45935409121172566,
+          "similarity": 0.46693772077560425,
+          "confidence": 0.5862841027464119,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3959,
+          "title": "When changing query semantics, split the existing semantics test rather than updating it in place",
+          "category": "lesson-learned",
+          "final_score": 0.4274141267747041,
+          "similarity": 0.4191319942474365,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

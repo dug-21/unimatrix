@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-af1f3351-1774269500000",
+  "query": "mcp response module unconditional compile IndexBriefingService graceful degradation empty fallback",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5098106882124781,
+          "similarity": 0.506076455116272,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.4923219967841419,
+          "similarity": 0.45955806970596313,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3296,
+          "title": "cfg(feature) gate on mcp/response module vs. WA-5 unconditional types: split mod declaration from re-export",
+          "category": "pattern",
+          "final_score": 0.48995101720688417,
+          "similarity": 0.5177401900291443,
+          "confidence": 0.5188096323770511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.48539184060555707,
+          "similarity": 0.4601043462753296,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.4587733024721058,
+          "similarity": 0.46137475967407227,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.5098106882124781,
+          "similarity": 0.506076455116272,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 262,
+          "title": "ServiceError Two-Layer Conversion for Multi-Transport Error Handling",
+          "category": "pattern",
+          "final_score": 0.4923219967841419,
+          "similarity": 0.45955806970596313,
+          "confidence": 0.6083624631198665,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3296,
+          "title": "cfg(feature) gate on mcp/response module vs. WA-5 unconditional types: split mod declaration from re-export",
+          "category": "pattern",
+          "final_score": 0.48995101720688417,
+          "similarity": 0.5177401900291443,
+          "confidence": 0.5188096323770511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.48539184060555707,
+          "similarity": 0.4601043462753296,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3816,
+          "title": "Bootstrapping problem: early-session MCP tool calls fail when the session is fixing the tool being used",
+          "category": "lesson-learned",
+          "final_score": 0.4587733024721058,
+          "similarity": 0.46137475967407227,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

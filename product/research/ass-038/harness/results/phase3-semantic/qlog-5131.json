@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5131",
+  "query": "now we also picked up 468 context_cycle_review... here's the proposal, thoughts? Root Cause: SqlxStore::get_cycle_start_goal (crates/unimatrix-store/src/db.rs ~line 355) uses ORDER BY timestamp DESC, seq DESC LIMIT 1. When a second swarm       \n  session opens the same feature_cycle without a goal (bare context_cycle(type=\"start\")), it writes a cycle_start row with goal = NULL at a later timestamp. That    \n  NULL row sorts first, flatten() collapses it to Ok(None), and report.goal is never set.                                                                            \n                                                                                                                                                                     \n  Affected Files: crates/unimatrix-store/src/db.rs                                                                                                                   \n                                                                                                                                                                     \n  Proposed Fix:                                                                                                                                                      \n  Change the SQL in get_cycle_start_goal from:                                                                                                                       \n  SELECT goal FROM cycle_events                                                                                                                                      \n  WHERE cycle_id = ? AND event_type = 'cycle_start'\n  ORDER BY timestamp DESC, seq DESC LIMIT 1                                                                                                                          \n  to:                                                                                                                                                                \n  SELECT goal FROM cycle_events                                                                                                                                      \n  WHERE cycle_id = ? AND event_type = 'cycle_start' AND goal IS NOT NULL                                                                                             \n  ORDER BY timestamp ASC, seq ASC LIMIT 1                                                                                                                            \n  Plus test updates (see below).                                                                                                                                     \n                                                                                                                                                                     \n  Design Review: APPROVED WITH NOTES                                                                                                                                 \n  - No hot-path risk, no schema change, blast radius is read-only                                                                                                    \n  - Note 1: Don't update existing test test_uds_truncate_then_overwrite_last_writer_wins in place — rename it to test_goal_correction_first_written_goal_is_preserved\n   and flip assertion to expect first goal                                                                                                                           \n  - Note 2: Add new test test_multi_session_null_start_preserves_original_goal covering the exact bug scenario                                                       \n                                                                                                              \n  Risk Assessment: Minimal — read-only SQL change, no write path or schema impact. Intentional side effect: goal correction via a second cycle_start with a non-null \n  goal will now be ignored (first-wins replaces last-wins). This is the correct trade-off for multi-session swarms.                                                  \n                                                                                                                                                                     \n  Missing Test: test_multi_session_null_start_preserves_original_goal — insert cycle_start with goal, then a second cycle_start with goal = NULL at later timestamp, \n  assert original goal is returned.                               ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.6187766800431338,
+          "similarity": 0.7288365364074707,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5588198118201645,
+          "similarity": 0.6168274283409119,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.558118303005478,
+          "similarity": 0.5947192907333374,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.5366331904564542,
+          "similarity": 0.5895639061927795,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3958,
+          "title": "get_cycle_start_goal ORDER BY DESC silently shadows original goal when second cycle_start has NULL goal",
+          "category": "lesson-learned",
+          "final_score": 0.6187766800431338,
+          "similarity": 0.7288365364074707,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3802,
+          "title": "ADR-004 crt-033: pending_cycle_reviews K-window scoping via cycle_events.cycle_start with 90-day default",
+          "category": "decision",
+          "final_score": 0.5588198118201645,
+          "similarity": 0.6168274283409119,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.558118303005478,
+          "similarity": 0.5947192907333374,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.5366331904564542,
+          "similarity": 0.5895639061927795,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

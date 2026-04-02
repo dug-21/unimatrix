@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3739",
+  "query": "get_embedding exists at line 312. One important detail\n  before the full answers:                                \n                                                          \n  OQ-5: It iterates all HNSW layers to find the point by  \n  origin_id — O(N) per call, no batch API. At current     \n  corpus size this is fine, but the tick should select    \n  source candidates first, then call get_embedding only   \n  for those — not for all entries. The throttle on        \n  max_supports_per_tick bounds pairs, not source-embedding\n   lookups, so keep candidate selection tight.\n\n  ---\n  OQ-1 (tick interval) — every tick.\n                                                          \n  The max_supports_per_tick throttle is the right control.\n   An additional interval parameter is a second knob for  \n  the same concern. The graph starts empty and needs to \n  fill; running every tick gets you there faster. If tick \n  time becomes a problem, add the interval then. Don't add\n   it upfront.\n\n  OQ-2 (Prerequisite scope) — defer to W3-1.\n\n  Asymmetric NLI entailment is a weak proxy for           \n  \"prerequisite.\" It captures directionality of support,\n  not topic ordering. Without a domain-anchored \"category \n  A is prerequisite-of category B\" signal, you're writing\n  noisy Prerequisite edges that PPR will traverse as\n  positive signal — which could hurt ranking. PPR is gated\n   on Supports + CoAccess edges being in place;\n  Prerequisite is additive. Ship #412 with Supports only,\n  keep the scope clean.\n\n  OQ-3 (K neighbours config) — add graph_inference_k.\n\n  nli_post_store_k is a hot-path knob (post-store         \n  contradiction check, latency-sensitive). Graph inference\n   is a background tick with no latency budget. They have \n  different semantics and could reasonably want different\n  values. Sharing the knob creates invisible coupling —\n  tuning one breaks the other. Default graph_inference_k\n  to the same value initially, but keep them separate in\n  InferenceConfig.\n\n  OQ-4 (pair deduplication) — pre-filter.\n\n  NLI is the expensive operation. As the graph fills over \n  sessions, the fraction of candidate pairs that already\n  have a Supports edge grows monotonically. Spending NLI  \n  budget re-confirming existing edges means fewer new   \n  pairs get processed per tick. One indexed DB read per\n  pair is negligible. Pre-filter strictly dominates INSERT\n   OR IGNORE over time — the gap widens as the graph\n  matures.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.6289804879436691,
+          "similarity": 0.7112130522727966,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.6004968610571363,
+          "similarity": 0.6481355428695679,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5743783671299846,
+          "similarity": 0.6203440427780151,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.5620144982860202,
+          "similarity": 0.5809440016746521,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5329514729467667,
+          "similarity": 0.5485025644302368,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3658,
+          "title": "ADR-003 crt-029: Source-Candidate Bound Derived from max_graph_inference_per_tick, No Separate Config Field",
+          "category": "decision",
+          "final_score": 0.6289804879436691,
+          "similarity": 0.7112130522727966,
+          "confidence": 0.6197855354573926,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.6004968610571363,
+          "similarity": 0.6481355428695679,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5743783671299846,
+          "similarity": 0.6203440427780151,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.5620144982860202,
+          "similarity": 0.5809440016746521,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.5329514729467667,
+          "similarity": 0.5485025644302368,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.2,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2472",
+  "query": "honestly, I'm just trying to test context_briefing responses with sample requests... I want to see all the results",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.4953844158842309,
+          "similarity": 0.4650360345840454,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.4874396617860355,
+          "similarity": 0.4659605026245117,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.4861491231473096,
+          "similarity": 0.4640151262283325,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3797,
+          "title": "infra-001: call_tool without format=json returns summary row, not entry content",
+          "category": "pattern",
+          "final_score": 0.47211593803633,
+          "similarity": 0.45018112659454346,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3407,
+          "title": "Cross-module constant import in briefing.rs: CONTEXT_GET_INSTRUCTION from index_briefing.rs",
+          "category": "pattern",
+          "final_score": 0.45085773876503055,
+          "similarity": 0.4336947798728943,
+          "confidence": 0.5327641768295197,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 95,
+          "title": "ADR-005: Briefing Graceful Degradation on Embed Not Ready",
+          "category": "decision",
+          "final_score": 0.4953844158842309,
+          "similarity": 0.4650360345840454,
+          "confidence": 0.6088490794228477,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3409,
+          "title": "col-025 Wave 3: SubagentStart goal-present branch placement in ContextSearch arm",
+          "category": "pattern",
+          "final_score": 0.4874396617860355,
+          "similarity": 0.4659605026245117,
+          "confidence": 0.5859640782413654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 87,
+          "title": "ADR-004: Format-Selectable Responses",
+          "category": "decision",
+          "final_score": 0.4861491231473096,
+          "similarity": 0.4640151262283325,
+          "confidence": 0.5852402967879371,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3797,
+          "title": "infra-001: call_tool without format=json returns summary row, not entry content",
+          "category": "pattern",
+          "final_score": 0.47211593803633,
+          "similarity": 0.45018112659454346,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3407,
+          "title": "Cross-module constant import in briefing.rs: CONTEXT_GET_INSTRUCTION from index_briefing.rs",
+          "category": "pattern",
+          "final_score": 0.45085773876503055,
+          "similarity": 0.4336947798728943,
+          "confidence": 0.5327641768295197,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

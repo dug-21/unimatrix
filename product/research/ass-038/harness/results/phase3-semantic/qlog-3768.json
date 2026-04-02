@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3768",
+  "query": "I'm assuming read_pool is the correct choice here... we cannot be tying up the write pool with this: One action required before delivery:                                                                 \n                                                                            \n  R-06 (SR-06): Two conflicting Unimatrix ADRs for compute_graph_cohesion_metrics pool choice — entry  \n  #3593 (write-pool) vs #3595 (read-pool). Architecture asserts read-pool is correct per entry #3619.\n  You need to confirm which is right in source and deprecate the wrong one. This is a housekeeping     \n  task, not a scope change — but it must be resolved before Wave 1 begins.  \n\n  Critical risks for delivery team attention:\n  - R-01: False-positive Contradicts edges silently suppress search via col-030 — mitigation:\n  write_inferred_edges_with_cap takes explicit contradiction_threshold param, must equal               \n  nli_contradiction_threshold exactly (AC-19†)                                          \n  - R-02: get_embedding O(N) bound — source candidates capped before any embedding call (ADR-003)      \n  - R-09: Tokio handle inside rayon closure → runtime panic, compile-invisible — reviewer must inspect\n  rayon closure body                  .  Any other comments on the assessment?",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.6406442593053648,
+          "similarity": 0.7384276986122131,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.6372339297273867,
+          "similarity": 0.7376806139945984,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5676890175037447,
+          "similarity": 0.6139342784881592,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2575,
+          "title": "ADR-004: Arc<RayonPool> Distributed via AppState, Not as Discrete Parameters",
+          "category": "decision",
+          "final_score": 0.5430014264623433,
+          "similarity": 0.6255170106887817,
+          "confidence": 0.5088367136995294,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.5129004970100426,
+          "similarity": 0.5683252215385437,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3595,
+          "title": "ADR-003: read_pool() for Graph Cohesion SQL Queries (col-029)",
+          "category": "decision",
+          "final_score": 0.6406442593053648,
+          "similarity": 0.7384276986122131,
+          "confidence": 0.6125662772399717,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.6372339297273867,
+          "similarity": 0.7376806139945984,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3657,
+          "title": "ADR-002 crt-029: write_inferred_edges_with_cap as Named Variant, Not Reuse of write_edges_with_cap",
+          "category": "decision",
+          "final_score": 0.5676890175037447,
+          "similarity": 0.6139342784881592,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2575,
+          "title": "ADR-004: Arc<RayonPool> Distributed via AppState, Not as Discrete Parameters",
+          "category": "decision",
+          "final_score": 0.5430014264623433,
+          "similarity": 0.6255170106887817,
+          "confidence": 0.5088367136995294,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.5129004970100426,
+          "similarity": 0.5683252215385437,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

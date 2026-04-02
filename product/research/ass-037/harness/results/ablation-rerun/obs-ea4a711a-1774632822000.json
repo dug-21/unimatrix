@@ -1,0 +1,190 @@
+{
+  "scenario_id": "obs-ea4a711a-1774632822000",
+  "query": "rand shuffle selection non-deterministic background tick crt-029",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5131425975056447,
+          "similarity": 0.47360849380493164,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.4590344451455509,
+          "similarity": 0.4513585567474365,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.47360849380493164,
+          "similarity": 0.47360849380493164,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.4513585567474365,
+          "similarity": 0.4513585567474365,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.45769021345446487,
+          "similarity": 0.47360849380493164,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.41667927837371826,
+          "similarity": 0.4513585567474365,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5128858825465492,
+          "similarity": 0.47360849380493164,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.45898460171439426,
+          "similarity": 0.4513585567474365,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.38760522695688104,
+          "similarity": 0.47360849380493164,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.3739129579984225,
+          "similarity": 0.4513585567474365,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.45769021345446487,
+          "similarity": 0.47360849380493164,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.41667927837371826,
+          "similarity": 0.4513585567474365,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4102",
+  "query": "Your agent ID: 437-investigator\n\nBug report (GH Issue #437):\n\nTitle: bug: recurring_friction and dead_knowledge extractors write KM signals to ENTRIES instead of maintenance_recommendations\n\n## Problem\n\nTwo extractors in unimatrix-observe produce ProposedEntry objects with created_by: \"background-tick\" that are written into the ENTRIES table as lesson-learned entries:\n\n- crates/unimatrix-observe/src/extraction/recurring_friction.rs → \"Recurring friction: {rule}\" entries\n- crates/unimatrix-observe/src/extraction/dead_knowledge.rs → \"Possible dead knowledge: {title}\" entries\n\nThese are knowledge management signals, not knowledge. They describe observations about the state of the knowledge base itself (\"rule X fired in N sessions\", \"entry Y was not accessed recently\"). Storing them as ENTRIES means they:\n\n- Pollute semantic search with low-value, repetitive content\n- Consume HNSW vector slots\n- Accumulate indefinitely as Active entries\n- Confidence ≈ 0.29 — the lowest in the corpus\n\n## Wrong output path\n\nThe maintenance_recommendations field in context_status already exists for surfacing exactly this kind of observation. Both signals belong there, not in ENTRIES.\n\n## Fix\n\n- Route recurring_friction findings to maintenance_recommendations (not ProposedEntry)\n- Route dead_knowledge findings to maintenance_recommendations (not ProposedEntry)\n- Remove the ENTRIES write path from both extractors\n\n## Cleanup\n\nExisting entries in ENTRIES with created_by = \"background-tick\" in lesson-learned category need to be quarantined. These are identifiable by title prefix (\"Recurring friction:\", \"Possible dead knowledge:\") and creator field.\n\n## Related\n\n- #430 — same class of bug: wrong write path for operational data (session outcomes → ENTRIES instead of OUTCOME_INDEX)\n\nAffected area: crates/unimatrix-observe/src/extraction/ (recurring_friction.rs, dead_knowledge.rs), maintenance_recommendations wiring, context_status handler, background tick logic\n\nPrior knowledge from Unimatrix search:\n- Entry #3252: ExtractionRule must not perform side effects: maintenance actions belong in maintenance_tick, not in ProposedEntry output (lesson-learned, bugfix-351)\n- Entry #3254: ExtractionRule vs maintenance action: additive rules must not signal deprecation (pattern, GH #351)\n- Entry #3312: dead_knowledge observation snippet must use id: N or #N format (pattern)\n\nYour tasks:\n1. Investigate both extractor files — read their full implementation to understand exactly what they produce\n2. Trace the call chain: how does ProposedEntry output from these extractors get written to ENTRIES?\n3. Identify where maintenance_recommendations is populated and how to route the signals there instead\n4. Understand the cleanup path for existing background-tick entries in ENTRIES\n5. Identify the minimal set of files to change\n6. Assess blast radius: what else calls these extractors, what tests exist\n\nReturn:\n- Root cause analysis\n- Affected files and functions (paths)\n- Proposed fix approach (specific, actionable, step by step)\n- Risk assessment\n- Missing test identification\n- Write your agent report to /workspaces/unimatrix/product/features/bugfix-437/agents/437-investigator-report.md\n- Post diagnosis as a comment on GH Issue #437",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5963541194748823,
+          "similarity": 0.631857693195343,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.5546164037116151,
+          "similarity": 0.606738269329071,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2065,
+          "title": "ADR-006: Convert ExtractionRule::evaluate() to async fn",
+          "category": "decision",
+          "final_score": 0.5148823251018833,
+          "similarity": 0.5429307818412781,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.5077575227935183,
+          "similarity": 0.5880510210990906,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.5014005417572824,
+          "similarity": 0.5736610293388367,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3254,
+          "title": "ExtractionRule vs maintenance action: additive rules must not signal deprecation (GH #351)",
+          "category": "pattern",
+          "final_score": 0.5963541194748823,
+          "similarity": 0.631857693195343,
+          "confidence": 0.6445930482956193,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3312,
+          "title": "dead_knowledge observation snippet must use \\\"id\\\": N or #N format — other formats silently ignored",
+          "category": "pattern",
+          "final_score": 0.5546164037116151,
+          "similarity": 0.606738269329071,
+          "confidence": 0.567189853889997,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2065,
+          "title": "ADR-006: Convert ExtractionRule::evaluate() to async fn",
+          "category": "decision",
+          "final_score": 0.5148823251018833,
+          "similarity": 0.5429307818412781,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3491,
+          "title": "Renaming a detection rule requires updating 5+ string-keyed match arms across two crates plus all agent-facing SKILL.md files",
+          "category": "pattern",
+          "final_score": 0.5077575227935183,
+          "similarity": 0.5880510210990906,
+          "confidence": 0.46669753172656325,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3933,
+          "title": "Agent reports omit Knowledge Stewardship section unless structurally enforced — recurring pattern (col-022, col-028, nan-009, crt-030)",
+          "category": "lesson-learned",
+          "final_score": 0.5014005417572824,
+          "similarity": 0.5736610293388367,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

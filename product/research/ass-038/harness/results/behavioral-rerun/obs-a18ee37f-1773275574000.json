@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a18ee37f-1773275574000",
+  "query": "impl Write trait object testable I/O",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.49690425952152273,
+          "similarity": 0.503453254699707,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.4932184797011977,
+          "similarity": 0.4757814407348633,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4864329073604875,
+          "similarity": 0.4774329662322998,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.4836474045041852,
+          "similarity": 0.5211662650108337,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.47675119582252934,
+          "similarity": 0.47658658027648926,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3773,
+          "title": "Config Default impl with non-empty value causes literal duplication across test infrastructure",
+          "category": "pattern",
+          "final_score": 0.49690425952152273,
+          "similarity": 0.503453254699707,
+          "confidence": 0.5580926262731234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 76,
+          "title": "ADR-006: Object-Safe Send+Sync Traits",
+          "category": "decision",
+          "final_score": 0.4932184797011977,
+          "similarity": 0.4757814407348633,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2611,
+          "title": "Derive both Serialize and Deserialize on JSON result types when tests write fixture files",
+          "category": "pattern",
+          "final_score": 0.4864329073604875,
+          "similarity": 0.4774329662322998,
+          "confidence": 0.566842225360895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.4836474045041852,
+          "similarity": 0.5211662650108337,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 653,
+          "title": "ADR-005: No RunningAverage trait extraction — YAGNI (crt-012)",
+          "category": "decision",
+          "final_score": 0.47675119582252934,
+          "similarity": 0.47658658027648926,
+          "confidence": 0.5417724168375951,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

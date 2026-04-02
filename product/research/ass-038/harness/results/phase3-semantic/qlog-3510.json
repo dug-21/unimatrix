@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3510",
+  "query": "OQ-A1 — Yes, include the baseline MRR reference row.\n  Without it, mrr_floor values are set blind. A user seeing\n  \"MRR Floor: 0.35 — PASS\" with no reference doesn't know if \n  their floor is dangerously loose (baseline is 0.36) or\n  well-calibrated (baseline is 0.51). The second parameter to\n   the render function is worth it. Label the row clearly as\n  \"Baseline MRR (reference)\" so it's obvious it's\n  informational, not a gate criterion.\n\n  OQ-A2 — Acceptable, with one clarification.                \n  The parent heading ## 5. Distribution Gate should still\n  appear in multi-candidate runs as the section anchor, with \n  ### 5.1 — {profile_name} as children. This keeps the ## 5.\n  anchor stable regardless of candidate count — important if \n  CI tooling or humans link to that section. Single-candidate\n   can skip the sub-heading (no need for ### 5.1 when there's\n   only one). That distinction should be explicit in the\n  spec.\n\n  OQ-S1 — Reject with ConfigInvariant at parse time.\n  Silent ignore is the wrong tradeoff here. If\n  distribution_change = true lands on the baseline by        \n  mistake, silent ignore gives the user a zero-regression\n  report when they may have expected a distribution gate — or\n   worse, they don't notice the misconfiguration at all. This\n   is a user error that should surface immediately, not be\n  papered over. Hard error at parse time with a clear message\n   (\"baseline profile must not declare distribution_change =\n  true\") is unambiguous and fixable.\n\n  OQ-S2 — Surface as error and abort.\n  Silent fallback to zero-regression is a correctness hazard.\n   If the file is corrupt, you don't know whether the run was\n   distribution-gated or not — silently applying\n  zero-regression could let a distribution-changing feature  \n  appear to pass under the wrong gate. The report should fail\n   with a clear message (\"profile-meta.json is malformed —\n  re-run eval to regenerate\") and exit non-zero. The results\n  directory is the artifact boundary; a corrupt meta file\n  means the artifact is invalid.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.4973518860268602,
+          "similarity": 0.5165948867797852,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.480373472480618,
+          "similarity": 0.4942203164100647,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4710962846438773,
+          "similarity": 0.45104527473449707,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.4698113687680744,
+          "similarity": 0.42543184757232666,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4630007875897988,
+          "similarity": 0.4432566165924072,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.4973518860268602,
+          "similarity": 0.5165948867797852,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3598,
+          "title": "Integration Surface table goes stale when OQs resolved without updating table",
+          "category": "lesson-learned",
+          "final_score": 0.480373472480618,
+          "similarity": 0.4942203164100647,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3612,
+          "title": "Gate rework: verify caller pseudocode when fixing callee interface (and vice versa)",
+          "category": "lesson-learned",
+          "final_score": 0.4710962846438773,
+          "similarity": 0.45104527473449707,
+          "confidence": 0.5629109515555286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.4698113687680744,
+          "similarity": 0.42543184757232666,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3436,
+          "title": "SPEC is authoritative over IMPLEMENTATION-BRIEF for section ordering — spawn formatter agent from SPEC directly",
+          "category": "lesson-learned",
+          "final_score": 0.4630007875897988,
+          "similarity": 0.4432566165924072,
+          "confidence": 0.5520641140403008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3638",
+  "query": "OQ1 — Edge direction: unidirectional, checking both directions is \n  required (not just safe).                        \n                                                                    \n  The code at line 509–523 writes (source_id, neighbor_id,          \n  'Contradicts') only — one direction, always from the new entry    \n  toward its neighbor. There is no reverse write. This means a      \n  contradiction between entries A and B will have an edge in        \n  whichever direction happened to be the \"new entry\" at detection   \n  time. The suppress_contradicts function must check both A→B and\n  B→A to be correct, not just safe. Confirm this in the SCOPE.md —\n  \"both directions for safety\" should read \"both directions\n  required; edges are unidirectional at write time.\"\n\n  OQ2 — context_lookup: correct, out of scope.\n\n  Suppression applies to ranked lists where multiple candidates     \n  compete. context_lookup is a deterministic fetch by ID — the agent\n   already chose the entry. No collision to suppress. If            \n  contradiction warnings on single-entry fetch are ever wanted,   \n  that's a separate proactive conflict notification feature.\n\n  OQ3 — Audit log enrichment: defer.\n\n  The eval gate for #395 is zero-regression on scenarios with no    \n  Contradicts edges — suppression is a no-op in current test data.\n  Audit data would show nothing useful until #412 ships real edges. \n  Add it as a follow-up comment on #395 for post-#412 enrichment, \n  same pattern as the EDGE_SOURCE_NLI constant migration on #412.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.633547571039359,
+          "similarity": 0.7272348999977112,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.565300722820458,
+          "similarity": 0.5929364562034607,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.5266745110561972,
+          "similarity": 0.6216815710067749,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.5250506517513311,
+          "similarity": 0.5570570826530457,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.5091412676816257,
+          "similarity": 0.5386577844619751,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.633547571039359,
+          "similarity": 0.7272348999977112,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3627,
+          "title": "ADR-002: edges_of_type as Sole Traversal Boundary for suppress_contradicts",
+          "category": "decision",
+          "final_score": 0.565300722820458,
+          "similarity": 0.5929364562034607,
+          "confidence": 0.6159070245077282,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.5266745110561972,
+          "similarity": 0.6216815710067749,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.5250506517513311,
+          "similarity": 0.5570570826530457,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3516,
+          "title": "ADR-004 col-028: confirmed_entries Trigger Uses Request-Side Cardinality for context_lookup",
+          "category": "decision",
+          "final_score": 0.5091412676816257,
+          "similarity": 0.5386577844619751,
+          "confidence": 0.54101517733302,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

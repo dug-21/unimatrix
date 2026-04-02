@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-eb6484ed-1774441799000",
+  "query": "UDS authentication connection peer credentials security",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 244,
+          "title": "ADR-003: Layered Authentication Without Shared Secret",
+          "category": "decision",
+          "final_score": 0.5334006565538641,
+          "similarity": 0.571325957775116,
+          "confidence": 0.5601932709674661,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5140050988552388,
+          "similarity": 0.48425090312957764,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.464331133306247,
+          "similarity": 0.46373987197875977,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 196,
+          "title": "ASS-014: Authentication Architecture — Layered Local Auth, AuthContext Unification",
+          "category": "decision",
+          "final_score": 0.4450980998915097,
+          "similarity": 0.4571475386619568,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.4276187717627554,
+          "similarity": 0.43828558921813965,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 244,
+          "title": "ADR-003: Layered Authentication Without Shared Secret",
+          "category": "decision",
+          "final_score": 0.5334006565538641,
+          "similarity": 0.571325957775116,
+          "confidence": 0.5601932709674661,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 300,
+          "title": "UDS Fixed Capability Set Pattern: Transport-Level Authorization Boundary",
+          "category": "pattern",
+          "final_score": 0.5140050988552388,
+          "similarity": 0.48425090312957764,
+          "confidence": 0.6319411209933947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2267,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.464331133306247,
+          "similarity": 0.46373987197875977,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 196,
+          "title": "ASS-014: Authentication Architecture — Layered Local Auth, AuthContext Unification",
+          "category": "decision",
+          "final_score": 0.4450980998915097,
+          "similarity": 0.4571475386619568,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.4276187717627554,
+          "similarity": 0.43828558921813965,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-4a5ba677-1774403241000",
+  "query": "SQLite IN clause batch query entry lookup feature_cycle",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.5487105796390794,
+          "similarity": 0.5742700099945068,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.5151395879293552,
+          "similarity": 0.458687424659729,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.5136243770633968,
+          "similarity": 0.47675013542175293,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.5099612761477356,
+          "similarity": 0.4933391809463501,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.48691867778739784,
+          "similarity": 0.4120562672615051,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.5742700099945068,
+          "similarity": 0.5742700099945068,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.4933391809463501,
+          "similarity": 0.4933391809463501,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.47675013542175293,
+          "similarity": 0.47675013542175293,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.458687424659729,
+          "similarity": 0.458687424659729,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.4120562672615051,
+          "similarity": 0.4120562672615051,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.4907941373080798,
+          "similarity": 0.5742700099945068,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.45826562724774283,
+          "similarity": 0.47675013542175293,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4580793729670823,
+          "similarity": 0.458687424659729,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.45678172840380377,
+          "similarity": 0.4933391809463501,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.43418762719235443,
+          "similarity": 0.4120562672615051,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.4907941373080798,
+          "similarity": 0.5742700099945068,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.45826562724774283,
+          "similarity": 0.47675013542175293,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.4580793729670823,
+          "similarity": 0.458687424659729,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.45678172840380377,
+          "similarity": 0.4933391809463501,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.43418762719235443,
+          "similarity": 0.4120562672615051,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.5488765499660627,
+          "similarity": 0.5742700099945068,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.5147730154405913,
+          "similarity": 0.458687424659729,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.5133849339358536,
+          "similarity": 0.47675013542175293,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.5098533404646096,
+          "similarity": 0.4933391809463501,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.48643255823852827,
+          "similarity": 0.4120562672615051,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.449550775381235,
+          "similarity": 0.5742700099945068,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.399747188274677,
+          "similarity": 0.4933391809463501,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.3895385448749249,
+          "similarity": 0.47675013542175293,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.37842303055983323,
+          "similarity": 0.458687424659729,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3383,
+          "title": "cycle_events-first observation lookup: session identification via topic_signal + time windows",
+          "category": "pattern",
+          "final_score": 0.3497269336993878,
+          "similarity": 0.4120562672615051,
+          "confidence": 0.593864978538673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 407,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3681,
+        "from_rank": 4,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

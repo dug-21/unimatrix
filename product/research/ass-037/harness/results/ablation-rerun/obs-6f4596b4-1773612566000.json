@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-6f4596b4-1773612566000",
+  "query": "multi-hop traversal correction chain search results",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1603,
+          "title": "ADR-003 (crt-014): Multi-Hop Supersession Traversal (supersedes #483)",
+          "category": "decision",
+          "final_score": 0.4930220357369964,
+          "similarity": 0.5576045513153076,
+          "confidence": 0.5473992002644753,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4699417414723311,
+          "similarity": 0.4754478931427002,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.4530687087342529,
+          "similarity": 0.4614896774291992,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.44903353186915296,
+          "similarity": 0.45089513063430786,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.44102749566454186,
+          "similarity": 0.4374288320541382,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1603,
+          "title": "ADR-003 (crt-014): Multi-Hop Supersession Traversal (supersedes #483)",
+          "category": "decision",
+          "final_score": 0.4930220357369964,
+          "similarity": 0.5576045513153076,
+          "confidence": 0.5473992002644753,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4699417414723311,
+          "similarity": 0.4754478931427002,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.4530687087342529,
+          "similarity": 0.4614896774291992,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.44903353186915296,
+          "similarity": 0.45089513063430786,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.44102749566454186,
+          "similarity": 0.4374288320541382,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1603,
+          "title": "ADR-003 (crt-014): Multi-Hop Supersession Traversal (supersedes #483)",
+          "category": "decision",
+          "final_score": 0.5534296349763307,
+          "similarity": 0.5576045513153076,
+          "confidence": 0.5473992002644753,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.529425293540206,
+          "similarity": 0.4754478931427002,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.5076855412349631,
+          "similarity": 0.4614896774291992,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.503146167945726,
+          "similarity": 0.45089513063430786,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.49345305481036267,
+          "similarity": 0.4374288320541382,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1603,
+          "title": "ADR-003 (crt-014): Multi-Hop Supersession Traversal (supersedes #483)",
+          "category": "decision",
+          "final_score": 0.5576045513153076,
+          "similarity": 0.5576045513153076,
+          "confidence": 0.5473992002644753,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.4754478931427002,
+          "similarity": 0.4754478931427002,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.4614896774291992,
+          "similarity": 0.4614896774291992,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.45089513063430786,
+          "similarity": 0.45089513063430786,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.4374288320541382,
+          "similarity": 0.4374288320541382,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1603,
+          "title": "ADR-003 (crt-014): Multi-Hop Supersession Traversal (supersedes #483)",
+          "category": "decision",
+          "final_score": 0.43929510850172776,
+          "similarity": 0.5576045513153076,
+          "confidence": 0.5473992002644753,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.38873716501089245,
+          "similarity": 0.4754478931427002,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.38014749380258417,
+          "similarity": 0.4614896774291992,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.3736277726980356,
+          "similarity": 0.45089513063430786,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.3653408197256235,
+          "similarity": 0.4374288320541382,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1603,
+          "title": "ADR-003 (crt-014): Multi-Hop Supersession Traversal (supersedes #483)",
+          "category": "decision",
+          "final_score": 0.5534023479414355,
+          "similarity": 0.5576045513153076,
+          "confidence": 0.5473992002644753,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3730,
+          "title": "Search pipeline step numbering, graph traversal module pattern, and use_fallback guard for new pipeline steps",
+          "category": "pattern",
+          "final_score": 0.5297780870068565,
+          "similarity": 0.4754478931427002,
+          "confidence": 0.6073926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.5079874749853276,
+          "similarity": 0.4614896774291992,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3754,
+          "title": "Graph algorithm direction semantics: spec describing conceptual traversal vs. iteration variable direction are not the same",
+          "category": "lesson-learned",
+          "final_score": 0.5034876779935131,
+          "similarity": 0.45089513063430786,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2403,
+          "title": "Typed graph upgrade path: StableGraph&lt;u64, ()&gt; → StableGraph&lt;u64, EdgeType&gt; with penalty filter",
+          "category": "pattern",
+          "final_score": 0.49381922620092633,
+          "similarity": 0.4374288320541382,
+          "confidence": 0.5743769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

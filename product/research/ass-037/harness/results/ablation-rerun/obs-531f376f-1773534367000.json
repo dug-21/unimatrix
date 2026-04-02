@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-531f376f-1773534367000",
+  "query": "env var parse testability avoid unsafe set_var Rust 2024",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.7179435574835296,
+          "similarity": 0.8143638968467712,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2132,
+          "title": "Compile-time bool → Runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.6350047460060622,
+          "similarity": 0.700518786907196,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.6047457263431679,
+          "similarity": 0.6803039312362671,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 725,
+          "title": "Parse-Clamp-Default: Env Var Configuration Without Config Struct",
+          "category": "pattern",
+          "final_score": 0.6038536374805831,
+          "similarity": 0.636229932308197,
+          "confidence": 0.5576017877268489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.5491333217954419,
+          "similarity": 0.5586810111999512,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.597300859598013,
+          "similarity": 0.8143638968467712,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2132,
+          "title": "Compile-time bool → Runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5272423304044284,
+          "similarity": 0.700518786907196,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5148024192223182,
+          "similarity": 0.6803039312362671,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 725,
+          "title": "Parse-Clamp-Default: Env Var Configuration Without Config Struct",
+          "category": "pattern",
+          "final_score": 0.48767995834350586,
+          "similarity": 0.636229932308197,
+          "confidence": 0.5576017877268489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.4399575453538161,
+          "similarity": 0.5586810111999512,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.7185696635832908,
+          "similarity": 0.8143638968467712,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2132,
+          "title": "Compile-time bool → Runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.6354301618560694,
+          "similarity": 0.700518786907196,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.6052363640372789,
+          "similarity": 0.6803039312362671,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 725,
+          "title": "Parse-Clamp-Default: Env Var Configuration Without Config Struct",
+          "category": "pattern",
+          "final_score": 0.6040638731612817,
+          "similarity": 0.636229932308197,
+          "confidence": 0.5576017877268489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.549195319778588,
+          "similarity": 0.5586810111999512,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.8143638968467712,
+          "similarity": 0.8143638968467712,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2132,
+          "title": "Compile-time bool → Runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.700518786907196,
+          "similarity": 0.700518786907196,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.6803039312362671,
+          "similarity": 0.6803039312362671,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 725,
+          "title": "Parse-Clamp-Default: Env Var Configuration Without Config Struct",
+          "category": "pattern",
+          "final_score": 0.636229932308197,
+          "similarity": 0.636229932308197,
+          "confidence": 0.5576017877268489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.5586810111999512,
+          "similarity": 0.5586810111999512,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.6312420130841981,
+          "similarity": 0.8143638968467712,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2132,
+          "title": "Compile-time bool → Runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5626833711549307,
+          "similarity": 0.700518786907196,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5391935957097557,
+          "similarity": 0.6803039312362671,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 725,
+          "title": "Parse-Clamp-Default: Env Var Configuration Without Config Struct",
+          "category": "pattern",
+          "final_score": 0.5353955024721532,
+          "similarity": 0.636229932308197,
+          "confidence": 0.5576017877268489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.48998863525096137,
+          "similarity": 0.5586810111999512,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 1562,
+          "title": "Extract env-var parser to free function for testability without unsafe set_var (Rust 2024)",
+          "category": "procedure",
+          "final_score": 0.6312420130841981,
+          "similarity": 0.8143638968467712,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2132,
+          "title": "Compile-time bool → Runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5626833711549307,
+          "similarity": 0.700518786907196,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2133,
+          "title": "Compile-time bool to runtime env var: conversion pattern and test isolation",
+          "category": "pattern",
+          "final_score": 0.5391935957097557,
+          "similarity": 0.6803039312362671,
+          "confidence": 0.49680543363874036,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 725,
+          "title": "Parse-Clamp-Default: Env Var Configuration Without Config Struct",
+          "category": "pattern",
+          "final_score": 0.5353955024721532,
+          "similarity": 0.636229932308197,
+          "confidence": 0.5576017877268489,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.48998863525096137,
+          "similarity": 0.5586810111999512,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

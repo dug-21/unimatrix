@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1643",
+  "query": "now the question is what else is available to the system... we've been talking about the mcp data flow, but we also have UDS/hook data... so I'm trying to truly analyze if there is any other data that can help us understand the nature of new requests coming, so we can deliver better results.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 290,
+          "title": "ADR-001: UsageService scope — access counting only, injection logs remain UDS-specific",
+          "category": "decision",
+          "final_score": 0.4844083949879482,
+          "similarity": 0.4640962481498718,
+          "confidence": 0.5803995747531855,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4744974345512456,
+          "similarity": 0.44233953952789307,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.4675974857041514,
+          "similarity": 0.4271225929260254,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.46238267547919243,
+          "similarity": 0.42435222864151,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.4363167236061649,
+          "similarity": 0.38685667514801025,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 290,
+          "title": "ADR-001: UsageService scope — access counting only, injection logs remain UDS-specific",
+          "category": "decision",
+          "final_score": 0.4844083949879482,
+          "similarity": 0.4640962481498718,
+          "confidence": 0.5803995747531855,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4744974345512456,
+          "similarity": 0.44233953952789307,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 819,
+          "title": "ADR-010-002: Fire-and-Forget Semantics for query_log Writes",
+          "category": "decision",
+          "final_score": 0.4675974857041514,
+          "similarity": 0.4271225929260254,
+          "confidence": 0.5875894713026605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 321,
+          "title": "AccessSource-Discriminated Unified Service Entry Point",
+          "category": "pattern",
+          "final_score": 0.46238267547919243,
+          "similarity": 0.42435222864151,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1898,
+          "title": "UDS socket separation: hook IPC and MCP sessions should use distinct sockets",
+          "category": "pattern",
+          "final_score": 0.4363167236061649,
+          "similarity": 0.38685667514801025,
+          "confidence": 0.5602072852910046,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

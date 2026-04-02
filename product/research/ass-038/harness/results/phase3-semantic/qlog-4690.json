@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4690",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] The design team did strong work here. The alignment report caught the important issues cleanly. My assessment adds three things to what it already surfaced:\n\n---\n\n**WARN-01 resolution — agree, accept it.** The SR-05 mechanism is benign log-only code that addresses a High-severity silent signal-loss risk. Relying purely on deployment ordering to prevent the #409 race is operationally fragile. Accept the addition, update FR-08 to carve out the conditional warn. The alignment report's recommendation is correct.\n\n---\n\n**Three things the alignment report missed:**\n\n**1. f32 vs f64 on `CO_ACCESS_WEIGHT_UPDATE_DELTA`.**\nThe constant is `f32 = 0.1`. SQLite REAL fetches as f64. When the tick reads an existing edge weight from `GRAPH_EDGES`, it gets an f64 — comparing it against a f32 delta after implicit conversion introduces precision noise. `0.1f32` is actually `0.100000001490116...` as f64. Should be `f64 = 0.1`. Minor but the confidence system already burned time on an f32/f64 precision issue in crt-005 — worth flagging before delivery rather than after.\n\n**2. AC-13 test doesn't actually discriminate global from local normalization.**\nThe test seeds pairs with counts [1..10], caps at 3, and asserts global max = 10 not local max = 8. But because candidates are selected `ORDER BY count DESC`, the batch always contains the highest-count pairs — so global max always equals batch max. The test as written would pass with either normalization strategy. It should be reframed as \"future-proofing\" documentation rather than a correctness discriminator, so the delivery agent understands what they're actually validating.\n\n**3. Bidirectionality gap is more impactful than acknowledged.**\nThe known limitation is noted but not quantified. IDs are sequential — newer enrolled entries have higher IDs. Because co_access pairs are stored as `(min_id, max_id)`, PPR seeding a high-ID entry (recent knowledge) can't traverse back to its low-ID co_access partners (older knowledge). Most active development involves recently-enrolled entries. The signal gap is heaviest exactly where it matters most. The follow-up issue should be filed now, not left as a note — and should reference that reverse edge writes are `(entry_id_b, entry_id_a, 'CoAccess')` with no collision risk against v1 edges.\n\n---\n\n**Bottom line:** Approve for delivery. The three notes above should be addressed before the delivery gate, not after. The scope is clean, the design is sound, and the alignment report did its job well.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.5596319645990518,
+          "similarity": 0.6448114514350891,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.543404778488218,
+          "similarity": 0.5517635941505432,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5391292497534445,
+          "similarity": 0.5344607830047607,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5299052345801316,
+          "similarity": 0.5965254306793213,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.5260726968023484,
+          "similarity": 0.5300096869468689,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3829,
+          "title": "ADR-003 crt-034: Weight Delta as Module-Private f64 Constant",
+          "category": "decision",
+          "final_score": 0.5596319645990518,
+          "similarity": 0.6448114514350891,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.543404778488218,
+          "similarity": 0.5517635941505432,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3591,
+          "title": "ADR-001 col-029: EDGE_SOURCE_NLI Named Constant in unimatrix-store",
+          "category": "decision",
+          "final_score": 0.5391292497534445,
+          "similarity": 0.5344607830047607,
+          "confidence": 0.6284068450382626,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3885,
+          "title": "unimatrix-store sqlite types: lesson-learned",
+          "category": "lesson-learned",
+          "final_score": 0.5299052345801316,
+          "similarity": 0.5965254306793213,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 177,
+          "title": "ADR-001: f64 Scoring Boundary",
+          "category": "decision",
+          "final_score": 0.5260726968023484,
+          "similarity": 0.5300096869468689,
+          "confidence": 0.5993263385394189,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

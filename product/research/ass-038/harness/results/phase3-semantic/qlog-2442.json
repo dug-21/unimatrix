@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2442",
+  "query": "well there was a reason that we had to migrate to bringing the request source through... because something else was sharing that path",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.42448423828143667,
+          "similarity": 0.3399362564086914,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2324,
+          "title": "ConfidenceParams migration: remove alpha0/beta0 snapshot blocks from callers",
+          "category": "pattern",
+          "final_score": 0.4243268119644733,
+          "similarity": 0.36048275232315063,
+          "confidence": 0.5653402720133555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.4015656376880684,
+          "similarity": 0.3285444974899292,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.39210880947908333,
+          "similarity": 0.3462620973587036,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.37337027045927795,
+          "similarity": 0.33447933197021484,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.42448423828143667,
+          "similarity": 0.3399362564086914,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2324,
+          "title": "ConfidenceParams migration: remove alpha0/beta0 snapshot blocks from callers",
+          "category": "pattern",
+          "final_score": 0.4243268119644733,
+          "similarity": 0.36048275232315063,
+          "confidence": 0.5653402720133555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.4015656376880684,
+          "similarity": 0.3285444974899292,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.39210880947908333,
+          "similarity": 0.3462620973587036,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2398,
+          "title": "API Extension Gap: New Struct Fields Not Propagated to All Call Sites",
+          "category": "lesson-learned",
+          "final_score": 0.37337027045927795,
+          "similarity": 0.33447933197021484,
+          "confidence": 0.4641774027177333,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

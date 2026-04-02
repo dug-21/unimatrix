@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4761",
+  "query": "Schema version confirmed: current is 18 (crt-033). v18→v19 is correct.                       \n                                                             \n  Three answers:                                                                               \n                                                                                               \n  Q2 — created_by on back-fill: copy from forward                                              \n                                                                                               \n  created_by tracks the origin of the relationship, not what code path wrote the row. A        \n  bootstrap reverse edge IS a bootstrap relationship — calling it 'back-fill' would create a\n  confusing asymmetry where (A→B, created_by='bootstrap') and (B→A, created_by='back-fill')    \n  represent the same co-access pair but with different provenance signals. The 'back-fill'\n  sentinel would add a third value that nothing currently queries for. Copy from forward.\n\n  Q3 — tick log: pairs as primary, edges as secondary\n\n  The LIMIT cap (max_co_access_promotion_per_tick) is pair-based — that's the operator-visible \n  unit. Log:\n  promoted_pairs: N, edges_inserted: M, edges_updated: K                                       \n  M can be up to 2N. This gives the operator the business metric and the debuggable edge count\n  without conflating the two.                                                                 \n                                                                                               \n  OQ4 — AC-12: extend existing TypedGraphState tests\n                                                                                               \n  The project rule is cumulative test infrastructure — no isolated scaffolding. Add a scenario \n  to the existing TypedGraphState tests: insert a CoAccess edge (B→A), rebuild, run PPR seeded \n  at entry_id_b, assert entry_id_a appears with non-zero score. That's the exact AC-12         \n  assertion and it fits naturally alongside the existing traversal tests.\n\n  One scope note: the migration SQL needs the NOT EXISTS guard, not just INSERT OR IGNORE, to  \n  be idempotent correctly — INSERT OR IGNORE alone won't prevent re-inserting on re-run if the\n  UNIQUE constraint columns differ from what you're checking. The guard is:                    \n                                                                  \n  WHERE source = 'co_access' AND NOT EXISTS (\n    SELECT 1 FROM graph_edges rev                                                              \n    WHERE rev.source_id = ge.target_id\n      AND rev.target_id = ge.source_id                                                         \n      AND rev.relation_type = 'CoAccess'                          \n  )                                                                                            \n  \n  Otherwise the scope is clean. No gaps.   ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.590137207771756,
+          "similarity": 0.6661704182624817,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5781582823885726,
+          "similarity": 0.6319169402122498,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.5285999983896402,
+          "similarity": 0.585850715637207,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.522609819362038,
+          "similarity": 0.6139586567878723,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.516711679609463,
+          "similarity": 0.5412130355834961,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3889,
+          "title": "Back-filling reverse GRAPH_EDGES for symmetric relations: filter by source, not created_by",
+          "category": "pattern",
+          "final_score": 0.590137207771756,
+          "similarity": 0.6661704182624817,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.5781582823885726,
+          "similarity": 0.6319169402122498,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.5285999983896402,
+          "similarity": 0.585850715637207,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.522609819362038,
+          "similarity": 0.6139586567878723,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3897,
+          "title": "Helper extraction pattern for infallible bidirectional tick writes",
+          "category": "pattern",
+          "final_score": 0.516711679609463,
+          "similarity": 0.5412130355834961,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

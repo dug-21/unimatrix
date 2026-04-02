@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2555",
+  "query": "<task-notification>\n<task-id>acb62ca1aeafbb338</task-id>\n<tool-use-id>toolu_01Jh8Tqf6VsWqA42KKufKXS2</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/dc8c4f99-f72c-40d4-9a2e-c0be66e1a8ce/tasks/acb62ca1aeafbb338.output</output-file>\n<status>completed</status>\n<summary>Agent \"Save col-024 design memory\" completed</summary>\n<result>Done. Two files updated:\n\n- `/home/vscode/.claude/projects/-workspaces-unimatrix/memory/col-024-design.md` — created with the full col-024 design content.\n- `/home/vscode/.claude/projects/-workspaces-unimatrix/memory/MEMORY.md` — added a `col-024` entry in the Collective Phase section of Completed/In-Progress Features, pointing to the design file.</result>\n<usage><total_tokens>19736</total_tokens><tool_uses>3</tool_uses><duration_ms>54077</duration_ms></usage>\n</task-notification>\nFull transcript available at: /tmp/claude-1000/-workspaces-unimatrix/dc8c4f99-f72c-40d4-9a2e-c0be66e1a8ce/tasks/acb62ca1aeafbb338.output",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5325796605239891,
+          "similarity": 0.5907567143440247,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3866,
+          "title": "Retrospective findings: col-030",
+          "category": "lesson-learned",
+          "final_score": 0.5194939940682686,
+          "similarity": 0.5658939480781555,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3811,
+          "title": "Retrospective findings: vnc-012",
+          "category": "lesson-learned",
+          "final_score": 0.5189932523104239,
+          "similarity": 0.5649425387382507,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5125272745333219,
+          "similarity": 0.5724018216133118,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5085625931589226,
+          "similarity": 0.5648689270019531,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 39,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5325796605239891,
+          "similarity": 0.5907567143440247,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3866,
+          "title": "Retrospective findings: col-030",
+          "category": "lesson-learned",
+          "final_score": 0.5194939940682686,
+          "similarity": 0.5658939480781555,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3811,
+          "title": "Retrospective findings: vnc-012",
+          "category": "lesson-learned",
+          "final_score": 0.5189932523104239,
+          "similarity": 0.5649425387382507,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5125272745333219,
+          "similarity": 0.5724018216133118,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5085625931589226,
+          "similarity": 0.5648689270019531,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -13,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

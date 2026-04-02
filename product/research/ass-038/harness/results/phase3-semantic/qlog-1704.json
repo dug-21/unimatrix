@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1704",
+  "query": "I'm currently tailing the unimatrix log and seeing: 2026-03-21T12:54:32.801607Z  WARN unimatrix_engine::auth: process lineage check failed for pid 27933: process lineage verification failed: cannot read /proc/27933/cmdline: No such file or directory (os error 2) (advisory, allowing connection)\n2026-03-21T12:54:32.801611Z  WARN unimatrix_engine::auth: process lineage check failed for pid 27933: process lineage verification failed: cannot read /proc/27933/cmdline: No such file or directory (os error 2) (advisory, allowing connection)\n2026-03-21T12:54:32.801774Z  WARN unimatrix_server::uds::listener: UDS connection handler error error=early eof\n2026-03-21T12:54:32.801983Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PostToolUse\" session_id=\"45c89139-120d-4f09-bcd6-ee77df500279\"\n2026-03-21T12:54:32.802167Z  WARN unimatrix_server::uds::listener: UDS connection handler error error=Broken pipe (os error 32)\n2026-03-21T12:54:37.324758Z  WARN unimatrix_engine::auth: process lineage check failed for pid 27983: process lineage verification failed: cannot read /proc/27983/cmdline: No such file or directory (os error 2) (advisory, allowing connection)\n2026-03-21T12:54:37.324751Z  WARN unimatrix_engine::auth: process lineage check failed for pid 27983: process lineage verification failed: cannot read /proc/27983/cmdline: No such file or directory (os error 2) (advisory, allowing connection)\n2026-03-21T12:54:37.324953Z  WARN unimatrix_server::uds::listener: UDS connection handler error error=early eof\n2026-03-21T12:54:37.325202Z  INFO unimatrix_server::uds::listener: UDS: event recorded event_type=\"PreToolUse\" session_id=\"45c89139-120d-4f09-bcd6-ee77df500279\"\n2026-03-21T12:54:37.325459Z  WARN unimatrix_server::uds::listener: UDS connection handler error error=Broken pipe (os error 32)\n2026-03-21T12:54:37.356915Z  WARN unimatrix_engine::auth: process lineage check failed for pid 27989: process lineage verification failed: cannot read /proc/27989/cmdline: No such file or directory (os error 2) (advisory, allowing connection)\n2026-03-21T12:54:37.356920Z  WARN unimatrix_engine::auth: process lineage check failed for pid 27989: process lineage verification failed: cannot read /proc/27989/cmdline: No such file or directory (os error 2) (advisory, allowing connection)",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5635389767313478,
+          "similarity": 0.6066188216209412,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5518424604935871,
+          "similarity": 0.5906954407691956,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5501247731843104,
+          "similarity": 0.5520532727241516,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.5336652169577333,
+          "similarity": 0.5642898082733154,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5168492542866463,
+          "similarity": 0.5571679472923279,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.5635389767313478,
+          "similarity": 0.6066188216209412,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 350,
+          "title": "Kill stale server processes before database migration",
+          "category": "lesson-learned",
+          "final_score": 0.5518424604935871,
+          "similarity": 0.5906954407691956,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5501247731843104,
+          "similarity": 0.5520532727241516,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1232,
+          "title": "Retrospective findings: nan-004",
+          "category": "lesson-learned",
+          "final_score": 0.5336652169577333,
+          "similarity": 0.5642898082733154,
+          "confidence": 0.5709630056376829,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.5168492542866463,
+          "similarity": 0.5571679472923279,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3879",
+  "query": "not sure where rusqlite came from, but that has not been in our architecture for a long time",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2045,
+          "title": "rusqlite exposure surface at sqlx migration time: 312 rusqlite API call sites across store + server",
+          "category": "pattern",
+          "final_score": 0.4858213293770667,
+          "similarity": 0.507521390914917,
+          "confidence": 0.5221987641450141,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2088,
+          "title": "rusqlite + sqlx cannot coexist — libsqlite3-sys links conflict blocks simultaneous Cargo dependency",
+          "category": "pattern",
+          "final_score": 0.4124124686715842,
+          "similarity": 0.40961557626724243,
+          "confidence": 0.4628115917268109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.40560043381643385,
+          "similarity": 0.3769848346710205,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.4000484070603808,
+          "similarity": 0.3003864884376526,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.3572957393943975,
+          "similarity": 0.24222981929779053,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2045,
+          "title": "rusqlite exposure surface at sqlx migration time: 312 rusqlite API call sites across store + server",
+          "category": "pattern",
+          "final_score": 0.4858213293770667,
+          "similarity": 0.507521390914917,
+          "confidence": 0.5221987641450141,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2088,
+          "title": "rusqlite + sqlx cannot coexist — libsqlite3-sys links conflict blocks simultaneous Cargo dependency",
+          "category": "pattern",
+          "final_score": 0.4124124686715842,
+          "similarity": 0.40961557626724243,
+          "confidence": 0.4628115917268109,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.40560043381643385,
+          "similarity": 0.3769848346710205,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 372,
+          "title": "Named Parameters (named_params!) for Multi-Column SQL in rusqlite",
+          "category": "pattern",
+          "final_score": 0.4000484070603808,
+          "similarity": 0.3003864884376526,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.3572957393943975,
+          "similarity": 0.24222981929779053,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

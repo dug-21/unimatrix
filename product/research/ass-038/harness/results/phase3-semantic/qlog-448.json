@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-448",
+  "query": "try again",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2367,
+          "title": "Handle::current().block_on() inside async fn panics — pre-fetch instead of bridging",
+          "category": "pattern",
+          "final_score": 0.3222210868682205,
+          "similarity": 0.19692891836166382,
+          "confidence": 0.5218444952685074,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 666,
+          "title": "Functions named retry/ensure/validate must implement promised behavior",
+          "category": "lesson-learned",
+          "final_score": 0.31592261801294397,
+          "similarity": 0.17021381855010986,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.3121477365290297,
+          "similarity": 0.16823506355285645,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.31104743812927116,
+          "similarity": 0.17886126041412354,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2608,
+          "title": "ConfidenceWeights fields are base/usage/fresh/help/corr/trust — pseudocode had wrong names",
+          "category": "pattern",
+          "final_score": 0.2747634280109591,
+          "similarity": 0.1473451852798462,
+          "confidence": 0.4638647542013946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2367,
+          "title": "Handle::current().block_on() inside async fn panics — pre-fetch instead of bridging",
+          "category": "pattern",
+          "final_score": 0.3222210868682205,
+          "similarity": 0.19692891836166382,
+          "confidence": 0.5218444952685074,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 666,
+          "title": "Functions named retry/ensure/validate must implement promised behavior",
+          "category": "lesson-learned",
+          "final_score": 0.31592261801294397,
+          "similarity": 0.17021381855010986,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2262,
+          "title": "Pre-existing pool timeout failures in unimatrix-server unit tests (GH#303)",
+          "category": "procedure",
+          "final_score": 0.3121477365290297,
+          "similarity": 0.16823506355285645,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2609,
+          "title": "query_log schema has no agent_id/feature_cycle columns — use session_id as proxy",
+          "category": "pattern",
+          "final_score": 0.31104743812927116,
+          "similarity": 0.17886126041412354,
+          "confidence": 0.5173269600449882,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2608,
+          "title": "ConfidenceWeights fields are base/usage/fresh/help/corr/trust — pseudocode had wrong names",
+          "category": "pattern",
+          "final_score": 0.2747634280109591,
+          "similarity": 0.1473451852798462,
+          "confidence": 0.4638647542013946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

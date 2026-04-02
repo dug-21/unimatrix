@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280652000",
+  "query": "risk pattern import export serialization",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5622803779239807,
+          "similarity": 0.6258652806282043,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.4841148030343124,
+          "similarity": 0.4428091049194336,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.4823920864025638,
+          "similarity": 0.46040481328964233,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.47494882259492244,
+          "similarity": 0.4542844295501709,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.4693939194564667,
+          "similarity": 0.42075395584106445,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5622803779239807,
+          "similarity": 0.6258652806282043,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.4841148030343124,
+          "similarity": 0.4428091049194336,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1161,
+          "title": "Shared Typed Deserialization Structs for Cross-Module Format Contract",
+          "category": "pattern",
+          "final_score": 0.4823920864025638,
+          "similarity": 0.46040481328964233,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.47494882259492244,
+          "similarity": 0.4542844295501709,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 682,
+          "title": "Leaf-Crate Type Definition with Upward Re-Export Chain",
+          "category": "pattern",
+          "final_score": 0.4693939194564667,
+          "similarity": 0.42075395584106445,
+          "confidence": 0.6015635587517464,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

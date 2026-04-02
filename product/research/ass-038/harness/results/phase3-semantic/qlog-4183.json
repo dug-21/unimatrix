@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4183",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Worktrees already clean. **Stewardship review**: Entry #3723 is high-quality — has what/root-cause/fix with specific implementation guidance (post-rayon insertion point, nearest-rank formula, private helper pattern). Keep.\n\n**Phase 2: Pattern & Procedure Extraction**\n\n```\nRETROSPECTIVE BRIEFING for bugfix-439\n======================================\n\nSession stats: 2 sessions, 464 records, ~4h 14m (3.7h was idle gap), 5 stored\n\nHOTSPOTS (9 total — 5 warnings):\n- [warning] cold_restart: 219-min gap → 4 re-reads of nli_detection_tick.rs, status.rs (session resumption artifact)\n- [warning] context_load: 120 KB loaded before first write — 3 clusters (investigator + tester reading widely)\n- [warning] compile_cycles: 26 compile/check cycles in testing phase (10 clusters)\n- [warning] tool_failure_hotspot: context_get failed 13×, Read failed 6× (pre-existing integer serialization bug in context_get MCP tool)\n- [warning] session_timeout: 3.7h gap\n- [info] reread_rate: 13 files re-read (session gap artifact)\n- [info] output_parsing_struggle: clippy output piped through 7 filters\n- [info] search_via_bash: 8.5% bash calls are search (8/94)\n- [info] sleep_workarounds: 2 sleep calls\n\nBASELINE OUTLIERS (positive only — no negative outliers):\n- permission_friction_events: 0.0 vs mean 16.0 — well below (positive)\n- bash_for_search_count: 46.0 vs mean 152.4 — good Grep/Glob discipline\n- coordinator_respawn_count: 0.0 vs mean 1.1 — clean SM lifetime\n- post_completion_work_pct: 0.0 vs mean 4.4 — clean stop\n\nRECOMMENDATIONS FROM RETROSPECTIVE:\n- [sleep_workarounds] Use run_in_background + TaskOutput instead of sleep polling\n- [compile_cycles] Batch field additions before compiling — complete type definitions before each build\n\nREWORK SIGNALS: None. Zero gate failures. No rework commits.\n```\n[tool: Bash(git worktree list && ls .claude/worktrees/ 2>&1) → /workspaces/unimatrix  9e2c769 [main]]\n[tool: Bash(cd /workspaces/unimatrix && git worktree remove --force .claude/worktrees/agent-a82c9e6c 2>&1 && git worktree prune 2>&1) → Exit code 128\nfatal: '.claude/worktrees/agent-a82c9e6c' is not a working tree]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.5760234891336166,
+          "similarity": 0.6199555993080139,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5682147763328601,
+          "similarity": 0.601474404335022,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5634700325875351,
+          "similarity": 0.5704238414764404,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5572063170179263,
+          "similarity": 0.5811421275138855,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5498004723528139,
+          "similarity": 0.5715570449829102,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1056,
+          "title": "Retrospective findings: base-004",
+          "category": "lesson-learned",
+          "final_score": 0.5760234891336166,
+          "similarity": 0.6199555993080139,
+          "confidence": 0.6064129000655111,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5682147763328601,
+          "similarity": 0.601474404335022,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5634700325875351,
+          "similarity": 0.5704238414764404,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5572063170179263,
+          "similarity": 0.5811421275138855,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3619,
+          "title": "Pool selection for read-only context_status aggregates: always check compute_status_aggregates as direct precedent",
+          "category": "lesson-learned",
+          "final_score": 0.5498004723528139,
+          "similarity": 0.5715570449829102,
+          "confidence": 0.6043769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 12,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

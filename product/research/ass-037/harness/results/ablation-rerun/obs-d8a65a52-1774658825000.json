@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-d8a65a52-1774658825000",
+  "query": "json_each CAST INTEGER sqlx sqlite zero rows",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3692,
+          "title": "json_each on integer JSON arrays: CAST(je.value AS INTEGER) required in SELECT, JOIN, and GROUP BY — sqlx 0.8 type rules confirmed",
+          "category": "pattern",
+          "final_score": 0.5524356884203685,
+          "similarity": 0.7059473991394043,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.5119131339957685,
+          "similarity": 0.6036019921302795,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.48345115896197083,
+          "similarity": 0.5355033874511719,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.45908971699678863,
+          "similarity": 0.47693514823913574,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.4562021819608166,
+          "similarity": 0.43709683418273926,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3692,
+          "title": "json_each on integer JSON arrays: CAST(je.value AS INTEGER) required in SELECT, JOIN, and GROUP BY — sqlx 0.8 type rules confirmed",
+          "category": "pattern",
+          "final_score": 0.7059473991394043,
+          "similarity": 0.7059473991394043,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.6036019921302795,
+          "similarity": 0.6036019921302795,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.5355033874511719,
+          "similarity": 0.5355033874511719,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.47693514823913574,
+          "similarity": 0.47693514823913574,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.43709683418273926,
+          "similarity": 0.43709683418273926,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3692,
+          "title": "json_each on integer JSON arrays: CAST(je.value AS INTEGER) required in SELECT, JOIN, and GROUP BY — sqlx 0.8 type rules confirmed",
+          "category": "pattern",
+          "final_score": 0.5524356884203685,
+          "similarity": 0.7059473991394043,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.5119131339957685,
+          "similarity": 0.6036019921302795,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.48345115896197083,
+          "similarity": 0.5355033874511719,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.45908971699678863,
+          "similarity": 0.47693514823913574,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.4562021819608166,
+          "similarity": 0.43709683418273926,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3692,
+          "title": "json_each on integer JSON arrays: CAST(je.value AS INTEGER) required in SELECT, JOIN, and GROUP BY — sqlx 0.8 type rules confirmed",
+          "category": "pattern",
+          "final_score": 0.530583014855018,
+          "similarity": 0.7059473991394043,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.46760122592632586,
+          "similarity": 0.6036019921302795,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.4256943922776442,
+          "similarity": 0.5355033874511719,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.38965239891639125,
+          "similarity": 0.47693514823913574,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.36513651334322417,
+          "similarity": 0.43709683418273926,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3692,
+          "title": "json_each on integer JSON arrays: CAST(je.value AS INTEGER) required in SELECT, JOIN, and GROUP BY — sqlx 0.8 type rules confirmed",
+          "category": "pattern",
+          "final_score": 0.6209625388332839,
+          "similarity": 0.7059473991394043,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.5750086379823861,
+          "similarity": 0.6036019921302795,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.5423876360889446,
+          "similarity": 0.5355033874511719,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.5144918733375176,
+          "similarity": 0.47693514823913574,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.51417599047541,
+          "similarity": 0.43709683418273926,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3692,
+          "title": "json_each on integer JSON arrays: CAST(je.value AS INTEGER) required in SELECT, JOIN, and GROUP BY — sqlx 0.8 type rules confirmed",
+          "category": "pattern",
+          "final_score": 0.6204070822299759,
+          "similarity": 0.7059473991394043,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3681,
+          "title": "ADR-003 col-031: json_each Integer Cast Form — CAST(json_each.value AS INTEGER)",
+          "category": "decision",
+          "final_score": 0.5748217533147528,
+          "similarity": 0.6036019921302795,
+          "confidence": 0.5337071264354291,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1103,
+          "title": "Explicit SQL-to-JSONL Row Serialization Pattern",
+          "category": "pattern",
+          "final_score": 0.5424326311780804,
+          "similarity": 0.5355033874511719,
+          "confidence": 0.5523315507879498,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1098,
+          "title": "ADR-002: Explicit Column-to-JSON Mapping for Export",
+          "category": "decision",
+          "final_score": 0.5147373421290103,
+          "similarity": 0.47693514823913574,
+          "confidence": 0.5687404762574026,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.5146797758106563,
+          "similarity": 0.43709683418273926,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1963",
+  "query": "so... W2-1 was supposed to also take the individual weights from confidence.  So.. why can we assume just because of similarity, an entry 'should have bee surfaced'.  There are coaccess weights, confidence, and the others... I'm trying to understand the logic of a similar vector not surfaced, when there are all of these other dimensions",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4805171820991917,
+          "similarity": 0.42198264598846436,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 482,
+          "title": "ADR-002: Successor Similarity via Stored Embedding Cosine",
+          "category": "decision",
+          "final_score": 0.4407197932771969,
+          "similarity": 0.37766212224960327,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 89,
+          "title": "ADR-006: Near-Duplicate Detection at 0.92 Cosine Similarity",
+          "category": "decision",
+          "final_score": 0.43972361301792484,
+          "similarity": 0.37749630212783813,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.4260156632402652,
+          "similarity": 0.3433659076690674,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.39961846537551393,
+          "similarity": 0.3358057737350464,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 15,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4805171820991917,
+          "similarity": 0.42198264598846436,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 482,
+          "title": "ADR-002: Successor Similarity via Stored Embedding Cosine",
+          "category": "decision",
+          "final_score": 0.4407197932771969,
+          "similarity": 0.37766212224960327,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 89,
+          "title": "ADR-006: Near-Duplicate Detection at 0.92 Cosine Similarity",
+          "category": "decision",
+          "final_score": 0.43972361301792484,
+          "similarity": 0.37749630212783813,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 179,
+          "title": "ADR-003: Lambda Dimension Weighting Strategy",
+          "category": "decision",
+          "final_score": 0.4260156632402652,
+          "similarity": 0.3433659076690674,
+          "confidence": 0.5943769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.39961846537551393,
+          "similarity": 0.3358057737350464,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

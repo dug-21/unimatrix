@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4454",
+  "query": "<task-notification>\n<task-id>ab0a7c77e1c2ca3f1</task-id>\n<tool-use-id>toolu_01J4Z5hmt8Qrvt6wTBEw8EBe</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/ea862451-7161-4ef2-b968-a895b427086a/tasks/ab0a7c77e1c2ca3f1.output</output-file>\n<status>completed</status>\n<summary>Agent \"uni-docs documentation update\" completed</summary>\n<result>Done. Here is the summary:\n\n---\n\n## Result\n\n**README sections modified: 2**\n\n**1. Configuration section — list-fields enumeration** (`/workspaces/unimatrix/README.md`, line 216)\n\n`adaptive_categories` was absent from the enumeration of list fields that use project-overrides-global replace semantics. Added it alongside `categories`, `boosted_categories`, and `session_capabilities`. Traced to SPEC FR-10.\n\n**2. MCP Tool Reference — `context_status` row** (`/workspaces/unimatrix/README.md`, line 342)\n\nThe `context_status` description listed the metrics it exposes but omitted the new `category_lifecycle` output field (per-category `\"adaptive\"` or `\"pinned\"` labels). Added \"and per-category lifecycle labels (adaptive vs pinned)\" to the description. Traced to SPEC FR-11 and AC-09.\n\n**`[knowledge]` config block** — already complete. Both `boosted_categories` and `adaptive_categories` were present with accurate comments. No edit required.\n\n**Commit:** `c60d462` — `docs: update README for crt-031 (#445)`\n\n**Agent report:** `/workspaces/unimatrix/product/features/crt-031/agents/crt-031-docs-report.md`</result>\n<usage><total_tokens>47496</total_tokens><tool_uses>26</tool_uses><duration_ms>121346</duration_ms></usage>\n</task-notification>",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5320133870204454,
+          "similarity": 0.5482615828514099,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.49900508565192203,
+          "similarity": 0.5269650220870972,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.4932626141497962,
+          "similarity": 0.535798966884613,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.4885568901865105,
+          "similarity": 0.5268580913543701,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5320133870204454,
+          "similarity": 0.5482615828514099,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.49900508565192203,
+          "similarity": 0.5269650220870972,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.4932626141497962,
+          "similarity": 0.535798966884613,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.4885568901865105,
+          "similarity": 0.5268580913543701,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

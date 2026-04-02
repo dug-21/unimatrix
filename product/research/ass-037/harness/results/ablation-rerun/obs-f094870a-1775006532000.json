@@ -1,0 +1,310 @@
+{
+  "scenario_id": "obs-f094870a-1775006532000",
+  "query": "complete type definitions before first compile incremental rust type errors",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.6356301830424985,
+          "similarity": 0.694570779800415,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 72,
+          "title": "ADR-002: Unified Core Error Type",
+          "category": "decision",
+          "final_score": 0.5731166765192761,
+          "similarity": 0.5682126879692078,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.5393960479566123,
+          "similarity": 0.5420976281166077,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.5392039678290071,
+          "similarity": 0.5561637878417969,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5624335195511934,
+          "similarity": 0.694570779800415,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 72,
+          "title": "ADR-002: Unified Core Error Type",
+          "category": "decision",
+          "final_score": 0.5081664086454164,
+          "similarity": 0.5682126879692078,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.48249382893072507,
+          "similarity": 0.5561637878417969,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.4816969437092896,
+          "similarity": 0.5420976281166077,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5624335195511934,
+          "similarity": 0.694570779800415,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 72,
+          "title": "ADR-002: Unified Core Error Type",
+          "category": "decision",
+          "final_score": 0.5081664086454164,
+          "similarity": 0.5682126879692078,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.48249382893072507,
+          "similarity": 0.5561637878417969,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.4816969437092896,
+          "similarity": 0.5420976281166077,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.6352449503839501,
+          "similarity": 0.694570779800415,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 72,
+          "title": "ADR-002: Unified Core Error Type",
+          "category": "decision",
+          "final_score": 0.5731487287320216,
+          "similarity": 0.5682126879692078,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.5393783905699457,
+          "similarity": 0.5420976281166077,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.5390931193321916,
+          "similarity": 0.5561637878417969,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.523582018338717,
+          "similarity": 0.694570779800415,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 72,
+          "title": "ADR-002: Unified Core Error Type",
+          "category": "decision",
+          "final_score": 0.44582319259643555,
+          "similarity": 0.5682126879692078,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.43840848482572115,
+          "similarity": 0.5561637878417969,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.42975238653329706,
+          "similarity": 0.5420976281166077,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.694570779800415,
+          "similarity": 0.694570779800415,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 72,
+          "title": "ADR-002: Unified Core Error Type",
+          "category": "decision",
+          "final_score": 0.5682126879692078,
+          "similarity": 0.5682126879692078,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3953,
+          "title": "Spec FR type model overrides architect's initial type choice for Rust safety properties — validate before Gate 3a",
+          "category": "lesson-learned",
+          "final_score": 0.5561637878417969,
+          "similarity": 0.5561637878417969,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3437,
+          "title": "Rust enum with logical default variant: use #[derive(Default)] + #[default], not manual impl Default",
+          "category": "lesson-learned",
+          "final_score": 0.5420976281166077,
+          "similarity": 0.5420976281166077,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

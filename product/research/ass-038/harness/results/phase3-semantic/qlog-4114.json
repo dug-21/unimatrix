@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4114",
+  "query": "Both gaps are now resolved:                     \n                                                                                                                                                                                                     \n  ---                                             \n  Gap 1 — dead_knowledge.rs: The ExtractionRule impl was already removed in GH #351. No removal needed. The fix adds compute_dead_knowledge_recommendations(observations, store) -> Vec<String> — a  \n  thin wrapper over the existing detect_dead_knowledge_candidates() that formats results as strings without any store writes. Capped at 20 strings to avoid flooding context_status.                 \n                                                                                                                                                                                                     \n  Gap 2 — Bridging mechanism: TickMetadata is already an Arc<Mutex<TickMetadata>> shared between the tick loop and context_status. Adding friction_signals: Vec<String> and dead_knowledge_signals:  \n  Vec<String> fields to it follows the exact same pattern as extraction_stats. No new synchronization primitive needed. Arc<RwLock<_>> was considered but rejected as over-engineered —              \n  context_status is occasional, Mutex is adequate.                                                                                                                                                   \n                                                                                                                                                                                                     \n  ---                                                                                                                                                                                                \n  Files Changed:                                                                                                                                                                                     \n                                             \n  ┌───────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────┐                                                                  \n  │         File          │                                                Change                                                 │                                                                  \n  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤\n  │ recurring_friction.rs │ Remove ExtractionRule impl, add compute_friction_recommendations()                                    │                                                                  \n  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤\n  │ dead_knowledge.rs     │ Add compute_dead_knowledge_recommendations()                                                          │\n  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤                                                                  \n  │ extraction/mod.rs     │ Remove RecurringFrictionRule (4→3 rules), update tests                                                │\n  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤                                                                  \n  │ background.rs         │ Add two fields to TickMetadata, update extraction_tick return type, add one-shot quarantine migration │\n  ├───────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────┤\n  │ mcp/tools.rs          │ Append both signal vecs to maintenance_recommendations                                                │\n  └───────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────┘\n                                                                                                                                                                                                     \n  New test: test_extraction_tick_does_not_write_recurring_friction_to_entries — verifies zero ENTRIES written, friction_signals non-empty.\n                                                                                                                                                ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5619491988158024,
+          "similarity": 0.5895698070526123,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5436588161457615,
+          "similarity": 0.5406356453895569,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5375448779253906,
+          "similarity": 0.5437853932380676,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2065,
+          "title": "ADR-006: Convert ExtractionRule::evaluate() to async fn",
+          "category": "decision",
+          "final_score": 0.5273797878262677,
+          "similarity": 0.5666759610176086,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5094806410931652,
+          "similarity": 0.5401057600975037,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3656,
+          "title": "ADR-001 crt-029: New Module nli_detection_tick.rs for Background Inference Tick",
+          "category": "decision",
+          "final_score": 0.5619491988158024,
+          "similarity": 0.5895698070526123,
+          "confidence": 0.6116195295677321,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3822,
+          "title": "Promotion tick idempotency: near-threshold pair oscillation must be explicitly specified",
+          "category": "pattern",
+          "final_score": 0.5436588161457615,
+          "similarity": 0.5406356453895569,
+          "confidence": 0.6318801504105572,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.5375448779253906,
+          "similarity": 0.5437853932380676,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2065,
+          "title": "ADR-006: Convert ExtractionRule::evaluate() to async fn",
+          "category": "decision",
+          "final_score": 0.5273797878262677,
+          "similarity": 0.5666759610176086,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3716,
+          "title": "ExtractionRule must not perform side effects: ephemeral signals belong in compute functions inside spawn_blocking, not in ProposedEntry output",
+          "category": "lesson-learned",
+          "final_score": 0.5094806410931652,
+          "similarity": 0.5401057600975037,
+          "confidence": 0.5398677971135859,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 12,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

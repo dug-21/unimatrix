@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4459",
+  "query": "just a question.. our agents commonly get this: unimatrix - context_get (MCP)(id: \"3770\", feature: \"crt-031\", format: \"markdown\")\n  ⎿  Error: MCP error -32602: failed to deserialize parameters: invalid type: string \"3770\", expected \n     i64                                                             \n                               \n● unimatrix - context_get (MCP)(id: \"3771\", feature: \"crt-031\", format: \"markdown\")                   \n  ⎿  Error: MCP error -32602: failed to deserialize parameters: invalid type: string \"3771\", expected \n     i64                                                                                              \n                                                                                                      \n● unimatrix - context_get (MCP)(id: \"3774\", feature: \"crt-031\", format: \"markdown\")\n  ⎿  Error: MCP error -32602: failed to deserialize parameters: invalid type: string \"3774\", expected \n     i64                                                             \n                                                                                                      \n● unimatrix - context_get (MCP)(id: \"3775\", feature: \"crt-031\", format: \"markdown\")                   \n  ⎿  Error: MCP error -32602: failed to deserialize parameters: invalid type: string \"3775\", expected \n     i64                                                                                              \n                                                                                                      \n● unimatrix - context_get (MCP)(id: \"3770\", feature: \"crt-031\", format: \"markdown\")                   \n  ⎿  Error: MCP error -32602: failed to deserialize parameters: invalid type: string \"3770\", expected \n     i64                                                                                              \n                                                                                                      \n● unimatrix - context_get (MCP)(id: \"3771\", feature: \"crt-031\", format: \"markdown\")                   \n  ⎿  Error: MCP error -32602: failed to deserialize parameters: invalid type: string \"3771\", expected \n     i64                                                   \n                                                                                                      \n● unimatrix - context_get (MCP)(id: \"3774\", feature: \"crt-031\", format: \"markdown\")                   \n  ⎿  Error: MCP error -32602: failed to deserialize parameters: invalid type: string \"3774\", expected \n     i64                                                                                              \n                                                                                                      \n● unimatrix - context_get (MCP)(id: \"3775\", feature: \"crt-031\", format: \"markdown\")                   \n  ⎿  Error: MCP error -32602: failed to deserialize parameters: invalid type: string \"3775\", expected \n     i64                                                ... is the MCP interface that unique to require actual number?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.563457630250169,
+          "similarity": 0.6602749824523926,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.53241886365608,
+          "similarity": 0.5478120446205139,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.5085842453227206,
+          "similarity": 0.5560155510902405,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.5002906436999696,
+          "similarity": 0.5518075823783875,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.48813522358299277,
+          "similarity": 0.5504376888275146,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3820,
+          "title": "How to add an integer parameter to an existing MCP tool in unimatrix-server",
+          "category": "procedure",
+          "final_score": 0.563457630250169,
+          "similarity": 0.6602749824523926,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 685,
+          "title": "MCP embedding init failure blocks all operations — needs degraded mode",
+          "category": "lesson-learned",
+          "final_score": 0.53241886365608,
+          "similarity": 0.5478120446205139,
+          "confidence": 0.5911197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3783,
+          "title": "context_get id must be a bare integer — quoted strings cause type errors; 38 failures in crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.5085842453227206,
+          "similarity": 0.5560155510902405,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3813,
+          "title": "Custom serde deserializer + schemars schema override for MCP tool param structs",
+          "category": "pattern",
+          "final_score": 0.5002906436999696,
+          "similarity": 0.5518075823783875,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.48813522358299277,
+          "similarity": 0.5504376888275146,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

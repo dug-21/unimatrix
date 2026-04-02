@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-847",
+  "query": "So... what I was thinking is potentially leaving embedding exactly where it is, but the potential of havving the full GGUF type of model internally leads to potentially dramatically enhanced capabilities... adding it as an optional module?? could be interesting where no other LLM exists",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.4378874177200156,
+          "similarity": 0.34510254859924316,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.4215675434770839,
+          "similarity": 0.3306434154510498,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 68,
+          "title": "ADR-002: Raw ort + tokenizers (No fastembed Wrapper)",
+          "category": "decision",
+          "final_score": 0.4212718956672855,
+          "similarity": 0.3407111167907715,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.4158533799700249,
+          "similarity": 0.35165154933929443,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.3991436100902708,
+          "similarity": 0.3639923334121704,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2703,
+          "title": "ADR-004 crt-023: Post-Store Embedding Handoff — Move Vec<f32> Into Fire-and-Forget Task",
+          "category": "decision",
+          "final_score": 0.4378874177200156,
+          "similarity": 0.34510254859924316,
+          "confidence": 0.6241193500982666,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 71,
+          "title": "ADR-001: Core Crate as Trait Host",
+          "category": "decision",
+          "final_score": 0.4215675434770839,
+          "similarity": 0.3306434154510498,
+          "confidence": 0.6004784530791568,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 68,
+          "title": "ADR-002: Raw ort + tokenizers (No fastembed Wrapper)",
+          "category": "decision",
+          "final_score": 0.4212718956672855,
+          "similarity": 0.3407111167907715,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1146,
+          "title": "ADR-004: Re-Embedding After DB Commit, Not Inside Transaction",
+          "category": "decision",
+          "final_score": 0.4158533799700249,
+          "similarity": 0.35165154933929443,
+          "confidence": 0.5549569608625045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.3991436100902708,
+          "similarity": 0.3639923334121704,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

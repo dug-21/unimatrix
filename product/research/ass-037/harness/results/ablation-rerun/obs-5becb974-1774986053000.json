@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-5becb974-1774986053000",
+  "query": "RelationType variant extension enum graph",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5475650487226599,
+          "similarity": 0.6018605828285217,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.5218451969905776,
+          "similarity": 0.49254655838012695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.4866432512280304,
+          "similarity": 0.45244789123535156,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.48401931451879476,
+          "similarity": 0.4479871988296509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3441,
+          "title": "Procedure: Rust enum with logical default — use derive(Default) + #[default] on variant, never manual impl",
+          "category": "procedure",
+          "final_score": 0.48196291244267264,
+          "similarity": 0.43658697605133057,
+          "confidence": 0.5467856787160185,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.49193029141426087,
+          "similarity": 0.6018605828285217,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4653833976917156,
+          "similarity": 0.49254655838012695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.43687207526866156,
+          "similarity": 0.45244789123535156,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.4346417290658112,
+          "similarity": 0.4479871988296509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3441,
+          "title": "Procedure: Rust enum with logical default — use derive(Default) + #[default] on variant, never manual impl",
+          "category": "procedure",
+          "final_score": 0.43232919164047084,
+          "similarity": 0.43658697605133057,
+          "confidence": 0.5467856787160185,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.6018605828285217,
+          "similarity": 0.6018605828285217,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.49254655838012695,
+          "similarity": 0.49254655838012695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.45244789123535156,
+          "similarity": 0.45244789123535156,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.4479871988296509,
+          "similarity": 0.4479871988296509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3441,
+          "title": "Procedure: Rust enum with logical default — use derive(Default) + #[default] on variant, never manual impl",
+          "category": "procedure",
+          "final_score": 0.43658697605133057,
+          "similarity": 0.43658697605133057,
+          "confidence": 0.5467856787160185,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.5479176171259446,
+          "similarity": 0.6018605828285217,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.5216549460905098,
+          "similarity": 0.49254655838012695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.48642120343587014,
+          "similarity": 0.45244789123535156,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.48378533974159244,
+          "similarity": 0.4479871988296509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3441,
+          "title": "Procedure: Rust enum with logical default — use derive(Default) + #[default] on variant, never manual impl",
+          "category": "procedure",
+          "final_score": 0.4816682635050664,
+          "similarity": 0.43658697605133057,
+          "confidence": 0.5467856787160185,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.4665295894329365,
+          "similarity": 0.6018605828285217,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.3992594205416166,
+          "similarity": 0.49254655838012695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.3745833176832933,
+          "similarity": 0.45244789123535156,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.3718382762028621,
+          "similarity": 0.4479871988296509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3441,
+          "title": "Procedure: Rust enum with logical default — use derive(Default) + #[default] on variant, never manual impl",
+          "category": "procedure",
+          "final_score": 0.3648227544931265,
+          "similarity": 0.43658697605133057,
+          "confidence": 0.5467856787160185,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3950,
+          "title": "Adding a RelationType variant requires four coordinated updates across two files or the new edge type is missing from graph traversal",
+          "category": "pattern",
+          "final_score": 0.49193029141426087,
+          "similarity": 0.6018605828285217,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2451,
+          "title": "unimatrix-server: two GraphEdgeRow types require field-by-field mapping in typed_graph.rs",
+          "category": "pattern",
+          "final_score": 0.4653833976917156,
+          "similarity": 0.49254655838012695,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2429,
+          "title": "TypedRelationGraph: cycle detection requires Supersedes-only temp graph; full graph false-positives on CoAccess bidirectional pairs",
+          "category": "pattern",
+          "final_score": 0.43687207526866156,
+          "similarity": 0.45244789123535156,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 357,
+          "title": "ADR-003: Enum Storage as INTEGER with repr(u8) Discriminants",
+          "category": "decision",
+          "final_score": 0.4346417290658112,
+          "similarity": 0.4479871988296509,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3441,
+          "title": "Procedure: Rust enum with logical default — use derive(Default) + #[default] on variant, never manual impl",
+          "category": "procedure",
+          "final_score": 0.43232919164047084,
+          "similarity": 0.43658697605133057,
+          "confidence": 0.5467856787160185,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

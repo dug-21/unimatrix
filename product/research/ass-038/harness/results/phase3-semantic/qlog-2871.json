@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2871",
+  "query": "lets discuss your findings befoe you store things.  1. All sessions in this repository are run with skip-permissions.  So, the only permission errors possible are unimatrix calls performened incorrectly.  That does not account for all of the times we've seen this finding.  #2 - there were at MOST 3 parallel agents operating at any point in time in this feature cycle... there were never 20 agents in a swarm.  There are occasions when theres a large file being read, and repeated reads happening... that would show up as repeated reads (that I'd beleive) but that does not translate to permission errors.  You should only find permission errors if you see Access errors in the logs.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5705575129815909,
+          "similarity": 0.586824357509613,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5588449640858157,
+          "similarity": 0.5686216354370117,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.5495083841601508,
+          "similarity": 0.5514604449272156,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 886,
+          "title": "Parallel worktree delivery inflates hotspot metrics — normalize by agent count",
+          "category": "lesson-learned",
+          "final_score": 0.5273160445549145,
+          "similarity": 0.5677902698516846,
+          "confidence": 0.5487288782895045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1117,
+          "title": "Retrospective findings: nan-003",
+          "category": "lesson-learned",
+          "final_score": 0.5079102344921965,
+          "similarity": 0.5504710674285889,
+          "confidence": 0.5207976830094068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 258,
+          "title": "Retrospective findings: vnc-006",
+          "category": "lesson-learned",
+          "final_score": 0.5705575129815909,
+          "similarity": 0.586824357509613,
+          "confidence": 0.6389070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 785,
+          "title": "Retrospective findings: col-015",
+          "category": "lesson-learned",
+          "final_score": 0.5588449640858157,
+          "similarity": 0.5686216354370117,
+          "confidence": 0.6331197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 313,
+          "title": "Retrospective findings: vnc-009",
+          "category": "lesson-learned",
+          "final_score": 0.5495083841601508,
+          "similarity": 0.5514604449272156,
+          "confidence": 0.6322935499672445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 886,
+          "title": "Parallel worktree delivery inflates hotspot metrics — normalize by agent count",
+          "category": "lesson-learned",
+          "final_score": 0.5273160445549145,
+          "similarity": 0.5677902698516846,
+          "confidence": 0.5487288782895045,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1117,
+          "title": "Retrospective findings: nan-003",
+          "category": "lesson-learned",
+          "final_score": 0.5079102344921965,
+          "similarity": 0.5504710674285889,
+          "confidence": 0.5207976830094068,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

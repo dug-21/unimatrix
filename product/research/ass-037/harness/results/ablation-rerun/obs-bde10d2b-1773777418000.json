@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-bde10d2b-1773777418000",
+  "query": "store crate write read methods async migration",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.42239680657019985,
+          "similarity": 0.5301448106765747,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.41800697033221906,
+          "similarity": 0.523011326789856,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.40514006981482875,
+          "similarity": 0.5021026134490967,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.3995736562288725,
+          "similarity": 0.4930571913719177,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.39578452477088344,
+          "similarity": 0.48689985275268555,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.5301448106765747,
+          "similarity": 0.5301448106765747,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.523011326789856,
+          "similarity": 0.523011326789856,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5021026134490967,
+          "similarity": 0.5021026134490967,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.4930571913719177,
+          "similarity": 0.4930571913719177,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.48689985275268555,
+          "similarity": 0.48689985275268555,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.49324014639842867,
+          "similarity": 0.5301448106765747,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.4870937283851013,
+          "similarity": 0.523011326789856,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.4649743638077957,
+          "similarity": 0.4930571913719177,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.45051329557521463,
+          "similarity": 0.5021026134490967,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.45025119731759716,
+          "similarity": 0.48689985275268555,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.5563938469511203,
+          "similarity": 0.5301448106765747,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.5486569480981923,
+          "similarity": 0.523011326789856,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.5212337158761983,
+          "similarity": 0.4930571913719177,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5016291087934975,
+          "similarity": 0.48689985275268555,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5004983847650891,
+          "similarity": 0.5021026134490967,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.49324014639842867,
+          "similarity": 0.5301448106765747,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.4870937283851013,
+          "similarity": 0.523011326789856,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.4649743638077957,
+          "similarity": 0.4930571913719177,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.45051329557521463,
+          "similarity": 0.5021026134490967,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.45025119731759716,
+          "similarity": 0.48689985275268555,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 364,
+          "title": "Retain-and-Rename for Heavily-Referenced Transitional Types",
+          "category": "pattern",
+          "final_score": 0.5562233986636232,
+          "similarity": 0.5301448106765747,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 73,
+          "title": "ADR-003: Feature-Gated Async Wrappers",
+          "category": "decision",
+          "final_score": 0.5484904180896966,
+          "similarity": 0.523011326789856,
+          "confidence": 0.5852935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 267,
+          "title": "ADR-003: Store::insert_in_txn for Atomic Write+Audit",
+          "category": "decision",
+          "final_score": 0.5210507514313651,
+          "similarity": 0.4930571913719177,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2144,
+          "title": "sqlx migration: RPITIT async fn in traits eliminates object-safety concern by removing dyn dispatch entirely",
+          "category": "pattern",
+          "final_score": 0.5015334642737519,
+          "similarity": 0.48689985275268555,
+          "confidence": 0.5226709031375146,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 754,
+          "title": "Write-time metadata assumptions break read paths — always provide read-time fallback",
+          "category": "lesson-learned",
+          "final_score": 0.5005088018344658,
+          "similarity": 0.5021026134490967,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.6,
+    "rank_changes": [
+      {
+        "entry_id": 754,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 267,
+        "from_rank": 3,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 2144,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

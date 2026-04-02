@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-4153",
+  "query": "current state: Active: 956 | Deprecated: 274 | Proposed: 0 | Quarantined: 2491 | Corrections: 157\n     Coherence: 0.4916 (confidence_freshness: 0.3368, graph_quality: 1.0000, embedding_consistency: 1.0000, contradiction_density:\n     0.0000)\n     Stale confidence: 634 entries\n     Graph cohesion: 21.8% connected, 748 isolated, 34 cross-category, 13 inferred\n     Recommendation: 634 entries have stale confidence (oldest: 26 days) -- background maintenance will refresh automatically\n     Recommendation: 2491 entries quarantined -- review for resolution\n     Co-access: 15786 active pairs (15786 total), 0 stale pairs cleaned\n     Outcomes: 276 total\n     Observation: 144046 records (239 sessions), oldest 22 days, 62 retrospected\n     Last maintenance: 2026-03-28T17:41:57Z\n     Next maintenance: 2026-03-28T17:57:00Z\n     Extraction: 0 extracted, 0 rejected\n     Coherence by source: agent=0.4910, system=0.5020\n     Effectiveness: 423 effective, 249 settled, 284 unmatched, 0 ineffective, 0 noisy (204 sessions analyzed)",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5801575136144356,
+          "similarity": 0.6021300554275513,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5385611799940117,
+          "similarity": 0.587920606136322,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.5283325817131658,
+          "similarity": 0.5935373902320862,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 178,
+          "title": "ADR-002: Maintenance Opt-Out on context_status",
+          "category": "decision",
+          "final_score": 0.5801575136144356,
+          "similarity": 0.6021300554275513,
+          "confidence": 0.6430988863426806,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5385611799940117,
+          "similarity": 0.587920606136322,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3981,
+          "title": "Co-access promotion tick: quarantine JOIN required on both endpoints and in max_count subquery",
+          "category": "lesson-learned",
+          "final_score": 0.5283325817131658,
+          "similarity": 0.5935373902320862,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 34,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 11,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

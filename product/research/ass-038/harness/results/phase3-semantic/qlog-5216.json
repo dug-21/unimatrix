@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-5216",
+  "query": "back to bugfix 473... Sec Review findings: Finding 1 (low, non-blocking): ADR-002 crt-037 not formally superseded\n\nUnimatrix entry #3955 (ADR-002 crt-037: Combined Cap with Informs Second-Priority Ordering) still describes the removed combined-cap design as the current approach. The fix-agent noted it is superseded but did not deprecate or correct the entry. Future agents receiving a briefing may act on stale design intent.\n\nRecommendation: deprecate or correct entry #3955 to reference the new independent-cap design. The pattern anti-pattern entry #3969 captures the fix lesson, but the original ADR-002 needs to be retired.\n\nFinding 2 (low, non-blocking): Combined tick throughput ceiling is now higher\n\nUnder the old design, total edges per tick was bounded by max_graph_inference_per_tick. Under the new design it is bounded by max_graph_inference_per_tick + 25. This is intentional, safe (both bounds are compile-time or config constants with no external influence), and detectable via existing log fields. No DoS risk. Worth noting for capacity planning.\\\nFix Summary: Fix summary:                                                             \n  - Root cause: Phase 5 used remaining_capacity =       \n  max_graph_inference_per_tick - supports.len() as Informs' budget — always\n   0 when Supports was healthy, permanently starving 278 valid candidates  \n  - Files changed:                                                         \n  crates/unimatrix-server/src/services/nli_detection_tick.rs\n  - New tests: 5 (assert dedicated-budget invariant; replace 6 broken      \n  shared-cap tests)                                                  \n  - All tests passing: 4261 unit + 22/22 smoke + 13/13 contradiction +     \n  41/41 lifecycle                                                     \n                                                                           \n  Gate: Bug Fix Validation — PASS (11/11)               \n  Security Review: LOW risk — no blocking findings      \\\nthoughts?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5988697952975862,
+          "similarity": 0.6910134553909302,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5808705991515172,
+          "similarity": 0.632679283618927,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5728762950974099,
+          "similarity": 0.6077594757080078,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3971,
+          "title": "ADR crt-037 (replacement): Independent per-type budgets in nli_detection_tick Phase 5",
+          "category": "decision",
+          "final_score": 0.5988697952975862,
+          "similarity": 0.6910134553909302,
+          "confidence": 0.5669130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5808705991515172,
+          "similarity": 0.632679283618927,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2417,
+          "title": "ADR-001 (crt-021): Typed Edge Weight Model (supersedes #1604)",
+          "category": "decision",
+          "final_score": 0.5728762950974099,
+          "similarity": 0.6077594757080078,
+          "confidence": 0.6152935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.6666666666666666,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

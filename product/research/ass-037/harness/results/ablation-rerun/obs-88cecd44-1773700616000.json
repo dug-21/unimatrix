@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-88cecd44-1773700616000",
+  "query": "HTTP transport rmcp streamable SSE axum tower middleware",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.3410922930790828,
+          "similarity": 0.3980249762535095,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.33840582920954776,
+          "similarity": 0.39365947246551514,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.3069941447331355,
+          "similarity": 0.3426154851913452,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.3033818831810584,
+          "similarity": 0.33674556016921997,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.3011436462402344,
+          "similarity": 0.33310842514038086,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.47470341196991306,
+          "similarity": 0.39365947246551514,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4604388660445328,
+          "similarity": 0.33674556016921997,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.442247689006364,
+          "similarity": 0.3426154851913452,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.4332728396384832,
+          "similarity": 0.3980249762535095,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.3834810336017258,
+          "similarity": 0.33310842514038086,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.3980249762535095,
+          "similarity": 0.3980249762535095,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.39365947246551514,
+          "similarity": 0.39365947246551514,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.3426154851913452,
+          "similarity": 0.3426154851913452,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.33674556016921997,
+          "similarity": 0.33674556016921997,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.33310842514038086,
+          "similarity": 0.33310842514038086,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.42397387675418774,
+          "similarity": 0.39365947246551514,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4095158567016753,
+          "similarity": 0.33674556016921997,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.39668156521830417,
+          "similarity": 0.3426154851913452,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.3941005671832884,
+          "similarity": 0.3980249762535095,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.353186783419856,
+          "similarity": 0.33310842514038086,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.42397387675418774,
+          "similarity": 0.39365947246551514,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4095158567016753,
+          "similarity": 0.33674556016921997,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.39668156521830417,
+          "similarity": 0.3426154851913452,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.3941005671832884,
+          "similarity": 0.3980249762535095,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.353186783419856,
+          "similarity": 0.33310842514038086,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 319,
+          "title": "CallerId: Transport-Typed Enum for Cross-Transport Identity Safety",
+          "category": "pattern",
+          "final_score": 0.4741771526224819,
+          "similarity": 0.39365947246551514,
+          "confidence": 0.5904804684047673,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4596356627596282,
+          "similarity": 0.33674556016921997,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1897,
+          "title": "Daemon MCP via UDS: thin stdio bridge required for Claude Code compatibility",
+          "category": "pattern",
+          "final_score": 0.4416007266439288,
+          "similarity": 0.3426154851913452,
+          "confidence": 0.5845794087421052,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 195,
+          "title": "ASS-014: Transport Trait Design — Sync Interface, UDS Local, HTTPS Remote",
+          "category": "decision",
+          "final_score": 0.4330439574087105,
+          "similarity": 0.3980249762535095,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.38315393874158715,
+          "similarity": 0.33310842514038086,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 195,
+        "from_rank": 4,
+        "to_rank": 1
+      },
+      {
+        "entry_id": 316,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 319,
+        "from_rank": 1,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

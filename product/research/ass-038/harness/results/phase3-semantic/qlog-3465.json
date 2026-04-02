@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3465",
+  "query": "workign on 402... design had these questions: Open questions for your input:                      \n                                                        \n  1. Multi-candidate mixed mode — if some profiles\n  declare distribution_change = true and others don't,  \n  should Section 5 render per-profile (Distribution Gate\n   for declaring profiles, zero-regression rows for     \n  others)? The researcher recommends per-profile      \n  independence.\n  2. profile-meta.json version field — include\n  \"version\": 1 from the start for forward compatibility?\n   Researcher recommends yes.\n  3. mrr_floor semantics — is it a third must-pass      \n  target (all three must pass equally), or is it a veto \n  that blocks approval even if CC@k + ICD pass? In\n  practice the same, but the report wording differs.    \n  4. Who reads profile-meta.json — run_report reads it\n  itself from the results dir (cleaner), or             \n  run_eval_command loads and passes it explicitly (more\n  explicit data flow)? Researcher recommends option (a).",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5696594443220127,
+          "similarity": 0.6178058385848999,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5481996063497864,
+          "similarity": 0.6090835928916931,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5408533952297034,
+          "similarity": 0.5773563385009766,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.5408134905567328,
+          "similarity": 0.6046349406242371,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.5260467854854944,
+          "similarity": 0.5711151957511902,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3582,
+          "title": "Eval Harness: Side-Car Metadata File Pattern for Per-Profile Run-Time Flags",
+          "category": "pattern",
+          "final_score": 0.5696594443220127,
+          "similarity": 0.6178058385848999,
+          "confidence": 0.5922101508956062,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5481996063497864,
+          "similarity": 0.6090835928916931,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3574,
+          "title": "Eval harness dual-type constraint: runner/output.rs and report/mod.rs maintain independent copies of result types",
+          "category": "pattern",
+          "final_score": 0.5408533952297034,
+          "similarity": 0.5773563385009766,
+          "confidence": 0.5718073034792287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.5408134905567328,
+          "similarity": 0.6046349406242371,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.5260467854854944,
+          "similarity": 0.5711151957511902,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

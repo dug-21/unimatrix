@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4784",
+  "query": "they updated the design... look and evaluate again. Vision alignment: 4 PASS · 2 WARN · 0 FAIL · 1 VARIANCE (resolved —                \n  architecture/spec contradiction on AC-12 test placement corrected to typed_graph.rs\n   + SqlxStore)                                                                      \n                                                                                  \n  Risks requiring delivery attention:                                                \n  - R-01 (High): Run EXPLAIN QUERY PLAN on back-fill SQL before merge — confirm\n  UNIQUE index covers NOT EXISTS sub-join                                            \n  - R-02 (Critical): Gate-3b must grep for \"no duplicate\" in tick tests — its     \n  presence is a missed update                                                        \n  - R-08 (Critical): All edge count assertions in tick tests change from N pairs → 2N\n   edges; 8 tests + 3 new Group I tests affected       ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3600,
+          "title": "read.rs test helper create_graph_edges_table is for pre-v13 schema only — new cohesion tests must not call it",
+          "category": "pattern",
+          "final_score": 0.5533853110381651,
+          "similarity": 0.593626856803894,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5263093785663454,
+          "similarity": 0.5386541485786438,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.522322532390447,
+          "similarity": 0.5478225350379944,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.5049634932499525,
+          "similarity": 0.5024012923240662,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.49832931653994894,
+          "similarity": 0.5018954873085022,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3600,
+          "title": "read.rs test helper create_graph_edges_table is for pre-v13 schema only — new cohesion tests must not call it",
+          "category": "pattern",
+          "final_score": 0.5533853110381651,
+          "similarity": 0.593626856803894,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 378,
+          "title": "Schema migration tests must include old-schema databases, not only fresh ones",
+          "category": "lesson-learned",
+          "final_score": 0.5263093785663454,
+          "similarity": 0.5386541485786438,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3621,
+          "title": "SQL pseudocode with JOIN-heavy queries must be traced against explicit scenarios before Gate 3a approval",
+          "category": "lesson-learned",
+          "final_score": 0.522322532390447,
+          "similarity": 0.5478225350379944,
+          "confidence": 0.5637003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1044,
+          "title": "Risk-based test strategy predicted and caught COUNT DISTINCT bug at implementation time",
+          "category": "lesson-learned",
+          "final_score": 0.5049634932499525,
+          "similarity": 0.5024012923240662,
+          "confidence": 0.5814704926440623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3768,
+          "title": "ADR-004 addendum (bugfix-444): TypedRelationGraph rebuild must filter to exclude Quarantined entries",
+          "category": "decision",
+          "final_score": 0.49832931653994894,
+          "similarity": 0.5018954873085022,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.4,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,386 @@
+{
+  "scenario_id": "obs-fb91e6f4-1773883648000",
+  "query": "shadow evaluations entry ID mapping contradiction detection",
+  "profiles": {
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.5695052146911621,
+          "similarity": 0.5695052146911621,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.43728792667388916,
+          "similarity": 0.43728792667388916,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.4332088232040405,
+          "similarity": 0.4332088232040405,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4290018677711487,
+          "similarity": 0.4290018677711487,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.42824769020080566,
+          "similarity": 0.42824769020080566,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.49267658504691375,
+          "similarity": 0.5695052146911621,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.453898913588542,
+          "similarity": 0.42824769020080566,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.44939247659219356,
+          "similarity": 0.4332088232040405,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.4389562755093927,
+          "similarity": 0.43728792667388916,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4316084962094246,
+          "similarity": 0.4290018677711487,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 13,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.5518766873647767,
+          "similarity": 0.5695052146911621,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.511839637602484,
+          "similarity": 0.42824769020080566,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.5052434841526239,
+          "similarity": 0.4332088232040405,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.4906414732697274,
+          "similarity": 0.43728792667388916,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4813750523063836,
+          "similarity": 0.4290018677711487,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.49267658504691375,
+          "similarity": 0.5695052146911621,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.453898913588542,
+          "similarity": 0.42824769020080566,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.44939247659219356,
+          "similarity": 0.4332088232040405,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.4389562755093927,
+          "similarity": 0.43728792667388916,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.4316084962094246,
+          "similarity": 0.4290018677711487,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.4466185936560998,
+          "similarity": 0.5695052146911621,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.36525410872239333,
+          "similarity": 0.43728792667388916,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.36274389120248646,
+          "similarity": 0.4332088232040405,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.3601549955514761,
+          "similarity": 0.4290018677711487,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.35969088627741885,
+          "similarity": 0.42824769020080566,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 41,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.5517614682319245,
+          "similarity": 0.5695052146911621,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5123859901998806,
+          "similarity": 0.42824769020080566,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.5057142989300656,
+          "similarity": 0.4332088232040405,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 426,
+          "title": "Shadow Mode Evaluation Pipeline for ML Model Promotion",
+          "category": "pattern",
+          "final_score": 0.49099018926054994,
+          "similarity": 0.43728792667388916,
+          "confidence": 0.5677077072414939,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 396,
+          "title": "ADR-004: Shadow Evaluation in SQLite",
+          "category": "decision",
+          "final_score": 0.48171736070203874,
+          "similarity": 0.4290018677711487,
+          "confidence": 0.5570252077461675,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.2,
+    "rank_changes": [
+      {
+        "entry_id": 3675,
+        "from_rank": 2,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 426,
+        "from_rank": 4,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 396,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -17,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

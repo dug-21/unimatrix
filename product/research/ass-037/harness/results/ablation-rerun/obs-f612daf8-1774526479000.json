@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-f612daf8-1774526479000",
+  "query": "golden output render test section order regression eval report",
+  "profiles": {
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.6397352410835231,
+          "similarity": 0.6318545341491699,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.5645264337502074,
+          "similarity": 0.5425876975059509,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.543157871294438,
+          "similarity": 0.5065652132034302,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3427,
+          "title": "col-026: pattern",
+          "category": "pattern",
+          "final_score": 0.534841264438072,
+          "similarity": 0.5209358334541321,
+          "confidence": 0.55492688697043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.5220147325983484,
+          "similarity": 0.5004315972328186,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.6397867489719831,
+          "similarity": 0.6318545341491699,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.5646698241831765,
+          "similarity": 0.5425876975059509,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.5433970389943794,
+          "similarity": 0.5065652132034302,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3427,
+          "title": "col-026: pattern",
+          "category": "pattern",
+          "final_score": 0.5349321496079018,
+          "similarity": 0.5209358334541321,
+          "confidence": 0.55492688697043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.5221557988425676,
+          "similarity": 0.5004315972328186,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.6318545341491699,
+          "similarity": 0.6318545341491699,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.5425876975059509,
+          "similarity": 0.5425876975059509,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3427,
+          "title": "col-026: pattern",
+          "category": "pattern",
+          "final_score": 0.5209358334541321,
+          "similarity": 0.5209358334541321,
+          "confidence": 0.55492688697043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.5065652132034302,
+          "similarity": 0.5065652132034302,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.5004315972328186,
+          "similarity": 0.5004315972328186,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.48498740563025844,
+          "similarity": 0.6318545341491699,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.4300539676959698,
+          "similarity": 0.5425876975059509,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3427,
+          "title": "col-026: pattern",
+          "category": "pattern",
+          "final_score": 0.4167297436640813,
+          "similarity": 0.5209358334541321,
+          "confidence": 0.55492688697043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.40788628504826474,
+          "similarity": 0.5065652132034302,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.404111752143273,
+          "similarity": 0.5004315972328186,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.5612628124045284,
+          "similarity": 0.6318545341491699,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.5001585645838823,
+          "similarity": 0.5425876975059509,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.48208678649614994,
+          "similarity": 0.5065652132034302,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3427,
+          "title": "col-026: pattern",
+          "category": "pattern",
+          "final_score": 0.47694598281819506,
+          "similarity": 0.5209358334541321,
+          "confidence": 0.55492688697043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.4661729103876434,
+          "similarity": 0.5004315972328186,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3426,
+          "title": "Formatter overhaul features consistently underestimate section-order regression risk — golden-output test required",
+          "category": "pattern",
+          "final_score": 0.5612628124045284,
+          "similarity": 0.6318545341491699,
+          "confidence": 0.6511184844331445,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 751,
+          "title": "Updating Golden Regression Values",
+          "category": "procedure",
+          "final_score": 0.5001585645838823,
+          "similarity": 0.5425876975059509,
+          "confidence": 0.5962157194363559,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3522,
+          "title": "ADR-003 nan-008: Round-Trip Integration Test Guards Dual Type Copy and Section Order",
+          "category": "decision",
+          "final_score": 0.48208678649614994,
+          "similarity": 0.5065652132034302,
+          "confidence": 0.5960139329814497,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3427,
+          "title": "col-026: pattern",
+          "category": "pattern",
+          "final_score": 0.47694598281819506,
+          "similarity": 0.5209358334541321,
+          "confidence": 0.55492688697043,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3583,
+          "title": "Eval Harness render.rs 500-Line Split: New Section = New render_*.rs Module",
+          "category": "pattern",
+          "final_score": 0.4661729103876434,
+          "similarity": 0.5004315972328186,
+          "confidence": 0.5531903725707804,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

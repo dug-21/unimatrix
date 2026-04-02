@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2975",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] All four open questions resolved. Here's the updated picture:\n\n**Q1 — Payload fields (confirmed from Claude Code docs):**\n- `tool_name` → same field name as `PostToolUse` ✓\n- `tool_input` → same field name, used for `topic_signal` extraction ✓\n- **`error`** → the failure description string (replaces `tool_response`, which does NOT exist on failure events)\n- `is_interrupt` → optional bool (user interruption vs. tool error)\n\n**Q2** — Threshold of 3. ✓\n\n**Q3** — No concern. ✓\n\n**Q4** — Explicit arm in `extract_event_topic_signal()` extracting from `tool_input`. ✓\n\nOne implementation note: `extract_response_fields()` currently expects a JSON object for `tool_response`. For `PostToolUseFailure`, `error` is a plain string — the listener arm will need to handle this directly rather than delegating to the existing `extract_response_fields()` helper as-is.\n\nSCOPE.md is now complete with all questions resolved. **Do you approve the scope to proceed to Phase 1b (scope risk assessment)?**\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.6022177088452494,
+          "similarity": 0.7117345333099365,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5573089312853197,
+          "similarity": 0.6363801956176758,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5430099305221129,
+          "similarity": 0.5739136338233948,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.541238628716901,
+          "similarity": 0.570523738861084,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5391170343481383,
+          "similarity": 0.5579098463058472,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 37,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3474,
+          "title": "ADR-002 col-027: Separate extract_error_field() for PostToolUseFailure Payloads",
+          "category": "decision",
+          "final_score": 0.6022177088452494,
+          "similarity": 0.7117345333099365,
+          "confidence": 0.5463987335657677,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3473,
+          "title": "ADR-001 col-027: PostToolUseFailure Hook Registration and Dispatch Pattern",
+          "category": "decision",
+          "final_score": 0.5573089312853197,
+          "similarity": 0.6363801956176758,
+          "confidence": 0.5321525340349025,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3486,
+          "title": "hook.rs payload construction gap: new context_cycle fields must be extracted from tool_input AND inserted into payload",
+          "category": "lesson-learned",
+          "final_score": 0.5430099305221129,
+          "similarity": 0.5739136338233948,
+          "confidence": 0.5825789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3374,
+          "title": "ADR-004 col-024: Shared enrich_topic_signal Helper for All Write Sites",
+          "category": "decision",
+          "final_score": 0.541238628716901,
+          "similarity": 0.570523738861084,
+          "confidence": 0.5826137938586115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3382,
+          "title": "topic_signal write-time enrichment: session registry in-memory feature as fallback",
+          "category": "pattern",
+          "final_score": 0.5391170343481383,
+          "similarity": 0.5579098463058472,
+          "confidence": 0.5948750270794512,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.4,
+      "mrr": 0.25,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

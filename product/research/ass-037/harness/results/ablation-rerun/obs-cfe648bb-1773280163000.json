@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-cfe648bb-1773280163000",
+  "query": "ONNX model embedding download dependency",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.5751269869318452,
+          "similarity": 0.5697373151779175,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.5750566183419115,
+          "similarity": 0.6332157254219055,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.5425517139059226,
+          "similarity": 0.5766048431396484,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 70,
+          "title": "ADR-004: Custom Cache Directory (~/.cache/unimatrix/models/)",
+          "category": "decision",
+          "final_score": 0.5377332289170501,
+          "similarity": 0.5143626928329468,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.5026063168920074,
+          "similarity": 0.508705198764801,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.575434274881392,
+          "similarity": 0.6332157254219055,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.575091989063313,
+          "similarity": 0.5697373151779175,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.542772838121726,
+          "similarity": 0.5766048431396484,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 70,
+          "title": "ADR-004: Custom Cache Directory (~/.cache/unimatrix/models/)",
+          "category": "decision",
+          "final_score": 0.5375814721892312,
+          "similarity": 0.5143626928329468,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.5026459200210516,
+          "similarity": 0.508705198764801,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.6332157254219055,
+          "similarity": 0.6332157254219055,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.5766048431396484,
+          "similarity": 0.5766048431396484,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.5697373151779175,
+          "similarity": 0.5697373151779175,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 70,
+          "title": "ADR-004: Custom Cache Directory (~/.cache/unimatrix/models/)",
+          "category": "decision",
+          "final_score": 0.5143626928329468,
+          "similarity": 0.5143626928329468,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.508705198764801,
+          "similarity": 0.508705198764801,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.5141995166078145,
+          "similarity": 0.6332157254219055,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.5097166129916241,
+          "similarity": 0.5697373151779175,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.48647373749857564,
+          "similarity": 0.5766048431396484,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 70,
+          "title": "ADR-004: Custom Cache Directory (~/.cache/unimatrix/models/)",
+          "category": "decision",
+          "final_score": 0.4785172591276327,
+          "similarity": 0.5143626928329468,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.45252068793309125,
+          "similarity": 0.508705198764801,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.5141995166078145,
+          "similarity": 0.6332157254219055,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.5097166129916241,
+          "similarity": 0.5697373151779175,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.48647373749857564,
+          "similarity": 0.5766048431396484,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 70,
+          "title": "ADR-004: Custom Cache Directory (~/.cache/unimatrix/models/)",
+          "category": "decision",
+          "final_score": 0.4785172591276327,
+          "similarity": 0.5143626928329468,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.45252068793309125,
+          "similarity": 0.508705198764801,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.4858250617980957,
+          "similarity": 0.6332157254219055,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2808,
+          "title": "ADR-006 vnc-001: Lazy Embedding Model Initialization (generalized by crt-023 NliServiceHandle)",
+          "category": "decision",
+          "final_score": 0.4509875957782452,
+          "similarity": 0.5766048431396484,
+          "confidence": 0.4939043864291715,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 69,
+          "title": "ADR-003: hf-hub Crate for Model Download",
+          "category": "decision",
+          "final_score": 0.4467614247248723,
+          "similarity": 0.5697373151779175,
+          "confidence": 0.5828265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 70,
+          "title": "ADR-004: Custom Cache Directory (~/.cache/unimatrix/models/)",
+          "category": "decision",
+          "final_score": 0.41268473405104417,
+          "similarity": 0.5143626928329468,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2804,
+          "title": "ONNX-backed components: use feature-flagged stubs and pure function extraction to reduce compile-test cycles",
+          "category": "lesson-learned",
+          "final_score": 0.4092031992398776,
+          "similarity": 0.508705198764801,
+          "confidence": 0.49389362850230245,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 69,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 2492,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

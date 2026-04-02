@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-121",
+  "query": "now I understand.  Here's what happened ( I think)  The previous iterations where thi was working, the primary claude agent, would spawn the scrum-master/coordinator agent... who then spawned all specialist agents.   The implication, was that the Scrum-master ALWAYS got sessionClose. . 2 days ago, Claude pushed a change, that eliminated the double -spawn model, and I had to convert the primary agent to be the scrum master.  So the SM used to get spawned with specific attributes, a name, etc... now, the primary agent is just assuming the role.  I think that explains the difference.. bcause I'm alwasy runngin retro from the primary agent that ran the implementation",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.500626979264041,
+          "similarity": 0.5293571949005127,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.48884890711828843,
+          "similarity": 0.46788477897644043,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 551,
+          "title": "Coordinator Auto-Chain: Protocol Extension Pattern",
+          "category": "pattern",
+          "final_score": 0.48863300789257724,
+          "similarity": 0.4802250862121582,
+          "confidence": 0.5688251839767695,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.4879675896285045,
+          "similarity": 0.4927082061767578,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.45518691821742874,
+          "similarity": 0.467689573764801,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 512,
+          "title": "ADR-003: Design-Scrum-Master Owns Session 1 PR (Not Synthesizer)",
+          "category": "decision",
+          "final_score": 0.500626979264041,
+          "similarity": 0.5293571949005127,
+          "confidence": 0.5311915224302363,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.48884890711828843,
+          "similarity": 0.46788477897644043,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 551,
+          "title": "Coordinator Auto-Chain: Protocol Extension Pattern",
+          "category": "pattern",
+          "final_score": 0.48863300789257724,
+          "similarity": 0.4802250862121582,
+          "confidence": 0.5688251839767695,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.4879675896285045,
+          "similarity": 0.4927082061767578,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 727,
+          "title": "Implementation agents must not re-store ADRs already stored by design agents",
+          "category": "lesson-learned",
+          "final_score": 0.45518691821742874,
+          "similarity": 0.467689573764801,
+          "confidence": 0.4959508154975911,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

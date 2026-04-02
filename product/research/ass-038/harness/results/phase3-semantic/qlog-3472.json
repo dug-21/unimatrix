@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3472",
+  "query": "1. in+out degree — yes.             \n  Out-degree only would show an entry with many incoming\n  Supports edges (highly referenced) as near-zero, which is  \n  wrong. For a connectivity picture, you want to know how\n  embedded an entry is in the graph overall. In+out is the   \n  right measure.                                           \n\n  2. Exclude bootstrap edges — isolated.\n  This is the correct call and the consistent one. Bootstrap\n  edges were seeded from co_access count ≥ 3, not from NLI   \n  inference. The whole point of #413 is to measure whether\n  #412 (graph inference) is actually producing real edges. If\n   bootstrap-only entries count as connected, the          \n  isolated_entry_count metric starts low regardless of\n  whether inference is working — it's measuring the wrong\n  thing. The signal you want is \"how many entries has NLI\n  inference reached?\" Treating bootstrap-only as isolated\n  gives you that. It also matches TypedRelationGraph.inner's\n  existing behavior, so no semantic mismatch.\n\n  3. Coherence sub-section.                                  \n  Graph cohesion is a health dimension, not a separate\n  operational concern. Standalone section implies parity with\n   context_status's top-level outputs; Coherence sub-section\n  puts it where it belongs. Consistent with how contradiction\n   coverage and embedding health are already treated.      \n\n  4. Per-call SQL.\n  Background tick caching is for operationally critical\n  values on the hot path. Graph cohesion is diagnostic — you \n  look at it to verify that #412 is doing something after a\n  maintenance window. Per-call gives you a live snapshot at  \n  the moment you ask, which is exactly what you want when  \n  debugging graph inference behavior. Caching would show\n  last-tick values right after you manually triggered a pass,\n   which is confusing. The aggregate SQL (COUNT, AVG over\n  GRAPH_EDGES) is cheap; per-call cost is negligible.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5447818775854879,
+          "similarity": 0.5598545074462891,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5101271624385494,
+          "similarity": 0.49106675386428833,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.4987398615969466,
+          "similarity": 0.4810219407081604,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.4969386602821324,
+          "similarity": 0.48007822036743164,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.4900266956689179,
+          "similarity": 0.5125614404678345,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3592,
+          "title": "ADR-002 col-029: Two SQL Queries for Graph Cohesion Metrics",
+          "category": "decision",
+          "final_score": 0.5447818775854879,
+          "similarity": 0.5598545074462891,
+          "confidence": 0.6074729428087687,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3937,
+          "title": "NLI neutral-zone score is the detection signal for cross-category institutional memory edges",
+          "category": "pattern",
+          "final_score": 0.5101271624385494,
+          "similarity": 0.49106675386428833,
+          "confidence": 0.611678363955651,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.4987398615969466,
+          "similarity": 0.4810219407081604,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3713,
+          "title": "Graph inference edge stall: supports_edge_threshold too conservative for retrospective-dominated corpus",
+          "category": "lesson-learned",
+          "final_score": 0.4969386602821324,
+          "similarity": 0.48007822036743164,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2404,
+          "title": "shadow_evaluations stores rule/category evaluations, NOT entry ID pairs — cannot bootstrap Contradicts edges without additional join",
+          "category": "pattern",
+          "final_score": 0.4900266956689179,
+          "similarity": 0.5125614404678345,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

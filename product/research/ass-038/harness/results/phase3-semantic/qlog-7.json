@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-7",
+  "query": "I want you to update @product-vision to add vnc-011 (009 is already been taken) as the first feature in Wave 3.  Leave a reference to this gh issue in the description.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.46397132341538216,
+          "similarity": 0.3899672031402588,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 953,
+          "title": "Human overrides must be propagated to ALL downstream artifacts, not just the implementation brief",
+          "category": "lesson-learned",
+          "final_score": 0.45628997186354703,
+          "similarity": 0.45218586921691895,
+          "confidence": 0.521092967605458,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.4444987543788558,
+          "similarity": 0.37514162063598633,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 977,
+          "title": "Retrospective findings: vnc-010",
+          "category": "lesson-learned",
+          "final_score": 0.40201088400359153,
+          "similarity": 0.36967384815216064,
+          "confidence": 0.4916383306495191,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 196,
+          "title": "ASS-014: Authentication Architecture — Layered Local Auth, AuthContext Unification",
+          "category": "decision",
+          "final_score": 0.4001838668343872,
+          "similarity": 0.3718104958534241,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 265,
+          "title": "Pre-flight Agent Enrollment: Verify Capabilities Before Feature Kickoff",
+          "category": "lesson-learned",
+          "final_score": 0.46397132341538216,
+          "similarity": 0.3899672031402588,
+          "confidence": 0.6308261590699534,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 953,
+          "title": "Human overrides must be propagated to ALL downstream artifacts, not just the implementation brief",
+          "category": "lesson-learned",
+          "final_score": 0.45628997186354703,
+          "similarity": 0.45218586921691895,
+          "confidence": 0.521092967605458,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 86,
+          "title": "ADR-003: Category Allowlist as Runtime-Extensible HashSet",
+          "category": "decision",
+          "final_score": 0.4444987543788558,
+          "similarity": 0.37514162063598633,
+          "confidence": 0.5991514466911998,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 977,
+          "title": "Retrospective findings: vnc-010",
+          "category": "lesson-learned",
+          "final_score": 0.40201088400359153,
+          "similarity": 0.36967384815216064,
+          "confidence": 0.4916383306495191,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 196,
+          "title": "ASS-014: Authentication Architecture — Layered Local Auth, AuthContext Unification",
+          "category": "decision",
+          "final_score": 0.4001838668343872,
+          "similarity": 0.3718104958534241,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

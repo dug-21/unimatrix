@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-7574e07c-1774445936000",
+  "query": "Option field rendering fallback emit section never silently omit",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.4821608616755559,
+          "similarity": 0.6272614002227783,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.30077178661639875,
+          "similarity": 0.33250415325164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.3004551667433519,
+          "similarity": 0.3319896459579468,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.2856270716740535,
+          "similarity": 0.3078939914703369,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.28296668712909406,
+          "similarity": 0.30357086658477783,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.6272614002227783,
+          "similarity": 0.6272614002227783,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.33250415325164795,
+          "similarity": 0.33250415325164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.3319896459579468,
+          "similarity": 0.3319896459579468,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.3078939914703369,
+          "similarity": 0.3078939914703369,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.30357086658477783,
+          "similarity": 0.30357086658477783,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.5331768183740454,
+          "similarity": 0.6272614002227783,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.3928079026164462,
+          "similarity": 0.3319896459579468,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.3784122323420737,
+          "similarity": 0.33250415325164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.3663709734365011,
+          "similarity": 0.3078939914703369,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.3553683003026215,
+          "similarity": 0.30357086658477783,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.6018537159443548,
+          "similarity": 0.6272614002227783,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.4372844448444314,
+          "similarity": 0.3319896459579468,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.4176072119890416,
+          "similarity": 0.33250415325164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.4034246009161072,
+          "similarity": 0.3078939914703369,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.38881396708677685,
+          "similarity": 0.30357086658477783,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.6016876526484174,
+          "similarity": 0.6272614002227783,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.43797264614434317,
+          "similarity": 0.3319896459579468,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.41816344113111614,
+          "similarity": 0.33250415325164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.40404898398438027,
+          "similarity": 0.3078939914703369,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.3893711115345023,
+          "similarity": 0.30357086658477783,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3449,
+          "title": "Formatter silent omission of Option fields produces invisible failures in cycle review output",
+          "category": "lesson-learned",
+          "final_score": 0.5331768183740454,
+          "similarity": 0.6272614002227783,
+          "confidence": 0.5651537275421875,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3357,
+          "title": "Required MCP params that are only last-resort fallbacks should be Option<String> from the start",
+          "category": "lesson-learned",
+          "final_score": 0.3928079026164462,
+          "similarity": 0.3319896459579468,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3590,
+          "title": "ADR-005 nan-010: Per-Profile Section 5 Rendering with Independent Gating",
+          "category": "decision",
+          "final_score": 0.3784122323420737,
+          "similarity": 0.33250415325164795,
+          "confidence": 0.5405338523874992,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3791,
+          "title": "Use deserialize_option (not deserialize_any) for Option<T> serde visitor helpers",
+          "category": "pattern",
+          "final_score": 0.3663709734365011,
+          "similarity": 0.3078939914703369,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3604,
+          "title": "AggregateStats test fixtures: use ..Default::default() and field is profile_name not profile",
+          "category": "pattern",
+          "final_score": 0.3553683003026215,
+          "similarity": 0.30357086658477783,
+          "confidence": 0.5119428900341088,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 3357,
+        "from_rank": 2,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 3590,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

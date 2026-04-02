@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-88cecd44-1773700584000",
+  "query": "keyword injection briefing context budget token",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.5220156915425713,
+          "similarity": 0.6076412200927734,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.5160208688929674,
+          "similarity": 0.5928384065628052,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 271,
+          "title": "ADR-003: Token Budget with Proportional Section Allocation",
+          "category": "decision",
+          "final_score": 0.5025892633201687,
+          "similarity": 0.578484058380127,
+          "confidence": 0.5444907804336839,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.4817261791287337,
+          "similarity": 0.5170167684555054,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.47434537239756364,
+          "similarity": 0.5064036846160889,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.470086904672476,
+          "similarity": 0.6076412200927734,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.46097748096172625,
+          "similarity": 0.5928384065628052,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 271,
+          "title": "ADR-003: Token Budget with Proportional Section Allocation",
+          "category": "decision",
+          "final_score": 0.452144035926232,
+          "similarity": 0.578484058380127,
+          "confidence": 0.5444907804336839,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.41431801135723406,
+          "similarity": 0.5170167684555054,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.4077868828406701,
+          "similarity": 0.5064036846160889,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.588292006029728,
+          "similarity": 0.6076412200927734,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.5815150743077193,
+          "similarity": 0.5928384065628052,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 271,
+          "title": "ADR-003: Token Budget with Proportional Section Allocation",
+          "category": "decision",
+          "final_score": 0.5644868262845328,
+          "similarity": 0.578484058380127,
+          "confidence": 0.5444907804336839,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.5418774254261536,
+          "similarity": 0.5170167684555054,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.5327874047990002,
+          "similarity": 0.5064036846160889,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.6076412200927734,
+          "similarity": 0.6076412200927734,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.5928384065628052,
+          "similarity": 0.5928384065628052,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 271,
+          "title": "ADR-003: Token Budget with Proportional Section Allocation",
+          "category": "decision",
+          "final_score": 0.578484058380127,
+          "similarity": 0.578484058380127,
+          "confidence": 0.5444907804336839,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.5170167684555054,
+          "similarity": 0.5170167684555054,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.5064036846160889,
+          "similarity": 0.5064036846160889,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.5220156915425713,
+          "similarity": 0.6076412200927734,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.5160208688929674,
+          "similarity": 0.5928384065628052,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 271,
+          "title": "ADR-003: Token Budget with Proportional Section Allocation",
+          "category": "decision",
+          "final_score": 0.5025892633201687,
+          "similarity": 0.578484058380127,
+          "confidence": 0.5444907804336839,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.4817261791287337,
+          "similarity": 0.5170167684555054,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.47434537239756364,
+          "similarity": 0.5064036846160889,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 285,
+          "title": "ADR-003: Token budget with proportional section allocation for briefing",
+          "category": "decision",
+          "final_score": 0.5884176502768905,
+          "similarity": 0.6076412200927734,
+          "confidence": 0.5606502716539487,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 96,
+          "title": "ADR-006: Character-Based Token Budget Estimation",
+          "category": "decision",
+          "final_score": 0.5815886024392458,
+          "similarity": 0.5928384065628052,
+          "confidence": 0.5653388853718825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 271,
+          "title": "ADR-003: Token Budget with Proportional Section Allocation",
+          "category": "decision",
+          "final_score": 0.5645777174020365,
+          "similarity": 0.578484058380127,
+          "confidence": 0.5444907804336839,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 556,
+          "title": "Token budget constraints must be established during scoping, not mid-design",
+          "category": "lesson-learned",
+          "final_score": 0.5417159925886819,
+          "similarity": 0.5170167684555054,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 283,
+          "title": "ADR-001: Feature-Gated MCP Briefing Tool via Cargo feature flag",
+          "category": "decision",
+          "final_score": 0.5326160819406696,
+          "similarity": 0.5064036846160889,
+          "confidence": 0.5704784336317307,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-1004",
+  "query": "with that framing... I think we need to address the scalability issues and drive flexibility now into our future choices (doing it later is always more expensive than taking the medicine at the onset).  We will NOT split the database, but we will unlock our application to more efficiently use the database across current and planned features.  I'm inclined to adopt sqlx to resolve this.. I'm assuming rayon would be layered in as we originally planned later.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1162,
+          "title": "Two-Phase Import: DB Transaction Then Embedding Reconstruction",
+          "category": "pattern",
+          "final_score": 0.43298195950537965,
+          "similarity": 0.37536048889160156,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.41620065176154897,
+          "similarity": 0.35087645053863525,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.4023568745312198,
+          "similarity": 0.37082207202911377,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.40137396383301815,
+          "similarity": 0.35642480850219727,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 12,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1162,
+          "title": "Two-Phase Import: DB Transaction Then Embedding Reconstruction",
+          "category": "pattern",
+          "final_score": 0.43298195950537965,
+          "similarity": 0.37536048889160156,
+          "confidence": 0.5675789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2535,
+          "title": "Shared rayon pool monopolisation by long-running background scans",
+          "category": "pattern",
+          "final_score": 0.41620065176154897,
+          "similarity": 0.35087645053863525,
+          "confidence": 0.5570068397261541,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1875,
+          "title": "ADR: SQLite (rusqlite bundled) as Embedded Database Engine",
+          "category": "decision",
+          "final_score": 0.4023568745312198,
+          "similarity": 0.37082207202911377,
+          "confidence": 0.49093712797172,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.40137396383301815,
+          "similarity": 0.35642480850219727,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 14,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6931471805599453
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

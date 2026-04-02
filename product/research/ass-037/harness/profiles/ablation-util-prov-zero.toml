@@ -1,0 +1,12 @@
+[profile]
+name = "ablation-util-prov-zero"
+description = "Q4: w_util=0.0, w_prov=0.0, weight redistributed to sim/conf. Tests whether utility/provenance drive the MRR lift. PPR and NLI unchanged."
+distribution_change = false
+
+[inference]
+w_nli  = 0.35
+w_sim  = 0.325  # 0.25 + share of 0.10
+w_conf = 0.225  # 0.15 + share of 0.10
+w_coac = 0.0
+w_util = 0.0
+w_prov = 0.0

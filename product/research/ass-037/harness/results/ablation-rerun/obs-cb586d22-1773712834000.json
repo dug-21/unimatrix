@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-cb586d22-1773712834000",
+  "query": "poison recovery unwrap_or_else Mutex lock pattern server",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.48621089273309775,
+          "similarity": 0.5322786569595337,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.48616599302881575,
+          "similarity": 0.5192837715148926,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.47909096584240835,
+          "similarity": 0.47266215085983276,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 81,
+          "title": "ADR-005: Shutdown via Arc::try_unwrap",
+          "category": "decision",
+          "final_score": 0.4678744325704733,
+          "similarity": 0.49307703971862793,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.4179334131915943,
+          "similarity": 0.437783420085907,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.5322786569595337,
+          "similarity": 0.5322786569595337,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.5192837715148926,
+          "similarity": 0.5192837715148926,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 81,
+          "title": "ADR-005: Shutdown via Arc::try_unwrap",
+          "category": "decision",
+          "final_score": 0.49307703971862793,
+          "similarity": 0.49307703971862793,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.47266215085983276,
+          "similarity": 0.47266215085983276,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.437783420085907,
+          "similarity": 0.437783420085907,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.5477490324400518,
+          "similarity": 0.5192837715148926,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.546536651108219,
+          "similarity": 0.5322786569595337,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.5426089579346947,
+          "similarity": 0.47266215085983276,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 81,
+          "title": "ADR-005: Shutdown via Arc::try_unwrap",
+          "category": "decision",
+          "final_score": 0.5252122564968625,
+          "similarity": 0.49307703971862793,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.46208670241141314,
+          "similarity": 0.437783420085907,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.42370994274432844,
+          "similarity": 0.5322786569595337,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.41571309016301083,
+          "similarity": 0.5192837715148926,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 81,
+          "title": "ADR-005: Shutdown via Arc::try_unwrap",
+          "category": "decision",
+          "final_score": 0.39958587059607875,
+          "similarity": 0.49307703971862793,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.3870228620675894,
+          "similarity": 0.47266215085983276,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.3655590277451735,
+          "similarity": 0.437783420085907,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.48621089273309775,
+          "similarity": 0.5322786569595337,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.48616599302881575,
+          "similarity": 0.5192837715148926,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.47909096584240835,
+          "similarity": 0.47266215085983276,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 81,
+          "title": "ADR-005: Shutdown via Arc::try_unwrap",
+          "category": "decision",
+          "final_score": 0.4678744325704733,
+          "similarity": 0.49307703971862793,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.4179334131915943,
+          "similarity": 0.437783420085907,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 734,
+          "title": "Graceful RwLock Fallback Instead of expect() on try_write/try_read",
+          "category": "pattern",
+          "final_score": 0.5475641930833949,
+          "similarity": 0.5192837715148926,
+          "confidence": 0.588413690904565,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 770,
+          "title": "Non-reentrant mutex deadlock: lock_conn() held while calling methods that re-acquire it",
+          "category": "lesson-learned",
+          "final_score": 0.5464440667306301,
+          "similarity": 0.5322786569595337,
+          "confidence": 0.5669052141777696,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.5421547578887538,
+          "similarity": 0.47266215085983276,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 81,
+          "title": "ADR-005: Shutdown via Arc::try_unwrap",
+          "category": "decision",
+          "final_score": 0.5250035862580428,
+          "similarity": 0.49307703971862793,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3782,
+          "title": "Two independent RwLock fields on a shared struct — separate hot-path and policy locks",
+          "category": "pattern",
+          "final_score": 0.46192888888981887,
+          "similarity": 0.437783420085907,
+          "confidence": 0.49680567716213625,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 734,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 770,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

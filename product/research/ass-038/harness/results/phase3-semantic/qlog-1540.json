@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1540",
+  "query": "So this is a research spike: DO NOT commit any work until told because there is active feature development going on.  Store your research in product/research/ass-027.  This is a security assessment.  We currently have some coarse grained access controls built into unimatrix.  We have future plans to enable http connections in @product/PRODUCT-VISION.md securely.  I've thought of tieing these together in a new way, and we'll mirror a common priviledged access pattern to do it.  Once we have enabled HTTP and Oauth connections, I'm forseeing we can have different LLM sessions connecting to Unimatrix. . (also consider, we may also be enabling the support of multiple projects from a single unimatrix server instance).  So my thought process, is to require new connections to be scoped for Unimatrix interaction (content search, read, write), and a different scope (and require a different connection) for unimatrix administration.  enroll, and other aspects that Human/System can do in today's world.  I want you to research this potential, and determine how difficult this will be related to implementing the OAuth capability.  Should I consider (from a security perspective) any alternatives or different approach?  Right now the one constraint is that an LLM that has access to it, will likely need read,write,search for normal everyday use.. there is no READONLY llm model.  This also positions this for enterprise use as well.. limiting what can access this knowledge repository.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4963572499240704,
+          "similarity": 0.45445942878723145,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4791646769599964,
+          "similarity": 0.4490792155265808,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.47825180785683596,
+          "similarity": 0.4429537057876587,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.44244476836245483,
+          "similarity": 0.46645498275756836,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4042195094588409,
+          "similarity": 0.42377805709838867,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4963572499240704,
+          "similarity": 0.45445942878723145,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4791646769599964,
+          "similarity": 0.4490792155265808,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2285,
+          "title": "ADR-002 dsn-001: Config Type Placement — unimatrix-server owns UnimatrixConfig",
+          "category": "decision",
+          "final_score": 0.47825180785683596,
+          "similarity": 0.4429537057876587,
+          "confidence": 0.5938924702004712,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2243,
+          "title": "ADR: W0-2 Session Identity via Env Var — Deferred to W2-3 (OAuth)",
+          "category": "decision",
+          "final_score": 0.44244476836245483,
+          "similarity": 0.46645498275756836,
+          "confidence": 0.46312868161585125,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3748,
+          "title": "Convention: agents access crates/unimatrix-server/src/",
+          "category": "convention",
+          "final_score": 0.4042195094588409,
+          "similarity": 0.42377805709838867,
+          "confidence": 0.4203414441048701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

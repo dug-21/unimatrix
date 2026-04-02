@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3959",
+  "query": "Noticed interesting behavior in the bugfix.. 4 requests in a row:  unimatrix - context_store (MCP)(title: \"Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence\", content:\n                                    \"FRESHNESS_HALF_LIFE_HOURS=168.0 (1 week) was set for ephemeral/transient content. For a durable knowledge base holding ADRs and architectural decisions, a\n                                    26-day-old entry scores exp(-3.71) ≈ 0.024 — effectively dead — despite being the governing answer. Root cause: compiled constant magnitude was not validated\n                                    against actual domain content lifetime. Missing guard: a semantic regression test asserting freshness_score for a 30-day-old entry under the default\n                                    collaborative preset remains above a meaningful floor (e.g., 0.1). Such a test would have made the miscalibration visible before shipping. Takeaway: when a\n                                    compiled constant backs a configurable default, validate the constant against the domain's expected content lifetime, not a convenient round number.\", topic:\n                                    \"unimatrix-engine\", category: \"lesson-learned\", tags: \"[\\\"bugfix\\\", \\\"confidence\\\", \\\"freshness\\\", \\\"half-life\\\", \\\"calibration\\\", \\\"default-value\\\",\n                                    \\\"caused_by_feature:dsn-001\\\"]\", agent_id: \"426-investigator\")\n     unimatrix - context_store (MCP)(title: \"Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence\", content:\n                                    \"FRESHNESS_HALF_LIFE_HOURS=168.0 (1 week) was set for ephemeral/transient content. For a durable knowledge base holding ADRs and architectural decisions, a\n                                    26-day-old entry scores exp(-3.71) ≈ 0.024 — effectively dead — despite being the governing answer. Root cause: compiled constant magnitude was not validated\n                                    against actual domain content lifetime. Missing guard: a semantic regression test asserting freshness_score for a 30-day-old entry under the default\n                                    collaborative preset remains above a meaningful floor (e.g., 0.1). Such a test would have made the miscalibration visible before shipping. Takeaway: when a\n                                    compiled constant backs a configurable default, validate the constant against the domain's expected content lifetime, not a convenient round number.\", topic:\n                                    \"unimatrix-engine\", category: \"lesson-learned\", tags: \"[\\\"bugfix\\\", \\\"confidence\\\", \\\"freshness\\\", \\\"half-life\\\", \\\"calibration\\\", \\\"default-value\\\",\n                                    \\\"caused_by_feature:dsn-001\\\"]\", agent_id: \"426-investigator\")\n     unimatrix - context_store (MCP)(title: \"Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence\", content:\n                                    \"FRESHNESS_HALF_LIFE_HOURS=168.0 (1 week) was set for ephemeral/transient content. For a durable knowledge base holding ADRs and architectural decisions, a\n                                    26-day-old entry scores exp(-3.71) ≈ 0.024 — effectively dead — despite being the governing answer. Root cause: compiled constant magnitude was not validated\n                                    against actual domain content lifetime. Missing guard: a semantic regression test asserting freshness_score for a 30-day-old entry under the default\n                                    collaborative preset remains above a meaningful floor (e.g., 0.1). Such a test would have made the miscalibration visible before shipping. Takeaway: when a\n                                    compiled constant backs a configurable default, validate the constant against the domain's expected content lifetime, not a convenient round number.\", topic:\n                                    \"unimatrix-engine\", category: \"lesson-learned\", tags:\n                                    \"[\\\"bugfix\\\",\\\"confidence\\\",\\\"freshness\\\",\\\"half-life\\\",\\\"calibration\\\",\\\"default-value\\\",\\\"caused_by_feature:dsn-001\\\"]\", agent_id: \"426-investigator\")\n     unimatrix - context_store (MCP)(title: \"Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence\", content:\n                                    \"FRESHNESS_HALF_LIFE_HOURS=168.0 (1 week) was set for ephemeral/transient content. For a durable knowledge base holding ADRs and architectural decisions, a\n                                    26-day-old entry scores exp(-3.71) ≈ 0.024 — effectively dead — despite being the governing answer. Root cause: compiled constant magnitude was not validated\n                                    against actual domain content lifetime. Missing guard: a semantic regression test asserting freshness_score for a 30-day-old entry under the default\n                                    collaborative preset remains above a meaningful floor (e.g., 0.1). Such a test would have made the miscalibration visible before shipping. Takeaway: when a\n                                    compiled constant backs a configurable default, validate the constant against the domain's expected content lifetime, not a convenient round number.\", topic:\n                                    \"unimatrix-engine\", category: \"lesson-learned\", tags: \"[\\\"bugfix\\\", \\\"confidence\\\", \\\"freshness\\\", \\\"half-life\\\", \\\"calibration\\\", \\\"default-value\\\",\n                                    \\\"caused_by_feature:dsn-001\\\"]\", agent_id: \"426-investigator\")\n     unimatrix - context_store (MCP)(title: \"Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence\", content:\n                                    \"FRESHNESS_HALF_LIFE_HOURS=168.0 (1 week) was set for ephemeral/transient content. For a durable knowledge base holding ADRs and architectural decisions, a\n                                    26-day-old entry scores exp(-3.71) ≈ 0.024 — effectively dead — despite being the governing answer. Root cause: compiled constant magnitude was not validated\n                                    against actual domain content lifetime. Missing guard: a semantic regression test asserting freshness_score for a 30-day-old entry under the default\n                                    collaborative preset remains above a meaningful floor (e.g., 0.1). Such a test would have made the miscalibration visible before shipping. Takeaway: when a\n                                    compiled constant backs a configurable default, validate the constant against the domain's expected content lifetime, not a convenient round number.\", topic:\n                                    \"unimatrix-engine\", category: \"lesson-learned\", agent_id: \"426-investigator\")",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.667876750775117,
+          "similarity": 0.8336201906204224,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.5705362110140586,
+          "similarity": 0.6434796452522278,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5573885578929562,
+          "similarity": 0.6048634052276611,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.5280062702158098,
+          "similarity": 0.6044672727584839,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.517932495261315,
+          "similarity": 0.6070525050163269,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3704,
+          "title": "Default freshness half-life (168h) miscalibrated for durable knowledge bases — silently kills ADR and convention confidence",
+          "category": "lesson-learned",
+          "final_score": 0.667876750775117,
+          "similarity": 0.8336201906204224,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3698,
+          "title": "Decouple freshness-decay tests from ConfidenceParams::default() when changing FRESHNESS_HALF_LIFE_HOURS",
+          "category": "pattern",
+          "final_score": 0.5705362110140586,
+          "similarity": 0.6434796452522278,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 922,
+          "title": "ADR-005 col-020b: Time-Boxed #193 Investigation with Store-Layer Scope Boundary",
+          "category": "decision",
+          "final_score": 0.5573885578929562,
+          "similarity": 0.6048634052276611,
+          "confidence": 0.5773926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3719,
+          "title": "Verify reported bug scope is still live before diagnosing: gates can be silently removed and components can be removed from pipelines",
+          "category": "lesson-learned",
+          "final_score": 0.5280062702158098,
+          "similarity": 0.6044672727584839,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.517932495261315,
+          "similarity": 0.6070525050163269,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

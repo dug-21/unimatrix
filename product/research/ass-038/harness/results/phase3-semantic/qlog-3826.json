@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3826",
+  "query": "Mostly correct. Three issues to flag before this goes to delivery:\n\n  1. rand::thread_rng() is wrong for rand 0.9.2. The workspace has rand v0.9.2, which renamed\n  thread_rng() to rng(). The proposed code will fail to compile. The correct call is rand::rng().\n\n  2. The tier2 sort-then-shuffle is self-defeating. The proposal does:\n  tier2.sort_by(|a, b| b.created_at.cmp(&a.created_at));\n  tier2.shuffle(&mut rng);\n  A full shuffle after a sort completely undoes the sort — the created_at ordering is gone. The comment\n  \"randomize within equal timestamps\" implies partial shuffling by group, which requires group-by logic\n  that isn't there. Just shuffle. The sort adds nothing if the next line is a full shuffle.\n\n  3. The VectorStore trait addition requires mock updates. Adding fn embedded_ids(&self) -> HashSet<u64>\n  to the trait means every mock/stub implementation of VectorStore in tests needs a new method body.\n  There's a cleaner alternative that avoids the trait change entirely:\n\n  let embedded_ids: HashSet<u64> = all_active.iter()\n      .filter(|e| vector_index.contains(e.id))\n      .map(|e| e.id)\n      .collect();\n\n  contains() is already on the trait, O(1) per call (uncontended RwLock read). At 3167 entries that's\n  3167 lock acquisitions — cheap and clean, no trait change, no mock updates. The trait addition\n  (embedded_ids() bulk method) is the right long-term design, but for a bugfix the single-lock-per-entry\n  approach is sufficient and far less invasive.\n\n  Everything else in the proposal is correct. These three are the things to correct in the spec before\n  handing to delivery.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5718210476059833,
+          "similarity": 0.6377260684967041,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5107784681311998,
+          "similarity": 0.5255488753318787,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5052176889931946,
+          "similarity": 0.5621798634529114,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.4926444451529679,
+          "similarity": 0.4839354157447815,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3752,
+          "title": "Node-ID-sorted accumulation for deterministic power iteration",
+          "category": "pattern",
+          "final_score": 0.4852019363079312,
+          "similarity": 0.5126838088035583,
+          "confidence": 0.5131426716878729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5718210476059833,
+          "similarity": 0.6377260684967041,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5107784681311998,
+          "similarity": 0.5255488753318787,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5052176889931946,
+          "similarity": 0.5621798634529114,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3734,
+          "title": "ADR-004 crt-030: Deterministic Accumulation via Node-ID-Sorted Iteration",
+          "category": "decision",
+          "final_score": 0.4926444451529679,
+          "similarity": 0.4839354157447815,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3752,
+          "title": "Node-ID-sorted accumulation for deterministic power iteration",
+          "category": "pattern",
+          "final_score": 0.4852019363079312,
+          "similarity": 0.5126838088035583,
+          "confidence": 0.5131426716878729,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

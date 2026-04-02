@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-2193",
+  "query": "<task-notification>\n<task-id>a9c22fc570374ce3d</task-id>\n<tool-use-id>toolu_01Tu1YaitCTtrKqvz9AU42Ns</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/2c6f8a12-88b0-4fb8-9d36-928e7a7ebf88/tasks/a9c22fc570374ce3d.output</output-file>\n<status>completed</status>\n<summary>Agent \"Implement hook.rs crt-028\" completed</summary>\n<result>All 22 test functions plus the helper are present. The implementation is complete.\n\nHere is a summary of what was implemented:\n\n**File modified**: `/workspaces/unimatrix/crates/unimatrix-server/src/uds/hook.rs`\n\n**Changes made**:\n\n1. **Import** (line 7): Extended `use std::io::Read` to `use std::io::{BufRead, BufReader, Read, Seek, SeekFrom}`.\n\n2. **Constants** (lines 38–48): Added `MAX_PRECOMPACT_BYTES` (3000), `TAIL_MULTIPLIER` (4), `TOOL_RESULT_SNIPPET_BYTES` (300), `TOOL_KEY_PARAM_BYTES` (120) after `MIN_QUERY_WORDS`.\n\n3. **`run()` — Step 5c** (lines 70–80): Added transcript block extraction for `CompactPayload` requests only, using `hook_input.transcript_path`.\n\n4. **`run()` — `write_result` modification** (lines 101–140): For `BriefingContent` responses in the non-`SubagentStart` path, calls `prepend_transcript` to prepend the transcript block before writing to stdout.\n\n5. **New types and functions** (lines 815–1131):\n   - `enum ExchangeTurn` — typed turn variants\n   - `fn extract_key_param` — identifies the key parameter for known Claude Code tools\n   - `fn get_content_array` — extracts content arrays from two JSONL record shapes\n   - `fn extract_tool_result_snippet` — extracts truncated snippet from tool_result blocks\n   - `fn build_exchange_pairs` — parses JSONL lines into reverse-chronological `ExchangeTurn` vec\n   - `fn format_turn` — formats a single turn as a text line\n   - `fn extract_transcript_block` — reads file tail, builds and returns the restoration block\n   - `fn prepend_transcript` — combines transcript block with briefing content\n\n6. **Tests** (lines 3371–3610): 21 new `#[test]` functions plus `make_jsonl_file` helper covering all specified cases — constants, degradation paths, seek boundary, exchange pair parsing, key param extraction, prepend logic, byte budget enforcement, and system-only transcript handling.</result>\n<usage><total_tokens>108761</total_tokens><tool_uses>74</tool_uses><duration_ms>538905</duration_ms></usage>\n</task-notification>\nFull transcript available at: /tmp/claude-1000/-workspaces-unimatrix/2c6f8a12-88b0-4fb8-9d36-928e7a7ebf88/tasks/a9c22fc570374ce3d.output",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5498609292963151,
+          "similarity": 0.6235911250114441,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5284386717143811,
+          "similarity": 0.6026334762573242,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5279419454273423,
+          "similarity": 0.6016896963119507,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5263301417200188,
+          "similarity": 0.5986272692680359,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3857,
+          "title": "Retrospective findings: bugfix-436",
+          "category": "lesson-learned",
+          "final_score": 0.5498609292963151,
+          "similarity": 0.6235911250114441,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5284386717143811,
+          "similarity": 0.6026334762573242,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3948,
+          "title": "Retrospective findings: crt-037",
+          "category": "lesson-learned",
+          "final_score": 0.5279419454273423,
+          "similarity": 0.6016896963119507,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5263301417200188,
+          "similarity": 0.5986272692680359,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -9,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

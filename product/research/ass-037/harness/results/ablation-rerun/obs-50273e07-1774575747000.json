@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-50273e07-1774575747000",
+  "query": "unimatrix-store read.rs SQL aggregate status metrics",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.4989275813922313,
+          "similarity": 0.5721073150634766,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.49672658852399215,
+          "similarity": 0.5365500450134277,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4905086297996562,
+          "similarity": 0.5284455418586731,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.4775547376557852,
+          "similarity": 0.539261519908905,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.47342780169283,
+          "similarity": 0.5227612853050232,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 11,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.44821988619290865,
+          "similarity": 0.5721073150634766,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.4280070891747108,
+          "similarity": 0.539261519908905,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.42633848923903245,
+          "similarity": 0.5365500450134277,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4213511026822604,
+          "similarity": 0.5284455418586731,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.417853098649245,
+          "similarity": 0.5227612853050232,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.5603953438951322,
+          "similarity": 0.5365500450134277,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.5601642187109084,
+          "similarity": 0.5721073150634766,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5526530822851063,
+          "similarity": 0.5284455418586731,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.5340054131752612,
+          "similarity": 0.539261519908905,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.5298777945534024,
+          "similarity": 0.5227612853050232,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.5605511955218101,
+          "similarity": 0.5365500450134277,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.5600861592576236,
+          "similarity": 0.5721073150634766,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5528113015035798,
+          "similarity": 0.5284455418586731,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.5339710595364792,
+          "similarity": 0.539261519908905,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.5299243076857448,
+          "similarity": 0.5227612853050232,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.5721073150634766,
+          "similarity": 0.5721073150634766,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.539261519908905,
+          "similarity": 0.539261519908905,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.5365500450134277,
+          "similarity": 0.5365500450134277,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.5284455418586731,
+          "similarity": 0.5284455418586731,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.5227612853050232,
+          "similarity": 0.5227612853050232,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.4989275813922313,
+          "similarity": 0.5721073150634766,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 94,
+          "title": "ADR-004: Status Report Consistent Snapshot",
+          "category": "decision",
+          "final_score": 0.49672658852399215,
+          "similarity": 0.5365500450134277,
+          "confidence": 0.5948385533909277,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 864,
+          "title": "ADR-001 col-020: Knowledge Reuse Computed Server-Side",
+          "category": "decision",
+          "final_score": 0.4905086297996562,
+          "similarity": 0.5284455418586731,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3804,
+          "title": "Keyed-archive module pattern for unimatrix-store (memoization/index tables)",
+          "category": "pattern",
+          "final_score": 0.4775547376557852,
+          "similarity": 0.539261519908905,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 356,
+          "title": "ADR-002: Counter Helpers Move to counters.rs Module",
+          "category": "decision",
+          "final_score": 0.47342780169283,
+          "similarity": 0.5227612853050232,
+          "confidence": 0.5401571968010614,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 94,
+        "from_rank": 1,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 3680,
+        "from_rank": 2,
+        "to_rank": 1
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

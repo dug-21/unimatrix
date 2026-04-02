@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4425",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Stage 3b — **Wave 1**: `categories` + `config` in parallel (foundational layer).\n[tool: mcp__unimatrix__context_cycle(phase-end) → Acknowledged: phase_ended for topic 'crt-031'. Attribution is applied via the hook path (fire-and-forget). Use context_cycle_review to confirm session attribution.]\n[tool: Bash(git add product/features/crt-031/ && git commit -m \"$(cat <<'EOF'\npseudocode: crt-031 component design + test plans (#44) → [feature/crt-031 5f72665] pseudocode: crt-031 component design + test plans (#445)\n 19 files changed, 3676 insertions(+), 7 deletions(-)\n create mode 100644 product/features/crt-031/agents/crt-031-agent-1-pseudocode-report.md\n create mode 100644 product/features/crt-031/agents/crt-031-agent-2-testpl]\n[Assistant] Gate 3a PASS. Committing Stage 3a artifacts, then launching Stage 3b.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4896477083328763,
+          "similarity": 0.5007665157318115,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.48885145827219834,
+          "similarity": 0.5254744291305542,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.4761673526766562,
+          "similarity": 0.47467881441116333,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 758,
+          "title": "ADR-017-001: Extraction Facade over Individual Functions",
+          "category": "decision",
+          "final_score": 0.4713648697899103,
+          "similarity": 0.45929384231567383,
+          "confidence": 0.5518563004073657,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4471067022022448,
+          "similarity": 0.47050273418426514,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1255,
+          "title": "ADR-002 nan-005: Documentation Step Placement -- Before /review-pr, Within Feature PR",
+          "category": "decision",
+          "final_score": 0.4896477083328763,
+          "similarity": 0.5007665157318115,
+          "confidence": 0.5422344715723623,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.48885145827219834,
+          "similarity": 0.5254744291305542,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 432,
+          "title": "Git stash conflicts during scope pivots can silently lose completed work",
+          "category": "lesson-learned",
+          "final_score": 0.4761673526766562,
+          "similarity": 0.47467881441116333,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 758,
+          "title": "ADR-017-001: Extraction Facade over Individual Functions",
+          "category": "decision",
+          "final_score": 0.4713648697899103,
+          "similarity": 0.45929384231567383,
+          "confidence": 0.5518563004073657,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4471067022022448,
+          "similarity": 0.47050273418426514,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

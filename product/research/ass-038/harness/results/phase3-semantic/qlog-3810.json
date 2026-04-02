@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3810",
+  "query": "thoughts?  Confirmed — fully deterministic. Here's the breakdown:\n                                        \n  Tier 1 (isolated entries): No sort at all — order is whatever all_active comes back as (likely insertion\n   order from SQLite).                                                                                    \n                                                                                                          \n  Tier 2 (non-isolated): sort_by(|a, b| b.created_at.cmp(&a.created_at)) — sorted created_at descending,  \n  same order every tick.                                                                                  \n                                                                                                          \n  After tick 1 processes the ~65 isolated candidates and writes 6 edges, those 6 entries move out of      \n  isolated_ids. But the rest of tier 1 (entries that had no-embedding and were skipped in Phase 4) stay in\n   the isolated set — so tick 2 re-selects the same pool. The ones with embeddings were already fully     \n  evaluated; the ones without embeddings are skipped again in Phase 4. Net result: 0 new pairs.\n\n  The stuck state is structural, not a fluke:                                                             \n   \n  ┌────────────────────────────────────────┬───────────────────────────────────────────────────┐          \n  │    What stays the same tick-to-tick    │                        Why                        │\n  ├────────────────────────────────────────┼───────────────────────────────────────────────────┤          \n  │ Tier 2 source order                    │ created_at sort is stable                         │\n  ├────────────────────────────────────────┼───────────────────────────────────────────────────┤\n  │ Tier 1 re-selects no-embedding entries │ They never leave isolated_ids                     │          \n  ├────────────────────────────────────────┼───────────────────────────────────────────────────┤          \n  │ HNSW neighbor expansion                │ Same embedding → same neighbors                   │          \n  ├────────────────────────────────────────┼───────────────────────────────────────────────────┤          \n  │ existing_supports_pairs pre-filter     │ 6 new edges excluded, but rest of pairs re-scored │\n  └────────────────────────────────────────┴───────────────────────────────────────────────────┘          \n                                               \n  Practical fix options (in order of invasiveness):                                                       \n                                               \n  1. Shuffle tier 1 and tier 2 independently — use_thread_rng().shuffle() before take(max_sources).       \n  Cheapest, doesn't require schema changes. Different candidates selected each tick.\n  2. Exclude no-embedding sources at selection time — check vector_index.get_embedding(id).is_some()      \n  during select_source_candidates. Would require passing the vector index in, but prevents permanently    \n  stuck no-embedding entries from consuming tier 1 slots.\n  3. Attempted-pairs bloom filter — persist (source, target) pairs tried this tick/session and skip       \n  re-scoring. Heavier, but prevents re-scoring known-bad pairs even after shuffle redistributes           ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5928967911059568,
+          "similarity": 0.6815736889839172,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5575461932241094,
+          "similarity": 0.5665292739868164,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.5470263156967751,
+          "similarity": 0.5628445148468018,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5082319191303667,
+          "similarity": 0.5553461313247681,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.4957859724446346,
+          "similarity": 0.5629933476448059,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5928967911059568,
+          "similarity": 0.6815736889839172,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5575461932241094,
+          "similarity": 0.5665292739868164,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3628,
+          "title": "ADR-003: Bidirectional Contradicts Query Required for Correctness (col-030)",
+          "category": "decision",
+          "final_score": 0.5470263156967751,
+          "similarity": 0.5628445148468018,
+          "confidence": 0.6092935499672444,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3980,
+          "title": "Promotion tick SELECT must JOIN entries for quarantine filter on both outer query and normalization subquery",
+          "category": "pattern",
+          "final_score": 0.5082319191303667,
+          "similarity": 0.5553461313247681,
+          "confidence": 0.5147064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3956,
+          "title": "ADR-003 crt-037: Directional Dedup for query_existing_informs_pairs",
+          "category": "decision",
+          "final_score": 0.4957859724446346,
+          "similarity": 0.5629933476448059,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 30,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

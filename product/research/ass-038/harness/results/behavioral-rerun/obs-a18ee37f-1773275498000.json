@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-a18ee37f-1773275498000",
+  "query": "snapshot isolation export serialization column mapping",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.5245266461992998,
+          "similarity": 0.5446863770484924,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5003874480939315,
+          "similarity": 0.5082687139511108,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.49962044415761986,
+          "similarity": 0.46142005920410156,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1099,
+          "title": "ADR-003: Deterministic Key Ordering via preserve_order",
+          "category": "decision",
+          "final_score": 0.45996826470401864,
+          "similarity": 0.4357057809829712,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2661,
+          "title": "Snapshot commands must copy all storage artifacts, not just the primary database",
+          "category": "lesson-learned",
+          "final_score": 0.4551218464296548,
+          "similarity": 0.4338858723640442,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1097,
+          "title": "ADR-001: Snapshot Isolation for Knowledge Export",
+          "category": "decision",
+          "final_score": 0.5245266461992998,
+          "similarity": 0.5446863770484924,
+          "confidence": 0.5741632153288246,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5003874480939315,
+          "similarity": 0.5082687139511108,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.49962044415761986,
+          "similarity": 0.46142005920410156,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1099,
+          "title": "ADR-003: Deterministic Key Ordering via preserve_order",
+          "category": "decision",
+          "final_score": 0.45996826470401864,
+          "similarity": 0.4357057809829712,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2661,
+          "title": "Snapshot commands must copy all storage artifacts, not just the primary database",
+          "category": "lesson-learned",
+          "final_score": 0.4551218464296548,
+          "similarity": 0.4338858723640442,
+          "confidence": 0.5440651940747145,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

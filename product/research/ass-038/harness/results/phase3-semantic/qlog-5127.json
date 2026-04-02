@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5127",
+  "query": "now working on 469. here's the proposed fix, thoughts? ---                                                                               \n  Root Cause:                                                                       \n  Three guard sites in nli_detection_tick.rs encode is_empty() checks that block any\n   Informs candidate where either entry lacks a feature_cycle. This conflates       \n  intra-feature suppression (the design intent) with attribution completeness       \n  enforcement (not in the spec).                                                    \n                                                                                    \n  Affected Files:                                                 \n  - crates/unimatrix-server/src/services/nli_detection_tick.rs — three sites:\n    - Line ~293: Phase 4b source pre-filter loop (if                                \n  source_meta.feature_cycle.is_empty() { continue; }) — drops sources before HNSW\n  scan                                                                              \n    - Line 770: phase4b_candidate_passes_guards — || is_empty blocks pair if either \n  side is empty                                                                     \n    - Line 801: apply_informs_composite_guard — needs consistency update            \n                                                                        \n  Proposed Fix:                                                                     \n  1. Remove the pre-filter at line ~293 entirely — wrong place for this logic       \n  2. Replace lines 770–778 (two separate if blocks) with single predicate: if       \n  !src.is_empty() && !tgt.is_empty() && src == tgt { return false; }                \n  3. Update Site 3 (line 801) to use (src.is_empty() || tgt.is_empty() || src !=    \n  tgt) for the cross-feature allow condition — architect flagged that the negation\n  form matters here to avoid an accidental inversion                                \n  4. Update doc comment at line 747 and InformsCandidate field comment at line 83 to\n   reflect relaxed semantics                                                        \n  5. Add 4 AC-15 test cases: source-empty/target-non-empty → passes,                \n  source-non-empty/target-empty → passes, both-empty → passes, same non-empty →\n  blocked (existing covered)                                                        \n                                                                  \n  Design Review: APPROVED WITH NOTES                                                \n                                                                                    \n  Key architect findings:                                                           \n  - (Non-blocking) Site 3's stated failure mode in the issue is inaccurate (\"\" != \"\"\n   is false, so both-empty pairs actually pass Site 3 today) — the fix is still     \n  correct, but the implementer must understand the real reason each site is touched\n  - (Non-blocking) The single proposed new test is insufficient; 3 additional AC-15 \n  variants needed                                                                  \n  - (Non-blocking) Doc comments at lines 83 and 747 will mislead future agents if   \n  not updated                                                                    \n  - No hot-path risk, no security surface change — fix is purely in-memory on a     \n  background tick                                          ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.6264031160602395,
+          "similarity": 0.7245768904685974,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5812604875361098,
+          "similarity": 0.6627492904663086,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.5568241101899257,
+          "similarity": 0.6081820130348206,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.5068915726009168,
+          "similarity": 0.5840939879417419,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3957,
+          "title": "Cross-feature guard over-restriction: is_empty() OR blocks entries with unknown provenance",
+          "category": "lesson-learned",
+          "final_score": 0.6264031160602395,
+          "similarity": 0.7245768904685974,
+          "confidence": 0.5936986143512254,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3949,
+          "title": "Per-guard negative test for multi-predicate composite guards in NLI detection tick",
+          "category": "pattern",
+          "final_score": 0.5812604875361098,
+          "similarity": 0.6627492904663086,
+          "confidence": 0.559493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3630,
+          "title": "ADR-005: No Config Toggle for Contradicts Suppression (col-030)",
+          "category": "decision",
+          "final_score": 0.5568241101899257,
+          "similarity": 0.6081820130348206,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3932,
+          "title": "High Compile Cycles Signal Need for Targeted Test Invocations",
+          "category": "lesson-learned",
+          "final_score": 0.5068915726009168,
+          "similarity": 0.5840939879417419,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.5,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0397207708399179
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

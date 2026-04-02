@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-703",
+  "query": "Interesting review.  Now, assess the Access control related security issues, with what might be actionable, considering a large LLM is the primary user.  The access control layer was built, assuming we could leverage a capability (in the future) LLM's would provide to create a securely identifiable agent type... but considering they can pass this on the mcp call layer (and not able to inject it programmatically at this point)... I consider the access control layer a future capability built into Unimatrix that we can enable when the access mechanisms evolve.  For now, implementing it creates pretty significant friction for now real value.   With that in mind, restructure the Security Findings in priority order, or challenge my thought process on access control",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5451476671435335,
+          "similarity": 0.5471612215042114,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.500900338874559,
+          "similarity": 0.4907824993133545,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.45555235243838377,
+          "similarity": 0.41215407848358154,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.42578584990476076,
+          "similarity": 0.4204542636871338,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.41937357997249025,
+          "similarity": 0.4197905659675598,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.5451476671435335,
+          "similarity": 0.5471612215042114,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1839,
+          "title": "ADR: Security Model Evolution — UNIMATRIX_CLIENT_TOKEN for STDIO",
+          "category": "decision",
+          "final_score": 0.500900338874559,
+          "similarity": 0.4907824993133545,
+          "confidence": 0.5870402064975825,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 85,
+          "title": "ADR-002: Content Scanning Architecture",
+          "category": "decision",
+          "final_score": 0.45555235243838377,
+          "similarity": 0.41215407848358154,
+          "confidence": 0.5762791302133539,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 193,
+          "title": "ASS-014: Two-Door Access Pattern Architecture Decision",
+          "category": "decision",
+          "final_score": 0.42578584990476076,
+          "similarity": 0.4204542636871338,
+          "confidence": 0.48362693018844544,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3578,
+          "title": "MCP Tool Permission Errors on context_store Block Knowledge Stewardship",
+          "category": "lesson-learned",
+          "final_score": 0.41937357997249025,
+          "similarity": 0.4197905659675598,
+          "confidence": 0.46717033711453115,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1135",
+  "query": "lets leave it out for now.. its low complexity now.. it'll be low complexity to add if we ever need it",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 431,
+          "title": "Evaluate dependency cost against problem complexity before committing to a framework",
+          "category": "lesson-learned",
+          "final_score": 0.4182102491777627,
+          "similarity": 0.3697538375854492,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4124483780766346,
+          "similarity": 0.28020179271698,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.406318233850842,
+          "similarity": 0.2803133726119995,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 266,
+          "title": "Refactoring Features Naturally Exceed File Breadth and Session Duration Thresholds",
+          "category": "lesson-learned",
+          "final_score": 0.3950720226979658,
+          "similarity": 0.2823207378387451,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.378266422262294,
+          "similarity": 0.28377705812454224,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 431,
+          "title": "Evaluate dependency cost against problem complexity before committing to a framework",
+          "category": "lesson-learned",
+          "final_score": 0.4182102491777627,
+          "similarity": 0.3697538375854492,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.4124483780766346,
+          "similarity": 0.28020179271698,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.406318233850842,
+          "similarity": 0.2803133726119995,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 266,
+          "title": "Refactoring Features Naturally Exceed File Breadth and Session Duration Thresholds",
+          "category": "lesson-learned",
+          "final_score": 0.3950720226979658,
+          "similarity": 0.2823207378387451,
+          "confidence": 0.5975944361248429,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2674,
+          "title": "Power of Ten Analogical Mapping to Agent Protocol Governance",
+          "category": "pattern",
+          "final_score": 0.378266422262294,
+          "similarity": 0.28377705812454224,
+          "confidence": 0.5498987773911664,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

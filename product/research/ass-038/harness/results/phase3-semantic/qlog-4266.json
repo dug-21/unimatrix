@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4266",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Clean build. Spawning Gate 3b.\n[tool: Bash(cargo build --workspace 2>&1 | grep -A5 \"^error\" | head -20 && cargo build --workspace 2>&1 | tail -3) → warning: `unimatrix-server` (lib) generated 14 warnings (run `cargo fix --lib -p unimatrix-server` to apply 3 suggestions)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.20s]\n[tool: Bash(git add product/features/crt-030/agents/crt-030-agent-5-search-report.md && git commit -m \"$(cat <<'EOF'\nimpl: wave 2 ) → [feature/crt-030 2c331e5] impl: wave 2 — search.rs Step 6d PPR expansion (#398)\n 1 file changed, 109 insertions(+)\n create mode 100644 product/features/crt-030/agents/crt-030-agent-5-search-report.md]\n[tool: Bash(git status --short && git log --oneline -3) → ?? product/features/bugfix-436/agents/436-agent-1-fix-report.md\n?? product/features/bugfix-436/agents/436-agent-2-verify-report.md\n?? product/features/bugfix-436/agents/436-gate-bugfix-report.md\n?? product/features/crt-030/agents/crt-030-agent-5-search-report.md\na068706 impl(search): insert Step 6d ]\n[Assistant] Wave 2 complete. Committing and running Gate 3b.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.5538806452705891,
+          "similarity": 0.5695656538009644,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5516527410235486,
+          "similarity": 0.5855763554573059,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.5154070572602121,
+          "similarity": 0.5778734087944031,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3873,
+          "title": "Retrospective findings: crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.5119734532707615,
+          "similarity": 0.571349561214447,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.5096159327155665,
+          "similarity": 0.5668702721595764,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1567,
+          "title": "Retrospective findings: crt-018b",
+          "category": "lesson-learned",
+          "final_score": 0.5538806452705891,
+          "similarity": 0.5695656538009644,
+          "confidence": 0.6182965317330787,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5516527410235486,
+          "similarity": 0.5855763554573059,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3855,
+          "title": "Retrospective findings: bugfix-444",
+          "category": "lesson-learned",
+          "final_score": 0.5154070572602121,
+          "similarity": 0.5778734087944031,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3873,
+          "title": "Retrospective findings: crt-031",
+          "category": "lesson-learned",
+          "final_score": 0.5119734532707615,
+          "similarity": 0.571349561214447,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3850,
+          "title": "Retrospective findings: bugfix-430",
+          "category": "lesson-learned",
+          "final_score": 0.5096159327155665,
+          "similarity": 0.5668702721595764,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

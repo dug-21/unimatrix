@@ -1,0 +1,381 @@
+{
+  "scenario_id": "obs-7c4e3cc4-1773804598000",
+  "query": "build_context capability check audit attribution tool call",
+  "profiles": {
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.5328691141203007,
+          "similarity": 0.5859224200248718,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 261,
+          "title": "AuditSource-Driven Behavior Differentiation for Caller-Specific Security",
+          "category": "pattern",
+          "final_score": 0.4916707947254181,
+          "similarity": 0.5053415894508362,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.4733191737151054,
+          "similarity": 0.49337536096572876,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.46234769792737596,
+          "similarity": 0.5469168424606323,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 253,
+          "title": "ADR-002: AuditSource-Driven Content Scan Bypass",
+          "category": "decision",
+          "final_score": 0.4622874162236435,
+          "similarity": 0.4876832962036133,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.6053181546724841,
+          "similarity": 0.5859224200248718,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 261,
+          "title": "AuditSource-Driven Behavior Differentiation for Caller-Specific Security",
+          "category": "pattern",
+          "final_score": 0.5566715232063741,
+          "similarity": 0.5053415894508362,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.5326561834358575,
+          "similarity": 0.49337536096572876,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 253,
+          "title": "ADR-002: AuditSource-Driven Content Scan Bypass",
+          "category": "decision",
+          "final_score": 0.5180726010713133,
+          "similarity": 0.4876832962036133,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.5123481302473167,
+          "similarity": 0.5469168424606323,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.5859224200248718,
+          "similarity": 0.5859224200248718,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.5469168424606323,
+          "similarity": 0.5469168424606323,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 261,
+          "title": "AuditSource-Driven Behavior Differentiation for Caller-Specific Security",
+          "category": "pattern",
+          "final_score": 0.5053415894508362,
+          "similarity": 0.5053415894508362,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.49337536096572876,
+          "similarity": 0.49337536096572876,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 253,
+          "title": "ADR-002: AuditSource-Driven Content Scan Bypass",
+          "category": "decision",
+          "final_score": 0.4876832962036133,
+          "similarity": 0.4876832962036133,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.456721489246075,
+          "similarity": 0.5859224200248718,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.4327180568988507,
+          "similarity": 0.5469168424606323,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 261,
+          "title": "AuditSource-Driven Behavior Differentiation for Caller-Specific Security",
+          "category": "pattern",
+          "final_score": 0.4071332858158992,
+          "similarity": 0.5053415894508362,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.39976945290198695,
+          "similarity": 0.49337536096572876,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 253,
+          "title": "ADR-002: AuditSource-Driven Content Scan Bypass",
+          "category": "decision",
+          "final_score": 0.3962666438176082,
+          "similarity": 0.4876832962036133,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.5328691141203007,
+          "similarity": 0.5859224200248718,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 261,
+          "title": "AuditSource-Driven Behavior Differentiation for Caller-Specific Security",
+          "category": "pattern",
+          "final_score": 0.4916707947254181,
+          "similarity": 0.5053415894508362,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.4733191737151054,
+          "similarity": 0.49337536096572876,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.46234769792737596,
+          "similarity": 0.5469168424606323,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 253,
+          "title": "ADR-002: AuditSource-Driven Content Scan Bypass",
+          "category": "decision",
+          "final_score": 0.4622874162236435,
+          "similarity": 0.4876832962036133,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 317,
+          "title": "ToolContext Pattern: Pre-Validated Handler Context with Separate Capability Check",
+          "category": "pattern",
+          "final_score": 0.6051922083436034,
+          "similarity": 0.5859224200248718,
+          "confidence": 0.6330263470262157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 261,
+          "title": "AuditSource-Driven Behavior Differentiation for Caller-Specific Security",
+          "category": "pattern",
+          "final_score": 0.5563382119482213,
+          "similarity": 0.5053415894508362,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 275,
+          "title": "ADR-002: ToolContext Constructed via UnimatrixServer Method",
+          "category": "decision",
+          "final_score": 0.5324011131600774,
+          "similarity": 0.49337536096572876,
+          "confidence": 0.5887716441074701,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 253,
+          "title": "ADR-002: AuditSource-Driven Content Scan Bypass",
+          "category": "decision",
+          "final_score": 0.5178752679228217,
+          "similarity": 0.4876832962036133,
+          "confidence": 0.5614858937394561,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2155,
+          "title": "ADR-003 (superseded by alc-003): Agent Identity via Tool Parameters — capability resolution aspect only",
+          "category": "decision",
+          "final_score": 0.512572602404546,
+          "similarity": 0.5469168424606323,
+          "confidence": 0.46296425565686605,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.8,
+    "rank_changes": [
+      {
+        "entry_id": 253,
+        "from_rank": 4,
+        "to_rank": 5
+      },
+      {
+        "entry_id": 2155,
+        "from_rank": 5,
+        "to_rank": 4
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

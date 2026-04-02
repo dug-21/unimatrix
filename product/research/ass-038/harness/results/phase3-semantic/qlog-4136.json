@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4136",
+  "query": "so we must be careful... I'd like to review the content portion of those entries... can you create an output file per group, so that I can see what we'd be deleting?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.39693043568172526,
+          "similarity": 0.2837703227996826,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.39570299791748265,
+          "similarity": 0.2808608412742615,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 102,
+          "title": "ADR-005: Audit Log Reverse Scan for Rate Tracking",
+          "category": "decision",
+          "final_score": 0.3954030652995657,
+          "similarity": 0.2967616319656372,
+          "confidence": 0.5778631315764826,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.37969408424153306,
+          "similarity": 0.31807541847229004,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2154,
+          "title": "test entry - delete",
+          "category": "pattern",
+          "final_score": 0.3457616216668431,
+          "similarity": 0.2828722596168518,
+          "confidence": 0.46296403078592896,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 952,
+          "title": "ADR-003: Separate Retrospective Formatter Module",
+          "category": "decision",
+          "final_score": 0.39693043568172526,
+          "similarity": 0.2837703227996826,
+          "confidence": 0.6005678642794222,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3793,
+          "title": "ADR-001 crt-033: Synchronous write for cycle_review_index via write_pool_server",
+          "category": "decision",
+          "final_score": 0.39570299791748265,
+          "similarity": 0.2808608412742615,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 102,
+          "title": "ADR-005: Audit Log Reverse Scan for Rate Tracking",
+          "category": "decision",
+          "final_score": 0.3954030652995657,
+          "similarity": 0.2967616319656372,
+          "confidence": 0.5778631315764826,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3613,
+          "title": "Avoid multi-filter git show pipelines — use git show SHA:path or git diff instead",
+          "category": "lesson-learned",
+          "final_score": 0.37969408424153306,
+          "similarity": 0.31807541847229004,
+          "confidence": 0.504776202266604,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2154,
+          "title": "test entry - delete",
+          "category": "pattern",
+          "final_score": 0.3457616216668431,
+          "similarity": 0.2828722596168518,
+          "confidence": 0.46296403078592896,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

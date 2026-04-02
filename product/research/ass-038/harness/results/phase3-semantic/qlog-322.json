@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-322",
+  "query": "now lets start to talk about nan-004 from @product/PRODUCT-VISION.md If we need a research spike on the optimal delivery mechanism for unimatrix, I'm open to that, this was one method that is virtually ubiquitus for all developers that I thought of.  The only requirement is its easy to bring in, can be run from any platform, handles multiplatform builds simply (though in the beginning I'll only support linux, I want to build for multiplatform in the future)",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4754013234304758,
+          "similarity": 0.41464316844940186,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.46997822461559635,
+          "similarity": 0.4288533926010132,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.447074811156275,
+          "similarity": 0.40135127305984497,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.43065439059341215,
+          "similarity": 0.429704487323761,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.42615482134213567,
+          "similarity": 0.4408848285675049,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 18,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 7,
+          "title": "Security cross-cutting concerns and threat landscape",
+          "category": "decision",
+          "final_score": 0.4754013234304758,
+          "similarity": 0.41464316844940186,
+          "confidence": 0.6265990658121462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1092,
+          "title": "ADR-003 nan-003: context_status Pre-flight Check for /unimatrix-seed",
+          "category": "decision",
+          "final_score": 0.46997822461559635,
+          "similarity": 0.4288533926010132,
+          "confidence": 0.5915789059551714,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 393,
+          "title": "ADR-001: New unimatrix-learn Crate",
+          "category": "decision",
+          "final_score": 0.447074811156275,
+          "similarity": 0.40135127305984497,
+          "confidence": 0.5687012401958252,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 197,
+          "title": "ASS-014 RQ-5: Distribution Strategy — Bundled Subcommand Primary, npm Secondary",
+          "category": "decision",
+          "final_score": 0.43065439059341215,
+          "similarity": 0.429704487323761,
+          "confidence": 0.48362693543388885,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 201,
+          "title": "ASS-014: Centralized Deployment — Dockerized Server + WASM Cortical Implant",
+          "category": "decision",
+          "final_score": 0.42615482134213567,
+          "similarity": 0.4408848285675049,
+          "confidence": 0.4554419028322186,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 16,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

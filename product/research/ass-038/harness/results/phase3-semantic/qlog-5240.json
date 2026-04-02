@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-5240",
+  "query": "ass-034 shipped... but its still not finding anything with NLI.. the other option I thought of is changing the NLI model to see if that created different results",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.47125220735957796,
+          "similarity": 0.4204601049423218,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2798,
+          "title": "ONNX cross-encoder token_type_ids bug: NLI models often omit it from exported inputs",
+          "category": "lesson-learned",
+          "final_score": 0.44861051719985146,
+          "similarity": 0.4179297685623169,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2807,
+          "title": "Operator procedure: NLI model download, hash pinning, and eval run for crt-023 and future NLI features",
+          "category": "procedure",
+          "final_score": 0.4277787190463602,
+          "similarity": 0.3966786861419678,
+          "confidence": 0.5230012572087384,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.42274447701034035,
+          "similarity": 0.40883398056030273,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.4166395402285147,
+          "similarity": 0.3928704857826233,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2700,
+          "title": "ADR-001 crt-023: NLI Session Concurrency — Single Mutex<Session> with Dynamic Pool Floor",
+          "category": "decision",
+          "final_score": 0.47125220735957796,
+          "similarity": 0.4204601049423218,
+          "confidence": 0.6070272700583949,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2798,
+          "title": "ONNX cross-encoder token_type_ids bug: NLI models often omit it from exported inputs",
+          "category": "lesson-learned",
+          "final_score": 0.44861051719985146,
+          "similarity": 0.4179297685623169,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2807,
+          "title": "Operator procedure: NLI model download, hash pinning, and eval run for crt-023 and future NLI features",
+          "category": "procedure",
+          "final_score": 0.4277787190463602,
+          "similarity": 0.3966786861419678,
+          "confidence": 0.5230012572087384,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2492,
+          "title": "NLI model integration: W1-2 architecture constraints from codebase analysis",
+          "category": "pattern",
+          "final_score": 0.42274447701034035,
+          "similarity": 0.40883398056030273,
+          "confidence": 0.4919721796562058,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3954,
+          "title": "ADR-001: NliCandidatePair Tagged Union for Merged NLI Batch (corrected)",
+          "category": "decision",
+          "final_score": 0.4166395402285147,
+          "similarity": 0.3928704857826233,
+          "confidence": 0.49820662950222117,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.8,
+      "icd": 1.3321790402101223
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

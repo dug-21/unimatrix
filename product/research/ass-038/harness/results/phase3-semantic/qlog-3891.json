@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3891",
+  "query": "Two small things to flag before this goes to the   \n  spec:\n                                                     \n  Rank normalization edge case (N=1): The formula 1 -\n   rank/N produces 0.0 when a bucket has exactly one\n  entry (1 - 1/1 = 0.0). An entry that's the only one\n   accessed in a given phase/category slot gets no \n  boost — the opposite of the intent. The spec should\n   use 1 - (rank - 1) / N instead: rank 1 of N gets\n  1.0, rank N gets (N-1)/N. Single-entry buckets get\n  1.0 (full signal).\n\n  Verify query_log.ts storage type: The SQL in Goal 6\n   — WHERE ts > strftime('%s', 'now') - lookback_days\n   * 86400 — assumes ts is stored as INTEGER (Unix   \n  epoch). If it's TEXT (ISO 8601 string, which SQLite\n   sometimes defaults to with sqlx's chrono mapping),\n   that arithmetic silently returns no rows. Confirm\n  the column type before the spec locks in that SQL\n  pattern. If it's TEXT, the filter becomes WHERE ts\n  > datetime('now', '-' || ? || ' days').\n\\\nBased on this revised scope... I want you to wipe all of the existing docs we did in the previous iteration, then begin the design protocol again at the scope completion phase then go forward according to our protocol",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.5534179284765237,
+          "similarity": 0.583015501499176,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.5413941385608141,
+          "similarity": 0.5904149413108826,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.5321619583629004,
+          "similarity": 0.5440578460693359,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 354,
+          "title": "ADR: OBSERVATION_METRICS Normalization Out of Scope for nxs-008",
+          "category": "decision",
+          "final_score": 0.5177960290960427,
+          "similarity": 0.5350353717803955,
+          "confidence": 0.5696815478601226,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.5052402396957635,
+          "similarity": 0.529917299747467,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3686,
+          "title": "ADR-002 col-031: Time-Based Retention Window for Frequency Table Rebuild",
+          "category": "decision",
+          "final_score": 0.5534179284765237,
+          "similarity": 0.583015501499176,
+          "confidence": 0.5978265180088845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3685,
+          "title": "ADR-001 col-031: Rank-Based Normalization for phase_affinity_score (1-indexed)",
+          "category": "decision",
+          "final_score": 0.5413941385608141,
+          "similarity": 0.5904149413108826,
+          "confidence": 0.5546198885066634,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 407,
+          "title": "ADR-004: Shadow Mode Persistence in SQLite (crt-007)",
+          "category": "decision",
+          "final_score": 0.5321619583629004,
+          "similarity": 0.5440578460693359,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 354,
+          "title": "ADR: OBSERVATION_METRICS Normalization Out of Scope for nxs-008",
+          "category": "decision",
+          "final_score": 0.5177960290960427,
+          "similarity": 0.5350353717803955,
+          "confidence": 0.5696815478601226,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3680,
+          "title": "ADR-002 col-031: SQL Aggregation in unimatrix-store query_log.rs Extension",
+          "category": "decision",
+          "final_score": 0.5052402396957635,
+          "similarity": 0.529917299747467,
+          "confidence": 0.5429130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

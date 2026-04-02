@@ -1,0 +1,391 @@
+{
+  "scenario_id": "obs-88cecd44-1773699014000",
+  "query": "GNN confidence weight learning training signal",
+  "profiles": {
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.5194372601028623,
+          "similarity": 0.49311912059783936,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4959896471921135,
+          "similarity": 0.402182400226593,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.49479232982634197,
+          "similarity": 0.43012499809265137,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.47645810185569293,
+          "similarity": 0.3929288983345032,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.45914097406385806,
+          "similarity": 0.4073612689971924,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 10,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.3996117665217473,
+          "similarity": 0.49311912059783936,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.36084615267240083,
+          "similarity": 0.43012499809265137,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.34683770399827224,
+          "similarity": 0.4073612689971924,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.34365070783174956,
+          "similarity": 0.402182400226593,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.337956245128925,
+          "similarity": 0.3929288983345032,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.46366994097478814,
+          "similarity": 0.49311912059783936,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.44121476873723847,
+          "similarity": 0.43012499809265137,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4400912001132965,
+          "similarity": 0.402182400226593,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.4252001098044694,
+          "similarity": 0.3929288983345032,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.41361422888918176,
+          "similarity": 0.4073612689971924,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.5192663630930894,
+          "similarity": 0.49311912059783936,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4953805092248049,
+          "similarity": 0.402182400226593,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.49437241208781146,
+          "similarity": 0.43012499809265137,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.47591570443023057,
+          "similarity": 0.3929288983345032,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.4588047422127758,
+          "similarity": 0.4073612689971924,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.49311912059783936,
+          "similarity": 0.49311912059783936,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.43012499809265137,
+          "similarity": 0.43012499809265137,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.4073612689971924,
+          "similarity": 0.4073612689971924,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.402182400226593,
+          "similarity": 0.402182400226593,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.3929288983345032,
+          "similarity": 0.3929288983345032,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 452,
+          "title": "Weighted Loss for Weak Training Labels",
+          "category": "pattern",
+          "final_score": 0.46366994097478814,
+          "similarity": 0.49311912059783936,
+          "confidence": 0.557034602252895,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3247,
+          "title": "ADR-006 dsn-001: Preset Resolution Pipeline — Single Site for ConfidenceParams",
+          "category": "decision",
+          "final_score": 0.44121476873723847,
+          "similarity": 0.43012499809265137,
+          "confidence": 0.5871742323030428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2298,
+          "title": "Config key semantic divergence: same TOML key, different weights payload than vision example",
+          "category": "pattern",
+          "final_score": 0.4400912001132965,
+          "similarity": 0.402182400226593,
+          "confidence": 0.63,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2287,
+          "title": "ADR-004 dsn-001: Forward-Compatibility Stubs for [confidence] and [cycle]",
+          "category": "decision",
+          "final_score": 0.4252001098044694,
+          "similarity": 0.3929288983345032,
+          "confidence": 0.5957855354573925,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 456,
+          "title": "ADR: Weighted Loss for Weak Labels (crt-008 ADR-004)",
+          "category": "decision",
+          "final_score": 0.41361422888918176,
+          "similarity": 0.4073612689971924,
+          "confidence": 0.5331119813019519,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.4,
+    "rank_changes": [
+      {
+        "entry_id": 456,
+        "from_rank": 5,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2298,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 3247,
+        "from_rank": 3,
+        "to_rank": 2
+      },
+      {
+        "entry_id": 2287,
+        "from_rank": 4,
+        "to_rank": 5
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -4,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

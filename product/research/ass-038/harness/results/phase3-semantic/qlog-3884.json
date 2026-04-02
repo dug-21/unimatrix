@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3884",
+  "query": "I just want to confirm, these are the right goals for col-031, (mapping to 414 in our roadmap): ## Goals\n\n1. Implement `PhaseFreqTable` — an in-memory struct holding\n   `HashMap<(phase: String, category: String), Vec<(entry_id, f32)>>` sorted by\n   descending frequency, rebuilt each background tick from `query_log`.\n2. Implement `PhaseFreqTableHandle = Arc<RwLock<PhaseFreqTable>>` following the\n   `TypedGraphStateHandle` / `EffectivenessStateHandle` pattern.\n3. Wire the handle into `ServiceLayer` and thread it to `SearchService` and the\n   background tick.\n4. Activate `w_phase_explicit` in fused scoring: compute `phase_explicit_norm` from\n   the frequency table at query time; raise the default from `0.0` to `0.05` in\n   `InferenceConfig`.\n5. Wire the frequency table into PPR personalization vector (#398): when PPR is\n   called, scale each seed entry's HNSW score by `phase_affinity_score(entry, phase)`\n   derived from the frequency table before normalization.\n6. Expose `query_log_retention_cycles` in `InferenceConfig` to govern the lookback\n   window for the frequency table SQL query (aligns with #409 retention framework\n   without blocking on it).\n7. Cold-start degrades gracefully: empty table produces `phase_explicit_norm = 0.0`\n   for all candidates — score bit-for-bit identical to pre-col-031.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.5822879630437456,
+          "similarity": 0.6710014939308167,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.5746144775206515,
+          "similarity": 0.6327343583106995,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5700061637548208,
+          "similarity": 0.6183368563652039,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.5651740649487158,
+          "similarity": 0.6344014406204224,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.5637438143024269,
+          "similarity": 0.6190242171287537,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3699,
+          "title": "use_fallback guard for cold-start disambiguation in fused scoring",
+          "category": "pattern",
+          "final_score": 0.5822879630437456,
+          "similarity": 0.6710014939308167,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3689,
+          "title": "ADR-005 col-031: PhaseFreqTableHandle as Required Non-Optional Constructor Parameter",
+          "category": "decision",
+          "final_score": 0.5746144775206515,
+          "similarity": 0.6327343583106995,
+          "confidence": 0.584333069969341,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3688,
+          "title": "ADR-004 col-031: Activate w_phase_explicit at 0.05; AC-16 Non-Separable from AC-12",
+          "category": "decision",
+          "final_score": 0.5700061637548208,
+          "similarity": 0.6183368563652039,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3736,
+          "title": "ADR-006 crt-030: Personalization Vector Construction — hnsw_score × phase_affinity_score via Pre-Cloned Snapshot",
+          "category": "decision",
+          "final_score": 0.5651740649487158,
+          "similarity": 0.6344014406204224,
+          "confidence": 0.5563275468316256,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3677,
+          "title": "PhaseFreqTable cold-start neutral score: absent entries return 1.0, not 0.0",
+          "category": "pattern",
+          "final_score": 0.5637438143024269,
+          "similarity": 0.6190242171287537,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.2,
+      "mrr": 0.2,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

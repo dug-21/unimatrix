@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2873",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] You're right on all counts. Let me revise:\n\n**What I got wrong:**\n- Max 3 parallel agents, not 20 — my math for \"session termination gaps\" falls apart completely\n- skip-permissions has been on for ALL sessions in this repo — so ALL prior recurrences (#1164, #1608, #2803, #2959) were also not permission friction. The \"fifth recurrence\" framing is entirely wrong.\n\n**What the Pre-Post differential might actually be:**\n\nGiven skip-permissions is universal, the only cases where PreToolUse fires without PostToolUse are:\n1. **Actual session interruption** (Ctrl-C, crash) — the last tool call in a killed session has no Post. With at most 3 agents, this explains a handful of events, not 38 Read events.\n2. **Hook asymmetry** — if the PostToolUse hook filters differently than PreToolUse (e.g., doesn't record reads), Read would systematically show Pre > Post across every session.\n3. **MCP connection drops** — `context_store`/`context_search`/`context_get` calls where the MCP server dropped mid-call. PreToolUse fires before the call, but if the connection drops, PostToolUse may not fire.\n\nThe user's point about \"Access errors in logs\" suggests the rule is fundamentally mislabeled — **the Pre-Post differential is not a permission signal at all in this repo**. Genuine friction would show as error responses in PostToolUse records, not a count imbalance.\n\n**My question before correcting #3438:** Do you know whether the PostToolUse hook records ALL tools or only a subset? If it systematically skips Read, that would explain Read=38 as a permanent hook asymmetry artifact — and the rule has never measured anything meaningful in this repo.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5454386429112458,
+          "similarity": 0.5730798840522766,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.5391479729794455,
+          "similarity": 0.5619707107543945,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.5332416224405115,
+          "similarity": 0.5669434070587158,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.5219326787727759,
+          "similarity": 0.5632186532020569,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.5200850189169818,
+          "similarity": 0.5792421102523804,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1279,
+          "title": "Lesson: permission_retries detection rule produces false positives from capability check failures",
+          "category": "lesson-learned",
+          "final_score": 0.5454386429112458,
+          "similarity": 0.5730798840522766,
+          "confidence": 0.5903621963987008,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.5391479729794455,
+          "similarity": 0.5619707107543945,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3476,
+          "title": "ADR-004 col-027: Atomic Fix for Duplicated Pre-Post Differential in metrics.rs and friction.rs",
+          "category": "decision",
+          "final_score": 0.5332416224405115,
+          "similarity": 0.5669434070587158,
+          "confidence": 0.5660223936832234,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3330,
+          "title": "permission_retries hotspot measures unmatched PreToolUse/PostToolUse pairs — not permission dialogs",
+          "category": "lesson-learned",
+          "final_score": 0.5219326787727759,
+          "similarity": 0.5632186532020569,
+          "confidence": 0.5406477663803108,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3490,
+          "title": "PermissionRetriesRule measured orphaned calls, not permission friction — renamed to OrphanedCallsRule in bugfix-383",
+          "category": "lesson-learned",
+          "final_score": 0.5200850189169818,
+          "similarity": 0.5792421102523804,
+          "confidence": 0.5127420366998361,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,74 @@
+{
+  "scenario_id": "qlog-3327",
+  "query": "<task-notification>\n<task-id>b08nae2o9</task-id>\n<tool-use-id>toolu_01MiQokWDSGJoJgCxZJeHkNC</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/5f33a80a-353f-4943-93ca-3b12103fad06/tasks/b08nae2o9.output</output-file>\n<status>completed</status>\n<summary>Background command \"Run relevant tools tests (search, get, lookup, briefing) that touch col-028 code paths\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/5f33a80a-353f-4943-93ca-3b12103fad06/tasks/b08nae2o9.output",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5233724337628013,
+          "similarity": 0.5930076241493225,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5173092297001888,
+          "similarity": 0.5814875364303589,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3845,
+          "title": "Retrospective findings: bugfix-391",
+          "category": "lesson-learned",
+          "final_score": 0.5233724337628013,
+          "similarity": 0.5930076241493225,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5173092297001888,
+          "similarity": 0.5814875364303589,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-3995",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] **Phase 1 findings — presenting before extraction:**\n\n**Session**: 1 session, 573 records, 46m, 0% rework — clean run.\n\n**What went well (positive outliers):**\n- Permission friction: 0 vs mean 14.8\n- Bash-for-search: 54 vs mean 155.6 (tool discipline excellent)\n- No coordinator respawns\n- Knowledge stored: 11 vs mean 8.7\n\n**Hotspots:**\n- **[WARNING] F-01** — 45 compile cycles in testing phase, peak 17 in 5min at +20m. Rust-dev was iterative on struct changes.\n- **[WARNING] F-02** — `context_get` failed 6×, `Read` failed 4× in fix phase at session start.\n- **[info] F-03** — Tester piped cargo output through multiple filters (output parsing struggle)\n- **[info] F-04** — 13 files re-read (rust-dev navigating worktree)\n- **[info] F-05** — 4 sleep workarounds in testing phase\n\n**Stewardship** (agents stored 11 entries during cycle — known: #3696 lesson, #3698 pattern, #3701 lesson). Quality check + full extraction now.\n[tool: mcp__unimatrix__context_search(bugfix-426 freshness half-life) → #1468 | Retrospective findings: bugfix-252 | lesson-learned | [feature_cycle:bugfix-252, hotspot_count:1, source:retrospective] | 0.48\n#3252 | ExtractionRule must not perform side effects: maintenance actions belong in maintenance_tick, not in ProposedEntry output | lesson-learned | [background-tick]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5987224066681417,
+          "similarity": 0.7022269368171692,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.5441654053139974,
+          "similarity": 0.6375920176506042,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.5406240997816386,
+          "similarity": 0.6481857895851135,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 32,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3973,
+          "title": "Complete all struct/field definition changes before first compile in multi-type iterative fixes",
+          "category": "lesson-learned",
+          "final_score": 0.5987224066681417,
+          "similarity": 0.7022269368171692,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3464,
+          "title": "Implementation checklist items from approved design must be enumerated in the rust-dev spawn prompt — not left implicit in the investigator report",
+          "category": "lesson-learned",
+          "final_score": 0.5441654053139974,
+          "similarity": 0.6375920176506042,
+          "confidence": 0.4947460749228443,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3977,
+          "title": "How to edit a large Rust file (1000+ lines): read full context and identify all affected sites before making any changes",
+          "category": "procedure",
+          "final_score": 0.5406240997816386,
+          "similarity": 0.6481857895851135,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -8,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

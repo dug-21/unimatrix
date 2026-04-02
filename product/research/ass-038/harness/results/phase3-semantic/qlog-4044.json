@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4044",
+  "query": "OK.. back to the eval report.  I have removed the 48 session-outcome entries: # Unimatrix Eval Report\n\n     Generated: 1774699934 (unix epoch) | Scenarios: 3977\n\n     ## 1. Summary\n\n     | Profile | Scenarios | P@K | MRR | CC@k | ICD (max=ln(n)) | Avg\n     Latency (ms) | ΔP@K | ΔMRR | ΔCC@k | ΔICD | ΔLatency (ms) |\n     |---------|-----------|-----|-----|------|----------------|------\n     -----------|------|------|--------|------|---------------|\n     | baseline | 3977 | 0.2880 | 0.4080 | 0.2671 | 0.5390 | 9.7 | — |\n      — | — | — | — |\n     | pre-col031 | 3977 | 0.2880 | 0.4080 | 0.2671 | 0.5390 | 9.9 | —\n      | — | — | — | +0.1 |\n\n     ## 2. Notable Ranking Changes\n\n     ### qlog-1013\n\n     **Query**: yes.  proceed\n     **Kendall τ**: 0.0000\n\n     | Rank | Baseline Entry | Candidate Entry |\n     |------|---------------|-----------------|\n\n     ### qlog-1034\n\n     **Query**: accept\n     **Kendall τ**: 0.0000\n\n     | Rank | Baseline Entry | Candidate Entry |\n     |------|---------------|-----------------|\n\n     ### qlog-1035\n\n     **Query**: we are ready to begin delivery protcol for nxs-011\n     **Kendall τ**: 0.0000\n\n     | Rank | Baseline Entry | Candidate Entry |\n     |------|---------------|-----------------|\n\n     ### qlog-104\n\n     **Query**: vnc-011 deterministic example selection retrospective\n     module\n     **Kendall τ**: 0.0000\n\n     | Rank | Baseline Entry | Candidate Entry |\n     |------|---------------|-----------------|\n\n     ### qlog-105\n\n     **Query**: just ran retrospective on vnc-011, and col-020b before\n      that... the data it found for those 2 latest features was\n     EXTREMElY sparce, where col-020, was chock full.  I blieeve it\n     may be possible that something in col-020b may have corrupted the\n      full data flow driving our retro analysis.  I don't believe with\n      the size and scope of vnc-011 for example, this was all the data\n      there is: RETROSPECTIVE COMPLETE — Knowledge base updated.\n\n\n\n\n\n\n       Feature: vnc-011\n\n\n       PR: #197 (merged)\n\n\n\n\n\n       Retrospective summary:\n\n\n       - Sessions: 1, Tool calls: 11 (primary agent only — subagents\n     did the work), Duration: 1h 50m\n       - Hotspots: 0\n       - Baseline outliers: 0\n\n       Knowledge extracted:\n       - Patterns: 1 new (#949 — Domain-Specific Markdown Formatter\n     Module Pattern)\n       - Procedures: 0\n       - Lessons: 1 new (#953 — Human overrides must propagate to ALL\n     downstream artifacts)\n       - ADRs stored: 3 (#950 format-dependent evidence_limit, #951\n     deterministic selection, #952 separate module)\n       - ADRs validated: 2 (ADR-002, ADR-003)\n       - ADRs with caveats: 1 (ADR-001 — file text says unwrap_or(0),\n     shipped code correctly uses unwrap_or(3) per human override)\n\n       Gate 3a lesson: Pseudocode agents consumed stale ADR text that\n     predated the human override. The implementation brief had the\n     correct value, but agents prioritized architecture\n       artifacts. Future mitigation: ensure human overrides are\n     explicitly noted in ALL artifacts agents will read, not just the\n     brief.\n     **Kendall τ**: 0.0000\n\n     | Rank | Baseline Entry | Candidate Entry |\n     |------|---------------|-----------------|\n\n     ### qlog-1056\n\n     **Query**: now run retro for nxs-011\n     **Kendall τ**: 0.0000\n\n     | Rank | Baseline Entry | Candidate Entry |\n     |------|---------------|-----------------|\n\n     ### qlog-1060\n\n     **Query**: that needs to be a gh issue pls.  I don't run into\n     this often, as nxs-011 was one of the largest features we've\n     implemented\n     **Kendall τ**: 0.0000\n\n     | Rank | Baseline Entry | Candidate Entry |\n     |------|---------------|-----------------|\n\n     ### qlog-1061\n\n     **Query**: OK.. we've just completed WO-1 (nxs-011) from\n     @product/PRODUCT-VISION.md .  Please mark this as complete.  Now\n     its time to begin design on WO-2.  Select the appropriate prefix,\n      select the next number, and lets begin design on this feature\n     **Kendall τ**: 0.0000\n\n     | Rank | Baseline Entry | Candidate Entry |\n     |------|---------------|-----------------|\n\n     ### qlog-1071\n\n     **Query**: run retro for nxs-011\n     **Kendall τ**: 0.0000\n\n                                    12:12 PM claude-sonnet-4-6\n● Report generated successfully — no panic. Here are the AC-12\n  results:\n\n  ┌────────┬────────────────┬─────────────────┬───────────┬───────┐\n  │ Metric │   baseline     │   pre-col031    │ Threshold │ AC-12 │\n  │        │     (0.05)     │      (0.0)      │           │       │\n  ├────────┼────────────────┼─────────────────┼───────────┼───────┤\n  │ MRR    │ 0.4080         │ 0.4080          │ ≥ 0.35    │ PASS  │\n  ├────────┼────────────────┼─────────────────┼───────────┼───────┤\n  │ CC@5   │ 0.2671         │ 0.2671          │ ≥ 0.2659  │ PASS  │\n  ├────────┼────────────────┼─────────────────┼───────────┼───────┤\n  │ ICD    │ 0.5390         │ 0.5390          │ ≥ 0.5340  │ PASS  │\n  └────────┴────────────────┴─────────────────┴───────────┴───────┘\n\n  All three col-030 baselines met. AC-12: PASS.",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.5567656714674863,
+          "similarity": 0.5876465439796448,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5385984901693665,
+          "similarity": 0.5908414721488953,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.5303112112930558,
+          "similarity": 0.5578075051307678,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5283725527868434,
+          "similarity": 0.5869652628898621,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.511852879865863,
+          "similarity": 0.5496097803115845,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 28,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2806,
+          "title": "Eval harness: profile TOML → snapshot → scenario replay → A/B report pattern",
+          "category": "pattern",
+          "final_score": 0.5567656714674863,
+          "similarity": 0.5876465439796448,
+          "confidence": 0.6002974740122564,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3587,
+          "title": "ADR-002 nan-010: Sidecar File for Profile Metadata — Zero Changes to ScenarioResult",
+          "category": "decision",
+          "final_score": 0.5385984901693665,
+          "similarity": 0.5908414721488953,
+          "confidence": 0.5464223702470015,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2705,
+          "title": "ADR-006 crt-023: Eval CLI Missing-Model Behavior — Skip Profile with Documented Warning",
+          "category": "decision",
+          "final_score": 0.5303112112930558,
+          "similarity": 0.5578075051307678,
+          "confidence": 0.5711197090371978,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3549,
+          "title": "Eval Harness Baseline Recording Procedure (New Metrics)",
+          "category": "procedure",
+          "final_score": 0.5283725527868434,
+          "similarity": 0.5869652628898621,
+          "confidence": 0.5242036962930579,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3589,
+          "title": "ADR-004 nan-010: Atomic Write for profile-meta.json via Rename",
+          "category": "decision",
+          "final_score": 0.511852879865863,
+          "similarity": 0.5496097803115845,
+          "confidence": 0.5327295591907935,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 54,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 26,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,74 @@
+{
+  "scenario_id": "qlog-2136",
+  "query": "<task-notification>\n<task-id>b423sop83</task-id>\n<tool-use-id>toolu_01TJ5hUnKY2YpwFsEshRX5oX</tool-use-id>\n<output-file>/tmp/claude-1000/-workspaces-unimatrix/af1f3351-a1dc-4a3e-bdd0-f7e02abc4184/tasks/b423sop83.output</output-file>\n<status>completed</status>\n<summary>Background command \"git -C /workspaces/unimatrix show a5372ab --stat | head -10 &amp;&amp; cargo build --workspace --target-dir /tmp/old-build 2&gt;&amp;1 | grep \"warning:\" | head -20 || echo \"can't build old\"\" completed (exit code 0)</summary>\n</task-notification>\nRead the output file to retrieve the result: /tmp/claude-1000/-workspaces-unimatrix/af1f3351-a1dc-4a3e-bdd0-f7e02abc4184/tasks/b423sop83.output",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5296299521375177,
+          "similarity": 0.585152268409729,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5134409509959973,
+          "similarity": 0.574137806892395,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 21,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5296299521375177,
+          "similarity": 0.585152268409729,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3966,
+          "title": "Retrospective findings: bugfix-468",
+          "category": "lesson-learned",
+          "final_score": 0.5134409509959973,
+          "similarity": 0.574137806892395,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

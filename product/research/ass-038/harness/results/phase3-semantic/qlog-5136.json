@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-5136",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Verify fix for #468 — full test suite) → ]\n[tool: TaskCreate(Phase 3: Full test suite verification) → Task #4 created successfully: Phase 3: Full test suite verification]\n[Assistant] Good. Now Phase 3 — spawn the tester.\n[tool: Bash(git fetch /workspaces/unimatrix/.claude/worktrees/agent-a13c242c bugfix/468-cycle-start-null-shadows-goal 2>&1 && git me) → From /workspaces/unimatrix/.claude/worktrees/agent-a13c242c\n * branch            bugfix/468-cycle-start-null-shadows-goal -> FETCH_HEAD\nMerge made by the 'ort' strategy.\n crates/unimatrix-store/src/db.rs                   | 13 +++-\n .../unimatrix-store/tests/migration_v15_to_v16.rs  | 88 +++++++++++]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.5559846113394834,
+          "similarity": 0.5655949115753174,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5279334157220161,
+          "similarity": 0.5819288492202759,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.5264220908809298,
+          "similarity": 0.565771758556366,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5260728492234882,
+          "similarity": 0.6205384135246277,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2326,
+          "title": "Bug fix verification: audit fire-and-forget async pattern — test strategy",
+          "category": "procedure",
+          "final_score": 0.5559846113394834,
+          "similarity": 0.5655949115753174,
+          "confidence": 0.6296797856710017,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3968,
+          "title": "Retrospective findings: bugfix-458",
+          "category": "lesson-learned",
+          "final_score": 0.5279334157220161,
+          "similarity": 0.5819288492202759,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3622,
+          "title": "Design agents write to main repo paths when researcher artifacts show main-repo working directory",
+          "category": "lesson-learned",
+          "final_score": 0.5264220908809298,
+          "similarity": 0.565771758556366,
+          "confidence": 0.5491860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.5260728492234882,
+          "similarity": 0.6205384135246277,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4398",
+  "query": "so... you're right about the current category list.. So.. we should build a 'default' config.toml and store in the repo, and it should be installed only when unimatrix init runs... but that is a different issue.  the toml I showed you is the actual production config.  I'll edit that, you don't need to.  OQ-6 — Approach is sound. The serde/Default split is the right pattern when the operative       \n  default for deployed configs differs from the programmatic default used in test construction.\n  The serde-driven default_boosted_categories() governs production behavior; Default::default()   \n  returning [] is cleaner for tests that construct configs programmatically. One thing the      \n  implementer should check: any existing test that calls KnowledgeConfig::default() and implicitly\n   expects [\"lesson-learned\"] in boosted_categories will now get [] instead. Unlikely to be many,\n  but worth a targeted grep before shipping.\n\n  OQ-5 — Architect investigation, not scope blocker. The framing is exactly right. If             \n  config_overrides is already threaded to the SearchService construction point in layer.rs, this\n  is a one-line fix. If it isn't, it's a threading change that changes the scope of the work. The \n  architect needs to trace that path before the implementer can commit to an approach. Blocking \n  scope approval on this would be wrong — the fix is unambiguously needed, the only question is\n  how much work it is. Flag it, investigate first, implement correctly.\n\n  Approve the scope with OQ-5 as a pre-implementation investigation item. ",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5893112704365048,
+          "similarity": 0.6604574918746948,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5738401685390001,
+          "similarity": 0.6352060437202454,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5712012693515331,
+          "similarity": 0.6142846941947937,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5630504868002265,
+          "similarity": 0.6177068948745728,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.5427666421346611,
+          "similarity": 0.6127673387527466,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 26,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3774,
+          "title": "Splitting Default impl from serde default creates silent test failures — spec must enumerate affected tests",
+          "category": "pattern",
+          "final_score": 0.5893112704365048,
+          "similarity": 0.6604574918746948,
+          "confidence": 0.5846198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3770,
+          "title": "KnowledgeConfig parallel list fields follow the boosted_categories structural pattern",
+          "category": "pattern",
+          "final_score": 0.5738401685390001,
+          "similarity": 0.6352060437202454,
+          "confidence": 0.5787003950055072,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2312,
+          "title": "config.rs: boosted_categories default causes empty-categories validation to fail",
+          "category": "pattern",
+          "final_score": 0.5712012693515331,
+          "similarity": 0.6142846941947937,
+          "confidence": 0.6014253108187421,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3771,
+          "title": "KnowledgeConfig parallel list defaults collide in validate_config test fixtures — zero ALL parallel lists together",
+          "category": "pattern",
+          "final_score": 0.5630504868002265,
+          "similarity": 0.6177068948745728,
+          "confidence": 0.574412900065511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3776,
+          "title": "Test plan for parallel config list fields: grep fixtures first, add isolation test per list",
+          "category": "pattern",
+          "final_score": 0.5427666421346611,
+          "similarity": 0.6127673387527466,
+          "confidence": 0.5264132590044422,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 0.5,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

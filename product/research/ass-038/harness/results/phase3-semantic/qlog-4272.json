@@ -1,0 +1,114 @@
+{
+  "scenario_id": "qlog-4272",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] All three gates confirmed PASS. Spawning security reviewer.\n[tool: Bash(grep -A1 \"GATE RESULT\\|Gate Result\\|gate result\\|Result:\" product/features/crt-030/reports/gate-3a-report.md | head -5\ng) → > Result: PASS\n\n> Result: PASS\n\n> Result: PASS\n\n--\nNone — gate result is PASS.]\n[tool: Bash(grep -l \"PASS\\|FAIL\" product/features/crt-030/reports/gate-3a-report.md product/features/crt-030/reports/gate-3b-report.) → product/features/crt-030/reports/gate-3a-report.md\nproduct/features/crt-030/reports/gate-3b-report.md\nproduct/features/crt-030/reports/gate-3c-report.md]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5105962891057633,
+          "similarity": 0.46424752473831177,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3946,
+          "title": "AC-22-style CI grep gates must exclude test code — domain strings in test helpers cause false failures",
+          "category": "lesson-learned",
+          "final_score": 0.4643622376795956,
+          "similarity": 0.44174909591674805,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.4567091453824066,
+          "similarity": 0.47027045488357544,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.45176724908701316,
+          "similarity": 0.4230121374130249,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2758,
+          "title": "Gate 3c: always grep non-negotiable test names before accepting RISK-COVERAGE-REPORT PASS claims",
+          "category": "lesson-learned",
+          "final_score": 0.5105962891057633,
+          "similarity": 0.46424752473831177,
+          "confidence": 0.6512648922323409,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3946,
+          "title": "AC-22-style CI grep gates must exclude test code — domain strings in test helpers cause false failures",
+          "category": "lesson-learned",
+          "final_score": 0.4643622376795956,
+          "similarity": 0.44174909591674805,
+          "confidence": 0.5579130795349767,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3729,
+          "title": "Read clippy output directly — avoid multi-pipe shell chains that produce output_parsing_struggle",
+          "category": "procedure",
+          "final_score": 0.4567091453824066,
+          "similarity": 0.47027045488357544,
+          "confidence": 0.4963956019185676,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3974,
+          "title": "Security reviewer must verify artifact paths exist before cold-read orientation",
+          "category": "lesson-learned",
+          "final_score": 0.45176724908701316,
+          "similarity": 0.4230121374130249,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 33,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

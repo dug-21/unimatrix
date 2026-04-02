@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3838",
+  "query": "sec review found these... big deal? Findings (all non-blocking)\n\nF1 — vector_index.contains() called synchronously inside async context (low)\n\nThe embedded_ids HashSet is built at lines 96–100 by calling the synchronous VectorIndex::contains (RwLock read guard) inside an async function. This is consistent with how Phase 4 uses the same index (documented at line 116). Unimatrix lesson #3672 explicitly requires embedded_ids be built in async context rather than inside the rayon closure — the fix correctly satisfies this. No violation, no action needed.\n\nF2 — Non-cryptographic PRNG (low / informational)\n\nrand::rng() in rand 0.9 is ChaCha12, an OS-seeded CSPRNG. The shuffle is used only to break deterministic tick bias, not for any security-sensitive operation. This is correct and more than sufficient. Note: rand::thread_rng() was removed in rand 0.9; rand::rng() is the correct replacement (confirmed by Unimatrix entry #3671).",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.6061703268161991,
+          "similarity": 0.7539898753166199,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5344961484846487,
+          "similarity": 0.5668087601661682,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.5231944619167306,
+          "similarity": 0.5970736742019653,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 484,
+          "title": "ADR-004: Co-Access Deprecated Exclusion via ID Set",
+          "category": "decision",
+          "final_score": 0.5136349953899692,
+          "similarity": 0.5510608553886414,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.509841743494498,
+          "similarity": 0.5625135898590088,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.6061703268161991,
+          "similarity": 0.7539898753166199,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5344961484846487,
+          "similarity": 0.5668087601661682,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.5231944619167306,
+          "similarity": 0.5970736742019653,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 484,
+          "title": "ADR-004: Co-Access Deprecated Exclusion via ID Set",
+          "category": "decision",
+          "final_score": 0.5136349953899692,
+          "similarity": 0.5510608553886414,
+          "confidence": 0.535493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.509841743494498,
+          "similarity": 0.5625135898590088,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

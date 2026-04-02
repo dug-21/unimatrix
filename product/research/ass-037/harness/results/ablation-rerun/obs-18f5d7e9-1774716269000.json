@@ -1,0 +1,326 @@
+{
+  "scenario_id": "obs-18f5d7e9-1774716269000",
+  "query": "permission friction events edit batching multi-file change agent",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.4087025569035457,
+          "similarity": 0.5078916549682617,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2797,
+          "title": "Retrospective findings: crt-023",
+          "category": "lesson-learned",
+          "final_score": 0.39731392493614787,
+          "similarity": 0.48938512802124023,
+          "confidence": 0.5434034718832347,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2649,
+          "title": "Retrospective findings: nan-007",
+          "category": "lesson-learned",
+          "final_score": 0.39269098868736857,
+          "similarity": 0.4818728566169739,
+          "confidence": 0.5328282378108924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 774,
+          "title": "Retrospective findings: col-017",
+          "category": "lesson-learned",
+          "final_score": 0.3882738260122446,
+          "similarity": 0.47469496726989746,
+          "confidence": 0.5714705256016797,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.5411368832058538,
+          "similarity": 0.5078916549682617,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 774,
+          "title": "Retrospective findings: col-017",
+          "category": "lesson-learned",
+          "final_score": 0.5142849684056265,
+          "similarity": 0.47469496726989746,
+          "confidence": 0.5714705256016797,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2797,
+          "title": "Retrospective findings: crt-023",
+          "category": "lesson-learned",
+          "final_score": 0.5114835414193288,
+          "similarity": 0.48938512802124023,
+          "confidence": 0.5434034718832347,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2649,
+          "title": "Retrospective findings: nan-007",
+          "category": "lesson-learned",
+          "final_score": 0.5027182398326677,
+          "similarity": 0.4818728566169739,
+          "confidence": 0.5328282378108924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.5413541722793023,
+          "similarity": 0.5078916549682617,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 774,
+          "title": "Retrospective findings: col-017",
+          "category": "lesson-learned",
+          "final_score": 0.5145437265829842,
+          "similarity": 0.47469496726989746,
+          "confidence": 0.5714705256016797,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2797,
+          "title": "Retrospective findings: crt-023",
+          "category": "lesson-learned",
+          "final_score": 0.5116279754938262,
+          "similarity": 0.48938512802124023,
+          "confidence": 0.5434034718832347,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2649,
+          "title": "Retrospective findings: nan-007",
+          "category": "lesson-learned",
+          "final_score": 0.502854484167411,
+          "similarity": 0.4818728566169739,
+          "confidence": 0.5328282378108924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.5078916549682617,
+          "similarity": 0.5078916549682617,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2797,
+          "title": "Retrospective findings: crt-023",
+          "category": "lesson-learned",
+          "final_score": 0.48938512802124023,
+          "similarity": 0.48938512802124023,
+          "confidence": 0.5434034718832347,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2649,
+          "title": "Retrospective findings: nan-007",
+          "category": "lesson-learned",
+          "final_score": 0.4818728566169739,
+          "similarity": 0.4818728566169739,
+          "confidence": 0.5328282378108924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 774,
+          "title": "Retrospective findings: col-017",
+          "category": "lesson-learned",
+          "final_score": 0.47469496726989746,
+          "similarity": 0.47469496726989746,
+          "confidence": 0.5714705256016797,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.4806931580155103,
+          "similarity": 0.5078916549682617,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 774,
+          "title": "Retrospective findings: col-017",
+          "category": "lesson-learned",
+          "final_score": 0.4587886413154526,
+          "similarity": 0.47469496726989746,
+          "confidence": 0.5714705256016797,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2797,
+          "title": "Retrospective findings: crt-023",
+          "category": "lesson-learned",
+          "final_score": 0.45771360557559054,
+          "similarity": 0.48938512802124023,
+          "confidence": 0.5434034718832347,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2649,
+          "title": "Retrospective findings: nan-007",
+          "category": "lesson-learned",
+          "final_score": 0.45078489965175467,
+          "similarity": 0.4818728566169739,
+          "confidence": 0.5328282378108924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 3419,
+          "title": "permission_friction_events is a tool-cancellation proxy, not a permission-prompt count",
+          "category": "pattern",
+          "final_score": 0.4806931580155103,
+          "similarity": 0.5078916549682617,
+          "confidence": 0.5891577684379316,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 774,
+          "title": "Retrospective findings: col-017",
+          "category": "lesson-learned",
+          "final_score": 0.4587886413154526,
+          "similarity": 0.47469496726989746,
+          "confidence": 0.5714705256016797,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2797,
+          "title": "Retrospective findings: crt-023",
+          "category": "lesson-learned",
+          "final_score": 0.45771360557559054,
+          "similarity": 0.48938512802124023,
+          "confidence": 0.5434034718832347,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2649,
+          "title": "Retrospective findings: nan-007",
+          "category": "lesson-learned",
+          "final_score": 0.45078489965175467,
+          "similarity": 0.4818728566169739,
+          "confidence": 0.5328282378108924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.25,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5623351446188083
+    }
+  },
+  "comparison": {
+    "kendall_tau": 0.3333333333333333,
+    "rank_changes": [
+      {
+        "entry_id": 774,
+        "from_rank": 2,
+        "to_rank": 4
+      },
+      {
+        "entry_id": 2649,
+        "from_rank": 4,
+        "to_rank": 3
+      },
+      {
+        "entry_id": 2797,
+        "from_rank": 3,
+        "to_rank": 2
+      }
+    ],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

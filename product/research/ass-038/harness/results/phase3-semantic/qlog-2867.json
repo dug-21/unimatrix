@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-2867",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] Two important corrections and an expanded mandate to fold in. Sending the researcher back.\n[Assistant] Understood — no commits, no code changes. The research artifacts are saved to `product/research/ass-032/SCOPE.md` only.\n\nHere's what the deep audit found:\n\n---\n\n**The pipeline is already structurally biased — and EWC++ makes it durable.**\n\nThe scoring formula (`0.85*similarity + 0.15*confidence + co_access_boost`) means entries that never surface can never accumulate `access_count`, `helpful_count`, or co-access pairs. With the current corpus (~53 active entries, nearly all \"decision\"), the W3-1 training reservoir will be populated almost exclusively from one category. EWC++ then *freezes* those learned weights across training runs — the bias doesn't erode, it compounds.\n\n---\n\n**On restating the goal:**\n\nThe original framing — *\"GNN prioritizes categories by project phase\"* — conflates two separable problems:\n1. **Discovery**: making sure underrepresented categories get surfaced at all\n2. **Phase-aware ranking**: once surfaced, scoring entries by relevance to the current workflow moment\n\nA GNN can't solve (1) — it can only rank what it's already been trained to value. (1) requires an exploration mechanism. (2) is what the GNN is actually suited for.\n\n**Restated goal**: *Surface the most contextually relevant entry for the current workflow phase, while ensuring no category is systematically excluded from consideration by the scoring pipeline.*\n\n---\n\n**Recommended path (staged):**\n\n- **Stage 1** — Exploration epsilon: reserve 1 briefing slot for a random draw from underrepresented categories. Starts generating diverse training labels immediately.\n- **Stage 2** — Phase-affinity matrix: activate the existing `w_phase_explicit` placeholder in `compute_fused_score` with a static config lookup. Category-diversity improvement with zero risk.\n- **Stage 3** — W3-1 GNN: proceed only after corpus diversification, with IPS-weighted training samples and a category coverage gate before first activation.\n\n---\n\n**Three questions that need your input before Stage 3 can be scheduled:**\n\n- **OQ-A**: What's the expected entry creation rate per non-decision category going forward? (Determines when Stage 3 becomes viable)\n- **OQ-B**: Does the W1-3 eval harness include cross-category recall, or only P@5/MRR on dominant entries? (If the latter, it won't detect the degradation W3-1 risks introducing)\n- **OQ-C**: Should the exploration slot be a fixed 1-of-k reservation or a configurable `exploration_fraction`?\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.5508625222277542,
+          "similarity": 0.623169481754303,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.5317878399854714,
+          "similarity": 0.5355619788169861,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.5263996325022829,
+          "similarity": 0.5622944831848145,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5174056571475474,
+          "similarity": 0.5110921859741211,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.5153868939177403,
+          "similarity": 0.5163612961769104,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3429,
+          "title": "Exposure bias in confidence-weighted retrieval: never-surfaced entries cannot bootstrap feedback signals",
+          "category": "pattern",
+          "final_score": 0.5508625222277542,
+          "similarity": 0.623169481754303,
+          "confidence": 0.5335275863977574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3161,
+          "title": "ADR-001 crt-026: FusedScoreInputs Integration vs. Post-Pipeline Additive Boost",
+          "category": "decision",
+          "final_score": 0.5317878399854714,
+          "similarity": 0.5355619788169861,
+          "confidence": 0.6069070245077283,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3208,
+          "title": "Validate new scoring weight defaults against research spike (ASS-NNN), not product vision prose",
+          "category": "lesson-learned",
+          "final_score": 0.5263996325022829,
+          "similarity": 0.5622944831848145,
+          "confidence": 0.554092597956462,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3156,
+          "title": "WA-2 affinity boost: post-pipeline additive step vs. FusedScoreInputs integration",
+          "category": "pattern",
+          "final_score": 0.5174056571475474,
+          "similarity": 0.5110921859741211,
+          "confidence": 0.6028265180088844,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 188,
+          "title": "Episodic Augmentation vs Co-Access Boost Overlap Analysis",
+          "category": "decision",
+          "final_score": 0.5153868939177403,
+          "similarity": 0.5163612961769104,
+          "confidence": 0.5898197175239946,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 31,
+      "p_at_k": 0.8,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

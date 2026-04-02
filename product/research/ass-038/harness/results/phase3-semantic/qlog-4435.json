@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4435",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[tool: Agent(Wave 2a: main.rs wiring for crt-031) → ]\n[Assistant] Clean build. Wave 2 — `main`, `status`, and `background` in parallel.\n[tool: Bash(cargo build -p unimatrix-server 2>&1 | grep -A5 \"^error\" | head -20 && cargo build -p unimatrix-server 2>&1 | tail -3) → warning: `unimatrix-server` (lib) generated 14 warnings (run `cargo fix --lib -p unimatrix-server` to apply 3 suggestions)\n    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.19s]\n[Assistant] The agents committed their own work — both Wave 1 commits are in history. Verifying the build before Wave 2.\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5638460632052502,
+          "similarity": 0.6087436676025391,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.5274535983315742,
+          "similarity": 0.5810171961784363,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3837,
+          "title": "Retrospective findings: bugfix-358",
+          "category": "lesson-learned",
+          "final_score": 0.5265672865495403,
+          "similarity": 0.573333203792572,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5199463587811118,
+          "similarity": 0.5864980816841125,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.5151609528190211,
+          "similarity": 0.5774058103561401,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 22,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1208,
+          "title": "Procedure: Creating a Unimatrix Release",
+          "category": "procedure",
+          "final_score": 0.5638460632052502,
+          "similarity": 0.6087436676025391,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3835,
+          "title": "Retrospective findings: bugfix-351",
+          "category": "lesson-learned",
+          "final_score": 0.5274535983315742,
+          "similarity": 0.5810171961784363,
+          "confidence": 0.5302066295022212,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3837,
+          "title": "Retrospective findings: bugfix-358",
+          "category": "lesson-learned",
+          "final_score": 0.5265672865495403,
+          "similarity": 0.573333203792572,
+          "confidence": 0.5387780580736496,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3839,
+          "title": "Retrospective findings: bugfix-364",
+          "category": "lesson-learned",
+          "final_score": 0.5199463587811118,
+          "similarity": 0.5864980816841125,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3833,
+          "title": "Retrospective findings: bugfix-340",
+          "category": "lesson-learned",
+          "final_score": 0.5151609528190211,
+          "similarity": 0.5774058103561401,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 20,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

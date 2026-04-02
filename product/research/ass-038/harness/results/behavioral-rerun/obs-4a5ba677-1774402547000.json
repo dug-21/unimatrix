@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-4a5ba677-1774402547000",
+  "query": "N+1 query pattern DB reads per entry batch fetch",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.4831444244214952,
+          "similarity": 0.47156310081481934,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.4566281529695856,
+          "similarity": 0.419481098651886,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.4454367839757831,
+          "similarity": 0.39597034454345703,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.4384622403619497,
+          "similarity": 0.42454028129577637,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.43655645954317257,
+          "similarity": 0.40046799182891846,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3423,
+          "title": "ADR-003 col-026: Batch IN-Clause for Cross-Feature Entry Metadata Lookup",
+          "category": "decision",
+          "final_score": 0.4831444244214952,
+          "similarity": 0.47156310081481934,
+          "confidence": 0.5663018651228879,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.4566281529695856,
+          "similarity": 0.419481098651886,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3298,
+          "title": "background.rs observation fetches need time-window bounds — post-fetch domain filter is a no-op (schema has no source_domain column)",
+          "category": "lesson-learned",
+          "final_score": 0.4454367839757831,
+          "similarity": 0.39597034454345703,
+          "confidence": 0.5719422071579014,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3442,
+          "title": "Chunked Batch IN-Clause Query for Unbounded ID Sets (rusqlite and sqlx)",
+          "category": "pattern",
+          "final_score": 0.4384622403619497,
+          "similarity": 0.42454028129577637,
+          "confidence": 0.5121971077027546,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3881,
+          "title": "ADR-001 crt-034: Single-Query Batch Fetch with Subquery MAX Normalization",
+          "category": "decision",
+          "final_score": 0.43655645954317257,
+          "similarity": 0.40046799182891846,
+          "confidence": 0.5414132590044423,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 9,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 0.9502705392332347
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 3,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

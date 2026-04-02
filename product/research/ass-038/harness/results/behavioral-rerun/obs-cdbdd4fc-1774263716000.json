@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-cdbdd4fc-1774263716000",
+  "query": "database query hot path spawn_blocking background maintenance",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5440409346285177,
+          "similarity": 0.5542276501655579,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5118005616037469,
+          "similarity": 0.46462106704711914,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.4800245910684994,
+          "similarity": 0.412273645401001,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.4507562484458365,
+          "similarity": 0.4083244800567627,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.4119406879281351,
+          "similarity": 0.40801531076431274,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 8,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1688,
+          "title": "spawn_blocking_with_timeout must be applied to ALL hot-path handlers at introduction time, not just the triggering one",
+          "category": "lesson-learned",
+          "final_score": 0.5440409346285177,
+          "similarity": 0.5542276501655579,
+          "confidence": 0.6135001794694656,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1366,
+          "title": "Tick Loop Error Recovery: Extract-and-Catch Pattern",
+          "category": "pattern",
+          "final_score": 0.5118005616037469,
+          "similarity": 0.46462106704711914,
+          "confidence": 0.654,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 735,
+          "title": "spawn_blocking Pool Saturation from Unbatched Fire-and-Forget DB Writes",
+          "category": "lesson-learned",
+          "final_score": 0.4800245910684994,
+          "similarity": 0.412273645401001,
+          "confidence": 0.6425329680416401,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3371,
+          "title": "ADR-001 col-024: Single block_sync Entry per load_cycle_observations Invocation",
+          "category": "decision",
+          "final_score": 0.4507562484458365,
+          "similarity": 0.4083244800567627,
+          "confidence": 0.5687319885576098,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2576,
+          "title": "CI grep enforcement: use embed-substring filter to avoid false positives when checking spawn_blocking migration",
+          "category": "pattern",
+          "final_score": 0.4119406879281351,
+          "similarity": 0.40801531076431274,
+          "confidence": 0.4638171375702057,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

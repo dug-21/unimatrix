@@ -1,0 +1,134 @@
+{
+  "scenario_id": "uc2-03",
+  "query": "What serialization format should be used when migrating knowledge entries between storage backends?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.5891082540415407,
+          "similarity": 0.631446897983551,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.5462642238261576,
+          "similarity": 0.5744670033454895,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 59,
+          "title": "ADR-002: bincode v2 Serialization with serde default for Schema Evolution",
+          "category": "decision",
+          "final_score": 0.5323908746373561,
+          "similarity": 0.5287238359451294,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.5263714532060942,
+          "similarity": 0.5230967402458191,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5221923643251872,
+          "similarity": 0.5496980547904968,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 343,
+          "title": "JSON-Lines Intermediate Format for Cross-Backend Data Migration",
+          "category": "pattern",
+          "final_score": 0.5891082540415407,
+          "similarity": 0.631446897983551,
+          "confidence": 0.6255125495648233,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 333,
+          "title": "ADR-001: JSON-Lines Intermediate Format for Data Migration",
+          "category": "decision",
+          "final_score": 0.5462642238261576,
+          "similarity": 0.5744670033454895,
+          "confidence": 0.5906214598917287,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 59,
+          "title": "ADR-002: bincode v2 Serialization with serde default for Schema Evolution",
+          "category": "decision",
+          "final_score": 0.5323908746373561,
+          "similarity": 0.5287238359451294,
+          "confidence": 0.6183126083797821,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 371,
+          "title": "Migration Compatibility Module: Isolate Legacy Deserializers Before Removal",
+          "category": "pattern",
+          "final_score": 0.5263714532060942,
+          "similarity": 0.5230967402458191,
+          "confidence": 0.6100128869225144,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1143,
+          "title": "ADR-001: Shared Format Types Between Export and Import",
+          "category": "decision",
+          "final_score": 0.5221923643251872,
+          "similarity": 0.5496980547904968,
+          "confidence": 0.5606677677533702,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.2,
+      "mrr": 0.5,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 0,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

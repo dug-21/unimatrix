@@ -1,0 +1,370 @@
+{
+  "scenario_id": "obs-b1ecc03a-1773959854000",
+  "query": "ServiceLayer constructor signature extension test helpers update",
+  "profiles": {
+    "ablation-conf-zero": {
+      "entries": [
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.45032248130211466,
+          "similarity": 0.5755240321159363,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.41679653754601115,
+          "similarity": 0.5210443735122681,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4152788749107948,
+          "similarity": 0.5185781717300415,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.38672377513005185,
+          "similarity": 0.47217613458633423,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.36475460345928484,
+          "similarity": 0.4364762306213379,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-cosine-only": {
+      "entries": [
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.5755240321159363,
+          "similarity": 0.5755240321159363,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.5210443735122681,
+          "similarity": 0.5210443735122681,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5185781717300415,
+          "similarity": 0.5185781717300415,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.47217613458633423,
+          "similarity": 0.47217613458633423,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.4364762306213379,
+          "similarity": 0.4364762306213379,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "baseline-nli": {
+      "entries": [
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.49640642469427704,
+          "similarity": 0.5755240321159363,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.48127799280644873,
+          "similarity": 0.5210443735122681,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.47901076169089013,
+          "similarity": 0.5185781717300415,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.4620103820116543,
+          "similarity": 0.47217613458633423,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.45938119192773424,
+          "similarity": 0.4364762306213379,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-phase-zero": {
+      "entries": [
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.49640642469427704,
+          "similarity": 0.5755240321159363,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.48127799280644873,
+          "similarity": 0.5210443735122681,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.47901076169089013,
+          "similarity": 0.5185781717300415,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.4620103820116543,
+          "similarity": 0.47217613458633423,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.45938119192773424,
+          "similarity": 0.4364762306213379,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "ablation-util-prov-zero": {
+      "entries": [
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.5564156671180199,
+          "similarity": 0.5755240321159363,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.5407386835076784,
+          "similarity": 0.5210443735122681,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5378712048757555,
+          "similarity": 0.5185781717300415,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.518907235962589,
+          "similarity": 0.47217613458633423,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5185674225722433,
+          "similarity": 0.4364762306213379,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "conf-boost-c": {
+      "entries": [
+        {
+          "id": 2552,
+          "title": "ServiceLayer::new signature extension: always add new Arc fields at the END of the parameter list",
+          "category": "pattern",
+          "final_score": 0.5562907758435238,
+          "similarity": 0.5755240321159363,
+          "confidence": 0.5288146954543631,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2553,
+          "title": "Changing a service constructor signature forces changes in every instantiation site including background.rs test helpers",
+          "category": "pattern",
+          "final_score": 0.5408674044880406,
+          "similarity": 0.5210443735122681,
+          "confidence": 0.5691860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2938,
+          "title": "Adding a new Arc parameter to ServiceLayer::new() requires updating 5+ call sites across unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5379973031316099,
+          "similarity": 0.5185781717300415,
+          "confidence": 0.5657389194195646,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 323,
+          "title": "How to add a new service to ServiceLayer",
+          "category": "procedure",
+          "final_score": 0.519212667997728,
+          "similarity": 0.47217613458633423,
+          "confidence": 0.5864077157282906,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 316,
+          "title": "ServiceLayer extraction pattern for unimatrix-server",
+          "category": "pattern",
+          "final_score": 0.5191039663104846,
+          "similarity": 0.4364762306213379,
+          "confidence": 0.6371435887235511,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 5,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

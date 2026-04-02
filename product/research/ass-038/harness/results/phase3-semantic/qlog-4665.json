@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4665",
+  "query": "so here's the researchers scope and questins for 455. your thoughts?  Feature: crt-034 — Recurring co_access → GRAPH_EDGES Promotion Tick\n\n  Problem: The v12→v13 migration bootstrapped co_access pairs into\n  GRAPH_EDGES once. Since then, all new co-access signal is invisible\n  to PPR. With w_coac zeroed in crt-032, PPR is the sole co-access\n  signal carrier — but its CoAccess edges are frozen at bootstrap time\n  forever.\n\n  Scope (what's in):\n  - New run_co_access_promotion_tick() function (new module\n  services/co_access_promotion_tick.rs)\n  - INSERT new qualifying pairs (count >= 3) into GRAPH_EDGES as\n  CoAccess edges\n  - UPDATE existing CoAccess edge weights when delta > 0.1\n  - New max_co_access_promotion_per_tick config field (default 200,\n  [1,10000])\n  - Expose CO_ACCESS_GRAPH_MIN_COUNT = 3 and EDGE_SOURCE_CO_ACCESS =\n  \"co_access\" as public constants\n  - Tick ordering: after maintenance_tick + orphaned-edge compaction,\n  before TypedGraphState::rebuild()\n\n  Scope (what's out): No migration changes, no schema changes, no GC of\n   stale edges (deferred to #409), no changes to PPR or scoring.\n\n  Key constraints: Must ship before #409 (retention). Infallible tick\n  contract. Direct write_pool_server() path (UPDATE semantics needed,\n  analytics drain doesn't support it).\n\n  Open questions for your input:\n  1. Weight delta (0.1) — named constant or config field? (Researcher\n  recommends constant for v1)\n  2. Promotion cap default — 200 ok? (NLI uses 100; co_access is\n  cheaper, no ML cost)\n  3. MAX(count) scope — two SQL queries (correct, global normalization)\n   vs. in-memory over capped batch (cheaper, local normalization).\n  Researcher recommends two-query.\n  4. Stale edge GC — defer to #409 or include in v1? (Researcher\n  recommends deferring)\n  5. Idempotency — no COUNTERS marker needed (recurring, not one-shot)\n  — confirm?",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.5902962118688553,
+          "similarity": 0.6665288805961609,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.583993232032561,
+          "similarity": 0.6430033445358276,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5766834983395086,
+          "similarity": 0.6247237920761108,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3882,
+          "title": "ADR-002 crt-034: Constants Location — unimatrix-store/src/read.rs alongside EDGE_SOURCE_NLI",
+          "category": "decision",
+          "final_score": 0.5328538377082636,
+          "similarity": 0.5916277766227722,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5240897055472632,
+          "similarity": 0.5604248046875,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3785,
+          "title": "ADR-001 crt-032: w_coac Default Zeroed — PPR Subsumes Co-Access Signal",
+          "category": "decision",
+          "final_score": 0.5902962118688553,
+          "similarity": 0.6665288805961609,
+          "confidence": 0.5786198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3891,
+          "title": "ADR-006 crt-034/crt-035: Edge Directionality — v1 One Direction, crt-035 Fulfills Back-fill Contract",
+          "category": "decision",
+          "final_score": 0.583993232032561,
+          "similarity": 0.6430033445358276,
+          "confidence": 0.5951197090371977,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3826,
+          "title": "ADR-004 crt-034: max_co_access_promotion_per_tick Added to InferenceConfig",
+          "category": "decision",
+          "final_score": 0.5766834983395086,
+          "similarity": 0.6247237920761108,
+          "confidence": 0.6013926496699368,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3882,
+          "title": "ADR-002 crt-034: Constants Location — unimatrix-store/src/read.rs alongside EDGE_SOURCE_NLI",
+          "category": "decision",
+          "final_score": 0.5328538377082636,
+          "similarity": 0.5916277766227722,
+          "confidence": 0.5297064500327555,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3978,
+          "title": "co_access promotion SELECT missing quarantine-status filter causes compaction/promotion oscillation",
+          "category": "lesson-learned",
+          "final_score": 0.5240897055472632,
+          "similarity": 0.5604248046875,
+          "confidence": 0.550493765503286,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 24,
+      "p_at_k": 0.2,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -5,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

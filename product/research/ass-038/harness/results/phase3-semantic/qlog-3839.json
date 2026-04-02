@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3839",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] **Stewardship Quality Review:**\n- #3668 — Good: lesson with clear root cause and takeaway for tick stall pattern\n- #3669 — Deprecated: corrected by #3672\n- #3671 — Good: pattern for `rand::rng()` API rename in 0.9\n- #3672 — Good: lesson covering async context placement + correct rand API\n\nNow spawning the architect for Phase 2.\n[tool: mcp__unimatrix__context_deprecate(Superseded by #3672 — corrected to use rand::rng() (not rand::thread_rng()) for rand 0.9.2) → Deprecated #3669 | embedded_ids HashSet and rand::thread_rng must be built in async context, not inside rayon closure]\n[Assistant] #3669 and #3672 are duplicates — #3669 is the stale original (with incorrect `rand::thread_rng()` reference), #3672 is the corrected version. Deprecating #3669.\n[tool: mcp__unimatrix__context_get(421-bugfix-leader) → #3672 | embedded_ids HashSet and rand::thread_rng must be built in async context, not inside rayon closure | lesson-learned | []]\n[tool: mcp__unimatrix__context_get(421-bugfix-leader) → #3669 | embedded_ids HashSet and rand::thread_rng must be built in async context, not inside rayon closure | lesson-learned | []]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5535601294404753,
+          "similarity": 0.6030303239822388,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5373467571168615,
+          "similarity": 0.6232250928878784,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.5042193386901775,
+          "similarity": 0.5018765926361084,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5001772801240458,
+          "similarity": 0.5054066181182861,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.4763308828506092,
+          "similarity": 0.4988429546356201,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 23,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3671,
+          "title": "rand::thread_rng() does not exist in rand 0.9 — use rand::rng()",
+          "category": "pattern",
+          "final_score": 0.5535601294404753,
+          "similarity": 0.6030303239822388,
+          "confidence": 0.5696198885066635,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3676,
+          "title": "embedded_ids HashSet and rand::rng() must be built in async context, not inside rayon closure",
+          "category": "lesson-learned",
+          "final_score": 0.5373467571168615,
+          "similarity": 0.6232250928878784,
+          "confidence": 0.4967624937630838,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1274,
+          "title": "ADR-002 col-022: Force-Set Semantic for Explicit cycle_start Attribution",
+          "category": "decision",
+          "final_score": 0.5042193386901775,
+          "similarity": 0.5018765926361084,
+          "confidence": 0.5802002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5001772801240458,
+          "similarity": 0.5054066181182861,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2574,
+          "title": "ADR-003: Contradiction Scan as Single Rayon Task; Pool Floor Raised to 4",
+          "category": "decision",
+          "final_score": 0.4763308828506092,
+          "similarity": 0.4988429546356201,
+          "confidence": 0.5088367468293392,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.6,
+      "icd": 1.0549201679861442
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

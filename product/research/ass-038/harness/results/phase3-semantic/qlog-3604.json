@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-3604",
+  "query": "=== Recent conversation (last 0 exchanges) ===\n[Assistant] **Phase 1 Interim Summary — Stewardship quality assessed.** 9 entries found:\n\n- **5 ADRs** (#3586–3590) — decision category, properly tagged: high quality\n- **3 patterns** (#3582, #3585, #3601) — eval harness specific, concrete: high quality\n- **1 pattern** (#3602) — Rust `pub(super)` trap: general Rust pattern, high quality\n\nNo deprecations needed. Now building the retrospective briefing and spawning the architect:\n\n---\n\n**RETROSPECTIVE BRIEFING for nan-010**\n\n```\nSession stats: 2 sessions, 2078 records, 25min+139min=158min total\n\nHOTSPOTS (5 warnings, 4 info):\n- [warning] context_load: 146 KB loaded before first write (10 reads in cluster at +0m) — phase: develop\n- [warning] compile_cycles: 95 compile/check cycles (peak 17 in 5min at +90m, 33 clusters)\n- [warning] file_breadth: 82 distinct files accessed in scope phase\n- [warning] mutation_spread: 64 files mutated (10 clusters, peak 8 writes at +30m)\n- [warning] tool_failure_hotspot: 6 Read + 4 Bash failures\n- [info] reread_rate: 66 files re-read multiple times\n- [info] output_parsing_struggle: git show piped through 8 filters in 3 minutes\n- [info] design_artifact_count: 49 design artifacts\n- [info] adr_count: 5 ADRs (1.7× typical)\n\nBASELINE OUTLIERS (all positive):\n- permission_friction_events: 0.0 vs mean 15.9 — well below baseline (POSITIVE)\n- coordinator_respawn_count: 0.0 vs mean 1.3 — no SM context loss (POSITIVE)\n- parallel_call_rate: 0.4 vs mean 0.3 — above-average concurrency (POSITIVE)\n- post_completion_work_pct: 0.0 vs mean 4.9 — clean stop after gate (POSITIVE)\n- knowledge_entries_stored: 22.0 vs mean 8.0 — 2.75× knowledge contribution (POSITIVE)\n- sleep_workaround_count: 0.0 vs mean 3.4 — no polling hacks (POSITIVE)\n\nRECOMMENDATIONS FROM RETROSPECTIVE:\n- [compile_cycles] Batch field additions before compiling — resolve type definitions in-memory before each build\n\nREWORK SIGNALS:\n- Gate 3a failed twice (2 rework iterations) before passing\n  - Rework 1: ARCHITECTURE.md Integration Surface table had stale signatures; section5-dispatch.md had 2 new params instead of 1\n  - Rework 2: report-sidecar-load.md still had Step 4.5 (pre-computation) after first fix\n- Root cause: pseudocode spec and architecture table were out of sync; the correction fixed one location but not all dependent locations simultaneously\n```\n[tool: mcp__unimatrix__context_get() → ]\n[tool: mcp__unimatrix__context_get() → ]\n=== End recent conversation ===",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.6019690601647223,
+          "similarity": 0.6661913394927979,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.576331881431695,
+          "similarity": 0.6127144694328308,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5669271104642499,
+          "similarity": 0.6399084329605103,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5464053564063461,
+          "similarity": 0.593239963054657,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5462189739117991,
+          "similarity": 0.5854778289794922,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 43,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 1166,
+          "title": "Retrospective findings: nan-002",
+          "category": "lesson-learned",
+          "final_score": 0.6019690601647223,
+          "similarity": 0.6661913394927979,
+          "confidence": 0.6107855354573924,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1006,
+          "title": "ADR-003: One Composite Stewardship Check Per Gate",
+          "category": "decision",
+          "final_score": 0.576331881431695,
+          "similarity": 0.6127144694328308,
+          "confidence": 0.6175944361248428,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3586,
+          "title": "ADR-001 nan-010: Module Pre-Split as First Implementation Step",
+          "category": "decision",
+          "final_score": 0.5669271104642499,
+          "similarity": 0.6399084329605103,
+          "confidence": 0.5532186813165211,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2618,
+          "title": "Oversized eval files cause Gate 3b FAIL — split submodules before delivery, not after",
+          "category": "lesson-learned",
+          "final_score": 0.5464053564063461,
+          "similarity": 0.593239963054657,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 919,
+          "title": "ADR-002 col-020b: Rust-Only Tests; infra-001 Integration Tests Deferred",
+          "category": "decision",
+          "final_score": 0.5462189739117991,
+          "similarity": 0.5854778289794922,
+          "confidence": 0.5747688877898947,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.4,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6730116670092565
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 7,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

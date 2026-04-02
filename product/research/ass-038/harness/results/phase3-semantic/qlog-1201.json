@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1201",
+  "query": "so create a git issue and reference the symptom and the log, and what you found... not the resollution pls",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.4562200163025629,
+          "similarity": 0.43395960330963135,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4460907880883468,
+          "similarity": 0.4685724973678589,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3838,
+          "title": "Retrospective findings: bugfix-360",
+          "category": "lesson-learned",
+          "final_score": 0.4437711521951775,
+          "similarity": 0.4417651891708374,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3832,
+          "title": "Retrospective findings: bugfix-311",
+          "category": "lesson-learned",
+          "final_score": 0.43136024168917997,
+          "similarity": 0.41818445920944214,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3841,
+          "title": "Retrospective findings: bugfix-381",
+          "category": "lesson-learned",
+          "final_score": 0.43131823610004616,
+          "similarity": 0.4181046485900879,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2799,
+          "title": "Cargo fingerprinting trap: git checkout does not update file mtimes — cargo build is a no-op after branch switch",
+          "category": "lesson-learned",
+          "final_score": 0.4562200163025629,
+          "similarity": 0.43395960330963135,
+          "confidence": 0.5469406109503406,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3925,
+          "title": "Batch bugfix sessions must establish a clean worktree from main before spawning work agents",
+          "category": "lesson-learned",
+          "final_score": 0.4460907880883468,
+          "similarity": 0.4685724973678589,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3838,
+          "title": "Retrospective findings: bugfix-360",
+          "category": "lesson-learned",
+          "final_score": 0.4437711521951775,
+          "similarity": 0.4417651891708374,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3832,
+          "title": "Retrospective findings: bugfix-311",
+          "category": "lesson-learned",
+          "final_score": 0.43136024168917997,
+          "similarity": 0.41818445920944214,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3841,
+          "title": "Retrospective findings: bugfix-381",
+          "category": "lesson-learned",
+          "final_score": 0.43131823610004616,
+          "similarity": 0.4181046485900879,
+          "confidence": 0.502,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 7,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 1,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

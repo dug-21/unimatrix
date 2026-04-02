@@ -1,0 +1,94 @@
+{
+  "scenario_id": "qlog-3825",
+  "query": "do you agree? Proposed Fix Approach\n\nFix for Root Cause 1 — Shuffle before take\n\nAdd a shuffle of both tiers independently before take(max_sources). The rand crate's SliceRandom::shuffle is already a transitive dependency in the workspace (confirm with cargo tree -i rand). If not available, use a Fisher-Yates shuffle seeded from std::time::SystemTime.\n\n// In select_source_candidates, after building tier1 and tier2:\nuse rand::seq::SliceRandom;\nlet mut rng = rand::thread_rng();\ntier1.shuffle(&mut rng);\ntier2.sort_by(|a, b| b.created_at.cmp(&a.created_at)); // keep as tiebreak base\ntier2.shuffle(&mut rng);  // OR: shuffle after sort to randomize within equal timestamps\nThe shuffle must be within each tier independently, not across them, so that tier 1 (isolated) entries still take priority over tier 2 (non-isolated) entries — just not always the same isolated entries.\n\nFix for Root Cause 2 — Exclude no-embedding entries at Phase 3\n\nAdd a new method to VectorIndex: fn embedded_ids(&self) -> HashSet<u64> that reads id_map.entry_to_data.keys() into a HashSet<u64> under a single read lock. This is O(N) once at call site, O(1) per candidate at selection time.\n\nCall it once in run_graph_inference_tick before Phase 3, and pass the result into select_source_candidates:\n\n// In run_graph_inference_tick, before Phase 3:\nlet embedded_ids: HashSet<u64> = vector_index.embedded_ids();\n\n// In select_source_candidates signature:\nfn select_source_candidates(\n    all_active: &[EntryRecord],\n    _existing_edge_set: &HashSet<(u64, u64)>,\n    isolated_ids: &HashSet<u64>,\n    embedded_ids: &HashSet<u64>,   // NEW parameter\n    max_sources: usize,\n) -> Vec<u64>\n\n// In partition loop:\nfor entry in all_active {\n    if !embedded_ids.contains(&entry.id) {\n        continue; // skip: no embedding, would be wasted slot\n    }\n    if isolated_ids.contains(&entry.id) {\n        tier1.push(entry);\n    } else {\n        tier2.push(entry);\n    }\n}\nThe existing contains(entry_id: u64) -> bool on VectorIndex is O(1) per call but would require N individual lock acquisitions. The bulk embedded_ids() method acquires the read lock once and produces the full set — preferred for this use case (called once per tick, on potentially thousands of entries).\n\nRequired addition to unimatrix_core::VectorStore trait (for object-safety): add fn embedded_ids(&self) -> HashSet<u64>; to the trait definition, then implement on VectorAdapter in adapters.rs.\n\nWhy This Fix\n\nMinimal: both changes are confined to select_source_candidates plus one pre-selection line and one new trait/impl method. No schema changes, no new state, no design change.\nCorrect: the shuffle ensures different candidates are sampled each tick, giving probabilistically complete coverage over all isolated entries. The embedding filter removes permanently-stuck no-embedding entries from both tiers before any slot is allocated to them.\nSafe for the existing guarantee: tier 1 still precedes tier 2 after shuffle because both tiers are shuffled independently and then chained in order (tier1 first).\n",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5533444977802314,
+          "similarity": 0.6064243316650391,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5312997584602511,
+          "similarity": 0.5166610479354858,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.46580019323449384,
+          "similarity": 0.5060203671455383,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 27,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3668,
+          "title": "Tick source-candidate selection with stable ordering stalls after first window is exhausted",
+          "category": "lesson-learned",
+          "final_score": 0.5533444977802314,
+          "similarity": 0.6064243316650391,
+          "confidence": 0.5641860201677157,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3675,
+          "title": "Tick passes over full entry set: bound, shuffle, and embedding-filter source candidates independently of NLI pair cap",
+          "category": "pattern",
+          "final_score": 0.5312997584602511,
+          "similarity": 0.5166610479354858,
+          "confidence": 0.6325835616271306,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3976,
+          "title": "Multi-type background tick: give each edge type an independent constant budget — never derive low-priority budget as remaining capacity from the high-priority pool",
+          "category": "pattern",
+          "final_score": 0.46580019323449384,
+          "similarity": 0.5060203671455383,
+          "confidence": 0.47000000000000003,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 29,
+      "p_at_k": 0.3333333333333333,
+      "mrr": 1.0,
+      "cc_at_k": 0.4,
+      "icd": 0.6365141682948128
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

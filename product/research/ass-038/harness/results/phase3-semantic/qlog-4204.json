@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-4204",
+  "query": "we're scoping #398 now.. here is some info... review this and provide your feedback.  Do they have the right scope. Opnions on the questions? Feature: Personalized PageRank over positive graph edges (Supports,       \n  CoAccess, Prerequisite) for multi-hop relevance propagation in            \n  context_search.                                                           \n                                                                            \n  What's in scope:                                                \n  - New graph_ppr.rs module with personalized_pagerank() — power iteration, \n  alpha=0.85, 20 iterations                                                 \n  - Inserted as Step 6d in search.rs (post-HNSW, pre-NLI)                   \n  - PPR-surfaced entries (score > threshold) added to candidate pool;       \n  existing HNSW entries get score-blended                                   \n  - Four new InferenceConfig fields: ppr_alpha, ppr_iterations,             \n  ppr_inclusion_threshold, ppr_blend_weight                                 \n  - Supersedes #396 (depth-1 expansion never landed, PPR is strictly more   \n  general)                                                               \n                                                                            \n  What's out of scope: No schema changes, no fusion weight changes, no tick\n  changes, no SR-01 interaction.                                            \n                                                                  \n  Infrastructure: petgraph 0.8 already present, TypedRelationGraph already  \n  has all required edges.                                         \n                                                                            \n  ---                                                             \n  Open questions requiring your input before the spec proceeds:\n                                                                            \n  1. Edge direction for Supports: Should PPR mass flow A→B (forward) or B→A\n  (backward)? The goal of surfacing lesson-learned entries when their       \n  supported decision is a seed requires backward traversal (Incoming). Is\n  that the intent?                                                          \n  2. co-access timing: Step 6d is currently after Step 6c (co-access\n  prefetch). PPR-surfaced entries will have coac_norm = 0.0. Should 6d move \n  before 6c, or is zero co-access for PPR entrants acceptable?\n  3. Pool expansion cap: Should there be a ppr_max_expand: usize cap (like  \n  #396 proposed 20)? Uncapped PPR could surface many entries.               \n  4. Determinism: Is deterministic output required for tests? If yes,\n  accumulation must sort by node ID to avoid float-sum order sensitivity.   \n  5. Blend location: Blend PPR into similarity before fused scoring (current\n   proposal), or add as an additive offset to the final fused score?        \n  6. Prerequisite edges: Zero Prerequisite edges exist in any deployment\n  today. Is it correct that PPR handles them transparently when they land   \n  later? (Expected yes.)   ",
+  "profiles": {
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5865305476867324,
+          "similarity": 0.6425743699073792,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5745682405241979,
+          "similarity": 0.6270048022270203,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5585423458722486,
+          "similarity": 0.5945903062820435,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.557571182996783,
+          "similarity": 0.5905213952064514,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3737,
+          "title": "ADR-007 crt-030: ppr_blend_weight Dual Role — Intentional Single Parameter",
+          "category": "decision",
+          "final_score": 0.5343737936952823,
+          "similarity": 0.5527463555335999,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 25,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    },
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 3739,
+          "title": "ADR-009 crt-030: PPR Score Map Memory Profile — No Traversal Depth Cap Needed",
+          "category": "decision",
+          "final_score": 0.5865305476867324,
+          "similarity": 0.6425743699073792,
+          "confidence": 0.6026195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3732,
+          "title": "ADR-002 crt-030: personalized_pagerank() Function Signature and Algorithm Contract",
+          "category": "decision",
+          "final_score": 0.5745682405241979,
+          "similarity": 0.6270048022270203,
+          "confidence": 0.5923926496699369,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3735,
+          "title": "ADR-005 crt-030: PPR Pipeline Position — Step 6d Between 6b and 6c",
+          "category": "decision",
+          "final_score": 0.5585423458722486,
+          "similarity": 0.5945903062820435,
+          "confidence": 0.5952002155360415,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3731,
+          "title": "ADR-001 crt-030: graph_ppr.rs as Submodule of graph.rs",
+          "category": "decision",
+          "final_score": 0.557571182996783,
+          "similarity": 0.5905213952064514,
+          "confidence": 0.5983769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3737,
+          "title": "ADR-007 crt-030: ppr_blend_weight Dual Role — Intentional Single Parameter",
+          "category": "decision",
+          "final_score": 0.5343737936952823,
+          "similarity": 0.5527463555335999,
+          "confidence": 0.5893769321249094,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 35,
+      "p_at_k": 0.0,
+      "mrr": 0.0,
+      "cc_at_k": 0.2,
+      "icd": 0.0
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 10,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

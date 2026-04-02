@@ -1,0 +1,134 @@
+{
+  "scenario_id": "qlog-1715",
+  "query": "So... I want to take a step back for 1 second, and then re-drill into this intelligence pipeline... we have all of the basic tools, now we have to put it together the best and easiest way possible.  Assume we've added W1-5 from @product/PRODUCT-VISION.md and #330 already.  We have 2-3 different ways to surface knowledge to the source system(in this case, the claude agents).  1. UDS injextion (context: Agents are not requesting any direct information, Unimatrix attempting to give agents better information about their goals, possibly things the agents don't know they need) 2. context_briefing (context: currently unused because it was ineffective.  Could be resurrected if we make it great) 3. context_search (or lookup) (context: Agent overt requests for information. usually they ask for structured keywords, and will be in known phases.  I think, but I'm not sure, they COULD be instructed to also include categories to refine their search, however, they aren't today and sometimes they may not know what they are looking for)  Our goal is to make the responses almost predictive, in both the injection mode, potentially general insight (context_briefing) and specific requests.  If we can reduce/simplify agents calls... thats a perk, but not necessarily the priority.",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5458252524984067,
+          "similarity": 0.5336178541183472,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5264782965872808,
+          "similarity": 0.5266891121864319,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.525212608154972,
+          "similarity": 0.5289137363433838,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5239930488781793,
+          "similarity": 0.5038955211639404,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.5196751933776503,
+          "similarity": 0.5260491967201233,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 36,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 4,
+          "title": "Roadmap milestones 3-4: Agent Integration and Learning",
+          "category": "decision",
+          "final_score": 0.5458252524984067,
+          "similarity": 0.5336178541183472,
+          "confidence": 0.6477858937551798,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 270,
+          "title": "ADR-002: BriefingService Delegates to SearchService for Semantic Search",
+          "category": "decision",
+          "final_score": 0.5264782965872808,
+          "similarity": 0.5266891121864319,
+          "confidence": 0.605170930470574,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 284,
+          "title": "ADR-002: BriefingService delegates to SearchService for semantic search",
+          "category": "decision",
+          "final_score": 0.525212608154972,
+          "similarity": 0.5289137363433838,
+          "confidence": 0.5985574559300902,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2,
+          "title": "Product vision and strategic approach",
+          "category": "decision",
+          "final_score": 0.5239930488781793,
+          "similarity": 0.5038955211639404,
+          "confidence": 0.6309875310065719,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1012,
+          "title": "How to add Knowledge Stewardship to a new agent definition",
+          "category": "procedure",
+          "final_score": 0.5196751933776503,
+          "similarity": 0.5260491967201233,
+          "confidence": 0.5876195295677322,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 42,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": -6,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}

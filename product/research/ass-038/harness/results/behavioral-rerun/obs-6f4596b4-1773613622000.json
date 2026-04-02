@@ -1,0 +1,134 @@
+{
+  "scenario_id": "obs-6f4596b4-1773613622000",
+  "query": "vector index bugfix test flaky",
+  "profiles": {
+    "combined-ppr-enabled": {
+      "entries": [
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.5398764292147965,
+          "similarity": 0.6083571910858154,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2673,
+          "title": "EvalServiceLayer snapshot must load VectorIndex from sibling vector/ dir, not construct fresh",
+          "category": "pattern",
+          "final_score": 0.45412882689452283,
+          "similarity": 0.42680561542510986,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.452393994899393,
+          "similarity": 0.4350593090057373,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2612,
+          "title": "Compute intersection before calling kendall_tau() on diverging eval result sets",
+          "category": "pattern",
+          "final_score": 0.4473608202678011,
+          "similarity": 0.4347238540649414,
+          "confidence": 0.5218024349198297,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.446846370490082,
+          "similarity": 0.452012300491333,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 6,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    },
+    "combined-ppr-disabled": {
+      "entries": [
+        {
+          "id": 2676,
+          "title": "VectorIndex snapshot round-trip test pattern for eval offline pipeline (GH-323)",
+          "category": "pattern",
+          "final_score": 0.5398764292147965,
+          "similarity": 0.6083571910858154,
+          "confidence": 0.5248686063175688,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2673,
+          "title": "EvalServiceLayer snapshot must load VectorIndex from sibling vector/ dir, not construct fresh",
+          "category": "pattern",
+          "final_score": 0.45412882689452283,
+          "similarity": 0.42680561542510986,
+          "confidence": 0.5514845081064053,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 1712,
+          "title": "hnsw_rs: points stored only at assigned layer, not at layer 0 — get_layer_iterator(0) misses ~6% of points",
+          "category": "lesson-learned",
+          "final_score": 0.452393994899393,
+          "similarity": 0.4350593090057373,
+          "confidence": 0.5349846875758708,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 2612,
+          "title": "Compute intersection before calling kendall_tau() on diverging eval result sets",
+          "category": "pattern",
+          "final_score": 0.4473608202678011,
+          "similarity": 0.4347238540649414,
+          "confidence": 0.5218024349198297,
+          "status": "Active",
+          "nli_rerank_delta": null
+        },
+        {
+          "id": 3663,
+          "title": "VectorIndex is synchronous — rayon closure must not await (C-14/R-09)",
+          "category": "pattern",
+          "final_score": 0.446846370490082,
+          "similarity": 0.452012300491333,
+          "confidence": 0.49570829062831845,
+          "status": "Active",
+          "nli_rerank_delta": null
+        }
+      ],
+      "latency_ms": 4,
+      "p_at_k": 0.2,
+      "mrr": 0.3333333333333333,
+      "cc_at_k": 0.4,
+      "icd": 0.5004024235381879
+    }
+  },
+  "comparison": {
+    "kendall_tau": 1.0,
+    "rank_changes": [],
+    "mrr_delta": 0.0,
+    "p_at_k_delta": 0.0,
+    "latency_overhead_ms": 2,
+    "cc_at_k_delta": 0.0,
+    "icd_delta": 0.0
+  },
+  "phase": null
+}
