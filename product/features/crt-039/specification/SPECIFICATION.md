@@ -88,8 +88,9 @@ diff shows only comment and structural annotation changes in the contradiction s
 an explicit ordering comment:
 ```
 // Tick ordering invariant (non-negotiable):
-// compaction → promotion → graph-rebuild → structural_graph_tick (always)
+// compaction → promotion → graph-rebuild
 //   → contradiction_scan (if embed adapter ready, every CONTRADICTION_SCAN_INTERVAL_TICKS)
+//   → extraction_tick → structural_graph_tick (always)
 ```
 Verification: inspect `run_single_tick` body for correct ordering and presence of comment.
 
@@ -187,9 +188,12 @@ is unchanged. Verification method: diff shows no behavioral change to the contra
 block; existing contradiction scan tests pass.
 
 **AC-07** (from SCOPE AC-07): The ordering invariant is preserved:
-compaction → promotion → graph-rebuild → structural_graph_tick (always) →
-contradiction_scan (if embed adapter ready, every N ticks).
-Verification method: inspect `run_single_tick` call sequence; ordering invariant comment present.
+compaction → promotion → graph-rebuild → contradiction_scan (if embed adapter ready, every N ticks)
+→ extraction_tick → structural_graph_tick (always).
+The tick position of contradiction_scan does NOT change — it continues to run before graph
+inference tick, as in the current code.
+Verification method: inspect `run_single_tick` call sequence; ordering invariant comment present
+and matches the above order.
 
 **AC-08** (from SCOPE AC-08): All tests that previously asserted `nli_informs_cosine_floor == 0.45`
 are updated to assert 0.5. This includes `test_inference_config_default_nli_informs_cosine_floor`

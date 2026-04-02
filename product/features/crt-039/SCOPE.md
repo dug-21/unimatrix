@@ -46,7 +46,7 @@ inference cannot accumulate edges until the NLI gate is removed.
    condition (`nli_enabled && current_tick.is_multiple_of(CONTRADICTION_SCAN_INTERVAL_TICKS)`)
    and makes that condition explicit in code comments.
 4. Preserve the ordering invariant: compaction → promotion → graph-rebuild →
-   structural_graph_tick → contradiction_scan (if nli_enabled).
+   contradiction_scan (if nli_enabled) → extraction_tick → structural_graph_tick (always).
 5. Update all affected tests to reflect the new behavior (tick always runs; neutral guard
    gone; cosine floor raised).
 
@@ -207,8 +207,8 @@ actual workload. Pool floor remains at 4 when `nli_enabled = false`. No code cha
 Add a named comment block that makes the contradiction scan's own condition explicit.
 The behavior is unchanged — but the code comment must clearly separate it from the
 structural graph tick. The ordering invariant comment must reflect:
-> compaction → promotion → graph-rebuild → structural_graph_tick (always) →
-> contradiction_scan (if nli_enabled, every N ticks)
+> compaction → promotion → graph-rebuild → contradiction_scan (if nli_enabled, every N ticks) →
+> extraction_tick → structural_graph_tick (always)
 
 ### Change 5 — Module-level doc comment update (nli_detection_tick.rs)
 
@@ -236,7 +236,8 @@ nature of the file — structural Informs path (Phase 4b) + NLI Supports path (P
   check) and `current_tick.is_multiple_of(CONTRADICTION_SCAN_INTERVAL_TICKS)`. The
   condition is unchanged; only its placement and labeling in the tick are clarified.
 - AC-07: The ordering invariant is preserved: compaction → promotion → graph-rebuild →
-  structural_graph_tick → contradiction_scan (if nli_enabled).
+  contradiction_scan (if nli_enabled) → extraction_tick → structural_graph_tick (always).
+  The tick position of contradiction_scan does not change.
 - AC-08: All tests that previously asserted `nli_informs_cosine_floor == 0.45` are updated
   to assert 0.5.
 - AC-09: All tests that previously tested the `neutral > 0.5` guard behavior

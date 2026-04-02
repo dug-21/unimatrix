@@ -190,9 +190,13 @@ Phase 5: Independent caps — Supports: max_graph_inference_per_tick; Informs: 2
 **Ordering invariant in `run_single_tick`:**
 ```
 compaction → co_access_promotion → TypedGraphState::rebuild → PhaseFreqTable::rebuild
-→ structural_graph_tick (always: run_graph_inference_tick)
 → contradiction_scan (if embed adapter ready && tick_multiple_of_interval)
+→ extraction_tick
+→ structural_graph_tick (always: run_graph_inference_tick)
 ```
+Note: crt-039 does NOT change the position of contradiction_scan or extraction_tick.
+Only the `nli_enabled` gate around `run_graph_inference_tick` is removed — the tick
+continues to run last in the sequence, as in the current code.
 
 ---
 
@@ -200,7 +204,7 @@ compaction → co_access_promotion → TypedGraphState::rebuild → PhaseFreqTab
 
 | Constraint | Source |
 |-----------|--------|
-| C-01: Tick ordering invariant is non-negotiable. compaction → promotion → graph-rebuild → structural_graph_tick → contradiction_scan. | SCOPE.md; ADR-002 Phase 6 comment |
+| C-01: Tick ordering invariant is non-negotiable. compaction → promotion → graph-rebuild → contradiction_scan → extraction_tick → structural_graph_tick. The position of contradiction_scan (before graph inference tick) does NOT change. Only the `nli_enabled` gate wrapping the final step is removed. | SCOPE.md; ADR-001 |
 | C-02: W1-2 contract. All `score_batch` calls via `rayon_pool.spawn()`. Phase 4b must not invoke `score_batch`. `spawn_blocking` prohibited. | SCOPE.md; SPEC C-02 |
 | C-03: `MAX_INFORMS_PER_TICK = 25` is a hard write limit. `informs_metadata.truncate(25)` executes before any Phase 8b write. | SPEC C-03; FR-09 |
 | C-04: Dedup-before-cap ordering. `query_existing_informs_pairs` (Phase 2) applied before Phase 4b candidate selection; Phase 5 cap applies to the already-deduped set. | SPEC C-04; FR-09 |
@@ -210,6 +214,7 @@ compaction → co_access_promotion → TypedGraphState::rebuild → PhaseFreqTab
 | C-08: Production code in `nli_detection_tick.rs` must not exceed 500-line guidance. If Option Z pushes non-test code past this, extract to `nli_detection_tick/structural_informs.rs`. | SPEC C-08; NFR-06 |
 | C-09: `nli_informs_cosine_floor` range validation `(0.0, 1.0)` exclusive unchanged. 0.5 is within range. No change to `InferenceConfig::validate()`. | SPEC C-09 |
 | R-03 / AC-13: Candidate set separation requires explicit Phase 4b subtraction of Phase 4 Supports candidates — not reliance on threshold arithmetic alone. | SPEC FR-06; RISK R-03 |
+| AC-17 (required, not optional): Phase 4b must emit a `tracing::debug!` log at completion recording exactly four fields: `informs_candidates_found`, `informs_candidates_after_dedup`, `informs_candidates_after_cap`, `informs_edges_written`. This is the primary production signal that Phase 4b is running and accumulating edges post-deployment. Gate-3c verification: `grep -n 'informs_candidates_found' crates/unimatrix-server/src/nli_detection_tick.rs` must return at least one match in the Phase 4b/5 region. | SPEC FR-14; AC-17 |
 
 ---
 
