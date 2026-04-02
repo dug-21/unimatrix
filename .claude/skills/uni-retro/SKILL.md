@@ -94,9 +94,11 @@ Before extracting new patterns, review the quality of entries agents stored duri
    - **Procedures**: Has numbered steps? Are steps specific (not generic)?
 
 3. **Curate**:
-   - **Low-quality entries** (missing structure, no substantive "why", API docs disguised as patterns): deprecate via `context_deprecate` with reason.
+   - Keep entries focused on the project and how the team delivers.  Your objective is ONLY enter knowledge if future agents will benefit from the knowledge.  More is not better.
+   - **Low-quality entries** (missing structure, no substantive "why", API docs disguised as patterns): identify.  If needs correction use `context_correct`, if it needs to be removed with no replacement, `context_deprecate`.
    - **High-quality entries** confirmed by successful delivery: note for the architect to validate during pattern extraction.
    - **Miscategorized entries** (lesson stored as pattern, or vice versa): note for correction.
+
 
 4. **Report** the stewardship review results before proceeding to Phase 2:
    ```
@@ -143,7 +145,7 @@ Agent(uni-architect, "
   MODE: retrospective (not design)
   Feature: {feature-id}
 
-  You are reviewing a SHIPPED feature to extract reusable knowledge.
+  You are reviewing a SHIPPED feature to extract reusable knowledge.  More entries not better.  You are looking for aspects future agents will benefit from.  Be selective.
   You are NOT designing anything new.
 
   Read these artifacts:
@@ -180,7 +182,7 @@ Agent(uni-architect, "
   4. LESSON EXTRACTION — Two sources:
 
      A. From gate failures and rework:
-        a. What went wrong? (root cause, not symptoms)
+        a. Are there items future agents can learn from? (Don't just report failures)
         b. Is the lesson generalizable beyond this feature?
         c. If yes: use /uni-store-lesson.
 
@@ -188,12 +190,7 @@ Agent(uni-architect, "
         For each Warning-severity hotspot, ask:
         - Is this a recurring problem (check baseline — is it consistently above threshold)?
         - Can it be prevented by a procedure change or config update?
-        - If yes: store as lesson (/uni-store-lesson) or procedure (/uni-store-procedure).
-
-        For each recommendation from the retrospective:
-        - Check if a matching procedure already exists (/uni-query-patterns).
-        - If not, and the recommendation is actionable: store as procedure.
-        - If it updates existing guidance: use context_correct.
+        - If yes: If HUMAN must take the action - report only (don't store). If future agents need to know: store as lesson (/uni-store-lesson) or procedure (/uni-store-procedure).
 
      C. From baseline outliers:
         - Positive outliers (improvements): note what changed and why — may be a new pattern.
@@ -209,25 +206,8 @@ Agent(uni-architect, "
 
 ---
 
-## Phase 3: ADR Supersession (if flagged)
 
-If the architect flagged any ADRs for supersession:
-
-1. Present each flagged ADR to the human:
-   ```
-   ADR #{entry-id}: "{title}"
-   Architect's finding: {why it should be superseded}
-   Proposed replacement: {what the new decision should be}
-
-   Approve supersession?
-   ```
-
-2. If human approves: spawn architect to perform the supersession via `/uni-store-adr`.
-3. If human disagrees: note as "ADR validated with caveat".
-
----
-
-## Phase 4: Worktree Cleanup
+## Phase 3: Worktree Cleanup
 
 Worker agents spawned with `isolation: "worktree"` create directories under `.claude/worktrees/`. Each contains a full `target/` build directory (~1-2GB). Clean up after merge.
 
@@ -246,7 +226,7 @@ If a worktree has uncommitted changes, warn the human — do NOT force-remove.
 
 ---
 
-## Phase 5: Summary & Outcome
+## Phase 4: Summary & Outcome
 
 Collect all knowledge base changes from Phases 2-3.
 
@@ -268,6 +248,9 @@ Retrospective summary:
 - Sessions: {session_count}, Tool calls: {total_tool_calls}, Duration: {duration}
 - Hotspots: {count} ({warning_count} warnings, {info_count} info)
 - Baseline outliers: {list metric names and status}
+
+Knowledged leveraged:
+- {Summary of knowledge items served by Unimatrix}
 
 Knowledge extracted:
 - Patterns: {count} new, {count} updated

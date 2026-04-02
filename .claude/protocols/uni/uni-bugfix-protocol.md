@@ -168,10 +168,12 @@ mcp__unimatrix__context_cycle({
   "type": "phase-end",
   "topic": "bugfix-{issue-number}",
   "phase": "discovery",
+  "outcome": {1-2 sentence brief summary of phase result},
   "next_phase": "fix",
   "agent_id": "{issue-number}-bugfix-leader"
 })
 ```
+then proceed to Phase 2
 
 **If the human disagrees**: Re-spawn the investigator with the human's feedback:
 
@@ -195,7 +197,7 @@ Task(subagent_type: "uni-bug-investigator",
 
 ## Phase 2: Fix Execution
 
-**Prerequisite**: Human has approved the diagnosis.
+**Prerequisite**: Human has approved the diagnosis.  You are STILL the scrum master.
 
 **Agent**: uni-rust-dev
 
@@ -235,6 +237,7 @@ mcp__unimatrix__context_cycle({
   "type": "phase-end",
   "topic": "bugfix-{issue-number}",
   "phase": "fix",
+  "outcome": {1-2 sentence brief summary of phase result},
   "next_phase": "testing",
   "agent_id": "{issue-number}-bugfix-leader"
 })
@@ -327,6 +330,7 @@ Task(subagent_type: "uni-validator",
        "type": "phase-end",
        "topic": "bugfix-{issue-number}",
        "phase": "testing",
+       "outcome": {1-2 sentence brief summary of phase result},
        "next_phase": "bug-review",
        "agent_id": "{issue-number}-bugfix-leader"
      })
@@ -359,6 +363,7 @@ mcp__unimatrix__context_cycle({
   "type": "phase-end",
   "topic": "bugfix-{issue-number}",
   "phase": "bug-review",
+  "outcome": {1-2 sentence brief summary of phase result},
   "agent_id": "{issue-number}-bugfix-leader"
 })
 
