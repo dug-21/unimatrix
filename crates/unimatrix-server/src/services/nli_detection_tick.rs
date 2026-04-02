@@ -1717,20 +1717,27 @@ mod tests {
     // AC-18: Phase 4b uses nli_informs_cosine_floor, not supports_candidate_threshold
     // -----------------------------------------------------------------------
 
-    /// AC-18: A pair in the band [0.45, 0.50) is accepted by Phase 4b (nli_informs_cosine_floor)
-    /// but would be rejected by Phase 4 (supports_candidate_threshold strict >).
+    /// AC-18 (updated for crt-039): A pair at cosine = 0.50 (the new inclusive floor) is
+    /// accepted by Phase 4b (nli_informs_cosine_floor = 0.50, >= semantics) but rejected
+    /// by Phase 4 (supports_candidate_threshold = 0.50, strict > semantics).
+    /// Band [0.50, supports_candidate_threshold) differentiates the two phases.
     #[test]
     fn test_phase4b_uses_nli_informs_cosine_floor_not_supports_threshold() {
         let config = informs_config();
+        assert_eq!(
+            config.nli_informs_cosine_floor, 0.5_f32,
+            "sanity: floor is 0.5 after crt-039"
+        );
         let (src_cat, tgt_cat) = (
             config.informs_category_pairs[0][0].as_str(),
             config.informs_category_pairs[0][1].as_str(),
         );
-        let cosine_in_band = 0.47_f32; // in [0.45, 0.50)
+        // cosine exactly at the new floor — Phase 4b accepts (>=), Phase 4 rejects (strict >).
+        let cosine_at_floor = 0.50_f32;
 
-        // Phase 4b: inclusive >= floor (0.45) — should pass.
+        // Phase 4b: inclusive >= floor (0.50) — should pass.
         let phase4b_accepts = phase4b_candidate_passes_guards(
-            cosine_in_band,
+            cosine_at_floor,
             src_cat,
             tgt_cat,
             1_000_000,
@@ -1741,15 +1748,14 @@ mod tests {
         );
         assert!(
             phase4b_accepts,
-            "AC-18: cosine 0.47 >= nli_informs_cosine_floor 0.45 must be accepted by Phase 4b"
+            "AC-18 (updated): cosine 0.50 >= nli_informs_cosine_floor 0.50 must be accepted by Phase 4b"
         );
 
-        // Phase 4 strict >: similarity <= supports_candidate_threshold means no candidate.
-        // Default supports_candidate_threshold = 0.50; cosine 0.47 <= 0.50 → excluded.
-        let phase4_would_accept = cosine_in_band > config.supports_candidate_threshold;
+        // Phase 4 strict >: 0.50 > 0.50 is false → excluded.
+        let phase4_would_accept = cosine_at_floor > config.supports_candidate_threshold;
         assert!(
             !phase4_would_accept,
-            "AC-18: cosine 0.47 must be excluded by Phase 4 (strict > 0.50)"
+            "AC-18 (updated): cosine 0.50 must be excluded by Phase 4 (strict > 0.50)"
         );
     }
 
