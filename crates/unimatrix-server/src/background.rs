@@ -658,10 +658,20 @@ async fn run_single_tick(
         }
     }
 
-    // GH #278 fix: Contradiction scan — runs every CONTRADICTION_SCAN_INTERVAL_TICKS ticks
-    // (including tick 0 = first tick). This gates the O(N) ONNX inference so it runs at
-    // ~60-minute intervals rather than on every 15-minute tick or every context_status call.
-    // The result is written to `contradiction_cache`; StatusService reads it without ONNX.
+    // Tick ordering invariant (non-negotiable):
+    // compaction → promotion → graph-rebuild
+    //   → contradiction_scan (if embed adapter ready, every CONTRADICTION_SCAN_INTERVAL_TICKS)
+    //   → extraction_tick → structural_graph_tick (always)
+    //
+    // Do not reorder these steps. The contradiction scan runs BEFORE graph inference so that
+    // the contradiction_cache reflects the current entry set before Informs edges accumulate.
+
+    // --- Contradiction scan (independent tick step) ---
+    // Gated on: embed adapter availability AND tick-interval (CONTRADICTION_SCAN_INTERVAL_TICKS).
+    // Runs independently of the structural graph tick below.
+    // O(N) ONNX inference — interval gate prevents per-tick CPU spike.
+    // GH #278 fix: result written to `contradiction_cache`; StatusService reads it without ONNX.
+    // BEHAVIORAL CHANGE: none. Comment and label additions only (NFR-07 zero-diff constraint).
     if current_tick.is_multiple_of(CONTRADICTION_SCAN_INTERVAL_TICKS) {
         if let Ok(adapter) = embed_service.get_adapter().await {
             // GH #358: fetch entries here in Tokio context before dispatching to rayon.
@@ -756,17 +766,18 @@ async fn run_single_tick(
         }
     }
 
-    // crt-029: Background graph inference (recurring, cap-throttled via max_graph_inference_per_tick).
-    if inference_config.nli_enabled {
-        run_graph_inference_tick(
-            store,
-            nli_handle,
-            vector_index,
-            ml_inference_pool,
-            inference_config,
-        )
-        .await;
-    }
+    // --- Structural graph tick (always) ---
+    // Phase 4b (structural Informs HNSW scan) runs unconditionally.
+    // Phase 8 (NLI Supports) is internally gated by get_provider() inside run_graph_inference_tick.
+    // The outer `if inference_config.nli_enabled` gate is removed (crt-039 FR-01, ADR-001).
+    run_graph_inference_tick(
+        store,
+        nli_handle,
+        vector_index,
+        ml_inference_pool,
+        inference_config,
+    )
+    .await;
 
     // Update next scheduled time
     if let Ok(mut meta) = tick_metadata.lock() {
