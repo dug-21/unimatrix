@@ -23,8 +23,6 @@ use crate::infra::nli_handle::NliServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::UsageDedup;
-use crate::services::store_ops::NliStoreConfig;
-
 pub(crate) mod co_access_promotion_tick;
 pub(crate) mod confidence;
 pub(crate) mod contradiction_cache;
@@ -432,14 +430,6 @@ impl ServiceLayer {
             inference_config.ppr_max_expand,
         );
 
-        let nli_store_cfg = NliStoreConfig {
-            enabled: inference_config.nli_enabled,
-            nli_post_store_k: inference_config.nli_post_store_k,
-            nli_entailment_threshold: inference_config.nli_entailment_threshold,
-            nli_contradiction_threshold: inference_config.nli_contradiction_threshold,
-            max_contradicts_per_tick: inference_config.max_contradicts_per_tick,
-        };
-
         let store_ops = StoreService::new(
             Arc::clone(&store),
             Arc::clone(&vector_index),
@@ -451,7 +441,6 @@ impl ServiceLayer {
             Arc::clone(&audit),
             Arc::clone(&ml_inference_pool),
             Arc::clone(&nli_handle),
-            nli_store_cfg,
         );
 
         // crt-027: UNIMATRIX_BRIEFING_K deprecated — IndexBriefingService uses k=20 hardcoded.

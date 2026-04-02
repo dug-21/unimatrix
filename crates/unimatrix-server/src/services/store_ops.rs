@@ -17,7 +17,6 @@ use crate::infra::nli_handle::NliServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::timeout::MCP_HANDLER_TIMEOUT;
 use crate::services::gateway::SecurityGateway;
-use crate::services::nli_detection::run_post_store_nli;
 use crate::services::{AuditContext, CallerId, ServiceError};
 
 /// Near-duplicate cosine similarity threshold.
@@ -25,40 +24,6 @@ const DUPLICATE_THRESHOLD: f64 = 0.92;
 
 /// HNSW search expansion factor.
 const EF_SEARCH: usize = 32;
-
-// ---------------------------------------------------------------------------
-// NliStoreConfig
-// ---------------------------------------------------------------------------
-
-/// NLI-related config fields needed by StoreService (snapshot at startup).
-///
-/// Allows `StoreService` to be cloned without copying the full `InferenceConfig`.
-/// Populated from `InferenceConfig` at `ServiceLayer` construction time (crt-023).
-#[derive(Debug, Clone)]
-pub(crate) struct NliStoreConfig {
-    /// Whether post-store NLI detection is enabled (mirrors `InferenceConfig::nli_enabled`).
-    pub enabled: bool,
-    /// HNSW neighbor count for post-store NLI scoring (mirrors `nli_post_store_k`).
-    pub nli_post_store_k: usize,
-    /// Entailment threshold for writing `Supports` edges.
-    pub nli_entailment_threshold: f32,
-    /// Contradiction threshold for writing `Contradicts` edges.
-    pub nli_contradiction_threshold: f32,
-    /// Per-call cap on total edges written (Supports + Contradicts combined).
-    pub max_contradicts_per_tick: usize,
-}
-
-impl Default for NliStoreConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            nli_post_store_k: 10,
-            nli_entailment_threshold: 0.6,
-            nli_contradiction_threshold: 0.6,
-            max_contradicts_per_tick: 10,
-        }
-    }
-}
 
 // ---------------------------------------------------------------------------
 // InsertResult / CorrectResult
@@ -99,8 +64,6 @@ pub(crate) struct StoreService {
     pub(crate) rayon_pool: Arc<RayonPool>,
     /// crt-023 (ADR-004): NLI handle for post-store edge detection.
     pub(crate) nli_handle: Arc<NliServiceHandle>,
-    /// crt-023: NLI inference config snapshot (avoids passing full InferenceConfig through service layer).
-    pub(crate) nli_cfg: NliStoreConfig,
 }
 
 impl StoreService {
@@ -116,7 +79,6 @@ impl StoreService {
         audit: Arc<AuditLog>,
         rayon_pool: Arc<RayonPool>,
         nli_handle: Arc<NliServiceHandle>,
-        nli_cfg: NliStoreConfig,
     ) -> Self {
         StoreService {
             store,
@@ -129,7 +91,6 @@ impl StoreService {
             audit,
             rayon_pool,
             nli_handle,
-            nli_cfg,
         }
     }
 
@@ -290,41 +251,6 @@ impl StoreService {
             self.vector_index
                 .insert_hnsw_only(entry_id, data_id, &embedding)
                 .map_err(|e| ServiceError::Core(CoreError::Vector(e)))?;
-        }
-
-        // crt-023 (ADR-004): NLI post-store detection hand-off.
-        //
-        // NLI hand-off point: embedding moves into fire-and-forget task.
-        // Step ordering must not change without reviewing ADR-004.
-        //
-        // Guard: skip if NLI disabled, NLI is in a terminal failure state (Failed with
-        // retries exhausted), or if embedding is empty (no valid vector to search against).
-        // Duplicates never reach this point (early-return at Step 3).
-        if self.nli_cfg.enabled && self.nli_handle.is_ready_or_loading() && !embedding.is_empty() {
-            let embedding_for_nli = embedding; // move: insert pipeline is done with this Vec<f32>
-            let entry_text_for_nli = record.content.clone(); // clone: record is used for return value
-            let nli_handle = Arc::clone(&self.nli_handle);
-            let store_for_nli = Arc::clone(&self.store);
-            let vector_index_for_nli = Arc::clone(&self.vector_index);
-            let rayon_pool_for_nli = Arc::clone(&self.rayon_pool);
-            let nli_cfg = self.nli_cfg.clone();
-
-            tokio::spawn(async move {
-                run_post_store_nli(
-                    embedding_for_nli,
-                    entry_id,
-                    entry_text_for_nli,
-                    nli_handle,
-                    store_for_nli,
-                    vector_index_for_nli,
-                    rayon_pool_for_nli,
-                    nli_cfg.nli_post_store_k,
-                    nli_cfg.nli_entailment_threshold,
-                    nli_cfg.nli_contradiction_threshold,
-                    nli_cfg.max_contradicts_per_tick,
-                )
-                .await;
-            });
         }
 
         // Step 6: Update adaptation prototypes (crt-006)

@@ -727,12 +727,10 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         auto_quarantine_cycles,
         Arc::clone(&confidence_params),
         Arc::clone(&ml_inference_pool),
-        config.inference.nli_enabled, // crt-023 (ADR-007)
-        config.inference.nli_auto_quarantine_threshold, // crt-023 (ADR-007)
-        nli_handle,                   // crt-023: bootstrap promotion
-        Arc::clone(&inference_config), // crt-023: bootstrap promotion config
-        phase_freq_table_handle,      // col-031: shared with SearchService (ADR-005)
-        Arc::clone(&categories),      // crt-031: category allowlist for lifecycle guard stub
+        nli_handle,                    // crt-023: NLI graph inference
+        Arc::clone(&inference_config), // crt-023: graph inference config
+        phase_freq_table_handle,       // col-031: shared with SearchService (ADR-005)
+        Arc::clone(&categories),       // crt-031: category allowlist for lifecycle guard stub
         Arc::clone(&retention_config), // crt-036: activity data retention policy
     );
 
@@ -1128,10 +1126,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         auto_quarantine_cycles,     // crt-018b: auto-quarantine threshold
         Arc::clone(&confidence_params),
         Arc::clone(&ml_inference_pool), // crt-022 (ADR-004): ML inference pool
-        config.inference.nli_enabled,   // crt-023 (ADR-007)
-        config.inference.nli_auto_quarantine_threshold, // crt-023 (ADR-007)
-        nli_handle,                     // crt-023: bootstrap promotion
-        Arc::clone(&inference_config),  // crt-023: bootstrap promotion config
+        nli_handle,                     // crt-023: NLI graph inference
+        Arc::clone(&inference_config),  // crt-023: graph inference config
         phase_freq_table_handle,        // col-031: shared with SearchService (ADR-005)
         Arc::clone(&categories),        // crt-031: category allowlist for lifecycle guard stub
         Arc::clone(&retention_config),  // crt-036: activity data retention policy
