@@ -1,16 +1,25 @@
-//! Background graph inference tick — Supports + Informs edges (crt-029, crt-037).
+//! Background graph inference tick — dual-path architecture (crt-039).
 //!
-//! `run_graph_inference_tick` is the counterpart to `maybe_run_bootstrap_promotion`:
-//! one-shot/idempotency-gated vs recurring/cap-throttled. Both share W1-2 + rayon pool.
+//! # Path A: Structural Informs (Phase 4b)
+//! Pure HNSW cosine scan. No NLI cross-encoder. Runs unconditionally on every tick.
+//! Writes `Informs` edges directly from cosine similarity + category pair filter.
+//! Gated by: cosine >= nli_informs_cosine_floor (0.50 default), informs_category_pairs
+//! config, temporal ordering, cross-feature guard.
+//!
+//! # Path B: NLI Supports (Phase 8)
+//! Requires NLI cross-encoder. Gated by get_provider() — skipped entirely if Err.
+//! Phase 7 runs the NLI batch via rayon_pool.spawn() (W1-2 contract).
+//! Writes `Supports` edges (entailment > threshold).
+//!
+//! # Module Rename Deferred
+//! This module is named `nli_detection_tick` but now hosts structural-only inference
+//! as its primary path. Module rename to `graph_inference_tick` is deferred to Group 3
+//! when NLI is fully removed from Phase 8.
 //!
 //! # W1-2 Contract
 //! ALL `CrossEncoderProvider::score_batch` calls via `rayon_pool.spawn()`.
 //! `spawn_blocking` prohibited. Inline async NLI prohibited.
-//!
-//! # Supports/Informs Detection (C-13 / AC-10a)
-//! Phase 8 writes `Supports` edges (entailment signal, unchanged).
-//! Phase 8b writes `Informs` edges (neutral signal, crt-037).
-//! No `Contradicts` edges in this module — dedicated contradiction detection path only.
+//! Phase 4b MUST NOT call score_batch.
 //!
 //! # R-09 Rayon/Tokio Boundary (C-14)
 //! The rayon closure in Phase 7 MUST be synchronous CPU-bound only.
@@ -45,17 +54,19 @@ const MAX_INFORMS_PER_TICK: usize = 25;
 // Module-private types: tagged union for merged NLI batch (crt-037, ADR-001)
 // ---------------------------------------------------------------------------
 
-/// Tagged union carrying per-pair metadata from Phase 4/4b through Phase 7 to Phase 8/8b.
+/// Tagged union carrying per-pair metadata from Phase 4 through Phase 7 to Phase 8.
 ///
 /// The enum variant is the routing discriminator. Phase 8 pattern-matches on
-/// `SupportsContradict`; Phase 8b pattern-matches on `Informs`. Misrouting is a
-/// compile error, not a runtime branch.
+/// `SupportsContradict`. Misrouting is a compile error, not a runtime branch.
 ///
 /// SR-08: parallel index-matched vecs are the failure mode this type prevents.
 /// FR-10: spec requires a tagged union so misrouting is a compile-time error.
 ///
-/// `cosine` in `SupportsContradict` is carried for structural symmetry with `InformsCandidate`.
+/// `cosine` in `SupportsContradict` is carried for structural completeness.
 /// Phase 8 uses `nli_scores.entailment` as the edge weight, not cosine.
+///
+/// `Informs` variant removed (crt-039 ADR-001). Path A writes Informs edges directly
+/// from `informs_metadata: Vec<InformsCandidate>` without entering the NLI batch.
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 enum NliCandidatePair {
@@ -63,10 +74,6 @@ enum NliCandidatePair {
         source_id: u64,
         target_id: u64,
         cosine: f32,
-        nli_scores: NliScores,
-    },
-    Informs {
-        candidate: InformsCandidate,
         nli_scores: NliScores,
     },
 }
@@ -100,13 +107,15 @@ struct InformsCandidate {
 /// This internal enum is consumed (`.into_iter()`) when zipping with NLI scores.
 /// After Phase 7 it no longer exists. SR-08 misrouting risk applies only to the
 /// final `NliCandidatePair` which uses typed variants, not index offsets.
+///
+/// `Informs` variant removed (crt-039 ADR-001). `informs_metadata` is a separate
+/// Vec<InformsCandidate> written in Path A before Phase 6 text fetch.
 enum PairOrigin {
     SupportsContradict {
         source_id: u64,
         target_id: u64,
         cosine: f32,
     },
-    Informs(InformsCandidate),
 }
 
 // ---------------------------------------------------------------------------
@@ -125,11 +134,8 @@ pub async fn run_graph_inference_tick(
     rayon_pool: &RayonPool,
     config: &InferenceConfig,
 ) {
-    // Phase 1 — Guard: silent no-op when NLI not ready (fires every tick when disabled).
-    let provider = match nli_handle.get_provider().await {
-        Ok(p) => p,
-        Err(_) => return,
-    };
+    // Phase 1 removed (crt-039 ADR-001). get_provider() moved to Path B entry below.
+    // Phase 4b (structural Informs) runs unconditionally without NLI provider.
 
     // Phase 2 — Data fetch: three sequential async DB reads.
     let all_active = match store.query_by_status(Status::Active).await {
@@ -281,6 +287,7 @@ pub async fn run_graph_inference_tick(
         .collect();
 
     let mut informs_metadata: Vec<InformsCandidate> = Vec::new();
+    let mut informs_candidates_found: usize = 0;
 
     if !config.informs_category_pairs.is_empty() {
         let mut seen_informs_pairs: HashSet<(u64, u64)> = HashSet::new();
@@ -355,6 +362,10 @@ pub async fn run_graph_inference_tick(
 
                 let target_feature_cycle = target_meta.feature_cycle.clone();
 
+                // Count raw candidates before dedup (AC-17, FR-14): incremented here,
+                // before any dedup check, so informs_candidates_found is the true pre-dedup count.
+                informs_candidates_found += 1;
+
                 // DB-level dedup: pair not already written (AC-23, ADR-003 directional).
                 if existing_informs_pairs.contains(&(*source_id, neighbor_id)) {
                     continue;
@@ -383,11 +394,20 @@ pub async fn run_graph_inference_tick(
         }
     }
 
-    // Early return: no candidates in either Phase 4 or Phase 4b.
-    if candidate_pairs.is_empty() && informs_metadata.is_empty() {
-        tracing::debug!("graph inference tick: no candidate pairs after HNSW expansion");
-        return;
-    }
+    // Phase 4b post-loop: explicit Supports-set subtraction (R-03, FR-06, AC-13).
+    // Build O(1) lookup from Phase 4 candidate_pairs — check both directions for safety.
+    // Phase 4 uses (min,max) symmetric dedup; Phase 4b uses directional (source, target).
+    // A pair that qualifies for both (e.g., cosine exactly 0.50 with category filter)
+    // must be excluded from informs_metadata. Explicit subtraction, not arithmetic alone.
+    let supports_candidate_set: HashSet<(u64, u64)> = candidate_pairs
+        .iter()
+        .flat_map(|(src, tgt, _)| [(*src, *tgt), (*tgt, *src)])
+        .collect();
+
+    informs_metadata.retain(|c| {
+        !supports_candidate_set.contains(&(c.source_id, c.target_id))
+            && !supports_candidate_set.contains(&(c.target_id, c.source_id))
+    });
 
     // Phase 5 — Independent caps: Supports governed by max_graph_inference_per_tick,
     // Informs governed by MAX_INFORMS_PER_TICK (bugfix-473).
@@ -418,39 +438,108 @@ pub async fn run_graph_inference_tick(
 
     // Step 2: Informs gets its own independent budget — MAX_INFORMS_PER_TICK.
     // Supports filling max_graph_inference_per_tick does NOT reduce Informs slots.
-    // Random shuffle (same pattern as select_source_candidates) prevents deterministic
-    // re-selection of the same top-N cosine pairs across ticks (RC-1 equivalence).
-    // The existing_informs_pairs pre-filter (Phase 4b) already deduplicates written pairs,
-    // so random sampling over the deduped pool is safe.
-    let informs_total_before_cap = informs_metadata.len();
+    // Record informs_candidates_after_dedup BEFORE shuffle + truncate.
+    let informs_candidates_after_dedup = informs_metadata.len();
     {
         use rand::seq::SliceRandom;
         let mut rng = rand::rng();
         informs_metadata.shuffle(&mut rng);
     }
     informs_metadata.truncate(MAX_INFORMS_PER_TICK);
+    let informs_candidates_after_cap = informs_metadata.len();
 
-    // Step 3: Log cap accounting (SR-03, FR-14).
-    // dropped = total candidates before cap − candidates kept after cap.
-    let informs_kept = informs_metadata.len();
+    // If both are empty after caps, return now (no writes needed).
+    if candidate_pairs.is_empty() && informs_metadata.is_empty() {
+        tracing::debug!("graph inference tick: no candidates after HNSW expansion and caps");
+        return;
+    }
+
+    // === PATH A: Structural Informs write loop ===
+    // Runs unconditionally. No NLI provider required. No rayon pool usage (NFR-01, C-02).
+    // Hard cap already applied in Phase 5 — write all candidates passing composite guard.
+    let mut informs_edges_written: usize = 0;
+    let timestamp = current_timestamp_secs();
+
+    for candidate in &informs_metadata {
+        // Defense-in-depth: re-evaluate temporal and cross-feature guards at write time.
+        // These were already checked in Phase 4b via phase4b_candidate_passes_guards;
+        // this re-evaluation catches any future code path that bypasses Phase 4b (ADR-002).
+        if !apply_informs_composite_guard(candidate) {
+            continue;
+        }
+
+        let weight = candidate.cosine * config.nli_informs_ppr_weight;
+        if !weight.is_finite() {
+            continue; // guard against NaN/Inf from cosine * weight product
+        }
+
+        let metadata_json = format_informs_metadata(
+            candidate.cosine,
+            &candidate.source_category,
+            &candidate.target_category,
+        );
+
+        let written = write_nli_edge(
+            store,
+            candidate.source_id,
+            candidate.target_id,
+            "Informs", // must match RelationType::Informs.as_str() exactly
+            weight,
+            timestamp,
+            &metadata_json,
+        )
+        .await;
+
+        if written {
+            informs_edges_written += 1;
+        }
+        // Non-fatal: write failure for one candidate does not abort the loop.
+    }
+
+    // Observability log (AC-17, FR-14) — all four values now known.
+    // Emitted even when informs_edges_written = 0 (e.g., all deduped or all failing guard).
     tracing::debug!(
-        supports_candidates = candidate_pairs.len(),
-        informs_candidates_total = informs_total_before_cap,
-        informs_candidates_accepted = informs_kept,
-        informs_candidates_dropped = informs_total_before_cap.saturating_sub(informs_kept),
-        "graph inference tick: merged cap accounting"
+        informs_candidates_found,
+        informs_candidates_after_dedup,
+        informs_candidates_after_cap,
+        informs_edges_written,
+        "graph inference tick Phase 4b: Informs candidate pipeline"
     );
 
-    // Phase 6 — Text fetch via write_pool for all pairs (Supports + Informs).
+    // === PATH B entry gate ===
+    // Informs writes (Path A) are complete above. Path B gates NLI Supports only.
+
+    // Fast exit: no Supports candidates — skip NLI batch entirely.
+    // (R-07: Phase 8b completes even when candidate_pairs is empty — Path A runs above.)
+    if candidate_pairs.is_empty() {
+        tracing::debug!("graph inference tick: no Supports candidates; skipping NLI batch");
+        return;
+    }
+
+    // R-01 CRITICAL: get_provider() is the SOLE entry point to Phase 6/7/8.
+    // Err return here structurally prevents ANY Phase 8 write without a successful provider.
+    // No code path from get_provider() Err to write_nli_edge for Supports edges exists.
+    let provider = match nli_handle.get_provider().await {
+        Ok(p) => p,
+        Err(_) => {
+            // Expected when nli_enabled=false (production default).
+            // Phase 4b Informs writes already complete above — returning here is not a failure.
+            tracing::debug!("graph inference tick: NLI provider not ready; Supports path skipped");
+            return;
+        }
+    };
+
+    // Phase 6 — Text fetch via write_pool for Supports pairs only (crt-039 ADR-001).
     //
-    // scored_input: text for NLI scorer.
+    // PairOrigin::Informs removed — Informs text not needed (no NLI batch for Informs).
+    // scored_input: text for NLI scorer (Supports only).
     // pair_origins: construction scaffolding consumed in Phase 7 to build NliCandidatePair.
     // Invariant: scored_input.len() == pair_origins.len() (maintained by construction).
     // Pairs where content fetch fails are dropped from both vecs.
     let mut scored_input: Vec<(u64, u64, String, String)> = Vec::new();
     let mut pair_origins: Vec<PairOrigin> = Vec::new();
 
-    // Fetch Supports pairs.
+    // Fetch Supports pairs only.
     for (source_id, target_id, cosine) in &candidate_pairs {
         let source_text = match store.get_content_via_write_pool(*source_id).await {
             Ok(text) => text,
@@ -474,41 +563,8 @@ pub async fn run_graph_inference_tick(
         });
     }
 
-    // Fetch Informs pairs.
-    for candidate in &informs_metadata {
-        let source_text = match store.get_content_via_write_pool(candidate.source_id).await {
-            Ok(text) => text,
-            Err(e) => {
-                tracing::debug!(
-                    entry_id = candidate.source_id,
-                    error = %e,
-                    "graph inference tick Phase 4b: source content fetch failed, skipping pair"
-                );
-                continue;
-            }
-        };
-        let target_text = match store.get_content_via_write_pool(candidate.target_id).await {
-            Ok(text) => text,
-            Err(e) => {
-                tracing::debug!(
-                    entry_id = candidate.target_id,
-                    error = %e,
-                    "graph inference tick Phase 4b: target content fetch failed, skipping pair"
-                );
-                continue;
-            }
-        };
-        scored_input.push((
-            candidate.source_id,
-            candidate.target_id,
-            source_text,
-            target_text,
-        ));
-        pair_origins.push(PairOrigin::Informs(candidate.clone()));
-    }
-
     if scored_input.is_empty() {
-        tracing::debug!("graph inference tick: no pairs with fetchable content, skipping NLI");
+        tracing::debug!("graph inference tick: no Supports pairs with fetchable content");
         return;
     }
 
@@ -569,8 +625,10 @@ pub async fn run_graph_inference_tick(
         "graph inference tick: nli score distribution"
     );
 
-    // Zip pair_origins with scores to build the typed merged_pairs vec (ADR-001, FR-10).
+    // Zip pair_origins with scores to build the typed merged_pairs vec (crt-039 ADR-001).
     // pair_origins is consumed here. NliCandidatePair variant is the routing discriminator.
+    // After crt-039: pair_origins contains only SupportsContradict entries.
+    // PairOrigin::Informs removed — Informs writes completed in Path A above.
     let merged_pairs: Vec<NliCandidatePair> = pair_origins
         .into_iter()
         .zip(raw_scores.iter().cloned())
@@ -585,23 +643,15 @@ pub async fn run_graph_inference_tick(
                 cosine,
                 nli_scores: scores,
             },
-            PairOrigin::Informs(candidate) => NliCandidatePair::Informs {
-                candidate,
-                nli_scores: scores,
-            },
         })
         .collect();
 
-    let timestamp = current_timestamp_secs();
-
     // Phase 8 — Write Supports edges (SupportsContradict variants only; C-13 / AC-10a).
+    // `timestamp` reuse: Path A already called current_timestamp_secs() above.
+    // Reuse the same timestamp for Supports edges within this tick for consistency.
     let mut edges_written: usize = 0;
     for pair in &merged_pairs {
         if edges_written >= config.max_graph_inference_per_tick {
-            // ORDERING INVARIANT (ADR-002): this break is safe only because Phase 6 appends
-            // SupportsContradict pairs before Informs pairs in merged_pairs. If Phase 6 ever
-            // reorders the merge, this break could fire mid-Supports and cause Phase 8b to
-            // miss Informs variants silently. Keep Phase 6 ordering, or remove this break.
             break;
         }
         if let NliCandidatePair::SupportsContradict {
@@ -631,53 +681,8 @@ pub async fn run_graph_inference_tick(
         }
     }
 
-    // Phase 8b — Write Informs edges (Informs variants only; crt-037).
-    //
-    // No secondary cap: budget reserved in Phase 5; write all that pass the composite guard.
-    let informs_count: usize = merged_pairs
-        .iter()
-        .filter(|p| matches!(p, NliCandidatePair::Informs { .. }))
-        .count();
-    let mut informs_edges_written: usize = 0;
-
-    for pair in &merged_pairs {
-        if let NliCandidatePair::Informs {
-            candidate,
-            nli_scores,
-        } = pair
-        {
-            if apply_informs_composite_guard(nli_scores, candidate, config) {
-                let weight = candidate.cosine * config.nli_informs_ppr_weight;
-                if !weight.is_finite() {
-                    continue;
-                }
-                let metadata_json = format_nli_metadata_informs(nli_scores);
-                let written = write_nli_edge(
-                    store,
-                    candidate.source_id,
-                    candidate.target_id,
-                    "Informs", // must match RelationType::Informs.as_str() exactly
-                    weight,
-                    timestamp,
-                    &metadata_json,
-                )
-                .await;
-                if written {
-                    informs_edges_written += 1;
-                }
-            }
-        }
-    }
-
-    tracing::debug!(
-        informs_edges_written,
-        informs_pairs_evaluated = informs_count,
-        "graph inference tick: Informs write complete"
-    );
-
     tracing::debug!(
         edges_written,
-        informs_edges_written,
         pairs_scored = merged_pairs.len(),
         source_candidates = source_candidates.len(),
         "graph inference tick complete"
@@ -784,43 +789,37 @@ fn phase4b_candidate_passes_guards(
     true
 }
 
-/// Evaluate all composite guard predicates for a candidate Informs edge.
+/// Evaluate composite guard predicates for a candidate Informs edge (crt-039, ADR-002).
 ///
-/// Returns `true` only when ALL five guards pass (FR-11, SR-01):
+/// Returns `true` only when BOTH guards pass:
 ///
-/// 1. `nli_scores.neutral > 0.5` — neutral-zone signal (fixed constant C-09).
-/// 2. `candidate.source_created_at < candidate.target_created_at` — temporal ordering.
-/// 3. cross-feature: block only when both feature_cycles are non-empty AND equal (intra-feature);
-///    entries with empty feature_cycle (unknown provenance) are allowed through.
-/// 4. Category pair membership — implicit in `Informs` variant (verified by Phase 4b).
-/// 5. `nli_scores.entailment <= supports_edge_threshold` AND
-///    `nli_scores.contradiction <= nli_contradiction_threshold` — FR-11 mutual exclusion.
+/// Guard 2 (temporal): source entry must have been created before target entry.
+/// Guard 3 (cross-feature): block only when both feature_cycle fields are non-empty AND equal
+///   (intra-feature pairs blocked; empty feature_cycle means unknown provenance, allowed through).
+///
+/// Guards 1, 4, 5 removed (crt-039 ADR-002):
+///   Guard 1 (nli neutral) — NLI model not available on this path.
+///   Guards 4, 5 (mutual exclusion via NLI scores) — enforced by candidate set separation
+///   at Phase 4b via explicit Supports-set subtraction (FR-06, AC-13).
 ///
 /// Module-private. Accessible to the `tests` sub-module via `use super::*`.
-fn apply_informs_composite_guard(
-    nli_scores: &NliScores,
-    candidate: &InformsCandidate,
-    config: &InferenceConfig,
-) -> bool {
-    nli_scores.neutral > 0.5
-        && candidate.source_created_at < candidate.target_created_at
+fn apply_informs_composite_guard(candidate: &InformsCandidate) -> bool {
+    candidate.source_created_at < candidate.target_created_at
         && (candidate.source_feature_cycle.is_empty()
             || candidate.target_feature_cycle.is_empty()
             || candidate.source_feature_cycle != candidate.target_feature_cycle)
-        && nli_scores.entailment <= config.supports_edge_threshold
-        && nli_scores.contradiction <= config.nli_contradiction_threshold
 }
 
-/// Serialize NLI scores to metadata JSON for Informs edges (crt-037).
+/// Serialize structural metadata to JSON for Informs edges (crt-039 ADR-002).
 ///
-/// Unlike `format_nli_metadata`, includes `nli_neutral` because neutral is the
-/// Informs detection criterion (Phase 8b guard 1). All three scores included for
-/// observability and cross-type debugging.
-fn format_nli_metadata_informs(scores: &NliScores) -> String {
+/// Records cosine similarity and category pair that qualified this edge.
+/// No NLI score fields — Informs edges are written via the structural path only.
+/// Replaces `format_nli_metadata_informs` which carried NLI fields irrelevant to Path A.
+fn format_informs_metadata(cosine: f32, source_category: &str, target_category: &str) -> String {
     serde_json::json!({
-        "nli_entailment":    scores.entailment,
-        "nli_contradiction": scores.contradiction,
-        "nli_neutral":       scores.neutral,
+        "cosine":           cosine,
+        "source_category":  source_category,
+        "target_category":  target_category,
     })
     .to_string()
 }
@@ -1265,19 +1264,74 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // run_graph_inference_tick guard
+    // run_graph_inference_tick — Path A / Path B boundary (TC-01, TC-02)
     // -----------------------------------------------------------------------
-
-    /// AC-05: NLI not ready — tick returns immediately without writing any edges.
+    // TR-01: test_run_graph_inference_tick_nli_not_ready_no_op removed (crt-039).
+    // Semantics invalidated: tick is no longer a no-op when NLI not ready.
+    // Replaced by TC-01 (Informs CAN be written) + TC-02 (Supports NOT written).
+    //
+    // TC-01: Phase 4b writes Informs edges even when NLI provider is not ready.
+    // Corpus: two entries with embeddings above nli_informs_cosine_floor,
+    // no pair above supports_candidate_threshold (exercises R-07: candidate_pairs empty,
+    // Path A still runs).
     #[tokio::test]
-    async fn test_run_graph_inference_tick_nli_not_ready_no_op() {
+    async fn test_phase4b_writes_informs_when_nli_not_ready() {
         let tmp = tempfile::TempDir::new().unwrap();
         let arc_store = Arc::new(unimatrix_store::test_helpers::open_test_store(&tmp).await);
-        insert_test_entry(&arc_store, 1).await;
-        insert_test_entry(&arc_store, 2).await;
 
-        // NliServiceHandle::new() starts in Loading state — get_provider() returns Err.
-        let not_ready_handle = NliServiceHandle::new();
+        // Insert entries with specific categories from the default informs_category_pairs.
+        // Use SQL directly to control category and created_at values.
+        let config = InferenceConfig {
+            nli_enabled: false,
+            // Set supports_candidate_threshold above any cosine we can produce deterministically.
+            // Synthetic identical embeddings produce cosine = 1.0, so set threshold > 1.0 to
+            // prevent any Supports candidates.
+            // Actually identical embeddings will produce cosine 1.0; use a cosine above
+            // supports threshold but we need them NOT to be in candidate_pairs.
+            // Strategy: use nearly-identical embeddings (cosine ~1.0) and set
+            // supports_candidate_threshold = 1.1 (above any real cosine).
+            supports_candidate_threshold: 1.1, // impossible threshold, no Supports candidates
+            ..InferenceConfig::default()
+        };
+
+        let (src_cat, tgt_cat) = (
+            config.informs_category_pairs[0][0].clone(),
+            config.informs_category_pairs[0][1].clone(),
+        );
+
+        // Insert entry 1 (source category, older)
+        sqlx::query(
+            "INSERT OR IGNORE INTO entries \
+             (id, title, content, topic, category, source, status, confidence, \
+              created_at, updated_at, last_accessed_at, access_count, \
+              created_by, modified_by, content_hash, previous_hash, \
+              version, feature_cycle, trust_source, helpful_count, unhelpful_count, \
+              pre_quarantine_status, correction_count, embedding_dim) \
+             VALUES (1, 'src', 'src content', 'test', ?1, 'test', 0, 0.5, \
+                     1000, 1000, 0, 0, 'test', 'test', 'h1', '', 1, 'crt-001', '', 0, 0, NULL, 0, 0)",
+        )
+        .bind(src_cat.as_str())
+        .execute(arc_store.write_pool_server())
+        .await
+        .unwrap();
+
+        // Insert entry 2 (target category, newer)
+        sqlx::query(
+            "INSERT OR IGNORE INTO entries \
+             (id, title, content, topic, category, source, status, confidence, \
+              created_at, updated_at, last_accessed_at, access_count, \
+              created_by, modified_by, content_hash, previous_hash, \
+              version, feature_cycle, trust_source, helpful_count, unhelpful_count, \
+              pre_quarantine_status, correction_count, embedding_dim) \
+             VALUES (2, 'tgt', 'tgt content', 'test', ?1, 'test', 0, 0.5, \
+                     2000, 2000, 0, 0, 'test', 'test', 'h2', '', 1, 'crt-002', '', 0, 0, NULL, 0, 0)",
+        )
+        .bind(tgt_cat.as_str())
+        .execute(arc_store.write_pool_server())
+        .await
+        .unwrap();
+
+        // Build vector index and insert nearly-identical embeddings (cosine ~1.0 >= floor 0.50).
         let vector_index = Arc::new(
             unimatrix_vector::VectorIndex::new(
                 Arc::clone(&arc_store),
@@ -1285,8 +1339,71 @@ mod tests {
             )
             .expect("VectorIndex"),
         );
+        let dim = unimatrix_core::VectorConfig::default().dimension;
+        // Identical embeddings → cosine = 1.0 (>= floor 0.50, so Phase 4b accepts them).
+        let mut emb = vec![0.0_f32; dim];
+        emb[0] = 1.0; // unit vector
+        vector_index.insert(1, &emb).await.expect("insert 1");
+        vector_index.insert(2, &emb).await.expect("insert 2");
+
+        // NliServiceHandle in Loading state — get_provider() returns Err.
+        let not_ready_handle = NliServiceHandle::new();
+
+        run_graph_inference_tick(
+            &arc_store,
+            &not_ready_handle,
+            &vector_index,
+            &make_rayon_pool(),
+            &config,
+        )
+        .await;
+
+        let edges = arc_store.query_graph_edges().await.unwrap();
+        let informs_count = edges
+            .iter()
+            .filter(|e| e.relation_type == "Informs")
+            .count();
+        assert!(
+            informs_count >= 1,
+            "TC-01: at least one Informs edge must be written when NLI not ready; edges={edges:?}"
+        );
+        let supports_count = edges
+            .iter()
+            .filter(|e| e.relation_type == "Supports")
+            .count();
+        assert_eq!(
+            supports_count, 0,
+            "TC-01: zero Supports edges when NLI not ready"
+        );
+    }
+
+    // TC-02: Zero Supports edges when NLI not ready even with Supports candidates present.
+    // Separate test from TC-01 (R-02 coverage requirement).
+    #[tokio::test]
+    async fn test_phase8_no_supports_when_nli_not_ready() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let arc_store = Arc::new(unimatrix_store::test_helpers::open_test_store(&tmp).await);
+
+        insert_test_entry(&arc_store, 10).await;
+        insert_test_entry(&arc_store, 20).await;
+
+        // Build vector index with identical embeddings → cosine = 1.0 > supports threshold (0.65).
+        let vector_index = Arc::new(
+            unimatrix_vector::VectorIndex::new(
+                Arc::clone(&arc_store),
+                unimatrix_core::VectorConfig::default(),
+            )
+            .expect("VectorIndex"),
+        );
+        let dim = unimatrix_core::VectorConfig::default().dimension;
+        let mut emb = vec![0.0_f32; dim];
+        emb[0] = 1.0;
+        vector_index.insert(10, &emb).await.expect("insert 10");
+        vector_index.insert(20, &emb).await.expect("insert 20");
+
+        let not_ready_handle = NliServiceHandle::new();
         let config = InferenceConfig {
-            nli_enabled: true,
+            nli_enabled: false,
             ..InferenceConfig::default()
         };
 
@@ -1299,9 +1416,15 @@ mod tests {
         )
         .await;
 
-        assert!(
-            arc_store.query_graph_edges().await.unwrap().is_empty(),
-            "no edges must be written when NLI is not ready"
+        let edges = arc_store.query_graph_edges().await.unwrap();
+        let supports: Vec<_> = edges
+            .iter()
+            .filter(|e| e.relation_type == "Supports")
+            .collect();
+        assert_eq!(
+            supports.len(),
+            0,
+            "TC-02: zero Supports edges when NLI not ready — R-01 guard; edges={edges:?}"
         );
     }
 
@@ -1416,8 +1539,7 @@ mod tests {
         InferenceConfig::default()
     }
 
-    /// Build an InformsCandidate that passes all composite guards when paired with
-    /// `informs_passing_scores()`. Category pair ("ll", "dec") must be in config.
+    /// Build an InformsCandidate for testing composite guards and Phase 4b logic.
     fn make_informs_candidate(
         source_category: &str,
         target_category: &str,
@@ -1440,22 +1562,12 @@ mod tests {
         }
     }
 
-    /// NliScores that pass the Informs composite guard:
-    /// neutral > 0.5, entailment <= supports_edge_threshold, contradiction <= contradiction_threshold.
-    fn informs_passing_scores() -> NliScores {
-        NliScores {
-            entailment: 0.2,
-            neutral: 0.6,
-            contradiction: 0.2,
-        }
-    }
-
     // -----------------------------------------------------------------------
     // AC-13: Happy path — all guards pass, Informs edge written
     // -----------------------------------------------------------------------
 
     /// AC-13: Phase 8b writes one Informs row when all composite guards pass.
-    /// Covers: entry source="nli", relation_type="Informs", finite weight, nli_neutral in metadata.
+    /// Covers: entry source="nli", relation_type="Informs", finite weight, cosine in metadata.
     #[tokio::test]
     async fn test_phase8b_writes_informs_edge_when_all_guards_pass() {
         let tmp = tempfile::TempDir::new().unwrap();
@@ -1474,20 +1586,19 @@ mod tests {
         );
 
         let candidate = make_informs_candidate(
-            src_cat, tgt_cat, 0.50,      // cosine >= default floor 0.45
+            src_cat, tgt_cat, 0.50,      // cosine >= default floor 0.50
             1_000_000, // source_created_at < target_created_at
             2_000_000, "crt-020", // different feature cycles
             "crt-030",
         );
-        let scores = informs_passing_scores();
 
         assert!(
-            apply_informs_composite_guard(&scores, &candidate, &config),
+            apply_informs_composite_guard(&candidate),
             "guard must pass for happy path"
         );
 
         let ts = current_timestamp_secs();
-        let metadata = format_nli_metadata_informs(&scores);
+        let metadata = format_informs_metadata(candidate.cosine, src_cat, tgt_cat);
         let weight = candidate.cosine * config.nli_informs_ppr_weight;
         let written = write_nli_edge(
             &store,
@@ -1519,7 +1630,7 @@ mod tests {
             informs[0].weight
         );
 
-        // Metadata must include nli_neutral — query raw metadata column directly.
+        // Metadata must include cosine and NOT include NLI score fields (R-08).
         let row: (Option<String>,) = sqlx::query_as(
             "SELECT metadata FROM graph_edges WHERE relation_type = 'Informs' LIMIT 1",
         )
@@ -1529,8 +1640,12 @@ mod tests {
         let meta_str = row.0.unwrap_or_default();
         let meta_val: serde_json::Value = serde_json::from_str(&meta_str).unwrap_or_default();
         assert!(
-            meta_val["nli_neutral"].is_number(),
-            "AC-13: metadata must contain nli_neutral; got: {meta_str}"
+            meta_val["cosine"].is_number(),
+            "AC-13/R-08: metadata must contain cosine; got: {meta_str}"
+        );
+        assert!(
+            !meta_val["nli_neutral"].is_number(),
+            "R-08: metadata must NOT contain nli_neutral; got: {meta_str}"
         );
     }
 
@@ -1549,9 +1664,8 @@ mod tests {
         let candidate = make_informs_candidate(
             src_cat, tgt_cat, 0.50, 1_500_000, 1_500_000, "crt-020", "crt-030",
         );
-        let scores = informs_passing_scores();
         assert!(
-            !apply_informs_composite_guard(&scores, &candidate, &config),
+            !apply_informs_composite_guard(&candidate),
             "AC-14: equal timestamps must fail guard"
         );
     }
@@ -1567,9 +1681,8 @@ mod tests {
         let candidate = make_informs_candidate(
             src_cat, tgt_cat, 0.50, 3_000_000, 1_000_000, "crt-020", "crt-030",
         );
-        let scores = informs_passing_scores();
         assert!(
-            !apply_informs_composite_guard(&scores, &candidate, &config),
+            !apply_informs_composite_guard(&candidate),
             "AC-14: reversed timestamps must fail guard"
         );
     }
@@ -1589,9 +1702,8 @@ mod tests {
         let candidate = make_informs_candidate(
             src_cat, tgt_cat, 0.50, 1_000_000, 2_000_000, "crt-037", "crt-037",
         );
-        let scores = informs_passing_scores();
         assert!(
-            !apply_informs_composite_guard(&scores, &candidate, &config),
+            !apply_informs_composite_guard(&candidate),
             "AC-15: same feature cycle must fail guard"
         );
     }
@@ -1666,9 +1778,8 @@ mod tests {
         // Both feature_cycles empty — unknown provenance. Should not be blocked by Site 3.
         let candidate =
             make_informs_candidate(src_cat, tgt_cat, 0.50, 1_000_000, 2_000_000, "", "");
-        let scores = informs_passing_scores();
         assert!(
-            apply_informs_composite_guard(&scores, &candidate, &config),
+            apply_informs_composite_guard(&candidate),
             "AC-15 Site 3: both-empty feature_cycles must pass composite guard"
         );
     }
@@ -1696,6 +1807,7 @@ mod tests {
     // -----------------------------------------------------------------------
 
     /// AC-17: Phase 4b excludes candidates with cosine < nli_informs_cosine_floor.
+    /// After crt-039: floor is 0.50; cosine 0.499 is below it.
     #[test]
     fn test_phase8b_no_informs_when_cosine_below_floor() {
         let config = informs_config();
@@ -1703,13 +1815,13 @@ mod tests {
             config.informs_category_pairs[0][0].as_str(),
             config.informs_category_pairs[0][1].as_str(),
         );
-        // cosine = 0.44 is below default floor 0.45.
+        // cosine = 0.499 is below default floor 0.50 (after crt-039).
         let result = phase4b_candidate_passes_guards(
-            0.44, src_cat, tgt_cat, 1_000_000, 2_000_000, "crt-020", "crt-030", &config,
+            0.499, src_cat, tgt_cat, 1_000_000, 2_000_000, "crt-020", "crt-030", &config,
         );
         assert!(
             !result,
-            "AC-17: cosine 0.44 below floor 0.45 must be rejected by Phase 4b"
+            "AC-17: cosine 0.499 below floor 0.50 must be rejected by Phase 4b"
         );
     }
 
@@ -1783,8 +1895,7 @@ mod tests {
         let expected_weight = cosine * config.nli_informs_ppr_weight; // 0.55 * 0.6 = 0.33
 
         let ts = current_timestamp_secs();
-        let scores = informs_passing_scores();
-        let metadata = format_nli_metadata_informs(&scores);
+        let metadata = format_informs_metadata(cosine, "lesson-learned", "decision");
         write_nli_edge(&store, 10, 20, "Informs", expected_weight, ts, &metadata).await;
 
         let edges = store.query_graph_edges().await.unwrap();
@@ -1881,10 +1992,9 @@ mod tests {
         insert_test_entry(&store, 200).await;
 
         let ts = current_timestamp_secs();
-        let scores = informs_passing_scores();
-        let metadata = format_nli_metadata_informs(&scores);
         let config = informs_config();
         let weight = 0.50_f32 * config.nli_informs_ppr_weight;
+        let metadata = format_informs_metadata(0.50, "lesson-learned", "decision");
 
         // First write.
         let w1 = write_nli_edge(&store, 100, 200, "Informs", weight, ts, &metadata).await;
@@ -1915,10 +2025,9 @@ mod tests {
         insert_test_entry(&store, 60).await;
 
         let ts = current_timestamp_secs();
-        let scores = informs_passing_scores();
-        let metadata = format_nli_metadata_informs(&scores);
         let config = informs_config();
         let weight = 0.50_f32 * config.nli_informs_ppr_weight;
+        let metadata = format_informs_metadata(0.50, "lesson-learned", "decision");
 
         write_nli_edge(&store, 50, 60, "Informs", weight, ts, &metadata).await;
 
@@ -1934,72 +2043,199 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // Additional guard tests for completeness (per test plan)
+    // Additional guard tests (crt-039: TR-02 and TR-03 removed; TC-03 through TC-07 added)
     // -----------------------------------------------------------------------
+    // TR-02: test_phase8b_no_informs_when_neutral_exactly_0_5 removed — neutral guard gone (ADR-002).
+    // TR-03: test_phase8b_writes_informs_when_neutral_just_above_0_5 removed — neutral guard gone.
+    // TR-05 (FR-11): test_phase8b_no_informs_when_entailment_exceeds_supports_threshold removed —
+    //   mutual exclusion now enforced by candidate set separation, not at write time (ADR-002).
 
-    /// Neutral exactly 0.5: strict > required, so 0.5 must be excluded.
+    // TC-03: apply_informs_composite_guard temporal guard.
     #[test]
-    fn test_phase8b_no_informs_when_neutral_exactly_0_5() {
-        let config = informs_config();
-        let (src_cat, tgt_cat) = (
-            config.informs_category_pairs[0][0].as_str(),
-            config.informs_category_pairs[0][1].as_str(),
+    fn test_apply_informs_composite_guard_temporal_guard() {
+        // Source newer than target — must fail
+        let candidate_newer = make_informs_candidate(
+            "lesson-learned",
+            "decision",
+            0.55,
+            2_000_000,
+            1_000_000, // source_ts > target_ts
+            "crt-020",
+            "crt-030",
         );
-        let candidate = make_informs_candidate(
-            src_cat, tgt_cat, 0.50, 1_000_000, 2_000_000, "crt-020", "crt-030",
-        );
-        let scores = NliScores {
-            entailment: 0.2,
-            neutral: 0.5, // exactly 0.5 — strict > required
-            contradiction: 0.3,
-        };
         assert!(
-            !apply_informs_composite_guard(&scores, &candidate, &config),
-            "neutral = 0.5 exactly must fail strict > 0.5 guard"
+            !apply_informs_composite_guard(&candidate_newer),
+            "TC-03a: guard must return false when source_created_at >= target_created_at"
+        );
+
+        // Source older than target — must pass
+        let candidate_older = make_informs_candidate(
+            "lesson-learned",
+            "decision",
+            0.55,
+            1_000_000,
+            2_000_000, // source_ts < target_ts
+            "crt-020",
+            "crt-030",
+        );
+        assert!(
+            apply_informs_composite_guard(&candidate_older),
+            "TC-03b: guard must return true when source_created_at < target_created_at"
         );
     }
 
-    /// Neutral just above 0.5: must pass the guard.
+    // TC-04: apply_informs_composite_guard cross-feature guard.
     #[test]
-    fn test_phase8b_writes_informs_when_neutral_just_above_0_5() {
-        let config = informs_config();
-        let (src_cat, tgt_cat) = (
-            config.informs_category_pairs[0][0].as_str(),
-            config.informs_category_pairs[0][1].as_str(),
+    fn test_apply_informs_composite_guard_cross_feature_guard() {
+        // Both non-empty and equal — must fail
+        let same_cycle = make_informs_candidate(
+            "ll", "dec", 0.55, 1_000_000, 2_000_000, "crt-020", "crt-020",
         );
-        let candidate = make_informs_candidate(
-            src_cat, tgt_cat, 0.50, 1_000_000, 2_000_000, "crt-020", "crt-030",
-        );
-        let scores = NliScores {
-            entailment: 0.1,
-            neutral: 0.5000001,
-            contradiction: 0.1,
-        };
         assert!(
-            apply_informs_composite_guard(&scores, &candidate, &config),
-            "neutral just above 0.5 must pass guard"
+            !apply_informs_composite_guard(&same_cycle),
+            "TC-04a: both cycles non-empty and equal → false"
+        );
+
+        // Source empty — must pass
+        let src_empty =
+            make_informs_candidate("ll", "dec", 0.55, 1_000_000, 2_000_000, "", "crt-020");
+        assert!(
+            apply_informs_composite_guard(&src_empty),
+            "TC-04b: source cycle empty → true"
+        );
+
+        // Target empty — must pass
+        let tgt_empty =
+            make_informs_candidate("ll", "dec", 0.55, 1_000_000, 2_000_000, "crt-020", "");
+        assert!(
+            apply_informs_composite_guard(&tgt_empty),
+            "TC-04c: target cycle empty → true"
+        );
+
+        // Both non-empty and different — must pass
+        let diff_cycle = make_informs_candidate(
+            "ll", "dec", 0.55, 1_000_000, 2_000_000, "crt-020", "crt-030",
+        );
+        assert!(
+            apply_informs_composite_guard(&diff_cycle),
+            "TC-04d: both cycles non-empty and different → true"
         );
     }
 
-    /// FR-11 mutual exclusion: entailment exceeds supports_edge_threshold — no Informs edge.
+    // TC-05: Phase 4b cosine floor boundary (>= semantics).
+    // TC-06 (cosine 0.499 excluded) is also covered by the second assertion here.
     #[test]
-    fn test_phase8b_no_informs_when_entailment_exceeds_supports_threshold() {
-        let config = informs_config();
+    fn test_phase4b_cosine_floor_boundary() {
+        let config = InferenceConfig {
+            nli_informs_cosine_floor: 0.5,
+            ..InferenceConfig::default()
+        };
         let (src_cat, tgt_cat) = (
             config.informs_category_pairs[0][0].as_str(),
             config.informs_category_pairs[0][1].as_str(),
         );
-        let candidate = make_informs_candidate(
-            src_cat, tgt_cat, 0.50, 1_000_000, 2_000_000, "crt-020", "crt-030",
+
+        // Exactly 0.500 — must be included (inclusive >=)
+        assert!(
+            phase4b_candidate_passes_guards(
+                0.500_f32, src_cat, tgt_cat, 1_000, 2_000, "crt-020", "crt-030", &config
+            ),
+            "TC-05a: cosine exactly 0.500 must pass Phase 4b cosine guard (inclusive >=)"
         );
-        let scores = NliScores {
-            entailment: 0.75, // > default supports_edge_threshold 0.6
-            neutral: 0.6,
-            contradiction: 0.1,
+
+        // Exactly 0.499 — must be excluded
+        assert!(
+            !phase4b_candidate_passes_guards(
+                0.499_f32, src_cat, tgt_cat, 1_000, 2_000, "crt-020", "crt-030", &config
+            ),
+            "TC-05b: cosine exactly 0.499 must be excluded by Phase 4b (below floor)"
+        );
+    }
+
+    // TC-07: Phase 4b explicit Supports-set subtraction.
+    #[test]
+    fn test_phase4b_explicit_supports_set_subtraction() {
+        // candidate_pairs contains a pair at cosine 0.68 (above supports threshold 0.65).
+        // After Phase 4b collects informs_metadata, this pair must be subtracted.
+        let supports_candidate_set: HashSet<(u64, u64)> = {
+            let pairs: Vec<(u64, u64, f32)> = vec![(1_u64, 2_u64, 0.68_f32)];
+            pairs
+                .iter()
+                .flat_map(|(src, tgt, _)| [(*src, *tgt), (*tgt, *src)])
+                .collect()
+        };
+
+        let mut informs_metadata = vec![
+            // Pair (1,2) at cosine 0.68 — present in candidate_pairs, must be removed.
+            {
+                let mut c = make_informs_candidate(
+                    "lesson-learned",
+                    "decision",
+                    0.68,
+                    1_000_000,
+                    2_000_000,
+                    "crt-020",
+                    "crt-030",
+                );
+                c.source_id = 1;
+                c.target_id = 2;
+                c
+            },
+            // Pair (3,4) at cosine 0.55 — NOT in candidate_pairs, must be retained.
+            {
+                let mut c = make_informs_candidate(
+                    "lesson-learned",
+                    "decision",
+                    0.55,
+                    3_000_000,
+                    4_000_000,
+                    "crt-020",
+                    "crt-030",
+                );
+                c.source_id = 3;
+                c.target_id = 4;
+                c
+            },
+        ];
+
+        // Apply the Phase 4b subtraction (R-03, FR-06, AC-13).
+        informs_metadata.retain(|c| {
+            !supports_candidate_set.contains(&(c.source_id, c.target_id))
+                && !supports_candidate_set.contains(&(c.target_id, c.source_id))
+        });
+
+        assert!(
+            !informs_metadata
+                .iter()
+                .any(|c| c.source_id == 1 && c.target_id == 2),
+            "TC-07: pair at cosine 0.68 present in candidate_pairs must be absent from informs_metadata"
+        );
+        assert!(
+            informs_metadata
+                .iter()
+                .any(|c| c.source_id == 3 && c.target_id == 4),
+            "TC-07: pair (3,4) not in candidate_pairs must remain in informs_metadata"
+        );
+
+        // Boundary variant (R-03): pair at cosine 0.50 is NOT in candidate_pairs
+        // (Phase 4 strict > 0.50 excludes it). Must NOT be subtracted.
+        let boundary_pair = {
+            let mut c = make_informs_candidate(
+                "lesson-learned",
+                "decision",
+                0.50,
+                1_000,
+                2_000,
+                "c1",
+                "c2",
+            );
+            c.source_id = 5;
+            c.target_id = 6;
+            c
         };
         assert!(
-            !apply_informs_composite_guard(&scores, &candidate, &config),
-            "FR-11: high entailment must prevent Informs edge"
+            !supports_candidate_set.contains(&(boundary_pair.source_id, boundary_pair.target_id)),
+            "boundary pair at 0.50 must not be in supports_candidate_set (Phase 4 uses strict >)"
         );
     }
 
@@ -2144,26 +2380,35 @@ mod tests {
         assert!((weight - 0.33_f32).abs() < 1e-5, "weight={weight}");
     }
 
-    /// format_nli_metadata_informs includes nli_neutral key.
+    /// format_informs_metadata contains cosine and category fields; no NLI score fields (R-08).
     #[test]
-    fn test_format_nli_metadata_informs_includes_neutral() {
-        let scores = NliScores {
-            entailment: 0.2,
-            neutral: 0.6,
-            contradiction: 0.2,
-        };
-        let json = format_nli_metadata_informs(&scores);
+    fn test_format_informs_metadata_contains_structural_fields() {
+        let json = format_informs_metadata(0.55_f32, "lesson-learned", "decision");
         let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
-        assert!(parsed["nli_neutral"].is_number(), "must have nli_neutral");
+        // Must contain structural fields.
+        assert!(parsed["cosine"].is_number(), "R-08: must have cosine");
         assert!(
-            parsed["nli_entailment"].is_number(),
-            "must have nli_entailment"
+            parsed["source_category"].is_string(),
+            "R-08: must have source_category"
         );
         assert!(
-            parsed["nli_contradiction"].is_number(),
-            "must have nli_contradiction"
+            parsed["target_category"].is_string(),
+            "R-08: must have target_category"
         );
-        let neutral = parsed["nli_neutral"].as_f64().unwrap();
-        assert!((neutral - 0.6_f64).abs() < 1e-3, "neutral={neutral}");
+        let cosine = parsed["cosine"].as_f64().unwrap();
+        assert!((cosine - 0.55_f64).abs() < 1e-3, "cosine={cosine}");
+        // Must NOT contain NLI score fields.
+        assert!(
+            parsed["nli_neutral"].is_null(),
+            "R-08: must not have nli_neutral"
+        );
+        assert!(
+            parsed["nli_entailment"].is_null(),
+            "R-08: must not have nli_entailment"
+        );
+        assert!(
+            parsed["nli_contradiction"].is_null(),
+            "R-08: must not have nli_contradiction"
+        );
     }
 }
