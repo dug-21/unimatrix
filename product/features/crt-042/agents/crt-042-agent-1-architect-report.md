@@ -16,6 +16,23 @@
 | ADR-005 | `architecture/ADR-005-timing-instrumentation-approach.md` | #4053 |
 | ADR-006 | `architecture/ADR-006-traversal-direction-outgoing-only.md` | #4054 |
 
+## Knowledge Stewardship
+
+### Queried
+- entry #3658 (get_embedding O(N) latency ADR — confirmed O(N) per call)
+- entry #3740 (edges_of_type SR-01 boundary — all traversal must use this method)
+- entry #3754 (traversal direction semantics lesson from crt-030 — informed WARN-3 fix)
+- entry #3889 (CoAccess bidirectional back-fill migration pattern — cited for SR-03 remediation path)
+- entry #3731 (graph_ppr.rs / graph_suppression.rs submodule split pattern — confirmed for ADR-001)
+
+### Stored
+- #4049: ADR-001 — graph_expand submodule placement (`graph_expand.rs` as `#[path]` submodule of `graph.rs`)
+- #4050: ADR-002 — Phase 0 insertion point (first block inside `if !use_fallback` in Step 6d, before Phase 1)
+- #4051: ADR-003 — Cosine similarity source for expanded entries (true cosine via get_embedding; O(1) investigation required)
+- #4052: ADR-004 — Config validation unconditional (expansion_depth and max_expansion_candidates always validated)
+- #4053: ADR-005 — Timing instrumentation approach (debug! with six fields; P95 addition ≤ 50ms over baseline)
+- #4054: ADR-006 — Traversal direction Outgoing-only (bidirectionality solved at write side; cites entry #3754)
+
 ## Key Decisions
 
 1. **graph_expand placement**: new `graph_expand.rs` as `#[path]` submodule of `graph.rs`, re-exported via `pub use`. Mirrors `graph_ppr.rs` / `graph_suppression.rs` pattern. Not inline in search.rs (wrong layer) or graph.rs (500-line limit). ADR-001 (#4049).

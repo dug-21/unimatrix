@@ -197,6 +197,7 @@ if self.ppr_expander_enabled {
         results_added += 1;
     }
     tracing::debug!(
+        seeds = seed_ids.len(),
         expanded_count = expanded_ids.len(),
         fetched_count = results_added,
         elapsed_ms = phase0_start.elapsed().as_millis(),
