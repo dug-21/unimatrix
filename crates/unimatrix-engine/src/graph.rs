@@ -31,6 +31,10 @@ pub use graph_suppression::suppress_contradicts;
 mod graph_ppr;
 pub use graph_ppr::personalized_pagerank;
 
+#[path = "graph_expand.rs"]
+mod graph_expand;
+pub use graph_expand::graph_expand;
+
 // -- Penalty constants (ADR-006: named, fixed for v1) --
 
 /// Deprecated entry with no successors — softest penalty (orphan, not replaceable).
