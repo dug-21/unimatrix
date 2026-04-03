@@ -15,8 +15,8 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 18 to 19 by crt-035 (bidirectional CoAccess back-fill).
-pub const CURRENT_SCHEMA_VERSION: u64 = 19;
+/// Current schema version. Incremented from 19 to 20 by crt-044 (bidirectional S1/S2/S8 back-fill).
+pub const CURRENT_SCHEMA_VERSION: u64 = 20;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -683,7 +683,95 @@ async fn run_main_migrations(
             })?;
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (19).
+    // v19 → v20: bidirectional S1/S2 Informs and S8 CoAccess edge back-fill (crt-044).
+    //
+    // Statement A (S1+S2 Informs): For every forward-only S1 or S2 Informs edge (a→b),
+    // inserts a reverse edge (b→a) with the same weight, source, and created_by, but
+    // created_at = now and bootstrap_only = 0.
+    //   - source IN ('S1', 'S2') is the discriminator (NOT created_by — see entry #3889, C-01).
+    //   - 'nli' and 'cosine_supports' Informs edges are excluded by this filter (C-04).
+    //
+    // Statement B (S8 CoAccess): Same swap pattern for S8 CoAccess edges.
+    //   - source = 'S8' excludes 'co_access' edges (already bidirectional from v18→v19).
+    //
+    // Both statements:
+    //   - INSERT OR IGNORE: UNIQUE(source_id, target_id, relation_type) prevents duplicates (C-02).
+    //   - NOT EXISTS sub-query: defence-in-depth to skip already-reverse rows on re-run (C-05).
+    //   - g.source is preserved in the inserted row (reverse S1 edge has source='S1', etc.).
+    //   - bootstrap_only = 0: reverse edges are always included in live graph traversal.
+    //   - created_at = strftime('%s','now'): records when the reverse was written, not observed.
+    if current_version < 20 {
+        // Statement A: back-fill reverse edges for S1 and S2 Informs edges.
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             SELECT
+                 g.target_id          AS source_id,
+                 g.source_id          AS target_id,
+                 g.relation_type      AS relation_type,
+                 g.weight             AS weight,
+                 strftime('%s','now') AS created_at,
+                 g.created_by         AS created_by,
+                 g.source             AS source,
+                 0                    AS bootstrap_only
+             FROM graph_edges g
+             WHERE g.relation_type = 'Informs'
+               AND g.source IN ('S1', 'S2')
+               AND NOT EXISTS (
+                 SELECT 1 FROM graph_edges rev
+                 WHERE rev.source_id = g.target_id
+                   AND rev.target_id = g.source_id
+                   AND rev.relation_type = 'Informs'
+               )",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Statement B: back-fill reverse edges for S8 CoAccess edges.
+        sqlx::query(
+            "INSERT OR IGNORE INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             SELECT
+                 g.target_id          AS source_id,
+                 g.source_id          AS target_id,
+                 g.relation_type      AS relation_type,
+                 g.weight             AS weight,
+                 strftime('%s','now') AS created_at,
+                 g.created_by         AS created_by,
+                 g.source             AS source,
+                 0                    AS bootstrap_only
+             FROM graph_edges g
+             WHERE g.relation_type = 'CoAccess'
+               AND g.source = 'S8'
+               AND NOT EXISTS (
+                 SELECT 1 FROM graph_edges rev
+                 WHERE rev.source_id = g.target_id
+                   AND rev.target_id = g.source_id
+                   AND rev.relation_type = 'CoAccess'
+               )",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Bump the in-transaction schema_version to 20 so that if a subsequent
+        // migration block is added later, it observes the correct version baseline.
+        sqlx::query("UPDATE counters SET value = 20 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION (20).
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)
