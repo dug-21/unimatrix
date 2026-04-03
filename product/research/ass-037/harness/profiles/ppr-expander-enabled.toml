@@ -1,7 +1,13 @@
 [profile]
 name = "ppr-expander-enabled"
-description = "PPR expander enabled (crt-042). HNSW k=20 seeds -> graph_expand depth=2 max=200 -> expanded pool -> PPR -> fused scoring."
-distribution_change = true
+description = "PPR expander enabled (crt-042/crt-045). HNSW k=20 seeds -> graph_expand depth=2 max=200 -> expanded pool -> PPR -> fused scoring."
+# distribution_change = false intentionally.
+# CC@k and ICD floors cannot be set without a first-run measurement against this profile.
+# Gate on mrr_floor and p_at_5_min only until baseline data is collected.
+# See crt-045 ADR-005 and SCOPE.md OQ-01.
+distribution_change = false
+mrr_floor = 0.2651
+p_at_5_min = 0.1083
 
 [inference]
 ppr_expander_enabled = true

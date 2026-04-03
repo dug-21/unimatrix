@@ -18,7 +18,7 @@ use crate::infra::nli_handle::{NliConfig, NliServiceHandle};
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::usage_dedup::UsageDedup;
 use crate::project;
-use crate::services::{RateLimitConfig, ServiceLayer};
+use crate::services::{RateLimitConfig, ServiceLayer, TypedGraphState, TypedGraphStateHandle};
 
 use super::error::EvalError;
 use super::types::{AnalyticsMode, EvalProfile};
@@ -176,6 +176,43 @@ impl EvalServiceLayer {
             .await
             .map_err(|e| EvalError::Store(Box::new(e)))?;
         let store_arc: Arc<Store> = Arc::new(store);
+
+        // ----------------------------------------------------------------
+        // Step 5b: Rebuild TypedGraphState from snapshot (crt-045, FR-01)
+        //
+        // Called with .await directly — no spawn_blocking (C-01).
+        // rebuild() only reads from the snapshot — no write concerns (C-05).
+        // Errors degrade gracefully: log tracing::warn!, leave rebuilt_state
+        // as None so the handle stays cold-start (use_fallback=true). (C-02)
+        // ----------------------------------------------------------------
+        let rebuilt_state: Option<TypedGraphState> = match TypedGraphState::rebuild(&*store_arc)
+            .await
+        {
+            Ok(state) => {
+                tracing::info!(
+                    profile = %profile.name,
+                    entries = state.all_entries.len(),
+                    "eval: TypedGraphState rebuilt"
+                );
+                Some(state)
+            }
+            Err(e) => {
+                let reason = e.to_string();
+                if reason.contains("cycle") {
+                    tracing::warn!(
+                        profile = %profile.name,
+                        "eval: TypedGraphState rebuild skipped — cycle detected; use_fallback=true"
+                    );
+                } else {
+                    tracing::warn!(
+                        profile = %profile.name,
+                        error = %e,
+                        "eval: TypedGraphState rebuild failed; use_fallback=true"
+                    );
+                }
+                None
+            }
+        };
 
         // Determine the sibling vector directory for this snapshot.
         // Convention: {db_parent}/vector/ holds the HNSW files copied by `snapshot`.
@@ -340,6 +377,23 @@ impl EvalServiceLayer {
             eval_category_allowlist,
         );
 
+        // ----------------------------------------------------------------
+        // Step 13b: Write rebuilt state into the shared handle (crt-045, FR-02)
+        //
+        // inner.typed_graph_handle() returns Arc::clone(&self.typed_graph_state),
+        // which is the same Arc<RwLock<TypedGraphState>> that SearchService holds
+        // (services/mod.rs:419 uses Arc::clone — write propagates immediately).
+        // Write lock acquired AFTER with_rate_config() returns — no concurrency
+        // risk (R-10, C-03, NFR-03). Poison recovery via unwrap_or_else. (ADR-001)
+        // ----------------------------------------------------------------
+        if let Some(state) = rebuilt_state {
+            let handle = inner.typed_graph_handle();
+            let mut guard = handle.write().unwrap_or_else(|e| e.into_inner());
+            *guard = state;
+            drop(guard); // release write lock immediately (NFR-03)
+            tracing::info!("eval TypedGraphState rebuilt");
+        }
+
         Ok(EvalServiceLayer {
             inner,
             pool,
@@ -386,5 +440,16 @@ impl EvalServiceLayer {
     #[allow(dead_code)]
     pub(crate) fn has_nli_handle(&self) -> bool {
         self.nli_handle.is_some()
+    }
+
+    /// Return the `TypedGraphStateHandle` for inspection and pre-replay diagnostics.
+    ///
+    /// Used by `runner.rs` to verify the graph was populated before scenario replay,
+    /// and by `layer_tests.rs` to assert post-construction state (AC-06, crt-045).
+    ///
+    /// `pub(crate)`: mirrors `embed_handle()` and `nli_handle()` visibility.
+    /// No `#[cfg(test)]` guard: also used by `runner.rs` for diagnostics (ADR-004, C-10).
+    pub(crate) fn typed_graph_handle(&self) -> TypedGraphStateHandle {
+        self.inner.typed_graph_handle()
     }
 }
