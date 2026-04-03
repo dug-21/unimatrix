@@ -119,10 +119,26 @@ pub(crate) async fn run_s1_tick(store: &Store, config: &InferenceConfig) -> u64 
     for row in &rows {
         // Weight: min(shared_tag_count * 0.1, 1.0). Range [0.3, 1.0] given HAVING >= 3.
         let weight = f64::min(row.shared_tags as f64 * 0.1, 1.0) as f32;
+
         if write_graph_edge(
             store,
             row.source_id as u64,
             row.target_id as u64,
+            "Informs",
+            weight,
+            now_ts,
+            EDGE_SOURCE_S1,
+            "",
+        )
+        .await
+        {
+            edges_written += 1;
+        }
+        // Second direction (crt-044, ADR-002): false on UNIQUE conflict is expected — C-09.
+        if write_graph_edge(
+            store,
+            row.target_id as u64,
+            row.source_id as u64,
             "Informs",
             weight,
             now_ts,
@@ -224,10 +240,26 @@ pub(crate) async fn run_s2_tick(store: &Store, config: &InferenceConfig) -> u64 
     for row in &rows {
         // Weight: min(shared_term_count * 0.1, 1.0). shared_terms >= 2 so weight >= 0.2.
         let weight = f64::min(row.shared_terms as f64 * 0.1, 1.0) as f32;
+
         if write_graph_edge(
             store,
             row.source_id as u64,
             row.target_id as u64,
+            "Informs",
+            weight,
+            now_ts,
+            EDGE_SOURCE_S2,
+            "",
+        )
+        .await
+        {
+            edges_written += 1;
+        }
+        // Second direction (crt-044, ADR-002): false on UNIQUE conflict is expected — C-09.
+        if write_graph_edge(
+            store,
+            row.target_id as u64,
+            row.source_id as u64,
             "Informs",
             weight,
             now_ts,
@@ -412,10 +444,27 @@ pub(crate) async fn run_s8_tick(store: &Store, config: &InferenceConfig, current
             pairs_skipped += 1;
             continue;
         }
+
         if write_graph_edge(
             store,
             *a,
             *b,
+            "CoAccess",
+            0.25_f32,
+            now_ts,
+            EDGE_SOURCE_S8,
+            "",
+        )
+        .await
+        {
+            pairs_written += 1;
+        }
+        // Second direction (crt-044, ADR-002): false on UNIQUE conflict is expected — C-09.
+        // pairs_written counts per-edge (C-06): incremented only on true return.
+        if write_graph_edge(
+            store,
+            *b,
+            *a,
             "CoAccess",
             0.25_f32,
             now_ts,

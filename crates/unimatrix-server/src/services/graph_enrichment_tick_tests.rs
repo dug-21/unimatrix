@@ -228,8 +228,10 @@ async fn test_s1_having_threshold_exactly_3() {
 
     run_s1_tick(&store, &make_config()).await;
 
-    assert_eq!(count_edges_by_source(&store, "S1").await, 1);
+    // crt-044: qualifying pair (1,2) produces 2 edges (both directions); (3,4) pair still excluded.
+    assert_eq!(count_edges_by_source(&store, "S1").await, 2);
     assert!(fetch_edge(&store, 1, 2, "Informs").await.is_some());
+    assert!(fetch_edge(&store, 2, 1, "Informs").await.is_some());
     assert!(fetch_edge(&store, 3, 4, "Informs").await.is_none());
 }
 
@@ -249,7 +251,8 @@ async fn test_s1_idempotent() {
     run_s1_tick(&store, &make_config()).await;
     run_s1_tick(&store, &make_config()).await;
 
-    assert_eq!(count_edges_by_source(&store, "S1").await, 1);
+    // crt-044: one pair → both directions written → 2 total edges; INSERT OR IGNORE prevents duplicates.
+    assert_eq!(count_edges_by_source(&store, "S1").await, 2);
 }
 
 /// AC-05: weight formula — 3→0.3, 5→0.5, 10→1.0, 12→1.0 (capped).
@@ -312,11 +315,16 @@ async fn test_s1_cap_respected() {
 
     run_s1_tick(&store, &make_config_s1(3)).await;
 
-    assert_eq!(count_edges_by_source(&store, "S1").await, 3);
-    // The 3 highest-overlap pairs: (9,10)=7, (7,8)=6, (5,6)=5
+    // crt-044: cap=3 limits the SQL query to 3 rows; each row produces 2 edges → 6 total.
+    assert_eq!(count_edges_by_source(&store, "S1").await, 6);
+    // The 3 highest-overlap pairs: (9,10)=7, (7,8)=6, (5,6)=5 — both directions each.
     assert!(
         fetch_edge(&store, 9, 10, "Informs").await.is_some(),
-        "7-tag pair must be selected"
+        "7-tag pair forward must be selected"
+    );
+    assert!(
+        fetch_edge(&store, 10, 9, "Informs").await.is_some(),
+        "7-tag pair reverse must be selected"
     );
     assert!(
         fetch_edge(&store, 7, 8, "Informs").await.is_some(),
@@ -347,7 +355,8 @@ async fn test_s1_source_value_is_s1_not_nli() {
 
     run_s1_tick(&store, &make_config()).await;
 
-    assert_eq!(count_edges_by_source(&store, "S1").await, 1);
+    // crt-044: one pair → 2 S1 edges (both directions); zero nli edges.
+    assert_eq!(count_edges_by_source(&store, "S1").await, 2);
     assert_eq!(count_edges_by_source(&store, "nli").await, 0);
 }
 
@@ -547,8 +556,8 @@ async fn test_s2_idempotent() {
     run_s2_tick(&store, &config).await;
     run_s2_tick(&store, &config).await;
 
-    // INSERT OR IGNORE ensures no duplicates.
-    assert_eq!(count_edges_by_source(&store, "S2").await, 1);
+    // crt-044: one pair → 2 edges (both directions); INSERT OR IGNORE ensures no duplicates on re-run.
+    assert_eq!(count_edges_by_source(&store, "S2").await, 2);
 }
 
 /// AC-12: cap respected.
@@ -565,7 +574,8 @@ async fn test_s2_cap_respected() {
     let config = make_config_s2(vec!["schema"], 2);
     run_s2_tick(&store, &config).await;
 
-    assert_eq!(count_edges_by_source(&store, "S2").await, 2);
+    // crt-044: cap=2 limits SQL LIMIT to 2 rows; each row produces 2 edges → 4 total.
+    assert_eq!(count_edges_by_source(&store, "S2").await, 4);
 }
 
 /// Edge case: s2_terms threshold = 2 (1 term each side qualifies).
@@ -582,10 +592,11 @@ async fn test_s2_threshold_exactly_2_terms() {
     run_s2_tick(&store, &config).await;
 
     // s1_terms(e1)=1 (schema), s2_terms(e2)=1 (cache) → total=2 → edge written.
+    // crt-044: one pair → 2 S2 edges (both directions).
     assert_eq!(
         count_edges_by_source(&store, "S2").await,
-        1,
-        "1+1=2 total terms qualifies"
+        2,
+        "1+1=2 total terms qualifies; crt-044 writes both directions"
     );
 }
 
@@ -601,7 +612,8 @@ async fn test_s2_source_value_is_s2() {
     let config = make_config_s2(vec!["api"], 200);
     run_s2_tick(&store, &config).await;
 
-    assert_eq!(count_edges_by_source(&store, "S2").await, 1);
+    // crt-044: one pair → 2 S2 edges (both directions).
+    assert_eq!(count_edges_by_source(&store, "S2").await, 2);
     assert_eq!(count_edges_by_source(&store, "nli").await, 0);
     assert_eq!(count_edges_by_source(&store, "S1").await, 0);
 }
@@ -663,9 +675,12 @@ async fn test_s8_watermark_advances_past_malformed_json_row() {
     // Watermark must advance past row 3 (covering the malformed row 2).
     assert_eq!(read_s8_watermark(&store).await, 3);
 
-    // Second run must produce no new edges.
+    // crt-044: two pairs → 4 edges (both directions each).
+    assert_eq!(count_edges_by_source(&store, "S8").await, 4);
+
+    // Second run must produce no new edges (watermark advanced past all rows).
     run_s8_tick(&store, &config, 0).await;
-    assert_eq!(count_edges_by_source(&store, "S8").await, 2);
+    assert_eq!(count_edges_by_source(&store, "S8").await, 4);
 }
 
 /// R-12: context_briefing rows produce no edges.
@@ -731,10 +746,11 @@ async fn test_s8_pair_cap_not_row_cap() {
     let config = make_config_s8(1, 5); // cap=5 pairs
     run_s8_tick(&store, &config, 0).await;
 
+    // crt-044: cap=5 limits to 5 logical pairs; each pair produces 2 edges → 10 total.
     assert_eq!(
         count_edges_by_source(&store, "S8").await,
-        5,
-        "pair cap must limit to 5, not all 10 pairs"
+        10,
+        "pair cap must limit to 5 pairs; crt-044 writes both directions → 10 edges"
     );
 }
 
@@ -756,11 +772,11 @@ async fn test_s8_partial_row_watermark_semantics() {
     let config = make_config_s8(1, 3);
     run_s8_tick(&store, &config, 0).await;
 
-    // 3 edges written (cap applied within the row).
+    // crt-044: 3 pairs accepted up to cap; each pair produces 2 edges → 6 total.
     assert_eq!(
         count_edges_by_source(&store, "S8").await,
-        3,
-        "3 pairs accepted up to cap from row 1"
+        6,
+        "3 pairs accepted up to cap from row 1; crt-044 writes both directions → 6 edges"
     );
     assert_eq!(
         read_s8_watermark(&store).await,
@@ -781,13 +797,13 @@ async fn test_s8_idempotent() {
 
     let config = make_config_s8(1, 500);
 
-    // First run: write edges and advance watermark.
+    // crt-044: first run writes both directions → 2 edges; watermark advances.
     run_s8_tick(&store, &config, 0).await;
-    assert_eq!(count_edges_by_source(&store, "S8").await, 1);
+    assert_eq!(count_edges_by_source(&store, "S8").await, 2);
 
     // Second run (watermark = 1 now, no new rows): no new edges.
     run_s8_tick(&store, &config, 0).await;
-    assert_eq!(count_edges_by_source(&store, "S8").await, 1);
+    assert_eq!(count_edges_by_source(&store, "S8").await, 2);
 }
 
 /// Edge case: singleton target_ids (0 pairs) — watermark advances, no panic.
@@ -862,9 +878,10 @@ async fn test_s8_gated_by_tick_interval() {
     assert_eq!(count_edges_by_source(&store, "S8").await, 0);
 
     // current_tick=10: 10 % 10 == 0 — should run.
+    // crt-044: one pair → both directions written → pairs_written=2, 2 S8 edges.
     let written = run_s8_tick(&store, &config, 10).await;
-    assert_eq!(written, 1);
-    assert_eq!(count_edges_by_source(&store, "S8").await, 1);
+    assert_eq!(written, 2);
+    assert_eq!(count_edges_by_source(&store, "S8").await, 2);
 }
 
 // ---------------------------------------------------------------------------
@@ -914,10 +931,11 @@ async fn test_enrichment_tick_calls_s1_and_s2_always() {
         "S2 must have run"
     );
     // tick=0, interval=10: 0 % 10 == 0, so S8 must also run.
+    // crt-044: one pair → 2 S8 edges (both directions).
     assert_eq!(
         count_edges_by_source(&store, "S8").await,
-        1,
-        "S8 must run on tick=0"
+        2,
+        "S8 must run on tick=0 and write both directions (crt-044)"
     );
 }
 
@@ -959,6 +977,197 @@ async fn test_enrichment_tick_s8_runs_on_batch_tick() {
     };
 
     // current_tick=10: 10 % 10 == 0 — S8 must run.
+    // crt-044: one pair → 2 S8 edges (both directions).
     run_graph_enrichment_tick(&store, &config, 10).await;
-    assert_eq!(count_edges_by_source(&store, "S8").await, 1);
+    assert_eq!(count_edges_by_source(&store, "S8").await, 2);
+}
+
+// ---------------------------------------------------------------------------
+// crt-044: Bidirectionality regression guards (TICK-S1-U-10, TICK-S2-U-10, TICK-S8-U-10)
+// and pairs_written counter tests (TICK-S8-U-11, TICK-S8-U-12)
+// ---------------------------------------------------------------------------
+
+/// TICK-S1-U-10: run_s1_tick writes both directions per pair (AC-03, AC-10, R-03).
+/// Per-source regression guard: if the second write_graph_edge call is removed from
+/// run_s1_tick, exactly this test fails.
+#[tokio::test]
+async fn test_s1_both_directions_written() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    seed_entry(&store, 1, 0).await;
+    seed_entry(&store, 2, 0).await;
+    for tag in &["tag_a", "tag_b", "tag_c"] {
+        seed_tag(&store, 1, tag).await;
+        seed_tag(&store, 2, tag).await;
+    }
+
+    run_s1_tick(&store, &make_config()).await;
+
+    // Forward direction: lower_id → higher_id (from SQL join convention).
+    let fwd = fetch_edge(&store, 1, 2, "Informs").await;
+    assert!(fwd.is_some(), "forward (1→2) S1 Informs edge must exist");
+    let (_, src, _, bootstrap_only) = fwd.unwrap();
+    assert_eq!(src, "S1");
+    assert_eq!(bootstrap_only, 0);
+
+    // Reverse direction: higher_id → lower_id (new second call, crt-044).
+    let rev = fetch_edge(&store, 2, 1, "Informs").await;
+    assert!(
+        rev.is_some(),
+        "reverse (2→1) S1 Informs edge must exist (AC-03)"
+    );
+    let (_, src_rev, _, _) = rev.unwrap();
+    assert_eq!(src_rev, "S1", "reverse edge must carry source='S1'");
+
+    // Total S1 edges: exactly 2 (one pair, both directions).
+    assert_eq!(
+        count_edges_by_source(&store, "S1").await,
+        2,
+        "one pair must produce exactly 2 S1 Informs edges"
+    );
+}
+
+/// TICK-S2-U-10: run_s2_tick writes both directions per pair (AC-04, AC-10, R-03).
+/// Per-source regression guard: if the second write_graph_edge call is removed from
+/// run_s2_tick, exactly this test fails.
+#[tokio::test]
+async fn test_s2_both_directions_written() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    seed_entry_with_content(&store, 3, "graph neural network architecture", "knowledge").await;
+    seed_entry_with_content(&store, 4, "neural network graph topology", "context").await;
+
+    let cfg = make_config_s2(vec!["graph", "neural", "network"], 10);
+    run_s2_tick(&store, &cfg).await;
+
+    // Forward direction: lower_id → higher_id (from SQL join convention e2.id > e1.id).
+    assert!(
+        fetch_edge(&store, 3, 4, "Informs").await.is_some(),
+        "forward (3→4) S2 Informs edge must exist"
+    );
+
+    // Reverse direction: higher_id → lower_id (new second call, crt-044).
+    let rev = fetch_edge(&store, 4, 3, "Informs").await;
+    assert!(
+        rev.is_some(),
+        "reverse (4→3) S2 Informs edge must exist (AC-04)"
+    );
+    let (_, src_rev, _, _) = rev.unwrap();
+    assert_eq!(src_rev, "S2", "reverse edge must carry source='S2'");
+
+    // Total S2 edges: exactly 2 (one pair, both directions).
+    assert_eq!(
+        count_edges_by_source(&store, "S2").await,
+        2,
+        "one pair must produce exactly 2 S2 Informs edges"
+    );
+}
+
+/// TICK-S8-U-10: run_s8_tick writes both directions per pair (AC-05, AC-10, R-03).
+/// Per-source regression guard: if the second write_graph_edge call is removed from
+/// run_s8_tick, exactly this test fails.
+#[tokio::test]
+async fn test_s8_both_directions_written() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    seed_entry(&store, 101, 0).await;
+    seed_entry(&store, 102, 0).await;
+    seed_audit_row(&store, 1, "context_search", 0, "[101,102]").await;
+
+    run_s8_tick(&store, &make_config_s8(1, 10), 0).await;
+
+    // Forward direction: a=min(ids) → b=max(ids) (existing call).
+    assert!(
+        fetch_edge(&store, 101, 102, "CoAccess").await.is_some(),
+        "forward (101→102) S8 CoAccess edge must exist"
+    );
+
+    // Reverse direction: b → a (new second call, crt-044).
+    let rev = fetch_edge(&store, 102, 101, "CoAccess").await;
+    assert!(
+        rev.is_some(),
+        "reverse (102→101) S8 CoAccess edge must exist (AC-05)"
+    );
+    let (_, src_rev, _, _) = rev.unwrap();
+    assert_eq!(src_rev, "S8", "reverse edge must carry source='S8'");
+
+    // Total S8 edges: exactly 2 (one pair, both directions).
+    assert_eq!(
+        count_edges_by_source(&store, "S8").await,
+        2,
+        "one pair must produce exactly 2 S8 CoAccess edges"
+    );
+}
+
+/// TICK-S8-U-11: pairs_written counter counts per-edge for a new pair (AC-05, AC-12, R-05).
+/// New pair where neither direction exists: both calls return true → pairs_written = 2.
+#[tokio::test]
+async fn test_s8_pairs_written_counter_per_edge_new_pair() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    seed_entry(&store, 101, 0).await;
+    seed_entry(&store, 102, 0).await;
+    seed_audit_row(&store, 1, "context_search", 0, "[101,102]").await;
+
+    let written = run_s8_tick(&store, &make_config_s8(1, 10), 0).await;
+
+    // Both write_graph_edge calls return true (new rows in both directions) → counter = 2.
+    assert_eq!(
+        written, 2,
+        "new pair: both write_graph_edge calls return true → pairs_written must be 2 (per-edge, AC-12, C-06)"
+    );
+
+    // Verify via row count: 2 rows inserted.
+    assert_eq!(count_edges_by_source(&store, "S8").await, 2);
+}
+
+/// TICK-S8-U-12: false return on pre-existing reverse — counter += 1, no panic (AC-13, R-04).
+/// Simulates post-migration steady-state where the reverse edge already exists.
+/// First write_graph_edge call (forward) returns true → counter += 1.
+/// Second write_graph_edge call (reverse) returns false (UNIQUE conflict) → counter unchanged.
+/// Validates C-09: false return is correct, must NOT trigger warn or error counter increment.
+#[tokio::test]
+async fn test_s8_false_return_on_existing_reverse_no_warn_no_increment() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    seed_entry(&store, 101, 0).await;
+    seed_entry(&store, 102, 0).await;
+    seed_audit_row(&store, 1, "context_search", 0, "[101,102]").await;
+
+    // Pre-insert only the REVERSE direction (simulating post-migration state).
+    // The tick's first call will insert the forward direction (returns true).
+    // The tick's second call will hit UNIQUE conflict on the reverse (returns false, C-09).
+    sqlx::query(
+        "INSERT INTO graph_edges \
+         (source_id, target_id, relation_type, weight, created_at, created_by, source, bootstrap_only) \
+         VALUES (?1, ?2, 'CoAccess', 0.25, 0, 'migration', 'S8', 0)",
+    )
+    .bind(102i64) // reverse: higher → lower
+    .bind(101i64)
+    .execute(store.write_pool_server())
+    .await
+    .unwrap();
+
+    let written = run_s8_tick(&store, &make_config_s8(1, 10), 0).await;
+
+    // First call (101→102) succeeds → pairs_written = 1.
+    // Second call (102→101) conflicts with pre-inserted row → false, not counted (C-09).
+    assert_eq!(
+        written, 1,
+        "pre-existing reverse: first call true (+1), second call false (+0) → pairs_written must be 1 (AC-13)"
+    );
+
+    // 2 total edges: 1 pre-inserted reverse + 1 newly-inserted forward.
+    assert_eq!(
+        count_edges_by_source(&store, "S8").await,
+        2,
+        "pre-existing reverse + newly-inserted forward = 2 total S8 edges"
+    );
+
+    // Tick completes without panic (structural C-09 validation).
 }

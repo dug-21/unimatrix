@@ -1,42 +1,15 @@
-//! Integration tests for the v18→v19 schema migration (crt-035).
+//! Integration tests for the v19→v20 schema migration (crt-044).
 //!
-//! Covers: MIG-U-01 (CURRENT_SCHEMA_VERSION = 19), MIG-U-02 (fresh DB creates v19),
-//! MIG-U-03 (bootstrap-era back-fill), MIG-U-04 (tick-era back-fill),
-//! MIG-U-05 (non-CoAccess edges unaffected), MIG-U-06 (idempotency),
-//! MIG-U-07 (empty graph_edges no-op).
+//! Covers: MIG-V20-U-01 (CURRENT_SCHEMA_VERSION = 20), MIG-V20-U-02 (fresh DB creates v20),
+//! MIG-V20-U-03 (S1 Informs back-fill), MIG-V20-U-04 (S2 Informs back-fill),
+//! MIG-V20-U-05 (S8 CoAccess back-fill), MIG-V20-U-06 (S1+S2 count parity),
+//! MIG-V20-U-07 (S8 count parity), MIG-V20-U-08 (excluded sources not back-filled),
+//! MIG-V20-U-09 (idempotency clean state), MIG-V20-U-10 (idempotency with pre-existing
+//! reverse), MIG-V20-U-11 (empty graph_edges no-op).
 //!
-//! Pattern: create a v18-shaped database (matching post-v17→v18 migration schema),
-//! open with current SqlxStore to trigger v18→v19 migration, assert schema state
+//! Pattern: create a v19-shaped database (matching post-v18→v19 migration schema),
+//! open with current SqlxStore to trigger v19→v20 migration, assert schema state
 //! and edge counts.
-//!
-//! GATE-3B-03: EXPLAIN QUERY PLAN output for back-fill NOT EXISTS sub-join.
-//!
-//! Run against a v19-schema tempfile DB:
-//!   EXPLAIN QUERY PLAN
-//!   INSERT OR IGNORE INTO graph_edges (source_id, target_id, relation_type,
-//!       weight, created_at, created_by, source, bootstrap_only)
-//!   SELECT g.target_id, g.source_id, 'CoAccess', g.weight,
-//!          strftime('%s','now'), g.created_by, 'co_access', 0
-//!   FROM graph_edges g
-//!   WHERE g.relation_type = 'CoAccess'
-//!     AND g.source = 'co_access'
-//!     AND NOT EXISTS (
-//!       SELECT 1 FROM graph_edges rev
-//!       WHERE rev.source_id = g.target_id
-//!         AND rev.target_id = g.source_id
-//!         AND rev.relation_type = 'CoAccess'
-//!     )
-//!
-//! Captured output (SQLite 3.40.1):
-//!   QUERY PLAN
-//!   |--SEARCH g USING INDEX idx_graph_edges_relation_type (relation_type=?)
-//!   `--CORRELATED SCALAR SUBQUERY 1
-//!      `--SEARCH rev USING COVERING INDEX sqlite_autoindex_graph_edges_1
-//!                  (source_id=? AND target_id=? AND relation_type=?)
-//!
-//! Result: NOT EXISTS sub-select uses SEARCH via sqlite_autoindex_graph_edges_1
-//! (the UNIQUE B-tree on source_id, target_id, relation_type). No SCAN (full table
-//! scan) detected. No composite covering index required. GATE-3B-03 PASSED.
 
 #![cfg(feature = "test-support")]
 
@@ -49,20 +22,20 @@ use unimatrix_store::SqlxStore;
 use unimatrix_store::pool_config::PoolConfig;
 
 // ---------------------------------------------------------------------------
-// V18 database builder
+// V19 database builder
 // ---------------------------------------------------------------------------
 
-/// Create a v18-shaped database at the given path.
+/// Create a v19-shaped database at the given path.
 ///
-/// Contains all tables present at v18: all v17 tables + `cycle_review_index`.
-/// schema_version = 18. The `graph_edges` table has no rows — callers insert
-/// rows as needed per test scenario.
-async fn create_v18_database(path: &Path) {
+/// Schema is identical to v18 (all same tables + cycle_review_index). The only
+/// difference from v18 is schema_version = 19. graph_edges has no rows — callers
+/// insert rows as needed per test scenario.
+async fn create_v19_database(path: &Path) {
     let opts = SqliteConnectOptions::new()
         .filename(path)
         .create_if_missing(true);
 
-    let mut conn = opts.connect().await.expect("open v18 setup conn");
+    let mut conn = opts.connect().await.expect("open v19 setup conn");
 
     sqlx::query("PRAGMA journal_mode = WAL")
         .execute(&mut conn)
@@ -285,7 +258,7 @@ async fn create_v18_database(path: &Path) {
             timestamp  INTEGER NOT NULL,
             goal       TEXT
         )",
-        // cycle_review_index: added by v17→v18 migration (crt-033). Present in v18 shape.
+        // cycle_review_index: added by v17→v18 migration (crt-033). Present in v18 and v19 shape.
         "CREATE TABLE cycle_review_index (
             feature_cycle         TEXT    PRIMARY KEY,
             schema_version        INTEGER NOT NULL,
@@ -323,9 +296,9 @@ async fn create_v18_database(path: &Path) {
             .expect("create table/index");
     }
 
-    // Seed counters at v18.
+    // Seed counters at v19.
     for seed in &[
-        "INSERT INTO counters (name, value) VALUES ('schema_version', 18)",
+        "INSERT INTO counters (name, value) VALUES ('schema_version', 19)",
         "INSERT INTO counters (name, value) VALUES ('next_entry_id', 1)",
         "INSERT INTO counters (name, value) VALUES ('next_signal_id', 0)",
         "INSERT INTO counters (name, value) VALUES ('next_log_id', 0)",
@@ -381,28 +354,55 @@ async fn edge_exists(
     count > 0
 }
 
+/// Fetch (source, bootstrap_only) for a specific directed edge. Returns None if not found.
+async fn fetch_edge_source_and_bootstrap(
+    store: &SqlxStore,
+    source_id: i64,
+    target_id: i64,
+    relation_type: &str,
+) -> Option<(String, i64)> {
+    sqlx::query_as::<_, (String, i64)>(
+        "SELECT source, bootstrap_only FROM graph_edges
+         WHERE source_id = ? AND target_id = ? AND relation_type = ?",
+    )
+    .bind(source_id)
+    .bind(target_id)
+    .bind(relation_type)
+    .fetch_optional(store.read_pool_test())
+    .await
+    .expect("fetch_edge_source_and_bootstrap")
+}
+
+/// Count all rows in graph_edges.
+async fn total_graph_edges_count(store: &SqlxStore) -> i64 {
+    sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM graph_edges")
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("total_graph_edges_count")
+}
+
 // ---------------------------------------------------------------------------
-// MIG-U-01: CURRENT_SCHEMA_VERSION >= 19 (AC-09, R-10)
+// MIG-V20-U-01: CURRENT_SCHEMA_VERSION == 20 (AC-06, R-10)
 // ---------------------------------------------------------------------------
 
-/// Verify CURRENT_SCHEMA_VERSION constant is at least 19 (was 19 at crt-035; bumped
-/// to 20 by crt-044 and may be incremented again in future features).
+/// Verify CURRENT_SCHEMA_VERSION constant is exactly 20.
 /// Non-async: no fixture required.
 #[test]
-fn test_current_schema_version_is_19() {
-    assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 19,
-        "CURRENT_SCHEMA_VERSION must be at least 19"
+fn test_current_schema_version_is_20() {
+    assert_eq!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
+        20,
+        "CURRENT_SCHEMA_VERSION must be 20"
     );
 }
 
 // ---------------------------------------------------------------------------
-// MIG-U-02: Fresh database creates current schema version (AC-09, R-10)
+// MIG-V20-U-02: Fresh database creates schema v20 (R-10)
 // ---------------------------------------------------------------------------
 
-/// Fresh SqlxStore::open() must land at CURRENT_SCHEMA_VERSION (create_tables_if_needed path).
+/// Fresh SqlxStore::open() must land at schema v20 (create_tables_if_needed path).
 #[tokio::test]
-async fn test_fresh_db_creates_schema_v19() {
+async fn test_fresh_db_creates_schema_v20() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
 
@@ -412,11 +412,10 @@ async fn test_fresh_db_creates_schema_v19() {
 
     assert_eq!(
         read_schema_version(&store).await,
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION as i64,
-        "fresh database must be at CURRENT_SCHEMA_VERSION"
+        20,
+        "fresh database must be at schema v20"
     );
 
-    // graph_edges table must exist with no rows (fresh DB, data-only migration).
     let row_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
         .fetch_one(store.read_pool_test())
         .await
@@ -427,388 +426,556 @@ async fn test_fresh_db_creates_schema_v19() {
 }
 
 // ---------------------------------------------------------------------------
-// MIG-U-03: Bootstrap-era back-fill (AC-06, R-01 multi-row correctness)
+// MIG-V20-U-03: S1 Informs edge back-filled (AC-09, AC-01, R-01)
 // ---------------------------------------------------------------------------
 
-/// v18 DB with bootstrap-era forward-only CoAccess edges: migration must insert
-/// the reverse edge for each pair. Covers R-04 (zero-weight edge copied faithfully).
 #[tokio::test]
-async fn test_v18_to_v19_back_fills_bootstrap_era_edges() {
+async fn test_v19_to_v20_back_fills_s1_informs_edge() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v18_database(&db_path).await;
+    create_v19_database(&db_path).await;
 
-    // Arrange: three bootstrap-era forward CoAccess edges + one zero-weight edge (R-04).
+    // Arrange: one forward-only S1 Informs edge (1→2).
     {
         let opts = SqliteConnectOptions::new().filename(&db_path);
         let mut conn = opts.connect().await.expect("setup conn");
-        for (src, tgt, weight) in &[(1i64, 2i64, 0.8f64), (3, 4, 0.6), (5, 6, 1.0), (7, 8, 0.0)] {
-            sqlx::query(
-                "INSERT INTO graph_edges
-                     (source_id, target_id, relation_type, weight, created_at,
-                      created_by, source, bootstrap_only)
-                 VALUES (?, ?, 'CoAccess', ?, 0, 'bootstrap', 'co_access', 0)",
-            )
-            .bind(src)
-            .bind(tgt)
-            .bind(weight)
-            .execute(&mut conn)
-            .await
-            .expect("insert forward edge");
-        }
-
-        // Pre-condition: no reverse edges yet.
-        let rev: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM graph_edges
-             WHERE source_id IN (2, 4, 6, 8) AND relation_type = 'CoAccess'",
-        )
-        .fetch_one(&mut conn)
-        .await
-        .expect("pre-check reverses");
-        assert_eq!(rev, 0, "no reverse edges must exist before migration");
-    }
-
-    // Act: open triggers v18→v19 (and any subsequent) migration.
-    let store = SqlxStore::open(&db_path, PoolConfig::default())
-        .await
-        .expect("open after migration");
-
-    // Assert: schema_version at current version (v18→v19 ran; subsequent migrations also ran).
-    assert!(read_schema_version(&store).await >= 19);
-
-    // Assert: 8 CoAccess edges total (4 forward + 4 reverse).
-    // Even count is the invariant: any odd value here is a bug (crt-035 key invariant #5).
-    assert_eq!(
-        count_graph_edges(&store, "CoAccess", "co_access").await,
-        8,
-        "4 pairs × 2 directions = 8 CoAccess edges; odd count indicates back-fill bug"
-    );
-
-    // Assert each reverse edge exists.
-    assert!(
-        edge_exists(&store, 2, 1, "CoAccess").await,
-        "reverse (2→1) must exist"
-    );
-    assert!(
-        edge_exists(&store, 4, 3, "CoAccess").await,
-        "reverse (4→3) must exist"
-    );
-    assert!(
-        edge_exists(&store, 6, 5, "CoAccess").await,
-        "reverse (6→5) must exist"
-    );
-    assert!(
-        edge_exists(&store, 8, 7, "CoAccess").await,
-        "reverse (8→7) must exist"
-    );
-
-    // Assert forward edges still present.
-    assert!(
-        edge_exists(&store, 1, 2, "CoAccess").await,
-        "forward (1→2) must survive"
-    );
-    assert!(
-        edge_exists(&store, 3, 4, "CoAccess").await,
-        "forward (3→4) must survive"
-    );
-
-    // Assert reverse edge (2→1) carries correct field values (D1: created_by copied from forward).
-    let (weight, created_by, source_col, bootstrap_only): (f64, String, String, i64) =
-        sqlx::query_as(
-            "SELECT weight, created_by, source, bootstrap_only FROM graph_edges
-             WHERE source_id = 2 AND target_id = 1 AND relation_type = 'CoAccess'",
-        )
-        .fetch_one(store.read_pool_test())
-        .await
-        .expect("fetch reverse edge (2→1)");
-    assert!(
-        (weight - 0.8).abs() < 1e-9,
-        "reverse weight must match forward (0.8)"
-    );
-    assert_eq!(
-        created_by, "bootstrap",
-        "created_by must be copied from forward (D1)"
-    );
-    assert_eq!(source_col, "co_access");
-    assert_eq!(bootstrap_only, 0);
-
-    // R-04: zero-weight edge must be copied faithfully (no floor applied).
-    let (zero_weight,): (f64,) = sqlx::query_as(
-        "SELECT weight FROM graph_edges
-         WHERE source_id = 8 AND target_id = 7 AND relation_type = 'CoAccess'",
-    )
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("fetch zero-weight reverse edge");
-    assert!(
-        zero_weight.abs() < 1e-9,
-        "zero-weight reverse edge must have weight == 0.0, got {zero_weight}"
-    );
-
-    store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// MIG-U-04: Tick-era back-fill (AC-06)
-// ---------------------------------------------------------------------------
-
-/// v18 DB with tick-era forward-only CoAccess edges: migration must insert the
-/// reverse edge with created_by='tick' (D1: provenance copied from forward edge).
-#[tokio::test]
-async fn test_v18_to_v19_back_fills_tick_era_edges() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-    create_v18_database(&db_path).await;
-
-    // Arrange: two tick-era forward CoAccess edges.
-    {
-        let opts = SqliteConnectOptions::new().filename(&db_path);
-        let mut conn = opts.connect().await.expect("setup conn");
-        for (src, tgt, weight) in &[(10i64, 20i64, 0.5f64), (30i64, 40i64, 0.75f64)] {
-            sqlx::query(
-                "INSERT INTO graph_edges
-                     (source_id, target_id, relation_type, weight, created_at,
-                      created_by, source, bootstrap_only)
-                 VALUES (?, ?, 'CoAccess', ?, 0, 'tick', 'co_access', 0)",
-            )
-            .bind(src)
-            .bind(tgt)
-            .bind(weight)
-            .execute(&mut conn)
-            .await
-            .expect("insert tick forward edge");
-        }
-    }
-
-    // Act: open triggers v18→v19 (and any subsequent) migration.
-    let store = SqlxStore::open(&db_path, PoolConfig::default())
-        .await
-        .expect("open after migration");
-
-    // Assert: schema_version at current version (v18→v19 ran; subsequent migrations also ran).
-    assert!(read_schema_version(&store).await >= 19);
-
-    // Assert: 4 CoAccess edges (2 forward + 2 reverse). Even count invariant.
-    assert_eq!(
-        count_graph_edges(&store, "CoAccess", "co_access").await,
-        4,
-        "2 pairs × 2 directions = 4; odd count indicates back-fill bug"
-    );
-
-    // Assert: reverse edges exist.
-    assert!(
-        edge_exists(&store, 20, 10, "CoAccess").await,
-        "reverse (20→10) must exist"
-    );
-    assert!(
-        edge_exists(&store, 40, 30, "CoAccess").await,
-        "reverse (40→30) must exist"
-    );
-
-    // Assert: created_by='tick' on reverse edge (D1: provenance copied from forward).
-    let (created_by, weight): (String, f64) = sqlx::query_as(
-        "SELECT created_by, weight FROM graph_edges
-         WHERE source_id = 20 AND target_id = 10 AND relation_type = 'CoAccess'",
-    )
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("fetch reverse tick edge");
-    assert_eq!(
-        created_by, "tick",
-        "tick-era reverse edge must have created_by='tick' (D1)"
-    );
-    assert!(
-        (weight - 0.5).abs() < 1e-9,
-        "tick reverse weight must match forward (0.5)"
-    );
-
-    store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// MIG-U-05: Non-CoAccess edges unaffected (AC-08)
-// ---------------------------------------------------------------------------
-
-/// The back-fill must NOT reverse Supersedes, Contradicts, or Supports edges.
-/// Only CoAccess rows with source='co_access' gain reverse edges.
-#[tokio::test]
-async fn test_v18_to_v19_does_not_touch_non_coaccess_edges() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-    create_v18_database(&db_path).await;
-
-    // Arrange: one CoAccess forward edge + three non-CoAccess edges.
-    {
-        let opts = SqliteConnectOptions::new().filename(&db_path);
-        let mut conn = opts.connect().await.expect("setup conn");
-
-        // CoAccess forward edge (will gain reverse).
         sqlx::query(
             "INSERT INTO graph_edges
                  (source_id, target_id, relation_type, weight, created_at,
                   created_by, source, bootstrap_only)
-             VALUES (1, 2, 'CoAccess', 1.0, 0, 'tick', 'co_access', 0)",
+             VALUES (1, 2, 'Informs', 0.3, 0, 'tick', 'S1', 0)",
         )
         .execute(&mut conn)
         .await
-        .expect("insert CoAccess");
+        .expect("insert forward S1 Informs edge");
 
-        // Non-CoAccess edges (must NOT gain reverses).
-        for (src, tgt, rel_type) in &[
-            (3i64, 4i64, "Supersedes"),
-            (5, 6, "Contradicts"),
-            (7, 8, "Supports"),
-        ] {
-            sqlx::query(
-                "INSERT INTO graph_edges
-                     (source_id, target_id, relation_type, weight, created_at,
-                      created_by, source, bootstrap_only)
-                 VALUES (?, ?, ?, 1.0, 0, 'system', 'manual', 0)",
-            )
-            .bind(src)
-            .bind(tgt)
-            .bind(*rel_type)
-            .execute(&mut conn)
-            .await
-            .expect("insert non-CoAccess edge");
-        }
+        // Pre-condition: reverse (2→1) must not exist yet.
+        let rev: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM graph_edges
+             WHERE source_id = 2 AND target_id = 1 AND relation_type = 'Informs'",
+        )
+        .fetch_one(&mut conn)
+        .await
+        .expect("pre-check reverse");
+        assert_eq!(rev, 0, "reverse (2→1) must not exist before migration");
     }
 
-    // Act: open triggers v18→v19 migration.
+    // Act: open triggers v19→v20 migration.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
         .expect("open after migration");
 
-    // Assert: total edge count == 5 (1 original CoAccess + 1 new reverse + 3 non-CoAccess).
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
-        .fetch_one(store.read_pool_test())
+    // Assert: schema_version == 20.
+    assert_eq!(read_schema_version(&store).await, 20);
+
+    // Assert: reverse (2→1) exists.
+    assert!(
+        edge_exists(&store, 2, 1, "Informs").await,
+        "reverse (2→1) S1 Informs edge must be back-filled"
+    );
+
+    // Assert: forward (1→2) still exists.
+    assert!(
+        edge_exists(&store, 1, 2, "Informs").await,
+        "forward (1→2) S1 Informs edge must still exist"
+    );
+
+    // Assert: back-filled row carries source='S1' and bootstrap_only=0.
+    let row = fetch_edge_source_and_bootstrap(&store, 2, 1, "Informs")
         .await
-        .expect("total count");
-    assert_eq!(
-        total, 5,
-        "1 CoAccess fwd + 1 CoAccess rev + 3 non-CoAccess = 5 total edges"
-    );
-
-    // Assert: CoAccess reverse was created.
-    assert!(
-        edge_exists(&store, 2, 1, "CoAccess").await,
-        "CoAccess reverse (2→1) must exist"
-    );
-
-    // Assert: no reverse was created for non-CoAccess edge types (EC-03).
-    assert!(
-        !edge_exists(&store, 4, 3, "Supersedes").await,
-        "Supersedes reverse must NOT be back-filled (EC-03)"
-    );
-    assert!(
-        !edge_exists(&store, 6, 5, "Contradicts").await,
-        "Contradicts reverse must NOT be back-filled (EC-03)"
-    );
-    assert!(
-        !edge_exists(&store, 8, 7, "Supports").await,
-        "Supports reverse must NOT be back-filled (EC-03)"
-    );
-
-    // Assert: each non-CoAccess type still has exactly 1 row.
-    for rel_type in &["Supersedes", "Contradicts", "Supports"] {
-        let cnt: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges WHERE relation_type = ?")
-                .bind(*rel_type)
-                .fetch_one(store.read_pool_test())
-                .await
-                .expect("count by type");
-        assert_eq!(cnt, 1, "{rel_type} must have exactly 1 row after migration");
-    }
+        .expect("back-filled (2→1) row must exist");
+    assert_eq!(row.0, "S1", "back-filled row must carry source='S1'");
+    assert_eq!(row.1, 0, "back-filled row must have bootstrap_only=0");
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// MIG-U-06: Idempotency — second open does not duplicate reverse edges (AC-07, R-09)
+// MIG-V20-U-04: S2 Informs edge back-filled (R-01, AC-09)
 // ---------------------------------------------------------------------------
 
-/// Opening the same v18→v19-migrated database a second time must not add duplicate
-/// reverse edges. Version guard (current == 19) skips the migration block.
-/// INSERT OR IGNORE + NOT EXISTS provide additional safety layers.
 #[tokio::test]
-async fn test_v18_to_v19_migration_idempotent() {
+async fn test_v19_to_v20_back_fills_s2_informs_edge() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v18_database(&db_path).await;
+    create_v19_database(&db_path).await;
 
-    // Arrange: two forward-only CoAccess edges.
+    // Arrange: one forward-only S2 Informs edge (3→4).
     {
         let opts = SqliteConnectOptions::new().filename(&db_path);
         let mut conn = opts.connect().await.expect("setup conn");
-        for (src, tgt) in &[(1i64, 2i64), (3, 4)] {
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (3, 4, 'Informs', 0.5, 0, 'tick', 'S2', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert forward S2 Informs edge");
+    }
+
+    // Act: open triggers v19→v20 migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open after migration");
+
+    // Assert: reverse (4→3) exists with source='S2'.
+    assert!(
+        edge_exists(&store, 4, 3, "Informs").await,
+        "reverse (4→3) S2 Informs edge must be back-filled"
+    );
+
+    let row = fetch_edge_source_and_bootstrap(&store, 4, 3, "Informs")
+        .await
+        .expect("back-filled (4→3) row must exist");
+    assert_eq!(row.0, "S2", "back-filled row must carry source='S2'");
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-V20-U-05: S8 CoAccess edge back-filled (AC-09, AC-02, R-01)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v19_to_v20_back_fills_s8_coaccess_edge() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v19_database(&db_path).await;
+
+    // Arrange: one forward-only S8 CoAccess edge (5→6).
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (5, 6, 'CoAccess', 0.25, 0, 'tick', 'S8', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert forward S8 CoAccess edge");
+    }
+
+    // Act: open triggers v19→v20 migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open after migration");
+
+    // Assert: reverse (6→5) exists with source='S8' and bootstrap_only=0.
+    assert!(
+        edge_exists(&store, 6, 5, "CoAccess").await,
+        "reverse (6→5) S8 CoAccess edge must be back-filled"
+    );
+
+    let row = fetch_edge_source_and_bootstrap(&store, 6, 5, "CoAccess")
+        .await
+        .expect("back-filled (6→5) row must exist");
+    assert_eq!(row.0, "S8", "back-filled row must carry source='S8'");
+    assert_eq!(row.1, 0, "back-filled row must have bootstrap_only=0");
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-V20-U-06: Count parity — S1+S2 Informs (AC-01)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v19_to_v20_s1_s2_count_parity_after_migration() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v19_database(&db_path).await;
+
+    // Arrange: two forward-only S1 Informs edges and one S2 Informs edge (3 forward total).
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        for (src, tgt, src_field) in &[(1i64, 2i64, "S1"), (3i64, 4i64, "S1"), (5i64, 6i64, "S2")] {
             sqlx::query(
                 "INSERT INTO graph_edges
                      (source_id, target_id, relation_type, weight, created_at,
                       created_by, source, bootstrap_only)
-                 VALUES (?, ?, 'CoAccess', 0.5, 0, 'bootstrap', 'co_access', 0)",
+                 VALUES (?, ?, 'Informs', 0.4, 0, 'tick', ?, 0)",
+            )
+            .bind(src)
+            .bind(tgt)
+            .bind(*src_field)
+            .execute(&mut conn)
+            .await
+            .expect("insert forward Informs edge");
+        }
+    }
+
+    // Act: open triggers v19→v20 migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open after migration");
+
+    // Assert: 6 total S1/S2 Informs edges (3 forward + 3 reverse).
+    let total: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM graph_edges
+         WHERE relation_type = 'Informs' AND source IN ('S1', 'S2')",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("count S1/S2 Informs");
+    assert_eq!(
+        total, 6,
+        "3 forward + 3 reverse = 6 total S1/S2 Informs edges"
+    );
+
+    // Assert: every edge has a reverse partner (count parity).
+    let paired: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM graph_edges g1
+         WHERE g1.relation_type = 'Informs'
+           AND g1.source IN ('S1', 'S2')
+           AND EXISTS (
+             SELECT 1 FROM graph_edges g2
+             WHERE g2.source_id = g1.target_id
+               AND g2.target_id = g1.source_id
+               AND g2.relation_type = 'Informs'
+           )",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("count paired S1/S2 Informs");
+    assert!(total > 0);
+    assert_eq!(
+        total, paired,
+        "every S1/S2 Informs edge must have a reverse partner (AC-01)"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-V20-U-07: Count parity — S8 CoAccess (AC-02)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v19_to_v20_s8_count_parity_after_migration() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v19_database(&db_path).await;
+
+    // Arrange: two forward-only S8 CoAccess edges.
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        for (src, tgt) in &[(10i64, 20i64), (30i64, 40i64)] {
+            sqlx::query(
+                "INSERT INTO graph_edges
+                     (source_id, target_id, relation_type, weight, created_at,
+                      created_by, source, bootstrap_only)
+                 VALUES (?, ?, 'CoAccess', 0.6, 0, 'tick', 'S8', 0)",
             )
             .bind(src)
             .bind(tgt)
             .execute(&mut conn)
             .await
-            .expect("insert forward edge");
+            .expect("insert forward S8 CoAccess edge");
         }
     }
 
-    // Run 1: applies v18→v19 (and any subsequent) back-fill.
-    {
-        let store = SqlxStore::open(&db_path, PoolConfig::default())
-            .await
-            .expect("first open");
-        assert!(read_schema_version(&store).await >= 19);
-        assert_eq!(
-            count_graph_edges(&store, "CoAccess", "co_access").await,
-            4,
-            "2 pairs × 2 directions = 4 after first open"
-        );
-        store.close().await.unwrap();
-    }
-
-    // Run 2: version guards prevent re-run; edge count must be unchanged.
+    // Act: open triggers v19→v20 migration.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
-        .expect("second open must succeed (idempotency)");
+        .expect("open after migration");
 
-    assert!(read_schema_version(&store).await >= 19);
+    // Assert: 4 total S8 CoAccess edges (2 forward + 2 reverse).
+    let total: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM graph_edges
+         WHERE relation_type = 'CoAccess' AND source = 'S8'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("count S8 CoAccess");
     assert_eq!(
-        count_graph_edges(&store, "CoAccess", "co_access").await,
-        4,
-        "second open must not duplicate edges — NOT EXISTS + UNIQUE guard idempotent (NFR-02); \
-         odd count would indicate a back-fill bug"
+        total, 4,
+        "2 forward + 2 reverse = 4 total S8 CoAccess edges"
+    );
+
+    // Assert: every edge has a reverse partner.
+    let paired: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM graph_edges g1
+         WHERE g1.relation_type = 'CoAccess'
+           AND g1.source = 'S8'
+           AND EXISTS (
+             SELECT 1 FROM graph_edges g2
+             WHERE g2.source_id = g1.target_id
+               AND g2.target_id = g1.source_id
+               AND g2.relation_type = 'CoAccess'
+               AND g2.source = 'S8'
+           )",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("count paired S8 CoAccess");
+    assert!(total > 0);
+    assert_eq!(
+        total, paired,
+        "every S8 CoAccess edge must have a reverse partner (AC-02)"
     );
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// MIG-U-07: Empty graph_edges at migration time — no-op (EC-01)
+// MIG-V20-U-08: Excluded sources not back-filled (R-06, R-07, AC-09)
 // ---------------------------------------------------------------------------
 
-/// When graph_edges is empty at v18→v19 migration time, the back-fill SELECT
-/// returns zero rows and the INSERT inserts nothing. Migration completes without error.
 #[tokio::test]
-async fn test_v18_to_v19_empty_graph_edges_is_noop() {
+async fn test_v19_to_v20_excludes_excluded_sources() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v18_database(&db_path).await;
-    // No graph_edges rows inserted — empty table at migration time (EC-01).
+    create_v19_database(&db_path).await;
+
+    // Arrange: forward edges that must NOT be back-filled.
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+
+        // nli Informs: intentionally unidirectional (C-04).
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (10, 11, 'Informs', 1.0, 0, 'nli', 'nli', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert nli Informs");
+
+        // cosine_supports Informs: out of scope (C-04).
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (12, 13, 'Informs', 0.8, 0, 'system', 'cosine_supports', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert cosine_supports Informs");
+
+        // co_access CoAccess (both directions already present — already bidirectional since v18→v19).
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (14, 15, 'CoAccess', 0.5, 0, 'tick', 'co_access', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert co_access forward");
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (15, 14, 'CoAccess', 0.5, 0, 'tick', 'co_access', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert co_access reverse");
+    }
+
+    // Act: open triggers v19→v20 migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("open after migration");
+
+    // Assert: nli reverse must NOT exist (C-04).
+    assert!(
+        !edge_exists(&store, 11, 10, "Informs").await,
+        "nli Informs reverse must NOT be back-filled (C-04)"
+    );
+
+    // Assert: cosine_supports reverse must NOT exist (C-04).
+    assert!(
+        !edge_exists(&store, 13, 12, "Informs").await,
+        "cosine_supports Informs reverse must NOT be back-filled (C-04)"
+    );
+
+    // Assert: co_access CoAccess count unchanged — still exactly 2 (R-06).
+    let ca_count = count_graph_edges(&store, "CoAccess", "co_access").await;
+    assert_eq!(
+        ca_count, 2,
+        "co_access edges must not gain additional rows (R-06)"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-V20-U-09: Idempotency — clean state (AC-07, R-09)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v19_to_v20_migration_idempotent_clean_state() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v19_database(&db_path).await;
+
+    // Arrange: two forward-only S1 Informs edges and one S8 CoAccess edge.
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (1, 2, 'Informs', 0.4, 0, 'tick', 'S1', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert S1 forward 1");
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (3, 4, 'Informs', 0.4, 0, 'tick', 'S1', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert S1 forward 2");
+        sqlx::query(
+            "INSERT INTO graph_edges
+                 (source_id, target_id, relation_type, weight, created_at,
+                  created_by, source, bootstrap_only)
+             VALUES (5, 6, 'CoAccess', 0.3, 0, 'tick', 'S8', 0)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert S8 forward");
+    }
+
+    // Run 1: applies v19→v20 back-fill.
+    let count_after_first = {
+        let store = SqlxStore::open(&db_path, PoolConfig::default())
+            .await
+            .expect("first open");
+        assert_eq!(read_schema_version(&store).await, 20);
+        let count = total_graph_edges_count(&store).await;
+        store.close().await.unwrap();
+        count
+    };
+    // 3 forward + 3 reverse = 6 total.
+    assert_eq!(count_after_first, 6, "first open: 3 forward + 3 reverse");
+
+    // Run 2: version guard (current == 20) skips the block; INSERT OR IGNORE + NOT EXISTS
+    // provide additional safety. Edge count must be unchanged.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("second open must succeed");
+    let count_after_second = total_graph_edges_count(&store).await;
+    assert_eq!(
+        count_after_second, count_after_first,
+        "second open must not add rows — idempotency guaranteed (AC-07, R-09)"
+    );
+    assert_eq!(read_schema_version(&store).await, 20);
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-V20-U-10: Idempotency — with pre-existing reverse edge (AC-14, R-09)
+// ---------------------------------------------------------------------------
+
+/// Exercises partial-bidirectionality input: some pairs already bidirectional
+/// before migration runs. Only the forward-only pair gains a reverse.
+#[tokio::test]
+async fn test_v19_to_v20_migration_idempotent_with_preexisting_reverse() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v19_database(&db_path).await;
+
+    // Arrange:
+    //   - forward-only S1 Informs edge (1→2) — no reverse yet.
+    //   - pre-existing bidirectional S1 Informs pair (3→4) + (4→3).
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("setup conn");
+        for (src, tgt) in &[(1i64, 2i64), (3i64, 4i64), (4i64, 3i64)] {
+            sqlx::query(
+                "INSERT INTO graph_edges
+                     (source_id, target_id, relation_type, weight, created_at,
+                      created_by, source, bootstrap_only)
+                 VALUES (?, ?, 'Informs', 0.5, 0, 'tick', 'S1', 0)",
+            )
+            .bind(src)
+            .bind(tgt)
+            .execute(&mut conn)
+            .await
+            .expect("insert edge");
+        }
+    }
+
+    // Act (first open): triggers migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("first open");
+
+    // Assert: (1→2) pair gained its reverse.
+    assert!(
+        edge_exists(&store, 2, 1, "Informs").await,
+        "reverse (2→1) must be back-filled for forward-only pair"
+    );
+
+    // Assert: (3→4) pair still has exactly 2 rows — no duplicate inserted.
+    let pairs_34_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM graph_edges
+         WHERE ((source_id = 3 AND target_id = 4) OR (source_id = 4 AND target_id = 3))
+           AND relation_type = 'Informs'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("count (3,4) pair");
+    assert_eq!(
+        pairs_34_count, 2,
+        "pre-existing bidirectional pair must remain exactly 2 rows (AC-14)"
+    );
+
+    // Total: 4 rows (1→2 forward + 2→1 new reverse + 3→4 + 4→3).
+    assert_eq!(total_graph_edges_count(&store).await, 4);
+
+    let total_after_first = total_graph_edges_count(&store).await;
+    store.close().await.unwrap();
+
+    // Act (second open): must not add any rows.
+    let store2 = SqlxStore::open(&db_path, PoolConfig::default())
+        .await
+        .expect("second open");
+    assert_eq!(
+        total_graph_edges_count(&store2).await,
+        total_after_first,
+        "second open must not add rows (R-09)"
+    );
+    store2.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-V20-U-11: Empty graph_edges — no-op (edge case)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v19_to_v20_empty_graph_edges_is_noop() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v19_database(&db_path).await;
+    // No graph_edges rows inserted — empty table.
 
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
         .expect("migration on empty graph_edges must not error");
 
-    assert!(read_schema_version(&store).await >= 19);
+    assert_eq!(read_schema_version(&store).await, 20);
 
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
         .fetch_one(store.read_pool_test())
         .await
         .expect("count graph_edges");
-    assert_eq!(total, 0, "back-fill on empty table must be a no-op (EC-01)");
+    assert_eq!(total, 0, "back-fill on empty table must be a no-op");
 
     store.close().await.unwrap();
 }
