@@ -128,10 +128,14 @@ Target combined density: ≥3,000 active→active edges (currently 1,086).
 
 | Issue | Title | Notes |
 |-------|-------|-------|
-| — | Cosine Supports detection | Replace NLI post-store path. Threshold ≥ 0.65, category pair filter from `informs_category_pairs`. Validated in ASS-035: 6/8 true pairs, 0/10 false positives. Runs in structural_graph_tick (Group 2 prerequisite). |
-| — | S1: Tag co-occurrence Informs edges | Background tick: pairs sharing ≥3 tags → `Informs` edge. SQL-only, no model. Yield: ~1,052 new edges at current corpus. Tag `signal_origin='S1'` on edge for GNN feature construction. |
-| — | S2: Structural vocabulary Informs edges | Background tick: configurable domain term list; pairs sharing ≥2 terms → `Informs` edge. Vocabulary in config (domain-agnostic). Yield: ~1,830 new edges. Tag `signal_origin='S2'`. |
-| — | S8: Search co-retrieval CoAccess edges | Periodic batch from `audit_log`: pairs co-appearing in search results across sessions → `CoAccess` edge. Yield: ~2,770 new edges. Not real-time — batch every N ticks reading from audit_log. Tag `signal_origin='S8'`. |
+| crt-040 | Cosine Supports detection | Replace NLI post-store path. Threshold ≥ 0.65, category pair filter from `informs_category_pairs`. Validated in ASS-035: 6/8 true pairs, 0/10 false positives. Runs in structural_graph_tick (Group 2 prerequisite). Also adds `write_graph_edge(source: &str, ...)` general function — **hard prerequisite for crt-041**. |
+| crt-041 | S1: Tag co-occurrence Informs edges | Background tick: pairs sharing ≥3 tags → `Informs` edge. SQL-only, no model. Yield: ~1,052 new edges at current corpus. Tag `signal_origin='S1'` on edge for GNN feature construction. **Requires crt-040 (write_graph_edge).** |
+| crt-041 | S2: Structural vocabulary Informs edges | Background tick: configurable domain term list; pairs sharing ≥2 terms → `Informs` edge. Vocabulary in config (domain-agnostic, empty default). Yield: ~1,830 new edges. Tag `signal_origin='S2'`. **Requires crt-040 (write_graph_edge).** |
+| crt-041 | S8: Search co-retrieval CoAccess edges | Periodic batch from `audit_log`: pairs co-appearing in search results across sessions → `CoAccess` edge. Yield: ~2,770 new edges. Not real-time — batch every N ticks reading from audit_log. Tag `signal_origin='S8'`. **Requires crt-040 (write_graph_edge).** |
+
+**Delivery ordering within Group 3**: crt-040 ships first (adds `write_graph_edge`). crt-041
+ships second (S1/S2/S8 all call `write_graph_edge`). The roadmap lists them as peers but they
+are sequentially dependent — crt-041 delivery cannot begin until crt-040 is merged.
 
 **Note on edge labeling**: All new edges must carry `signal_origin` field for GNN feature
 construction. The labeled edge set from ASS-038 is the W3-1 training data specification —
@@ -262,7 +266,7 @@ features. Reference: `product/research/ass-039/harness/scenarios.jsonl`.
 | conf-boost-c formula | ✅ PASSED — MRR = 0.2875 (live DB, 2026-04-02, run_eval.py). Prior snapshot baseline 0.2913 superseded. |
 | Cosine Supports detection | Graph cohesion metrics: supports_coverage increase. No MRR regression vs conf-boost-c. |
 | S1/S2/S8 edge generation | Graph cohesion: `cross_category_edge_count` increase, `isolated_entry_count` decrease. |
-| PPR expander | **First gate where P@5 should respond**: expect P@5 increase as cross-category entries enter candidate pool. MRR ≥ 0.2913. If P@5 unchanged after expander, diagnose why ground truth entries are still outside expanded pool. |
+| PPR expander | **First gate where P@5 should respond**: expect P@5 increase as cross-category entries enter candidate pool. MRR ≥ 0.2875 (live baseline 2026-04-02). If P@5 unchanged after expander, diagnose why ground truth entries are still outside expanded pool. |
 | Goal-conditioned briefing | Measure MRR on briefing-sourced scenarios specifically (149 scenarios). Compare briefing profile vs. semantic-only profile. |
 
 ---

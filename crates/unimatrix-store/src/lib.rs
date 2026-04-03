@@ -37,8 +37,8 @@ pub use metrics::{MetricVector, PhaseMetrics, UNIVERSAL_METRICS_FIELDS, Universa
 pub use query_log::{PhaseFreqRow, QueryLogRecord};
 pub use read::{
     CO_ACCESS_GRAPH_MIN_COUNT, ContradictEdgeRow, EDGE_SOURCE_CO_ACCESS,
-    EDGE_SOURCE_COSINE_SUPPORTS, EDGE_SOURCE_NLI, GraphCohesionMetrics, GraphEdgeRow,
-    StatusAggregates,
+    EDGE_SOURCE_COSINE_SUPPORTS, EDGE_SOURCE_NLI, EDGE_SOURCE_S1, EDGE_SOURCE_S2, EDGE_SOURCE_S8,
+    GraphCohesionMetrics, GraphEdgeRow, StatusAggregates,
 };
 pub use retention::{CycleGcStats, UnattributedGcStats};
 pub use schema::status_counter_key;

@@ -578,6 +578,36 @@ pub struct InferenceConfig {
     /// Range: (0.0, 1.0) exclusive.
     #[serde(default = "default_supports_cosine_threshold")]
     pub supports_cosine_threshold: f32,
+
+    // -----------------------------------------------------------------------
+    // Graph enrichment tick fields (crt-041)
+    // -----------------------------------------------------------------------
+    /// S2 structural vocabulary. Default: empty (S2 is a no-op out of the box).
+    /// Recommended software-engineering starting point (from ASS-038 research):
+    ///   ["migration", "schema", "performance", "async", "authentication",
+    ///    "cache", "api", "confidence", "graph"]
+    /// Configure in config.toml to enable S2 edge generation.
+    #[serde(default = "default_s2_vocabulary")]
+    pub s2_vocabulary: Vec<String>,
+
+    /// S1 per-tick edge write cap. Default: 200. Range: [1, 10_000].
+    #[serde(default = "default_max_s1_edges_per_tick")]
+    pub max_s1_edges_per_tick: usize,
+
+    /// S2 per-tick edge write cap. Default: 200. Range: [1, 10_000].
+    #[serde(default = "default_max_s2_edges_per_tick")]
+    pub max_s2_edges_per_tick: usize,
+
+    /// S8 batch frequency: runs every N ticks. Default: 10. Range: [1, 1_000].
+    /// At default tick interval (~15 min), this is approximately once per 2.5 hours.
+    /// Zero is forbidden — causes `current_tick % 0` integer division panic.
+    #[serde(default = "default_s8_batch_interval_ticks")]
+    pub s8_batch_interval_ticks: u32,
+
+    /// S8 per-batch pair cap. Cap applies to pairs expanded from audit_log rows,
+    /// not to audit_log row count. Default: 500. Range: [1, 10_000].
+    #[serde(default = "default_max_s8_pairs_per_batch")]
+    pub max_s8_pairs_per_batch: usize,
 }
 
 impl Default for InferenceConfig {
@@ -635,6 +665,12 @@ impl Default for InferenceConfig {
             nli_informs_ppr_weight: default_nli_informs_ppr_weight(),
             // crt-040: cosine Supports detection threshold
             supports_cosine_threshold: default_supports_cosine_threshold(),
+            // crt-041: graph enrichment tick fields
+            s2_vocabulary: vec![],
+            max_s1_edges_per_tick: 200,
+            max_s2_edges_per_tick: 200,
+            s8_batch_interval_ticks: 10,
+            max_s8_pairs_per_batch: 500,
         }
     }
 }
@@ -794,6 +830,30 @@ fn default_nli_informs_ppr_weight() -> f32 {
 
 fn default_supports_cosine_threshold() -> f32 {
     0.65
+}
+
+// ---------------------------------------------------------------------------
+// Graph enrichment tick default value functions (crt-041)
+// ---------------------------------------------------------------------------
+
+fn default_s2_vocabulary() -> Vec<String> {
+    vec![]
+}
+
+fn default_max_s1_edges_per_tick() -> usize {
+    200
+}
+
+fn default_max_s2_edges_per_tick() -> usize {
+    200
+}
+
+fn default_s8_batch_interval_ticks() -> u32 {
+    10
+}
+
+fn default_max_s8_pairs_per_batch() -> usize {
+    500
 }
 
 // ---------------------------------------------------------------------------
@@ -1143,8 +1203,48 @@ impl InferenceConfig {
             });
         }
 
+        // -- crt-041: S1/S2/S8 graph enrichment field range checks --
+        // Lower bound is 1, not 0: zero causes LIMIT 0 (silent disable) or % 0 (panic).
+
+        if self.max_s1_edges_per_tick < 1 || self.max_s1_edges_per_tick > 10_000 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "max_s1_edges_per_tick",
+                value: self.max_s1_edges_per_tick.to_string(),
+                reason: "must be in range [1, 10000]",
+            });
+        }
+
+        if self.max_s2_edges_per_tick < 1 || self.max_s2_edges_per_tick > 10_000 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "max_s2_edges_per_tick",
+                value: self.max_s2_edges_per_tick.to_string(),
+                reason: "must be in range [1, 10000]",
+            });
+        }
+
+        if self.s8_batch_interval_ticks < 1 || self.s8_batch_interval_ticks > 1_000 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "s8_batch_interval_ticks",
+                value: self.s8_batch_interval_ticks.to_string(),
+                reason: "must be in range [1, 1000]",
+            });
+        }
+
+        if self.max_s8_pairs_per_batch < 1 || self.max_s8_pairs_per_batch > 10_000 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "max_s8_pairs_per_batch",
+                value: self.max_s8_pairs_per_batch.to_string(),
+                reason: "must be in range [1, 10000]",
+            });
+        }
+
         // Note: informs_category_pairs has no range check — empty list is valid
         // (disables Informs detection without error; C-08, pseudocode/config.md).
+        // Note: s2_vocabulary has no range check — empty vec is valid (S2 becomes a no-op).
 
         Ok(())
     }
@@ -2441,6 +2541,40 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.supports_cosine_threshold
             } else {
                 global.inference.supports_cosine_threshold
+            },
+            // crt-041: graph enrichment tick fields
+            s2_vocabulary: if project.inference.s2_vocabulary != default.inference.s2_vocabulary {
+                project.inference.s2_vocabulary
+            } else {
+                global.inference.s2_vocabulary
+            },
+            max_s1_edges_per_tick: if project.inference.max_s1_edges_per_tick
+                != default.inference.max_s1_edges_per_tick
+            {
+                project.inference.max_s1_edges_per_tick
+            } else {
+                global.inference.max_s1_edges_per_tick
+            },
+            max_s2_edges_per_tick: if project.inference.max_s2_edges_per_tick
+                != default.inference.max_s2_edges_per_tick
+            {
+                project.inference.max_s2_edges_per_tick
+            } else {
+                global.inference.max_s2_edges_per_tick
+            },
+            s8_batch_interval_ticks: if project.inference.s8_batch_interval_ticks
+                != default.inference.s8_batch_interval_ticks
+            {
+                project.inference.s8_batch_interval_ticks
+            } else {
+                global.inference.s8_batch_interval_ticks
+            },
+            max_s8_pairs_per_batch: if project.inference.max_s8_pairs_per_batch
+                != default.inference.max_s8_pairs_per_batch
+            {
+                project.inference.max_s8_pairs_per_batch
+            } else {
+                global.inference.max_s8_pairs_per_batch
             },
         },
         // crt-036: per-field project-wins merge for retention config
@@ -7164,6 +7298,248 @@ nli_informs_ppr_weight = 0.4
         assert!(
             result.is_ok(),
             "TC-11: deserializing TOML with removed field nli_post_store_k must not error"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // crt-041: S1/S2/S8 graph enrichment config tests (R-03, R-17, AC-23, AC-24)
+    // -----------------------------------------------------------------------
+
+    // T-CFG-01: MANDATORY pre-PR dual-site guard (R-03, ADR-005)
+    #[test]
+    fn test_inference_config_s1_s2_s8_defaults_match_serde() {
+        let from_default = InferenceConfig::default();
+        let from_serde: InferenceConfig = serde_json::from_str("{}").unwrap();
+        assert_eq!(
+            from_default.s2_vocabulary, from_serde.s2_vocabulary,
+            "s2_vocabulary: impl Default and serde default must agree"
+        );
+        assert_eq!(
+            from_default.max_s1_edges_per_tick, from_serde.max_s1_edges_per_tick,
+            "max_s1_edges_per_tick: impl Default and serde default must agree"
+        );
+        assert_eq!(
+            from_default.max_s2_edges_per_tick, from_serde.max_s2_edges_per_tick,
+            "max_s2_edges_per_tick: impl Default and serde default must agree"
+        );
+        assert_eq!(
+            from_default.s8_batch_interval_ticks, from_serde.s8_batch_interval_ticks,
+            "s8_batch_interval_ticks: impl Default and serde default must agree"
+        );
+        assert_eq!(
+            from_default.max_s8_pairs_per_batch, from_serde.max_s8_pairs_per_batch,
+            "max_s8_pairs_per_batch: impl Default and serde default must agree"
+        );
+    }
+
+    // T-CFG-02a: s2_vocabulary default is empty (W0-3, SCOPE Design Decision 3)
+    #[test]
+    fn test_inference_config_s2_vocabulary_empty_by_default() {
+        assert!(
+            InferenceConfig::default().s2_vocabulary.is_empty(),
+            "s2_vocabulary default must be empty vec (operator opt-in, W0-3)"
+        );
+    }
+
+    // T-CFG-02b: numeric field defaults match spec values
+    #[test]
+    fn test_inference_config_numeric_defaults() {
+        let c = InferenceConfig::default();
+        assert_eq!(c.max_s1_edges_per_tick, 200);
+        assert_eq!(c.max_s2_edges_per_tick, 200);
+        assert_eq!(c.s8_batch_interval_ticks, 10);
+        assert_eq!(c.max_s8_pairs_per_batch, 500);
+    }
+
+    // T-CFG-03a: validate() rejects max_s1_edges_per_tick = 0 (R-17, AC-24, C-08)
+    #[test]
+    fn test_inference_config_s1_s2_s8_validate_rejects_zero() {
+        let c = InferenceConfig {
+            max_s1_edges_per_tick: 0,
+            ..InferenceConfig::default()
+        };
+        let err = c
+            .validate(Path::new("/fake/config.toml"))
+            .expect_err("max_s1_edges_per_tick = 0 must fail");
+        assert!(
+            err.to_string().contains("max_s1_edges_per_tick"),
+            "error must name field; got: {err}"
+        );
+    }
+
+    // T-CFG-03b: validate() rejects max_s2_edges_per_tick = 0
+    #[test]
+    fn test_inference_config_validate_rejects_zero_s2_cap() {
+        let c = InferenceConfig {
+            max_s2_edges_per_tick: 0,
+            ..InferenceConfig::default()
+        };
+        let err = c
+            .validate(Path::new("/fake/config.toml"))
+            .expect_err("max_s2_edges_per_tick = 0 must fail");
+        assert!(
+            err.to_string().contains("max_s2_edges_per_tick"),
+            "error must name field; got: {err}"
+        );
+    }
+
+    // T-CFG-03c: validate() rejects s8_batch_interval_ticks = 0 (panic guard — % 0)
+    #[test]
+    fn test_inference_config_validate_rejects_zero_s8_interval() {
+        let c = InferenceConfig {
+            s8_batch_interval_ticks: 0,
+            ..InferenceConfig::default()
+        };
+        let err = c
+            .validate(Path::new("/fake/config.toml"))
+            .expect_err("s8_batch_interval_ticks = 0 must fail");
+        assert!(
+            err.to_string().contains("s8_batch_interval_ticks"),
+            "error must name field; got: {err}"
+        );
+    }
+
+    // T-CFG-03d: validate() rejects max_s8_pairs_per_batch = 0
+    #[test]
+    fn test_inference_config_validate_rejects_zero_s8_pair_cap() {
+        let c = InferenceConfig {
+            max_s8_pairs_per_batch: 0,
+            ..InferenceConfig::default()
+        };
+        let err = c
+            .validate(Path::new("/fake/config.toml"))
+            .expect_err("max_s8_pairs_per_batch = 0 must fail");
+        assert!(
+            err.to_string().contains("max_s8_pairs_per_batch"),
+            "error must name field; got: {err}"
+        );
+    }
+
+    // T-CFG-04: validate() accepts minimum valid values (lower bound = 1)
+    #[test]
+    fn test_inference_config_validate_accepts_minimum_values() {
+        let c = InferenceConfig {
+            max_s1_edges_per_tick: 1,
+            max_s2_edges_per_tick: 1,
+            s8_batch_interval_ticks: 1,
+            max_s8_pairs_per_batch: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "all fields at lower bound (1) must pass validate"
+        );
+    }
+
+    // T-CFG-04b: validate() accepts maximum valid values
+    #[test]
+    fn test_inference_config_validate_accepts_maximum_values() {
+        let c = InferenceConfig {
+            max_s1_edges_per_tick: 10_000,
+            max_s2_edges_per_tick: 10_000,
+            s8_batch_interval_ticks: 1_000,
+            max_s8_pairs_per_batch: 10_000,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake/config.toml")).is_ok(),
+            "all fields at upper bound must pass validate"
+        );
+    }
+
+    // T-CFG-04c: validate() rejects max_s1_edges_per_tick above max
+    #[test]
+    fn test_inference_config_validate_rejects_above_max_s1() {
+        let c = InferenceConfig {
+            max_s1_edges_per_tick: 10_001,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "max_s1_edges_per_tick");
+    }
+
+    // T-CFG-04d: validate() rejects s8_batch_interval_ticks above max
+    #[test]
+    fn test_inference_config_validate_rejects_above_max_s8_interval() {
+        let c = InferenceConfig {
+            s8_batch_interval_ticks: 1_001,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "s8_batch_interval_ticks");
+    }
+
+    // T-CFG-05: TOML deserialization of s2_vocabulary list
+    #[test]
+    fn test_inference_config_s2_vocabulary_parses_from_toml() {
+        let toml_str = r#"s2_vocabulary = ["schema", "migration", "cache"]"#;
+        let c: InferenceConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(
+            c.s2_vocabulary,
+            vec![
+                "schema".to_string(),
+                "migration".to_string(),
+                "cache".to_string()
+            ]
+        );
+    }
+
+    // T-CFG-05b: TOML explicit empty list is valid
+    #[test]
+    fn test_inference_config_s2_vocabulary_explicit_empty_toml() {
+        let toml_str = "s2_vocabulary = []\n";
+        let c: InferenceConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(c.s2_vocabulary, Vec::<String>::new());
+    }
+
+    // T-CFG-05c: partial TOML — only one field set, others use defaults
+    #[test]
+    fn test_inference_config_partial_toml_uses_defaults() {
+        let toml_str = "max_s1_edges_per_tick = 50\n";
+        let c: InferenceConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(c.max_s1_edges_per_tick, 50);
+        assert_eq!(c.max_s2_edges_per_tick, 200);
+        assert_eq!(c.s8_batch_interval_ticks, 10);
+        assert_eq!(c.max_s8_pairs_per_batch, 500);
+        assert!(c.s2_vocabulary.is_empty());
+    }
+
+    // T-CFG-06: merge_configs project wins for max_s1_edges_per_tick
+    #[test]
+    fn test_merge_configs_project_overrides_s1_cap() {
+        let mut global = UnimatrixConfig::default();
+        global.inference.max_s1_edges_per_tick = 200; // default
+        let mut project = UnimatrixConfig::default();
+        project.inference.max_s1_edges_per_tick = 50;
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.max_s1_edges_per_tick, 50,
+            "project value (50) must win over global (200)"
+        );
+    }
+
+    // T-CFG-06b: merge_configs global wins when project is at default
+    #[test]
+    fn test_merge_configs_global_fallback_s1_cap() {
+        let mut global = UnimatrixConfig::default();
+        global.inference.max_s1_edges_per_tick = 300;
+        let project = UnimatrixConfig::default(); // max_s1_edges_per_tick = 200 (default)
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.max_s1_edges_per_tick, 300,
+            "global value (300) must be preserved when project == default"
+        );
+    }
+
+    // T-CFG-06c: merge_configs project wins for s2_vocabulary
+    #[test]
+    fn test_merge_configs_project_overrides_s2_vocabulary() {
+        let global = UnimatrixConfig::default(); // s2_vocabulary = []
+        let mut project = UnimatrixConfig::default();
+        project.inference.s2_vocabulary = vec!["schema".to_string(), "cache".to_string()];
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.s2_vocabulary,
+            vec!["schema".to_string(), "cache".to_string()],
+            "project s2_vocabulary must override empty global"
         );
     }
 }
