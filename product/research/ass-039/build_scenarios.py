@@ -11,15 +11,26 @@ within 30 minutes. Ground truth = entries agent found worth reading after briefi
 Output: JSONL with expected.entry_ids populated (never null).
 """
 
+import hashlib
 import json
+import os
 import sqlite3
 import sys
 from collections import defaultdict
+from datetime import datetime, timezone
 
 DB_PATH = "/home/vscode/.unimatrix/0d62f3bf1bf46a0a/unimatrix.db"
 THIRTY_MIN_MS = 30 * 60 * 1000
 
-def build_scenarios(db_path: str) -> list[dict]:
+def build_scenarios(db_path: str) -> tuple[list[dict], str]:
+    """Build scenarios from observations. Returns (scenarios, source_db_hash)."""
+    # Compute source DB hash (streaming, handles large files)
+    h = hashlib.sha256()
+    with open(db_path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    source_db_hash = h.hexdigest()
+
     conn = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -103,7 +114,8 @@ def build_scenarios(db_path: str) -> list[dict]:
         feature_cycle = session_info.get("feature_cycle") or topic
         agent_role = session_info.get("agent_role") or "eval"
 
-        scenario_id = f"obs-{sid[:8]}-{ts}"
+        query_hash = hashlib.md5(query.encode()).hexdigest()[:6]  # Short hash for disambiguation only — not cryptographic
+        scenario_id = f"obs-{sid[:8]}-{ts}-{query_hash}"
         scenarios.append({
             "id": scenario_id,
             "query": query,
@@ -157,7 +169,8 @@ def build_scenarios(db_path: str) -> list[dict]:
         feature_cycle = session_info.get("feature_cycle") or feature or topic
         agent_role = session_info.get("agent_role") or "eval"
 
-        scenario_id = f"obs-briefing-{sid[:8]}-{ts}"
+        query_hash = hashlib.md5(query_str.encode()).hexdigest()[:6]  # Short hash for disambiguation only — not cryptographic
+        scenario_id = f"obs-briefing-{sid[:8]}-{ts}-{query_hash}"
         briefing_scenarios.append({
             "id": scenario_id,
             "query": query_str,
@@ -176,7 +189,9 @@ def build_scenarios(db_path: str) -> list[dict]:
     conn.close()
 
     all_scenarios = scenarios + briefing_scenarios
-    return all_scenarios
+    dup_count = len(all_scenarios) - len({s["id"] for s in all_scenarios})
+    assert dup_count == 0, f"Duplicate scenario IDs detected: {dup_count} duplicates. Fix the ID formula in build_scenarios.py."
+    return all_scenarios, source_db_hash
 
 
 def print_stats(scenarios: list[dict]) -> None:
@@ -202,17 +217,33 @@ def print_stats(scenarios: list[dict]) -> None:
 
 
 if __name__ == "__main__":
-    import os
-
     out_path = "product/research/ass-039/harness/scenarios.jsonl"
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
 
     print("Building scenarios from observations...", file=sys.stderr)
-    scenarios = build_scenarios(DB_PATH)
+    scenarios, source_db_hash = build_scenarios(DB_PATH)
 
-    with open(out_path, "w") as f:
+    # Write scenarios atomically (temp file + rename)
+    tmp_scenarios = out_path + ".tmp"
+    with open(tmp_scenarios, "w") as f:
         for s in scenarios:
             f.write(json.dumps(s) + "\n")
+    os.rename(tmp_scenarios, out_path)
+
+    # Write sidecar scenarios_meta.json atomically alongside scenarios.jsonl
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    meta = {
+        "source_db_hash": source_db_hash,
+        "generated_at": generated_at,
+        "scenario_count": len(scenarios),
+    }
+    sidecar_path = os.path.join(os.path.dirname(out_path), "scenarios_meta.json")
+    tmp_sidecar = sidecar_path + ".tmp"
+    with open(tmp_sidecar, "w") as f:
+        json.dump(meta, f, indent=2)
+        f.write("\n")
+    os.rename(tmp_sidecar, sidecar_path)
 
     print(f"\nWrote {len(scenarios)} scenarios to {out_path}", file=sys.stderr)
+    print(f"Wrote sidecar to {sidecar_path}", file=sys.stderr)
     print_stats(scenarios)
