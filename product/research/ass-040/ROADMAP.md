@@ -74,9 +74,10 @@ entries reachable. Behavioral signals close the self-sustaining loop.
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Scenarios | 1,443 | 1,585 records; 135 duplicate IDs collapse to 1,443 unique eval scenarios |
-| MRR (conf-boost-c) | 0.2856 | Live DB, 2026-04-02, `run_eval.py`. Stable across two runs. DB drift from background ticks explains -0.0019 from prior 0.2875 measurement (no scoring changes in crt-040). |
-| P@5 | 0.1115 | Formula-invariant — determined by HNSW recall, not scoring |
+| Scenarios | 1,761 | Post-#502 fix: 1,761 unique scenarios. Prior 1,443 count was due to 142+ scenario ID collisions (same session+timestamp, different queries). Re-baselined 2026-04-03. |
+| MRR (conf-boost-c) | 0.2651 | Live DB, 2026-04-03, `run_eval.py`, 1,761 scenarios. Re-baselined post-#501/#502 fix. |
+| P@5 | 0.1083 | Formula-invariant — determined by HNSW recall, not scoring |
+| Prior MRR (1,443 scenarios, 2026-04-02) | 0.2856 | Pre-#502 fix; denominator was wrong due to ID collisions. Superseded. |
 | Prior MRR (2026-04-02 first run) | 0.2875 | Measured earlier same day; superseded by crt-040 post-ship re-measurement |
 | Prior MRR (crt-038 snapshot) | 0.2913 | Was measured against ASS-037 snapshot at crt-038; superseded by live-DB runs |
 
@@ -264,10 +265,10 @@ features. Reference: `product/research/ass-039/harness/scenarios.jsonl`.
 
 | Feature | Gate |
 |---------|------|
-| conf-boost-c formula | ✅ PASSED — MRR = 0.2856 (live DB, stable across 2 runs, 2026-04-02). |
-| Cosine Supports detection | ✅ PASSED — No MRR regression (crt-040 touches no scoring code; 0.2856 stable). write_graph_edge prerequisite delivered. |
-| S1/S2/S8 edge generation | Graph cohesion: `cross_category_edge_count` increase, `isolated_entry_count` decrease. No MRR regression vs 0.2856 baseline. |
-| PPR expander | **First gate where P@5 should respond**: expect P@5 increase as cross-category entries enter candidate pool. MRR ≥ 0.2856 (live baseline 2026-04-02). If P@5 unchanged after expander, diagnose why ground truth entries are still outside expanded pool. |
+| conf-boost-c formula | ✅ PASSED — MRR = 0.2651 (1,761 scenarios, re-baselined 2026-04-03 post-#501/#502 fix). Prior measurement of 0.2856 used 1,443 scenarios with ID collision bug. |
+| Cosine Supports detection | ✅ PASSED — No MRR regression (crt-040 touches no scoring code; 0.2651 stable on expanded scenario set). write_graph_edge prerequisite delivered. |
+| S1/S2/S8 edge generation | Graph cohesion: `cross_category_edge_count` increase, `isolated_entry_count` decrease. No MRR regression vs 0.2651 baseline. |
+| PPR expander | **First gate where P@5 should respond**: expect P@5 increase as cross-category entries enter candidate pool. MRR ≥ 0.2651 (live baseline 2026-04-03). If P@5 unchanged after expander, diagnose why ground truth entries are still outside expanded pool. |
 | Goal-conditioned briefing | Measure MRR on briefing-sourced scenarios specifically (149 scenarios). Compare briefing profile vs. semantic-only profile. |
 
 ---

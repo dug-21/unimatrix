@@ -32,6 +32,8 @@ persistent record of platform retrieval quality over time.
 | `icd` | f64 \| null | Mean intra-query category diversity (raw Shannon entropy); range [0.0, ln(n)]; null if not computed |
 | `feature_cycle` | string | Feature or PR cycle identifier for this run |
 | `profile` | string | (optional) Profile name if non-baseline profile |
+| `snapshot_hash` | string | (optional) First 12 hex chars of the SHA-256 of the snapshot DB used for the eval run |
+| `scenarios_date` | string | (optional ISO 8601) The `generated_at` timestamp from `scenarios_meta.json` — identifies the DB state the scenarios were generated from |
 | `note` | string | Short human description of the run |
 
 ## Rules

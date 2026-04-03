@@ -135,6 +135,16 @@ unimatrix eval scenarios \
 > yet implemented. See [#326](https://github.com/dug-21/unimatrix/issues/326).
 > All query_log entries are emitted regardless of transport source.
 
+**Paired-snapshot requirement:** The scenarios file and the snapshot DB used for `eval run`
+must originate from the same DB state. `build_scenarios.py` writes a `scenarios_meta.json`
+sidecar alongside `scenarios.jsonl` recording the source DB hash. `run_eval.py` validates
+this hash at run time and exits non-zero if the snapshot has drifted.
+
+Do not generate scenarios from one DB state and run eval against a fresh snapshot — the
+soft ground truth will reflect the old KB state, and MRR will measure KB drift, not
+retrieval quality. This was the root cause of the spurious MRR 0.2732 vs 0.2875
+comparison in GH #500.
+
 **Output format** (one JSON object per line):
 
 ```jsonc
@@ -345,7 +355,7 @@ platform retrieval quality over time — it is the only way to know whether a
 future change improved or regressed the platform.
 
 ```bash
-echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":1528,"p_at_k":0.3256,"mrr":0.4466,"avg_latency_ms":7.2,"cc_at_k":0.2636,"icd":0.5244,"feature_cycle":"my-feature","note":"short description"}' \
+echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":1528,"p_at_k":0.3256,"mrr":0.4466,"avg_latency_ms":7.2,"cc_at_k":0.2636,"icd":0.5244,"feature_cycle":"my-feature","snapshot_hash":"<12 chars>","scenarios_date":"<ISO date>","note":"short description"}' \
   >> product/test/eval-baselines/log.jsonl
 ```
 
@@ -835,6 +845,6 @@ unimatrix eval report \
 cat /tmp/eval/report.md
 
 # 7. Record the baseline (always — even for baseline-only runs)
-echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":<N>,"p_at_k":<value>,"mrr":<value>,"avg_latency_ms":<value>,"cc_at_k":<value>,"icd":<value>,"feature_cycle":"<feature>","note":"<short description>"}' \
+echo '{"date":"'$(date +%Y-%m-%d)'","scenarios":<N>,"p_at_k":<value>,"mrr":<value>,"avg_latency_ms":<value>,"cc_at_k":<value>,"icd":<value>,"feature_cycle":"<feature>","snapshot_hash":"<12 chars>","scenarios_date":"<ISO date>","note":"<short description>"}' \
   >> product/test/eval-baselines/log.jsonl
 ```
