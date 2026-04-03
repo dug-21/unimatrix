@@ -2170,3 +2170,157 @@ def test_inferred_edge_count_unchanged_by_cosine_supports(shared_server):
         f"crt-040: supports_edge_count must be >= baseline after tick. "
         f"Baseline={baseline_supports}, After={after_supports}."
     )
+
+
+# ---------------------------------------------------------------------------
+# crt-041: S1/S2/S8 graph enrichment edge sources
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    reason="GH#291 — Background tick interval (15 min default) exceeds integration test timeout. "
+    "Test validates MCP-visible S1 edge count increase after tick. "
+    "Remove xfail when CI configures short tick interval (fast_tick_server)."
+)
+def test_s1_edges_visible_in_status_after_tick(shared_server):
+    """crt-041 AC-26/R-07: S1 edges appear in graph_edges after tick runs.
+
+    Stores two entries with shared tags across categories, records baseline
+    cross_category_edge_count, waits for tick, asserts count increased.
+    Cannot directly observe source='S1' through MCP — but if
+    cross_category_edge_count increases while inferred_edge_count is unchanged,
+    S1/S2/S8 are the source.
+    """
+    server = shared_server
+
+    baseline_resp = server.context_status(agent_id="human", format="json")
+    baseline = parse_status_report(baseline_resp)
+    baseline_cross = baseline.get("cross_category_edge_count", 0)
+
+    server.context_store(
+        "crt041 s1 tick test entry decision schema migration performance",
+        "crt-041-test",
+        "decision",
+        agent_id="human",
+    )
+    server.context_store(
+        "crt041 s1 tick test entry lesson schema migration performance async",
+        "crt-041-test",
+        "lesson-learned",
+        agent_id="human",
+    )
+
+    import time as _time
+    deadline = _time.time() + 30.0
+    found = False
+    while _time.time() < deadline:
+        _time.sleep(2.0)
+        report = parse_status_report(
+            server.context_status(agent_id="human", format="json")
+        )
+        if report.get("cross_category_edge_count", 0) > baseline_cross:
+            found = True
+            break
+
+    assert found, (
+        f"crt-041 AC-26: cross_category_edge_count must increase above baseline "
+        f"{baseline_cross} after one complete tick with qualifying S1 pairs."
+    )
+
+
+@pytest.mark.xfail(
+    reason="GH#291 — Background tick interval (15 min default) exceeds integration test timeout. "
+    "Validates inferred_edge_count backward compat (AC-30/R-13) after S1/S2/S8 tick."
+)
+def test_inferred_edge_count_unchanged_by_s1_s2_s8(shared_server):
+    """crt-041 AC-30/R-13: inferred_edge_count counts only source='nli' after S1/S2/S8 run.
+
+    1. Record baseline inferred_edge_count and cross_category_edge_count.
+    2. Store entries qualifying for S1 (shared tags across categories).
+    3. Wait for tick where S1 runs.
+    4. Assert inferred_edge_count unchanged (S1/S2/S8 edges are NOT nli-sourced).
+    5. Assert cross_category_edge_count increased (S1 wrote edges).
+    """
+    server = shared_server
+
+    resp0 = server.context_status(agent_id="human", format="json")
+    report0 = parse_status_report(resp0)
+    baseline_inferred = report0.get("inferred_edge_count", 0)
+    baseline_cross = report0.get("cross_category_edge_count", 0)
+
+    server.context_store(
+        "crt041 inferred count test schema decision entry unique crt041a x7y8z9",
+        "crt-041-test",
+        "decision",
+        agent_id="human",
+    )
+    server.context_store(
+        "crt041 inferred count test schema lesson entry unique crt041b x7y8z9",
+        "crt-041-test",
+        "lesson-learned",
+        agent_id="human",
+    )
+
+    import time as _time
+    deadline = _time.time() + 30.0
+    tick_seen = False
+    while _time.time() < deadline:
+        _time.sleep(2.0)
+        resp = server.context_status(agent_id="human", format="json")
+        report = parse_status_report(resp)
+        if report.get("cross_category_edge_count", 0) > baseline_cross:
+            tick_seen = True
+            assert report.get("inferred_edge_count", 0) == baseline_inferred, (
+                "crt-041 R-13: inferred_edge_count must not count S1/S2/S8 edges. "
+                f"Baseline={baseline_inferred}, "
+                f"after tick={report.get('inferred_edge_count', 0)}."
+            )
+            break
+
+    assert tick_seen, (
+        f"crt-041 AC-30: cross_category_edge_count must increase above {baseline_cross}. "
+        "If this fails due to tick not firing, confirm xfail reason is accurate."
+    )
+
+
+def test_quarantine_excludes_endpoint_from_graph_traversal(admin_server):
+    """crt-041 AC-03/R-01: quarantined entry excluded from S1 edge generation.
+
+    Verifies the quarantine guard effect through the MCP interface.
+    The same status=3 filter used in S1/S2/S8 SQL JOINs is also used to
+    exclude entries from search results. This test confirms the status filter
+    is active, providing indirect coverage of the dual-endpoint quarantine guard.
+
+    Does NOT require background tick — quarantine search exclusion is immediate.
+    """
+    server = admin_server
+
+    resp_a = server.context_store(
+        "crt041 quarantine edge test entry alpha schema migration unique q1w2e3",
+        "crt-041-test",
+        "decision",
+        agent_id="human",
+        format="json",
+    )
+    entry_a_id = extract_entry_id(resp_a)
+
+    resp_b = server.context_store(
+        "crt041 quarantine edge test entry beta schema migration unique r4t5y6",
+        "crt-041-test",
+        "lesson-learned",
+        agent_id="human",
+        format="json",
+    )
+    entry_b_id = extract_entry_id(resp_b)
+
+    quarantine_resp = server.context_quarantine(entry_b_id, agent_id="human")
+    assert_tool_success(quarantine_resp)
+
+    search_resp = server.context_search(
+        "crt041 quarantine edge test schema migration",
+        format="json",
+        agent_id="human",
+    )
+    assert_tool_success(search_resp)
+    assert_search_not_contains(search_resp, entry_b_id)
+    assert_search_contains(search_resp, entry_a_id)
