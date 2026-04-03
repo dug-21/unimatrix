@@ -608,6 +608,44 @@ pub struct InferenceConfig {
     /// not to audit_log row count. Default: 500. Range: [1, 10_000].
     #[serde(default = "default_max_s8_pairs_per_batch")]
     pub max_s8_pairs_per_batch: usize,
+
+    // -----------------------------------------------------------------------
+    // Graph expand pool-widening fields (crt-042)
+    // -----------------------------------------------------------------------
+    /// Enable Phase 0 graph_expand candidate pool widening in the search pipeline.
+    ///
+    /// When true, Phase 0 runs BFS over TypedRelationGraph from HNSW seeds before
+    /// PPR personalization vector construction. Expanded entries receive true cosine
+    /// similarity scores and participate in PPR scoring.
+    ///
+    /// Default: false — gated behind A/B eval before default enablement (ADR-005, NFR-01).
+    /// Remains false until MRR >= 0.2856 and P@5 > 0.1115 are confirmed, and P95 latency
+    /// addition <= 50ms over pre-crt-042 baseline is measured.
+    ///
+    /// Validation: unconditional (ADR-004) — expansion_depth and max_expansion_candidates
+    /// are always validated regardless of this flag value.
+    #[serde(default = "default_ppr_expander_enabled")]
+    pub ppr_expander_enabled: bool,
+
+    /// BFS hop depth from seeds during Phase 0 graph expansion.
+    ///
+    /// Depth 1: only direct graph neighbors of seeds are reachable.
+    /// Depth 2: neighbors of neighbors are also reachable.
+    /// Higher depth increases candidate count and latency.
+    ///
+    /// Default: 2. Valid range: [1, 10] inclusive.
+    #[serde(default = "default_expansion_depth")]
+    pub expansion_depth: usize,
+
+    /// Maximum number of entries Phase 0 may add to the candidate pool per query.
+    ///
+    /// BFS stops when this count is reached, processing frontier in sorted node-ID order.
+    /// Combined ceiling with Phase 5: max_expansion_candidates (200) + ppr_max_expand (50)
+    /// + HNSW k=20 = 270 maximum candidates before PPR scoring (SR-04, NFR-08).
+    ///
+    /// Default: 200. Valid range: [1, 1000] inclusive.
+    #[serde(default = "default_max_expansion_candidates")]
+    pub max_expansion_candidates: usize,
 }
 
 impl Default for InferenceConfig {
@@ -671,6 +709,10 @@ impl Default for InferenceConfig {
             max_s2_edges_per_tick: 200,
             s8_batch_interval_ticks: 10,
             max_s8_pairs_per_batch: 500,
+            // crt-042: graph expand pool-widening fields
+            ppr_expander_enabled: default_ppr_expander_enabled(),
+            expansion_depth: default_expansion_depth(),
+            max_expansion_candidates: default_max_expansion_candidates(),
         }
     }
 }
@@ -774,6 +816,22 @@ fn default_ppr_blend_weight() -> f64 {
 
 fn default_ppr_max_expand() -> usize {
     50
+}
+
+// ---------------------------------------------------------------------------
+// Graph expand pool-widening default value functions (crt-042)
+// ---------------------------------------------------------------------------
+
+fn default_ppr_expander_enabled() -> bool {
+    false
+}
+
+fn default_expansion_depth() -> usize {
+    2
+}
+
+fn default_max_expansion_candidates() -> usize {
+    200
 }
 
 // ---------------------------------------------------------------------------
@@ -1245,6 +1303,29 @@ impl InferenceConfig {
         // Note: informs_category_pairs has no range check — empty list is valid
         // (disables Informs detection without error; C-08, pseudocode/config.md).
         // Note: s2_vocabulary has no range check — empty vec is valid (S2 becomes a no-op).
+
+        // -- crt-042: expansion_depth range check [1, 10] inclusive --
+        // Unconditional: validated regardless of ppr_expander_enabled (ADR-004).
+        // Prevents NLI trap recurrence: invalid config caught at server start, not at flag-flip.
+        if self.expansion_depth < 1 || self.expansion_depth > 10 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "expansion_depth",
+                value: self.expansion_depth.to_string(),
+                reason: "must be in range [1, 10] inclusive",
+            });
+        }
+
+        // -- crt-042: max_expansion_candidates range check [1, 1000] inclusive --
+        // Unconditional: validated regardless of ppr_expander_enabled (ADR-004).
+        if self.max_expansion_candidates < 1 || self.max_expansion_candidates > 1000 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "max_expansion_candidates",
+                value: self.max_expansion_candidates.to_string(),
+                reason: "must be in range [1, 1000] inclusive",
+            });
+        }
 
         Ok(())
     }
@@ -2575,6 +2656,28 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.max_s8_pairs_per_batch
             } else {
                 global.inference.max_s8_pairs_per_batch
+            },
+            // crt-042: graph expand pool-widening fields
+            ppr_expander_enabled: if project.inference.ppr_expander_enabled
+                != default.inference.ppr_expander_enabled
+            {
+                project.inference.ppr_expander_enabled
+            } else {
+                global.inference.ppr_expander_enabled
+            },
+            expansion_depth: if project.inference.expansion_depth
+                != default.inference.expansion_depth
+            {
+                project.inference.expansion_depth
+            } else {
+                global.inference.expansion_depth
+            },
+            max_expansion_candidates: if project.inference.max_expansion_candidates
+                != default.inference.max_expansion_candidates
+            {
+                project.inference.max_expansion_candidates
+            } else {
+                global.inference.max_expansion_candidates
             },
         },
         // crt-036: per-field project-wins merge for retention config
@@ -7540,6 +7643,247 @@ nli_informs_ppr_weight = 0.4
             merged.inference.s2_vocabulary,
             vec!["schema".to_string(), "cache".to_string()],
             "project s2_vocabulary must override empty global"
+        );
+    }
+
+    // crt-042: InferenceConfig graph expand pool-widening field tests
+    // -------------------------------------------------------------------------
+    // AC-17: Missing fields load defaults
+
+    #[test]
+    fn test_inference_config_expander_fields_defaults() {
+        let cfg = InferenceConfig::default();
+        assert_eq!(
+            cfg.ppr_expander_enabled, false,
+            "ppr_expander_enabled default must be false"
+        );
+        assert_eq!(cfg.expansion_depth, 2, "expansion_depth default must be 2");
+        assert_eq!(
+            cfg.max_expansion_candidates, 200,
+            "max_expansion_candidates default must be 200"
+        );
+    }
+
+    #[test]
+    fn test_inference_config_expander_fields_serde_defaults() {
+        // Empty TOML — all fields absent.
+        let cfg: InferenceConfig = toml::from_str("").unwrap();
+        assert_eq!(
+            cfg.ppr_expander_enabled, false,
+            "absent ppr_expander_enabled must default to false via #[serde(default)]"
+        );
+        assert_eq!(
+            cfg.expansion_depth, 2,
+            "absent expansion_depth must default to 2 via #[serde(default)]"
+        );
+        assert_eq!(
+            cfg.max_expansion_candidates, 200,
+            "absent max_expansion_candidates must default to 200 via #[serde(default)]"
+        );
+    }
+
+    #[test]
+    fn test_unimatrix_config_expander_toml_omitted_produces_defaults() {
+        let toml_str = "[inference]\n";
+        let config: UnimatrixConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.inference.ppr_expander_enabled, false);
+        assert_eq!(config.inference.expansion_depth, 2);
+        assert_eq!(config.inference.max_expansion_candidates, 200);
+    }
+
+    #[test]
+    fn test_inference_config_expander_serde_fn_matches_default() {
+        let from_empty: InferenceConfig = toml::from_str("").unwrap();
+        let from_default = InferenceConfig::default();
+        assert_eq!(
+            from_empty.ppr_expander_enabled, from_default.ppr_expander_enabled,
+            "ppr_expander_enabled: serde default fn must match Default::default()"
+        );
+        assert_eq!(
+            from_empty.expansion_depth, from_default.expansion_depth,
+            "expansion_depth: serde default fn must match Default::default()"
+        );
+        assert_eq!(
+            from_empty.max_expansion_candidates, from_default.max_expansion_candidates,
+            "max_expansion_candidates: serde default fn must match Default::default()"
+        );
+    }
+
+    // AC-18: expansion_depth = 0 fails validation (unconditional — ppr_expander_enabled=false)
+    #[test]
+    fn test_validate_expansion_depth_zero_fails() {
+        let c = InferenceConfig {
+            expansion_depth: 0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "expansion_depth");
+    }
+
+    // AC-19: expansion_depth = 11 fails validation (unconditional)
+    #[test]
+    fn test_validate_expansion_depth_eleven_fails() {
+        let c = InferenceConfig {
+            expansion_depth: 11,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "expansion_depth");
+    }
+
+    // AC-19 boundary: expansion_depth = 10 passes
+    #[test]
+    fn test_validate_expansion_depth_ten_passes() {
+        let c = InferenceConfig {
+            expansion_depth: 10,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "expansion_depth=10 (upper bound) must pass validation"
+        );
+    }
+
+    // AC-18 boundary: expansion_depth = 1 passes
+    #[test]
+    fn test_validate_expansion_depth_one_passes() {
+        let c = InferenceConfig {
+            expansion_depth: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "expansion_depth=1 (lower bound) must pass validation"
+        );
+    }
+
+    // AC-20: max_expansion_candidates = 0 fails validation (unconditional)
+    #[test]
+    fn test_validate_max_expansion_candidates_zero_fails() {
+        let c = InferenceConfig {
+            max_expansion_candidates: 0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "max_expansion_candidates");
+    }
+
+    // AC-21: max_expansion_candidates = 1001 fails validation (unconditional)
+    #[test]
+    fn test_validate_max_expansion_candidates_1001_fails() {
+        let c = InferenceConfig {
+            max_expansion_candidates: 1001,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "max_expansion_candidates");
+    }
+
+    // AC-20 boundary: max_expansion_candidates = 1 passes
+    #[test]
+    fn test_validate_max_expansion_candidates_one_passes() {
+        let c = InferenceConfig {
+            max_expansion_candidates: 1,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "max_expansion_candidates=1 (lower bound) must pass validation"
+        );
+    }
+
+    // AC-21 boundary: max_expansion_candidates = 1000 passes
+    #[test]
+    fn test_validate_max_expansion_candidates_1000_passes() {
+        let c = InferenceConfig {
+            max_expansion_candidates: 1000,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "max_expansion_candidates=1000 (upper bound) must pass validation"
+        );
+    }
+
+    // Error message quality: field name must appear in error
+    #[test]
+    fn test_validate_expansion_depth_error_names_field() {
+        let c = InferenceConfig {
+            expansion_depth: 0,
+            ..InferenceConfig::default()
+        };
+        let err = c.validate(Path::new("/fake/config.toml")).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("expansion_depth"),
+            "error message must name the offending field 'expansion_depth'; got: {msg}"
+        );
+    }
+
+    #[test]
+    fn test_validate_max_expansion_candidates_error_names_field() {
+        let c = InferenceConfig {
+            max_expansion_candidates: 0,
+            ..InferenceConfig::default()
+        };
+        let err = c.validate(Path::new("/fake/config.toml")).unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("max_expansion_candidates"),
+            "error message must name the offending field; got: {msg}"
+        );
+    }
+
+    // Config merge: project non-default wins; project at default falls back to global
+    #[test]
+    fn test_inference_config_merged_propagates_expander_fields() {
+        let mut global = UnimatrixConfig::default();
+        global.inference.expansion_depth = 3;
+        global.inference.max_expansion_candidates = 100;
+        global.inference.ppr_expander_enabled = false;
+
+        let mut project = UnimatrixConfig::default();
+        project.inference.expansion_depth = 5; // project overrides depth (non-default)
+        // max_expansion_candidates stays at default (200) → global (100) wins
+
+        let merged = merge_configs(global, project);
+        assert_eq!(
+            merged.inference.expansion_depth, 5,
+            "project expansion_depth=5 must override global expansion_depth=3"
+        );
+        assert_eq!(
+            merged.inference.max_expansion_candidates, 100,
+            "project max_expansion_candidates at default (200); global (100) wins"
+        );
+        assert_eq!(
+            merged.inference.ppr_expander_enabled, false,
+            "ppr_expander_enabled must propagate correctly"
+        );
+    }
+
+    // Merge: project ppr_expander_enabled=true (non-default) wins
+    #[test]
+    fn test_inference_config_merged_expander_enabled_project_wins() {
+        let mut project = UnimatrixConfig::default();
+        project.inference.ppr_expander_enabled = true; // non-default
+        let merged = merge_configs(UnimatrixConfig::default(), project);
+        assert!(
+            merged.inference.ppr_expander_enabled,
+            "project ppr_expander_enabled=true must override global false"
+        );
+    }
+
+    // TOML round-trip: explicit override values are parsed correctly
+    #[test]
+    fn test_inference_config_expander_toml_explicit_override() {
+        let toml_str = "ppr_expander_enabled = true\n\
+                        expansion_depth = 5\n\
+                        max_expansion_candidates = 100\n";
+        let cfg: InferenceConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(
+            cfg.ppr_expander_enabled, true,
+            "explicit ppr_expander_enabled"
+        );
+        assert_eq!(cfg.expansion_depth, 5, "explicit expansion_depth");
+        assert_eq!(
+            cfg.max_expansion_candidates, 100,
+            "explicit max_expansion_candidates"
         );
     }
 }

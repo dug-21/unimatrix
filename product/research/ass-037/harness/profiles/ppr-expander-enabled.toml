@@ -1,0 +1,9 @@
+[profile]
+name = "ppr-expander-enabled"
+description = "PPR expander enabled (crt-042). HNSW k=20 seeds -> graph_expand depth=2 max=200 -> expanded pool -> PPR -> fused scoring."
+distribution_change = true
+
+[inference]
+ppr_expander_enabled = true
+expansion_depth = 2
+max_expansion_candidates = 200
