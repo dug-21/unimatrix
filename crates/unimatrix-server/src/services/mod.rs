@@ -429,6 +429,9 @@ impl ServiceLayer {
             inference_config.ppr_inclusion_threshold,
             inference_config.ppr_blend_weight,
             inference_config.ppr_max_expand,
+            inference_config.ppr_expander_enabled, // crt-042
+            inference_config.expansion_depth,      // crt-042
+            inference_config.max_expansion_candidates, // crt-042
         );
 
         let store_ops = StoreService::new(

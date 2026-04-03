@@ -18,7 +18,7 @@ use unimatrix_engine::effectiveness::{
 
 use unimatrix_engine::coaccess::MAX_CO_ACCESS_BOOST;
 use unimatrix_engine::graph::{
-    FALLBACK_PENALTY, find_terminal_active, graph_penalty, personalized_pagerank,
+    FALLBACK_PENALTY, find_terminal_active, graph_expand, graph_penalty, personalized_pagerank,
     suppress_contradicts,
 };
 
@@ -379,6 +379,13 @@ pub(crate) struct SearchService {
     ppr_blend_weight: f64,
     /// crt-030: maximum number of PPR-only entries added to the pool per query. Default 50.
     ppr_max_expand: usize,
+    /// crt-042: enable graph_expand candidate pool widening before PPR.
+    /// Default false — gated behind A/B eval before default enablement.
+    ppr_expander_enabled: bool,
+    /// crt-042: BFS hop depth from seeds. Default 2.
+    expansion_depth: usize,
+    /// crt-042: maximum entries added by Phase 0 per query. Default 200.
+    max_expansion_candidates: usize,
 }
 
 // ---------------------------------------------------------------------------
@@ -504,6 +511,9 @@ impl SearchService {
         ppr_inclusion_threshold: f64,           // crt-030
         ppr_blend_weight: f64,                  // crt-030
         ppr_max_expand: usize,                  // crt-030
+        ppr_expander_enabled: bool,             // crt-042
+        expansion_depth: usize,                 // crt-042
+        max_expansion_candidates: usize,        // crt-042
     ) -> Self {
         SearchService {
             store,
@@ -528,6 +538,9 @@ impl SearchService {
             ppr_inclusion_threshold,
             ppr_blend_weight,
             ppr_max_expand,
+            ppr_expander_enabled,
+            expansion_depth,
+            max_expansion_candidates,
         }
     }
 
@@ -855,6 +868,97 @@ impl SearchService {
         // Guard: skip entirely when use_fallback = true (cold-start / Supersedes cycle).
         // Bit-for-bit identical to pre-crt-030 behaviour when use_fallback = true (AC-12 / R-02).
         if !use_fallback {
+            // -----------------------------------------------------------------------
+            // Phase 0 [crt-042]: graph_expand — widen seed pool if ppr_expander_enabled
+            //
+            // Combined ceiling (SR-04 / NFR-08):
+            //   HNSW k=20 + Phase 0 max 200 + Phase 5 max 50 = 270 maximum candidates
+            //   before PPR scoring and final truncation to k.
+            //
+            // Runs ONLY when both:
+            //   (a) use_fallback = false (PPR is active — outer guard)
+            //   (b) ppr_expander_enabled = true (expander feature flag)
+            //
+            // When ppr_expander_enabled = false (default): zero overhead — no BFS, no fetch,
+            // no Instant::now(), no debug! emission. Bit-identical to pre-crt-042 (AC-01, NFR-02).
+            //
+            // Lock order: typed_graph is the pre-cloned value (lock already released before Step 6d).
+            // graph_expand holds no locks (C-04, NFR-06).
+            // -----------------------------------------------------------------------
+            if self.ppr_expander_enabled {
+                let phase0_start = std::time::Instant::now();
+
+                // Collect seed IDs from current results_with_scores (post Steps 6a + 6b).
+                let seed_ids: Vec<u64> = results_with_scores.iter().map(|(e, _)| e.id).collect();
+
+                // BFS traversal: collect entry IDs reachable from seeds via positive edges.
+                // Synchronous, pure, no I/O (C-05, NFR-05).
+                let expanded_ids: HashSet<u64> = graph_expand(
+                    &typed_graph,
+                    &seed_ids,
+                    self.expansion_depth,
+                    self.max_expansion_candidates,
+                );
+
+                // Deduplication guard: skip any expanded ID already in the current pool.
+                // graph_expand excludes seeds by design (AC-08), but this in_pool check ensures
+                // correctness if results_with_scores was modified between seed collection and here.
+                let in_pool: HashSet<u64> = seed_ids.iter().copied().collect();
+                let mut results_added: usize = 0;
+
+                // Process expanded entries in sorted order for determinism (NFR-04).
+                let mut sorted_expanded: Vec<u64> = expanded_ids.iter().copied().collect();
+                sorted_expanded.sort_unstable();
+
+                for expanded_id in sorted_expanded {
+                    if in_pool.contains(&expanded_id) {
+                        continue; // Already present — skip without counting.
+                    }
+
+                    // Async fetch (same pattern as Phase 5).
+                    // On error: silently skip the entry. Do not fail the search request.
+                    let entry = match self.entry_store.get(expanded_id).await {
+                        Ok(e) => e,
+                        Err(_) => continue, // silent skip
+                    };
+
+                    // Quarantine check: MANDATORY (R-03, AC-13, NFR-03, FR-05 step 3b).
+                    // This is the ONLY quarantine enforcement point for Phase 0 expanded entries.
+                    if SecurityGateway::is_quarantined(&entry.status) {
+                        continue; // silent skip — no warn/error log (NFR-03)
+                    }
+
+                    // Embedding lookup (O(N) HNSW scan per entry — primary latency driver, C-02).
+                    // SR-01 investigation: O(1) path not feasible without significant rework of
+                    // hnsw_rs PointIndexation (no get_by_data_id API exists). Filed as follow-up.
+                    // On None: silently skip entries with no stored embedding (AC-15).
+                    let emb = match self.vector_store.get_embedding(expanded_id).await {
+                        Some(e) => e,
+                        None => continue, // silent skip — no embedding stored for this entry
+                    };
+
+                    // True cosine similarity (ADR-003): real semantic signal, not a floor constant.
+                    // `embedding` is the normalized query embedding bound at Step 4.
+                    let cosine_sim = cosine_similarity(&embedding, &emb);
+
+                    results_with_scores.push((entry, cosine_sim));
+                    results_added += 1;
+                }
+
+                // Timing instrumentation (ADR-005, NFR-01, AC-24).
+                // Emitted at debug! level — never info! (R-10).
+                // All six fields are mandatory for the latency gate measurement.
+                tracing::debug!(
+                    seeds = seed_ids.len(),
+                    expanded_count = expanded_ids.len(),
+                    fetched_count = results_added,
+                    elapsed_ms = phase0_start.elapsed().as_millis(),
+                    expansion_depth = self.expansion_depth,
+                    max_expansion_candidates = self.max_expansion_candidates,
+                    "Phase 0 (graph_expand) complete"
+                );
+            }
+
             // -----------------------------------------------------------------------
             // Phase 1: Build the personalization vector (FR-06 / ADR-006).
             //
