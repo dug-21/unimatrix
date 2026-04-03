@@ -184,10 +184,10 @@ No new crate dependencies are introduced (NFR-04).
 | Component | File | Dependency Type |
 |-----------|------|----------------|
 | `migrate_if_needed` | `crates/unimatrix-store/src/migration.rs` | Extended with v19→v20 block |
-| `run_s1_tick` | `crates/unimatrix-store/src/services/graph_enrichment_tick.rs` | Modified (second write_graph_edge call per pair) |
-| `run_s2_tick` | `crates/unimatrix-store/src/services/graph_enrichment_tick.rs` | Modified (second write_graph_edge call per pair) |
-| `run_s8_tick` | `crates/unimatrix-store/src/services/graph_enrichment_tick.rs` | Modified (second write_graph_edge call per pair) |
-| `write_graph_edge` | `crates/unimatrix-store/src/services/graph_enrichment_tick.rs` | Used unchanged; called twice per pair |
+| `run_s1_tick` | `crates/unimatrix-server/src/services/graph_enrichment_tick.rs` | Modified (second write_graph_edge call per pair) |
+| `run_s2_tick` | `crates/unimatrix-server/src/services/graph_enrichment_tick.rs` | Modified (second write_graph_edge call per pair) |
+| `run_s8_tick` | `crates/unimatrix-server/src/services/graph_enrichment_tick.rs` | Modified (second write_graph_edge call per pair) |
+| `write_graph_edge` | `crates/unimatrix-server/src/services/graph_enrichment_tick.rs` | Used unchanged; called twice per pair |
 | `pub fn graph_expand` | `crates/unimatrix-engine/src/graph_expand.rs` | Comment added at function signature; no logic change |
 | `GRAPH_EDGES` table | SQLite schema | New reverse-edge rows inserted; structure unchanged |
 | `UNIQUE(source_id, target_id, relation_type)` | `GRAPH_EDGES` index | Relied upon for idempotency; not modified |

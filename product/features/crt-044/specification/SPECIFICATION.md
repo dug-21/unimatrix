@@ -321,7 +321,8 @@ All constraints from SCOPE.md are carried forward. C-06 is expanded to reflect O
 
 | Crate | Role | Change |
 |-------|------|--------|
-| `unimatrix-store` | Owns `migration.rs` and `graph_enrichment_tick.rs` | Modified |
+| `unimatrix-store` | Owns `migration.rs` | Modified |
+| `unimatrix-server` | Owns `graph_enrichment_tick.rs` | Modified |
 | `unimatrix-engine` | Owns `graph_expand.rs` | Modified (comment only) |
 
 No new crate dependencies are introduced.
@@ -331,10 +332,10 @@ No new crate dependencies are introduced.
 | Component | File | Dependency Type |
 |-----------|------|----------------|
 | `migrate_if_needed` | `crates/unimatrix-store/src/migration.rs` | Extended with v19→v20 block |
-| `run_s1_tick` | `crates/unimatrix-store/src/graph_enrichment_tick.rs` | Modified (second write_graph_edge call) |
-| `run_s2_tick` | `crates/unimatrix-store/src/graph_enrichment_tick.rs` | Modified (second write_graph_edge call) |
-| `run_s8_tick` | `crates/unimatrix-store/src/graph_enrichment_tick.rs` | Modified (second write_graph_edge call) |
-| `write_graph_edge` | `crates/unimatrix-store/src/graph_enrichment_tick.rs` | Used unchanged; called twice per pair |
+| `run_s1_tick` | `crates/unimatrix-server/src/services/graph_enrichment_tick.rs` | Modified (second write_graph_edge call) |
+| `run_s2_tick` | `crates/unimatrix-server/src/services/graph_enrichment_tick.rs` | Modified (second write_graph_edge call) |
+| `run_s8_tick` | `crates/unimatrix-server/src/services/graph_enrichment_tick.rs` | Modified (second write_graph_edge call) |
+| `write_graph_edge` | `crates/unimatrix-server/src/services/graph_enrichment_tick.rs` | Used unchanged; called twice per pair |
 | `pub fn graph_expand` | `crates/unimatrix-engine/src/graph_expand.rs` | Comment added at function signature (post-crt-042 state) |
 | `GRAPH_EDGES` table | SQLite schema | Rows added by migration; structure unchanged |
 | `UNIQUE(source_id, target_id, relation_type)` | `GRAPH_EDGES` index | Relied upon for idempotency; not modified |
