@@ -30,16 +30,16 @@ three-layer assertion to confirm the graph is observed at live search time.
 
 | Component | Pseudocode | Test Plan |
 |-----------|------------|-----------|
-| `EvalServiceLayer` (layer.rs) | pseudocode/EvalServiceLayer.md | test-plan/EvalServiceLayer.md |
-| `ppr-expander-enabled.toml` | pseudocode/ppr-expander-enabled-toml.md | test-plan/ppr-expander-enabled-toml.md |
-| `layer_tests.rs` (integration test) | pseudocode/layer_tests.md | test-plan/layer_tests.md |
+| `EvalServiceLayer` (layer.rs) | product/features/crt-045/pseudocode/EvalServiceLayer.md | product/features/crt-045/test-plan/EvalServiceLayer.md |
+| `ppr-expander-enabled.toml` | product/features/crt-045/pseudocode/ppr-expander-enabled-toml.md | product/features/crt-045/test-plan/ppr-expander-enabled-toml.md |
+| `layer_tests.rs` (integration test) | product/features/crt-045/pseudocode/layer_tests.md | product/features/crt-045/test-plan/layer_tests.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-045/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-045/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
