@@ -637,3 +637,175 @@ async fn test_update_goal_embedding_writes_blob() {
 
     store.close().await.unwrap();
 }
+
+// ---------------------------------------------------------------------------
+// STORE-U-03: phase stored and readable
+// ---------------------------------------------------------------------------
+
+/// Insert an observation row with phase = "pseudocode" via raw SQL and read it
+/// back to confirm the value round-trips through the DB unchanged.
+#[tokio::test]
+async fn test_phase_stored_and_readable() {
+    let dir = TempDir::new().expect("temp dir");
+    let store = SqlxStore::open(&dir.path().join("test.db"), PoolConfig::test_default())
+        .await
+        .expect("open fresh store");
+
+    let session_id = "store-u-03-session";
+    let ts_millis: i64 = 1_700_000_000_000;
+
+    sqlx::query(
+        "INSERT INTO observations
+         (session_id, ts_millis, hook, tool, input, response_size, response_snippet,
+          topic_signal, phase)
+         VALUES (?1, ?2, ?3, NULL, NULL, NULL, NULL, NULL, ?4)",
+    )
+    .bind(session_id)
+    .bind(ts_millis)
+    .bind("pre_tool_use")
+    .bind("pseudocode")
+    .execute(store.write_pool_test())
+    .await
+    .expect("insert observation with phase");
+
+    let phase: Option<String> =
+        sqlx::query_scalar("SELECT phase FROM observations WHERE session_id = ?1")
+            .bind(session_id)
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("read phase");
+
+    assert_eq!(
+        phase.as_deref(),
+        Some("pseudocode"),
+        "phase must round-trip through the DB unchanged"
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// STORE-U-04: phase None stored as NULL
+// ---------------------------------------------------------------------------
+
+/// Insert an observation row with phase omitted (NULL) and confirm the DB
+/// stores NULL, not an empty string or default value.
+#[tokio::test]
+async fn test_phase_none_stored_as_null() {
+    let dir = TempDir::new().expect("temp dir");
+    let store = SqlxStore::open(&dir.path().join("test.db"), PoolConfig::test_default())
+        .await
+        .expect("open fresh store");
+
+    let session_id = "store-u-04-session";
+    let ts_millis: i64 = 1_700_000_001_000;
+
+    sqlx::query(
+        "INSERT INTO observations
+         (session_id, ts_millis, hook, tool, input, response_size, response_snippet,
+          topic_signal, phase)
+         VALUES (?1, ?2, ?3, NULL, NULL, NULL, NULL, NULL, NULL)",
+    )
+    .bind(session_id)
+    .bind(ts_millis)
+    .bind("pre_tool_use")
+    .execute(store.write_pool_test())
+    .await
+    .expect("insert observation with NULL phase");
+
+    let phase: Option<String> =
+        sqlx::query_scalar("SELECT phase FROM observations WHERE session_id = ?1")
+            .bind(session_id)
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("read phase");
+
+    assert!(
+        phase.is_none(),
+        "phase must be NULL in the DB when None was stored, got: {:?}",
+        phase
+    );
+
+    store.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// STORE-U-05: phase persists across v20→v21 migration
+// ---------------------------------------------------------------------------
+
+/// Verify that:
+///   1. Existing v20 rows have NULL phase after migration (no back-fill).
+///   2. New rows inserted after migration correctly store and return `phase`.
+#[tokio::test]
+async fn test_phase_persists_across_migration() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v20_database(&db_path).await;
+
+    // Insert a row directly via raw SQL while still in v20 shape (no phase column).
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts.connect().await.expect("v20 setup conn");
+        sqlx::query(
+            "INSERT INTO observations
+             (session_id, ts_millis, hook, tool, input, response_size, response_snippet,
+              topic_signal)
+             VALUES ('pre-migration-session', 1700000002000, 'pre_tool_use',
+                     NULL, NULL, NULL, NULL, NULL)",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("insert v20 row without phase column");
+    }
+
+    // Open via SqlxStore — triggers v20→v21 migration.
+    let store = SqlxStore::open(&db_path, PoolConfig::test_default())
+        .await
+        .expect("open after migration");
+
+    assert_eq!(read_schema_version(&store).await, 21);
+
+    // Pre-migration row must have NULL phase (migration does not back-fill).
+    let pre_phase: Option<String> = sqlx::query_scalar(
+        "SELECT phase FROM observations WHERE session_id = 'pre-migration-session'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .expect("read pre-migration phase");
+
+    assert!(
+        pre_phase.is_none(),
+        "v20 row must have NULL phase after migration — no back-fill expected, got: {:?}",
+        pre_phase
+    );
+
+    // Post-migration insert must correctly store a non-NULL phase.
+    sqlx::query(
+        "INSERT INTO observations
+         (session_id, ts_millis, hook, tool, input, response_size, response_snippet,
+          topic_signal, phase)
+         VALUES (?1, ?2, ?3, NULL, NULL, NULL, NULL, NULL, ?4)",
+    )
+    .bind("post-migration-session")
+    .bind(1_700_000_003_000_i64)
+    .bind("post_tool_use")
+    .bind("delivery")
+    .execute(store.write_pool_test())
+    .await
+    .expect("insert post-migration row with phase");
+
+    let post_phase: Option<String> =
+        sqlx::query_scalar("SELECT phase FROM observations WHERE session_id = ?1")
+            .bind("post-migration-session")
+            .fetch_one(store.read_pool_test())
+            .await
+            .expect("read post-migration phase");
+
+    assert_eq!(
+        post_phase.as_deref(),
+        Some("delivery"),
+        "post-migration row must store and return the correct phase"
+    );
+
+    store.close().await.unwrap();
+}
