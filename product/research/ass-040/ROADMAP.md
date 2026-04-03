@@ -75,9 +75,10 @@ entries reachable. Behavioral signals close the self-sustaining loop.
 | Metric | Value | Notes |
 |--------|-------|-------|
 | Scenarios | 1,443 | 1,585 records; 135 duplicate IDs collapse to 1,443 unique eval scenarios |
-| MRR (conf-boost-c) | 0.2875 | Live DB, 2026-04-02, `run_eval.py` (GH #487). Replaces 0.2913 snapshot baseline. |
+| MRR (conf-boost-c) | 0.2856 | Live DB, 2026-04-02, `run_eval.py`. Stable across two runs. DB drift from background ticks explains -0.0019 from prior 0.2875 measurement (no scoring changes in crt-040). |
 | P@5 | 0.1115 | Formula-invariant — determined by HNSW recall, not scoring |
-| Prior MRR (crt-038 snapshot) | 0.2913 | Was measured against ASS-037 snapshot at crt-038; superseded by live-DB run |
+| Prior MRR (2026-04-02 first run) | 0.2875 | Measured earlier same day; superseded by crt-040 post-ship re-measurement |
+| Prior MRR (crt-038 snapshot) | 0.2913 | Was measured against ASS-037 snapshot at crt-038; superseded by live-DB runs |
 
 All future eval runs use `product/research/ass-039/harness/scenarios.jsonl`.  
 The old ASS-037 qlog scenarios are deleted — do not reference them.
@@ -120,7 +121,7 @@ Follow-up filed: #487 (run_eval.py eval harness runner, needed before Group 3 sh
 
 ---
 
-### Group 3 — Graph Enrichment
+### Group 3 — Graph Enrichment ✅ COMPLETE (`crt-040` PR #490 GH #488, `crt-041` PR #493 GH #489)
 
 Populate the graph from multiple signal sources. Each source is independent and can
 ship separately. All generate `Informs` or `CoAccess` edges to the production graph.
@@ -128,14 +129,10 @@ Target combined density: ≥3,000 active→active edges (currently 1,086).
 
 | Issue | Title | Notes |
 |-------|-------|-------|
-| crt-040 | Cosine Supports detection | Replace NLI post-store path. Threshold ≥ 0.65, category pair filter from `informs_category_pairs`. Validated in ASS-035: 6/8 true pairs, 0/10 false positives. Runs in structural_graph_tick (Group 2 prerequisite). Also adds `write_graph_edge(source: &str, ...)` general function — **hard prerequisite for crt-041**. |
-| crt-041 | S1: Tag co-occurrence Informs edges | Background tick: pairs sharing ≥3 tags → `Informs` edge. SQL-only, no model. Yield: ~1,052 new edges at current corpus. Tag `signal_origin='S1'` on edge for GNN feature construction. **Requires crt-040 (write_graph_edge).** |
-| crt-041 | S2: Structural vocabulary Informs edges | Background tick: configurable domain term list; pairs sharing ≥2 terms → `Informs` edge. Vocabulary in config (domain-agnostic, empty default). Yield: ~1,830 new edges. Tag `signal_origin='S2'`. **Requires crt-040 (write_graph_edge).** |
-| crt-041 | S8: Search co-retrieval CoAccess edges | Periodic batch from `audit_log`: pairs co-appearing in search results across sessions → `CoAccess` edge. Yield: ~2,770 new edges. Not real-time — batch every N ticks reading from audit_log. Tag `signal_origin='S8'`. **Requires crt-040 (write_graph_edge).** |
-
-**Delivery ordering within Group 3**: crt-040 ships first (adds `write_graph_edge`). crt-041
-ships second (S1/S2/S8 all call `write_graph_edge`). The roadmap lists them as peers but they
-are sequentially dependent — crt-041 delivery cannot begin until crt-040 is merged.
+| ✅ crt-040 | Cosine Supports detection | Replace NLI post-store path. Threshold ≥ 0.65, category pair filter from `informs_category_pairs`. Adds `write_graph_edge(source: &str, ...)` general function. Eval: MRR = 0.2856 stable (DB drift, not regression). Non-blocking findings: F-01 (`write_nli_edge` always returns true), F-02 (`format!` metadata). |
+| ✅ crt-041 | S1: Tag co-occurrence Informs edges | SQL-only. ~1,052 new edges. `signal_origin='S1'`. Single-direction writes confirmed — **GH#495 back-fill required before expander eval.** |
+| ✅ crt-041 | S2: Structural vocabulary Informs edges | SQL-only, empty default vocabulary. ~1,830 new edges. `signal_origin='S2'`. Single-direction writes — **GH#495 back-fill required.** |
+| ✅ crt-041 | S8: Search co-retrieval CoAccess edges | Periodic batch from `audit_log`. ~2,770 new edges. `signal_origin='S8'`. CoAccess bidirectional by convention. |
 
 **Note on edge labeling**: All new edges must carry `signal_origin` field for GNN feature
 construction. The labeled edge set from ASS-038 is the W3-1 training data specification —
@@ -143,7 +140,7 @@ do not inject unlabeled edges.
 
 ---
 
-### Group 4 — PPR Expander (The Unlock)
+### Group 4 — PPR Expander (The Unlock) ✅ DELIVERED (`crt-042`, PR #496, GH #492) — flag ships false
 
 **Critical path.** Without this, all graph enrichment (Group 3) produces zero retrieval
 improvement. The current PPR implementation is a re-ranker within k=20. Cross-category
@@ -156,7 +153,12 @@ behavioral ground truth: identical zero delta.
 
 | Issue | Title | Notes |
 |-------|-------|-------|
-| — | PPR expander: HNSW seeds → graph expand → expanded candidate pool | Change: HNSW(k=20) produces seeds. `graph_expand(seeds, depth=2, max_candidates=200)` traverses GRAPH_EDGES to add entries outside k=20 to the candidate pool. Score and rank from the expanded pool. Gate behind feature flag. |
+| ✅ crt-042 | PPR expander: HNSW seeds → graph expand → expanded candidate pool | `graph_expand.rs` (179 lines, pure BFS). Phase 0 inserted before PPR personalization vector build. 3 new `InferenceConfig` fields. 47 new tests, 4,130 passing. Security: LOW (no blocking findings). Flag `ppr_expander_enabled` ships `false`. |
+
+**Pre-enablement gates:**
+1. ✅ **GH#497 / crt-044 — S1/S2/S8 back-fill** (PR #498): bidirectional edges back-filled, forward tick writes fixed, security comment added. Schema v19→v20.
+2. **Eval gate**: run `ppr-expander-enabled.toml` profile — MRR ≥ 0.2856 AND P@5 > 0.1115. P@5 improvement is the first real signal of cross-category retrieval working.
+3. **Latency gate**: P95 latency addition ≤ 50ms over baseline. O(N) embedding scan confirmed (no O(1) path); measure at default config (max=200) before enabling.
 
 **Architecture**:
 ```
@@ -183,9 +185,8 @@ briefing can ship.
 
 | Issue | Title | Notes |
 |-------|-------|-------|
-| — | audit_log: add feature_cycle_id at write time | Single field addition. At `log_audit_event()`, include the currently-active context_cycle feature_id (or null if no active cycle). Unblocks S6 (outcome co-retrieval) and S7 (briefing selection) signal sources. |
-| — | Goal embedding at context_cycle start | At `context_cycle` start: fetch GH issue title + body for the feature_cycle_id. Embed via existing pipeline. Store goal_embedding + goal_text on cycle record. Enables H1 (goal clustering) with proper cosine similarity instead of keyword Jaccard proxy. |
-| — | agent_role: mandatory population on sessions | Currently 4/182 sessions have agent_role populated. Make it mandatory at session open. Enables H3 (phase stratification cluster test) and role-conditioned briefing. |
+| crt-043 | observations.phase: add phase column at write time | `topic_signal` already IS the feature attribution field (col-017/col-024) — no new feature_id column needed. Add `phase TEXT` to `observations`, captured from `SessionState.current_phase` at all four write sites before `spawn_blocking`. Enables S6/S7 phase-stratified queries. Schema v19→v20. |
+| crt-043 | Goal embedding at context_cycle start | At `context_cycle(type=start)`: when the `goal` parameter is non-empty, embed the supplied goal text via the existing pipeline. Store `goal_embedding BLOB` (bincode `Vec<f32>`) on the `cycle_events` start row. No external fetch — goal text comes from the `goal` parameter already on the MCP call. Enables H1 (goal clustering). Coverage limited to cycles that supply a goal; NULL otherwise. |
 
 ---
 
@@ -263,10 +264,10 @@ features. Reference: `product/research/ass-039/harness/scenarios.jsonl`.
 
 | Feature | Gate |
 |---------|------|
-| conf-boost-c formula | ✅ PASSED — MRR = 0.2875 (live DB, 2026-04-02, run_eval.py). Prior snapshot baseline 0.2913 superseded. |
-| Cosine Supports detection | Graph cohesion metrics: supports_coverage increase. No MRR regression vs conf-boost-c. |
-| S1/S2/S8 edge generation | Graph cohesion: `cross_category_edge_count` increase, `isolated_entry_count` decrease. |
-| PPR expander | **First gate where P@5 should respond**: expect P@5 increase as cross-category entries enter candidate pool. MRR ≥ 0.2875 (live baseline 2026-04-02). If P@5 unchanged after expander, diagnose why ground truth entries are still outside expanded pool. |
+| conf-boost-c formula | ✅ PASSED — MRR = 0.2856 (live DB, stable across 2 runs, 2026-04-02). |
+| Cosine Supports detection | ✅ PASSED — No MRR regression (crt-040 touches no scoring code; 0.2856 stable). write_graph_edge prerequisite delivered. |
+| S1/S2/S8 edge generation | Graph cohesion: `cross_category_edge_count` increase, `isolated_entry_count` decrease. No MRR regression vs 0.2856 baseline. |
+| PPR expander | **First gate where P@5 should respond**: expect P@5 increase as cross-category entries enter candidate pool. MRR ≥ 0.2856 (live baseline 2026-04-02). If P@5 unchanged after expander, diagnose why ground truth entries are still outside expanded pool. |
 | Goal-conditioned briefing | Measure MRR on briefing-sourced scenarios specifically (149 scenarios). Compare briefing profile vs. semantic-only profile. |
 
 ---

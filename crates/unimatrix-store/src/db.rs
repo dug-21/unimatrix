@@ -396,6 +396,45 @@ impl SqlxStore {
         result.ok().flatten().unwrap_or(0)
     }
 
+    /// Write the bincode-encoded goal embedding blob to the cycle_start row (crt-043).
+    ///
+    /// Issues:
+    ///   `UPDATE cycle_events SET goal_embedding = ?1
+    ///    WHERE cycle_id = ?2 AND event_type = 'cycle_start'`
+    ///
+    /// Matching on both cycle_id and event_type ensures only the start row is updated.
+    /// The existing `idx_cycle_events_cycle_id` index makes this UPDATE O(log N).
+    ///
+    /// If the cycle_start row does not yet exist (INSERT/UPDATE race, ADR-002), SQLite
+    /// returns zero rows affected — this is a silent no-op, not an error. The column
+    /// stays NULL, which is the same outcome as the embed-service-unavailable path.
+    ///
+    /// Called from a fire-and-forget tokio::spawn in handle_cycle_event (Step 6).
+    /// Uses the write pool directly (same as insert_cycle_event), not the analytics drain.
+    pub async fn update_cycle_start_goal_embedding(
+        &self,
+        cycle_id: &str,
+        embedding_bytes: Vec<u8>,
+    ) -> Result<()> {
+        let mut conn = self
+            .write_pool
+            .acquire()
+            .await
+            .map_err(|e| crate::error::StoreError::Database(e.into()))?;
+
+        sqlx::query(
+            "UPDATE cycle_events SET goal_embedding = ?1
+             WHERE cycle_id = ?2 AND event_type = 'cycle_start'",
+        )
+        .bind(embedding_bytes)
+        .bind(cycle_id)
+        .execute(&mut *conn)
+        .await
+        .map_err(|e| crate::error::StoreError::Database(e.into()))?;
+
+        Ok(())
+    }
+
     /// WAL checkpoint + VACUUM compaction. Run during graceful shutdown when
     /// `Arc::try_unwrap(store)` succeeds. Safe to call from async context.
     pub async fn compact(&self) -> Result<()> {
@@ -537,15 +576,16 @@ pub(crate) async fn create_tables_if_needed(
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS cycle_events (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            cycle_id   TEXT    NOT NULL,
-            seq        INTEGER NOT NULL,
-            event_type TEXT    NOT NULL,
-            phase      TEXT,
-            outcome    TEXT,
-            next_phase TEXT,
-            timestamp  INTEGER NOT NULL,
-            goal       TEXT
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            cycle_id       TEXT    NOT NULL,
+            seq            INTEGER NOT NULL,
+            event_type     TEXT    NOT NULL,
+            phase          TEXT,
+            outcome        TEXT,
+            next_phase     TEXT,
+            timestamp      INTEGER NOT NULL,
+            goal           TEXT,
+            goal_embedding BLOB    -- crt-043: bincode Vec<f32>, NULL unless cycle_start with non-empty goal
         )",
     )
     .execute(&mut *conn)
@@ -723,15 +763,16 @@ pub(crate) async fn create_tables_if_needed(
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS observations (
-            id              INTEGER PRIMARY KEY AUTOINCREMENT,
-            session_id      TEXT    NOT NULL,
-            ts_millis       INTEGER NOT NULL,
-            hook            TEXT    NOT NULL,
-            tool            TEXT,
-            input           TEXT,
-            response_size   INTEGER,
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id       TEXT    NOT NULL,
+            ts_millis        INTEGER NOT NULL,
+            hook             TEXT    NOT NULL,
+            tool             TEXT,
+            input            TEXT,
+            response_size    INTEGER,
             response_snippet TEXT,
-            topic_signal    TEXT
+            topic_signal     TEXT,
+            phase            TEXT    -- crt-043: active session phase at write time, NULL when no cycle active
         )",
     )
     .execute(&mut *conn)
@@ -743,6 +784,14 @@ pub(crate) async fn create_tables_if_needed(
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_observations_ts ON observations(ts_millis)")
         .execute(&mut *conn)
         .await?;
+    // Composite index for Group 6 S6/S7 phase-stratification queries (crt-043, FR-C-07).
+    // topic_signal first (higher cardinality, primary filter); phase second.
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_observations_topic_phase \
+         ON observations (topic_signal, phase)",
+    )
+    .execute(&mut *conn)
+    .await?;
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS shadow_evaluations (

@@ -15,8 +15,9 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 19 to 20 by crt-044 (bidirectional S1/S2/S8 back-fill).
-pub const CURRENT_SCHEMA_VERSION: u64 = 20;
+/// Current schema version. Incremented from 20 to 21 by crt-043 (goal_embedding BLOB on
+/// cycle_events + phase TEXT on observations + composite index on observations(topic_signal,phase)).
+pub const CURRENT_SCHEMA_VERSION: u64 = 21;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -771,7 +772,88 @@ async fn run_main_migrations(
             })?;
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (20).
+    // v20 → v21: goal_embedding BLOB on cycle_events + phase TEXT on observations (crt-043).
+    //
+    // Both ADD COLUMN statements run inside the outer transaction from migrate_if_needed().
+    // If either fails, the entire transaction rolls back — schema_version stays at 20 (ADR-003).
+    //
+    // Both pragma_table_info pre-checks run first, before either ALTER TABLE, so that a
+    // partially-applied previous attempt (one column added, no version bump) is recovered:
+    //   - column present → skip ALTER (idempotent)
+    //   - column absent → execute ALTER
+    //
+    // Pattern: entry #1264 (pragma_table_info pre-check).
+    if current_version < 21 {
+        // Pre-check 1: cycle_events.goal_embedding
+        let has_goal_embedding: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('cycle_events') WHERE name = 'goal_embedding'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|count| count > 0)
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // Pre-check 2: observations.phase
+        let has_phase: bool = sqlx::query_scalar::<_, i64>(
+            "SELECT COUNT(*) FROM pragma_table_info('observations') WHERE name = 'phase'",
+        )
+        .fetch_one(&mut **txn)
+        .await
+        .map(|count| count > 0)
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // ALTER 1: cycle_events.goal_embedding (only if absent)
+        if !has_goal_embedding {
+            sqlx::query("ALTER TABLE cycle_events ADD COLUMN goal_embedding BLOB")
+                .execute(&mut **txn)
+                .await
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+        }
+
+        // ALTER 2: observations.phase (only if absent)
+        if !has_phase {
+            sqlx::query("ALTER TABLE observations ADD COLUMN phase TEXT")
+                .execute(&mut **txn)
+                .await
+                .map_err(|e| StoreError::Migration {
+                    source: Box::new(e),
+                })?;
+        }
+
+        // Composite index on (topic_signal, phase) for Group 6 S6/S7 phase-stratification
+        // queries. topic_signal first (higher cardinality, primary filter); phase second.
+        // CREATE INDEX IF NOT EXISTS: idempotent on re-run (no pre-check needed).
+        // Decision rationale: see OVERVIEW.md FR-C-07 Resolution.
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_observations_topic_phase \
+             ON observations (topic_signal, phase)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        // No backfill: pre-v21 rows have goal_embedding = NULL and phase = NULL.
+        // NULL is the accepted cold-start baseline for both columns (NFR-04).
+
+        // Bump schema_version to 21 within the outer transaction so that if a v22 block
+        // is added later it observes the correct intermediate version.
+        sqlx::query("UPDATE counters SET value = 21 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION (21).
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)

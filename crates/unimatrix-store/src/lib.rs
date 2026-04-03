@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub(crate) mod analytics;
+pub mod embedding;
 mod error;
 mod hash;
 pub mod pool_config;
@@ -28,6 +29,9 @@ pub mod topic_deliveries;
 
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_helpers;
+
+// Re-exports: embedding blob serialization helpers (ADR-001, crt-043)
+pub use embedding::{decode_goal_embedding, encode_goal_embedding};
 
 // Re-exports: schema types (backend-agnostic)
 pub use error::{PoolKind, Result, StoreError};

@@ -704,6 +704,10 @@ async fn dispatch_request(
             let mut obs = extract_observation_fields(&event);
             obs.topic_signal =
                 enrich_topic_signal(obs.topic_signal, &event.session_id, session_registry);
+            // crt-043: capture phase before spawn_blocking — same timing contract as topic_signal enrichment.
+            obs.phase = session_registry
+                .get_state(&event.session_id)
+                .and_then(|s| s.current_phase.clone());
             tokio::task::spawn_blocking(move || {
                 if let Err(e) = insert_observation(&store_for_obs, &obs) {
                     tracing::error!(error = %e, "rework observation write failed");
@@ -730,11 +734,29 @@ async fn dispatch_request(
             // Must run BEFORE the generic #198 path so set_feature_if_absent becomes a no-op.
             // set_current_phase is called synchronously inside handle_cycle_event (ADR-001 / SR-01).
             if event.event_type == CYCLE_START_EVENT {
-                handle_cycle_event(&event, CycleLifecycle::Start, session_registry, store);
+                handle_cycle_event(
+                    &event,
+                    CycleLifecycle::Start,
+                    session_registry,
+                    store,
+                    embed_service,
+                );
             } else if event.event_type == CYCLE_PHASE_END_EVENT {
-                handle_cycle_event(&event, CycleLifecycle::PhaseEnd, session_registry, store);
+                handle_cycle_event(
+                    &event,
+                    CycleLifecycle::PhaseEnd,
+                    session_registry,
+                    store,
+                    embed_service,
+                );
             } else if event.event_type == CYCLE_STOP_EVENT {
-                handle_cycle_event(&event, CycleLifecycle::Stop, session_registry, store);
+                handle_cycle_event(
+                    &event,
+                    CycleLifecycle::Stop,
+                    session_registry,
+                    store,
+                    embed_service,
+                );
             }
 
             // #198 Part 1: Extract explicit feature_cycle from event payload
@@ -799,6 +821,10 @@ async fn dispatch_request(
             let mut obs = extract_observation_fields(&event);
             obs.topic_signal =
                 enrich_topic_signal(obs.topic_signal, &event.session_id, session_registry);
+            // crt-043: capture phase before spawn_blocking — same timing contract as topic_signal enrichment.
+            obs.phase = session_registry
+                .get_state(&event.session_id)
+                .and_then(|s| s.current_phase.clone());
             spawn_blocking_fire_and_forget(move || {
                 if let Err(e) = insert_observation(&store_for_obs, &obs) {
                     tracing::error!(error = %e, "observation write failed");
@@ -905,6 +931,10 @@ async fn dispatch_request(
                     let mut obs = extract_observation_fields(event);
                     obs.topic_signal =
                         enrich_topic_signal(obs.topic_signal, &event.session_id, session_registry);
+                    // crt-043: capture phase per-event, before batch enters spawn_blocking.
+                    obs.phase = session_registry
+                        .get_state(&event.session_id)
+                        .and_then(|s| s.current_phase.clone());
                     obs
                 })
                 .collect();
@@ -1047,6 +1077,10 @@ async fn dispatch_request(
                     }
 
                     let truncated_input: String = query.chars().take(4096).collect();
+                    // crt-043: capture phase before struct construction — same timing contract as topic_signal enrichment.
+                    let phase: Option<String> = session_registry
+                        .get_state(sid.as_str())
+                        .and_then(|s| s.current_phase.clone());
                     let obs = ObservationRow {
                         session_id: sid.clone(),
                         ts_millis: (unix_now_secs() as i64).saturating_mul(1000),
@@ -1057,6 +1091,7 @@ async fn dispatch_request(
                         response_size: None,
                         response_snippet: None,
                         topic_signal: enriched_signal,
+                        phase, // crt-043
                     };
 
                     let store_for_obs = Arc::clone(store);
@@ -2268,6 +2303,7 @@ fn handle_cycle_event(
     lifecycle: CycleLifecycle,
     session_registry: &SessionRegistry,
     store: &Arc<Store>,
+    embed_service: &Arc<EmbedServiceHandle>, // crt-043: added for goal embedding
 ) {
     // === SYNCHRONOUS SECTION ===
     // All mutations to in-memory state happen here, before any spawn.
@@ -2470,6 +2506,87 @@ fn handle_cycle_event(
             }
         });
     }
+    // Step 6: Fire-and-forget goal embedding (crt-043).
+    //
+    // Spawned after the INSERT spawn (Step 5) so the tokio task queue provides a
+    // best-effort INSERT-before-UPDATE ordering. The embed task performs CPU-bound
+    // work before issuing the UPDATE, so the INSERT virtually always commits first
+    // (ADR-002). The residual race is accepted: a missed UPDATE leaves goal_embedding
+    // = NULL, identical to the embed-service-unavailable path.
+    //
+    // Whitespace-only goal: trimmed before the Some check. A whitespace-only string
+    // produces a zero-information embedding; treat as absent (no spawn). The goal_for_event
+    // value used in Step 5 (insert_cycle_event) is NOT trimmed — UDS verbatim storage
+    // is preserved per col-025 ADR-005 FR-11.
+    //
+    // Empty goal (goal_for_event = None): no spawn, no warn (FR-B-09).
+    if lifecycle == CycleLifecycle::Start {
+        let trimmed_goal: Option<String> = goal_for_event
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string());
+
+        if let Some(goal_text) = trimmed_goal {
+            let embed_svc = Arc::clone(embed_service);
+            let store_embed = Arc::clone(store);
+            let cycle_id_embed = feature_cycle.clone(); // feature_cycle from Step 1
+
+            let _ = tokio::spawn(async move {
+                match embed_svc.get_adapter().await {
+                    Err(e) => {
+                        // Embed service not ready — accepted degradation path (FR-B-10).
+                        // goal_embedding remains NULL. Cycle start is not blocked.
+                        tracing::warn!(
+                            error = %e,
+                            "crt-043: embed service not ready; goal_embedding skipped"
+                        );
+                    }
+                    Ok(adapter) => {
+                        match adapter.embed_entry("", &goal_text) {
+                            Err(e) => {
+                                // ONNX inference error — accepted degradation (FR-B-10).
+                                tracing::warn!(
+                                    error = %e,
+                                    "crt-043: goal embedding failed; goal_embedding skipped"
+                                );
+                            }
+                            Ok(vec) => {
+                                match unimatrix_store::encode_goal_embedding(vec) {
+                                    Err(e) => {
+                                        // bincode encode error — unreachable for valid Vec<f32>
+                                        // but propagated per FR-B-04.
+                                        tracing::warn!(
+                                            error = %e,
+                                            "crt-043: encode_goal_embedding failed"
+                                        );
+                                    }
+                                    Ok(bytes) => {
+                                        if let Err(e) = store_embed
+                                            .update_cycle_start_goal_embedding(
+                                                &cycle_id_embed,
+                                                bytes,
+                                            )
+                                            .await
+                                        {
+                                            tracing::warn!(
+                                                error = %e,
+                                                cycle_id = %cycle_id_embed,
+                                                "crt-043: update_cycle_start_goal_embedding failed"
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        // If trimmed_goal is None (absent or whitespace-only), no spawn, no warn (FR-B-09).
+    }
+    // PhaseEnd and Stop: no embedding spawn (lifecycle != Start guard above).
+
     // Keywords persistence removed (crt-025): sessions.keywords column no longer populated.
 }
 
@@ -2486,6 +2603,9 @@ struct ObservationRow {
     response_snippet: Option<String>,
     /// Hook-side topic signal for feature attribution (col-017).
     topic_signal: Option<String>,
+    /// Active session phase at observation write time (crt-043).
+    /// NULL when no active cycle or current_phase not yet set (FR-C-05).
+    phase: Option<String>,
 }
 
 /// Extract observation fields from an ImplantEvent for SQL insertion.
@@ -2576,6 +2696,7 @@ fn extract_observation_fields(event: &unimatrix_engine::wire::ImplantEvent) -> O
         response_size,
         response_snippet,
         topic_signal: event.topic_signal.clone(),
+        phase: None, // crt-043: captured at call site before spawn_blocking (FR-C-05)
     }
 }
 
@@ -2647,8 +2768,8 @@ fn insert_observation(
     tokio::runtime::Handle::current()
         .block_on(
             sqlx::query(
-                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             )
             .bind(&obs.session_id)
             .bind(obs.ts_millis)
@@ -2658,6 +2779,7 @@ fn insert_observation(
             .bind(obs.response_size)
             .bind(&obs.response_snippet)
             .bind(&obs.topic_signal)
+            .bind(&obs.phase) // crt-043: ?9
             .execute(pool),
         )
         .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
@@ -2686,8 +2808,8 @@ fn insert_observations_batch(
             .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
         for obs in batch {
             sqlx::query(
-                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input, response_size, response_snippet, topic_signal, phase)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             )
             .bind(&obs.session_id)
             .bind(obs.ts_millis)
@@ -2697,6 +2819,7 @@ fn insert_observations_batch(
             .bind(obs.response_size)
             .bind(&obs.response_snippet)
             .bind(&obs.topic_signal)
+            .bind(&obs.phase) // crt-043: ?9
             .execute(&mut *txn)
             .await
             .map_err(|e| unimatrix_store::StoreError::Database(e.to_string().into()))?;
