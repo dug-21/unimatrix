@@ -16,12 +16,13 @@ Usage:
   python run_eval.py --out /tmp/my-eval --keep
   python run_eval.py --k 5
 
-Baseline: MRR = 0.2875  (conf-boost-c, live DB, 2026-04-02, GH #487)
+Baseline: MRR = 0.2651  (conf-boost-c, 1761 scenarios, 2026-04-03, GH #501/#502)
 Exit 0   — MRR >= baseline (AC-11 pass)
 Exit 1   — MRR < baseline (AC-11 regression) or any step failed
 """
 
 import argparse
+import hashlib
 import json
 import subprocess
 import sys
@@ -41,7 +42,7 @@ SCENARIOS_DEFAULT = SCRIPT_DIR / "scenarios.jsonl"
 PROFILE_DEFAULT = REPO_ROOT / "product/research/ass-037/harness/profiles/conf-boost-c.toml"
 
 UNIMATRIX_BIN = "unimatrix"
-BASELINE_MRR = 0.2875
+BASELINE_MRR = 0.2651
 DEFAULT_K = 5
 
 
@@ -67,6 +68,72 @@ def run_step(label: str, cmd: list[str]) -> None:
         print(f"  ERROR: command exited {result.returncode} after {elapsed:.1f}s")
         sys.exit(1)
     print(f"  done ({elapsed:.1f}s)", flush=True)
+
+
+def _sha256_file(path: Path) -> str:
+    """Compute SHA-256 of a file via streaming read."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def check_snapshot_pairing(
+    scenarios_path: Path,
+    snap_path: Path,
+    allow_mismatch: bool,
+) -> None:
+    """
+    Compare the snapshot hash against scenarios_meta.json.
+    Missing sidecar: WARNING only (backward compat).
+    Hash mismatch + allow_mismatch: WARNING.
+    Hash mismatch (no flag): ERROR + exit(1).
+    """
+    sidecar = scenarios_path.parent / "scenarios_meta.json"
+    if not sidecar.exists():
+        print(
+            f"  WARNING: scenarios_meta.json not found alongside {scenarios_path.name}"
+            " — cannot verify snapshot pairing (backward compat mode)",
+            flush=True,
+        )
+        return
+
+    try:
+        meta = json.loads(sidecar.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        print(f"  WARNING: could not read scenarios_meta.json: {exc}", flush=True)
+        return
+
+    expected_hash = meta.get("source_db_hash", "")
+    generated_at = meta.get("generated_at", "unknown")
+    current_hash = _sha256_file(snap_path)
+
+    if current_hash == expected_hash:
+        return  # Normal path — silent
+
+    msg_prefix = "WARNING" if allow_mismatch else "ERROR"
+    print(
+        f"\n{msg_prefix}: Snapshot hash mismatch — eval results would be invalid.\n"
+        f"  scenarios generated from: {expected_hash[:12]}... on {generated_at}\n"
+        f"  current snapshot:         {current_hash[:12]}...",
+        flush=True,
+    )
+
+    if not allow_mismatch:
+        print(
+            "\nThese scenarios were generated from a different DB state than the current\n"
+            "snapshot. MRR measured across different DB states reflects KB drift, not\n"
+            "retrieval quality. Re-generate scenarios.jsonl from the same snapshot:\n"
+            "\n"
+            "  unimatrix snapshot --out /tmp/eval/snap.db\n"
+            "  python product/research/ass-039/build_scenarios.py  (pointing at snap.db)\n"
+            "  python product/research/ass-039/harness/run_eval.py --scenarios ... --profile ...\n"
+            "\n"
+            "To override (measure drift intentionally): --allow-snapshot-mismatch",
+            flush=True,
+        )
+        sys.exit(1)
 
 
 def aggregate(results_dir: Path, profile: str) -> tuple[float, float, int]:
@@ -111,7 +178,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Behavioral eval runner: MRR/P@k against current knowledge base",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog=f"Baseline: MRR = {BASELINE_MRR} (conf-boost-c, live DB, 2026-04-02)",
+        epilog=f"Baseline: MRR = {BASELINE_MRR} (conf-boost-c, 1761 scenarios, 2026-04-03)",
     )
     parser.add_argument(
         "--scenarios",
@@ -144,6 +211,11 @@ def main() -> None:
         "--keep",
         action="store_true",
         help="Keep snapshot file alongside --out directory",
+    )
+    parser.add_argument(
+        "--allow-snapshot-mismatch",
+        action="store_true",
+        help="Allow eval to run even when snapshot hash differs from scenarios_meta.json",
     )
     args = parser.parse_args()
 
@@ -182,6 +254,9 @@ def main() -> None:
 
         # Step 1: Snapshot
         run_step("1/3 snapshot", [UNIMATRIX_BIN, "snapshot", "--out", str(snap_path)])
+
+        # Snapshot pairing check — validates scenarios were generated from same DB state
+        check_snapshot_pairing(args.scenarios, snap_path, args.allow_snapshot_mismatch)
 
         # Step 2: Eval run
         run_step(
