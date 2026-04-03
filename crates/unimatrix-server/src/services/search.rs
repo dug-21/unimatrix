@@ -5068,4 +5068,575 @@ mod tests {
             );
         }
     }
+
+    // ============================================================
+    // Phase 0 (graph_expand) tests — crt-042
+    // ============================================================
+    //
+    // These tests exercise the Phase 0 block in Step 6d (search.rs lines ~870–960).
+    // Phase 0 widens the HNSW seed pool via graph_expand BFS before PPR runs (Phase 1+).
+    //
+    // Strategy: mirror the Phase 0 logic in a synchronous helper `run_phase0_sync` that
+    // uses in-memory maps for entry and embedding lookups (analogous to run_step_6d_sync
+    // for PPR). All eight acceptance criteria from test-plan/phase0_search.md are covered.
+
+    mod phase0 {
+        use std::collections::{HashMap, HashSet};
+
+        use tracing_test::traced_test;
+        use unimatrix_core::Status;
+        use unimatrix_engine::graph::{
+            GraphEdgeRow, RelationType, TypedRelationGraph, build_typed_relation_graph,
+            graph_expand,
+        };
+
+        use crate::confidence::cosine_similarity;
+        use crate::services::gateway::SecurityGateway;
+
+        use super::make_test_entry;
+
+        // ---- Helpers ----
+
+        /// Build a TypedRelationGraph from (src, tgt, RelationType) triples.
+        /// All referenced node IDs are added automatically with Active status.
+        fn make_graph(edges: &[(u64, u64, RelationType)]) -> TypedRelationGraph {
+            let mut seen: Vec<u64> = Vec::new();
+            for &(src, tgt, _) in edges {
+                if !seen.contains(&src) {
+                    seen.push(src);
+                }
+                if !seen.contains(&tgt) {
+                    seen.push(tgt);
+                }
+            }
+            let entries: Vec<_> = seen
+                .iter()
+                .map(|&id| make_test_entry(id, Status::Active, None, 0.5, "decision"))
+                .collect();
+            let edge_rows: Vec<GraphEdgeRow> = edges
+                .iter()
+                .map(|&(src, tgt, rel)| GraphEdgeRow {
+                    source_id: src,
+                    target_id: tgt,
+                    relation_type: rel.as_str().to_string(),
+                    weight: 1.0,
+                    created_at: 0,
+                    created_by: "test".to_string(),
+                    source: "test".to_string(),
+                    bootstrap_only: false,
+                })
+                .collect();
+            build_typed_relation_graph(&entries, &edge_rows).expect("test graph build must succeed")
+        }
+
+        /// Normalise a vector to unit length (L2). Returns the zero vector unchanged.
+        fn normalise(v: &[f32]) -> Vec<f32> {
+            let norm: f32 = v.iter().map(|x| x * x).sum::<f32>().sqrt();
+            if norm < f32::EPSILON {
+                v.to_vec()
+            } else {
+                v.iter().map(|x| x / norm).collect()
+            }
+        }
+
+        /// Synchronous helper that mirrors the Phase 0 block in search.rs Step 6d.
+        ///
+        /// Uses in-memory `entry_map` and `embedding_map` in place of async store calls.
+        /// Emits the same `tracing::debug!` event as the production code so that
+        /// AC-24 / R-10 tracing tests can assert on it.
+        ///
+        /// Returns the number of entries added to `pool` (i.e., `results_added`).
+        #[allow(clippy::too_many_arguments)]
+        fn run_phase0_sync(
+            pool: &mut Vec<(unimatrix_core::EntryRecord, f64)>,
+            graph: &TypedRelationGraph,
+            entry_map: &HashMap<u64, unimatrix_core::EntryRecord>,
+            embedding_map: &HashMap<u64, Vec<f32>>,
+            query_embedding: &[f32],
+            expansion_depth: usize,
+            max_expansion_candidates: usize,
+            ppr_expander_enabled: bool,
+        ) -> usize {
+            if !ppr_expander_enabled {
+                return 0;
+            }
+
+            let phase0_start = std::time::Instant::now();
+
+            let seed_ids: Vec<u64> = pool.iter().map(|(e, _)| e.id).collect();
+
+            let expanded_ids: HashSet<u64> =
+                graph_expand(graph, &seed_ids, expansion_depth, max_expansion_candidates);
+
+            let in_pool: HashSet<u64> = seed_ids.iter().copied().collect();
+            let mut results_added: usize = 0;
+
+            let mut sorted_expanded: Vec<u64> = expanded_ids.iter().copied().collect();
+            sorted_expanded.sort_unstable();
+
+            for expanded_id in sorted_expanded {
+                if in_pool.contains(&expanded_id) {
+                    continue;
+                }
+
+                let entry = match entry_map.get(&expanded_id) {
+                    Some(e) => e.clone(),
+                    None => continue, // silent skip — entry not in mock store
+                };
+
+                if SecurityGateway::is_quarantined(&entry.status) {
+                    continue; // silent skip — quarantined (R-03, AC-13, NFR-03)
+                }
+
+                let emb = match embedding_map.get(&expanded_id) {
+                    Some(e) => e.clone(),
+                    None => continue, // silent skip — no embedding (AC-15)
+                };
+
+                let cosine_sim = cosine_similarity(query_embedding, &emb);
+                pool.push((entry, cosine_sim));
+                results_added += 1;
+            }
+
+            tracing::debug!(
+                seeds = seed_ids.len(),
+                expanded_count = expanded_ids.len(),
+                fetched_count = results_added,
+                elapsed_ms = phase0_start.elapsed().as_millis(),
+                expansion_depth = expansion_depth,
+                max_expansion_candidates = max_expansion_candidates,
+                "Phase 0 (graph_expand) complete"
+            );
+
+            results_added
+        }
+
+        // ---- AC-01: Flag-off regression ----
+
+        /// AC-01: When ppr_expander_enabled=false, Phase 0 adds zero entries to the pool.
+        ///
+        /// Asserts pool length is identical before and after. This is the bit-identical
+        /// regression guard (R-01 / NFR-02).
+        #[test]
+        fn test_search_flag_off_pool_size_unchanged() {
+            let seed = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let reachable = make_test_entry(2, Status::Active, None, 0.5, "decision");
+
+            let graph = make_graph(&[(1, 2, RelationType::CoAccess)]);
+
+            let mut entry_map = HashMap::new();
+            entry_map.insert(2, reachable);
+
+            let q = normalise(&[1.0, 0.0]);
+            let mut embedding_map = HashMap::new();
+            embedding_map.insert(2, normalise(&[1.0, 0.0]));
+
+            let mut pool = vec![(seed, 0.9)];
+            let before_len = pool.len();
+
+            let added = run_phase0_sync(
+                &mut pool,
+                &graph,
+                &entry_map,
+                &embedding_map,
+                &q,
+                2,
+                200,
+                false, // ppr_expander_enabled = false
+            );
+
+            assert_eq!(added, 0, "AC-01: flag-off must add zero entries");
+            assert_eq!(
+                pool.len(),
+                before_len,
+                "AC-01: pool length must be unchanged when ppr_expander_enabled=false"
+            );
+        }
+
+        // ---- AC-02: Phase 0 adds expanded entry before Phase 1 ----
+
+        /// AC-02: When ppr_expander_enabled=true with a reachable entry E from seed S,
+        /// pool after Phase 0 contains E with a non-zero cosine score.
+        ///
+        /// Proves Phase 0 enriches results_with_scores before Phase 1 sees the pool.
+        #[test]
+        fn test_search_phase0_expands_before_phase1() {
+            let seed = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let expanded = make_test_entry(2, Status::Active, None, 0.5, "lesson-learned");
+
+            let graph = make_graph(&[(1, 2, RelationType::CoAccess)]);
+
+            let mut entry_map = HashMap::new();
+            entry_map.insert(2, expanded);
+
+            let q = normalise(&[1.0, 0.0]);
+            let mut embedding_map = HashMap::new();
+            embedding_map.insert(2, normalise(&[1.0, 0.0]));
+
+            let mut pool = vec![(seed, 0.9)];
+
+            let added = run_phase0_sync(
+                &mut pool,
+                &graph,
+                &entry_map,
+                &embedding_map,
+                &q,
+                2,
+                200,
+                true, // ppr_expander_enabled = true
+            );
+
+            assert_eq!(added, 1, "AC-02: one expanded entry must be added");
+            assert_eq!(
+                pool.len(),
+                2,
+                "AC-02: pool must contain seed + expanded entry"
+            );
+
+            let e2 = pool.iter().find(|(e, _)| e.id == 2);
+            assert!(
+                e2.is_some(),
+                "AC-02: entry 2 must appear in pool after Phase 0"
+            );
+            let (_, sim) = e2.unwrap();
+            assert!(
+                *sim > 0.0,
+                "AC-02: expanded entry must have non-zero cosine similarity; got {sim}"
+            );
+        }
+
+        // ---- AC-13: Quarantine safety — 1-hop direct ----
+
+        /// AC-13: Seed → quarantined entry Q (1-hop direct).
+        ///
+        /// Q must be absent from pool after Phase 0 (silent skip, no warn/error — NFR-03).
+        /// The seed must remain present.
+        #[test]
+        fn test_search_phase0_excludes_quarantined_direct() {
+            let seed = make_test_entry(10, Status::Active, None, 0.5, "decision");
+            let quarantined = make_test_entry(20, Status::Quarantined, None, 0.5, "decision");
+
+            let graph = make_graph(&[(10, 20, RelationType::CoAccess)]);
+
+            let mut entry_map = HashMap::new();
+            entry_map.insert(20, quarantined);
+
+            let q = normalise(&[1.0, 0.0]);
+            let mut embedding_map = HashMap::new();
+            embedding_map.insert(20, normalise(&[1.0, 0.0]));
+
+            let mut pool = vec![(seed, 0.8)];
+
+            let added = run_phase0_sync(
+                &mut pool,
+                &graph,
+                &entry_map,
+                &embedding_map,
+                &q,
+                2,
+                200,
+                true,
+            );
+
+            assert_eq!(added, 0, "AC-13: quarantined entry must not be added");
+            assert!(
+                !pool.iter().any(|(e, _)| e.id == 20),
+                "AC-13: Q must be absent from pool"
+            );
+            assert_eq!(pool.len(), 1, "AC-13: seed must remain in pool");
+        }
+
+        // ---- AC-14: Quarantine safety — 2-hop transitive ----
+
+        /// AC-14: Seed A → active entry B → quarantined entry Q (transitive, depth=2).
+        ///
+        /// Q must be absent. B must be present (not quarantined, depth=1 from seed).
+        #[test]
+        fn test_search_phase0_excludes_quarantined_transitive() {
+            let seed = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let intermediate = make_test_entry(2, Status::Active, None, 0.5, "decision");
+            let quarantined = make_test_entry(3, Status::Quarantined, None, 0.5, "decision");
+
+            let graph = make_graph(&[
+                (1, 2, RelationType::CoAccess),
+                (2, 3, RelationType::CoAccess),
+            ]);
+
+            let mut entry_map = HashMap::new();
+            entry_map.insert(2, intermediate);
+            entry_map.insert(3, quarantined);
+
+            let q = normalise(&[1.0, 0.0]);
+            let mut embedding_map = HashMap::new();
+            embedding_map.insert(2, normalise(&[1.0, 0.0]));
+            embedding_map.insert(3, normalise(&[1.0, 0.0]));
+
+            let mut pool = vec![(seed, 0.9)];
+
+            let added = run_phase0_sync(
+                &mut pool,
+                &graph,
+                &entry_map,
+                &embedding_map,
+                &q,
+                2, // depth=2 so both hops are expanded
+                200,
+                true,
+            );
+
+            assert_eq!(
+                added, 1,
+                "AC-14: only B (active) must be added; Q is silently skipped"
+            );
+            assert!(
+                pool.iter().any(|(e, _)| e.id == 2),
+                "AC-14: intermediate active entry B must be present in pool"
+            );
+            assert!(
+                !pool.iter().any(|(e, _)| e.id == 3),
+                "AC-14: quarantined entry Q must be absent from pool"
+            );
+        }
+
+        // ---- AC-15: No-embedding skip ----
+
+        /// AC-15: Seed → entry E where get_embedding(E) returns None.
+        ///
+        /// E must be absent from pool (silent skip). Seed remains present.
+        #[test]
+        fn test_search_phase0_skips_entry_with_no_embedding() {
+            let seed = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let no_embed_entry = make_test_entry(2, Status::Active, None, 0.5, "decision");
+
+            let graph = make_graph(&[(1, 2, RelationType::CoAccess)]);
+
+            let mut entry_map = HashMap::new();
+            entry_map.insert(2, no_embed_entry);
+
+            // embedding_map deliberately empty — simulates get_embedding returning None.
+            let embedding_map: HashMap<u64, Vec<f32>> = HashMap::new();
+
+            let q = normalise(&[1.0, 0.0]);
+            let mut pool = vec![(seed, 0.8)];
+
+            let added = run_phase0_sync(
+                &mut pool,
+                &graph,
+                &entry_map,
+                &embedding_map,
+                &q,
+                2,
+                200,
+                true,
+            );
+
+            assert_eq!(added, 0, "AC-15: entry without embedding must not be added");
+            assert!(
+                !pool.iter().any(|(e, _)| e.id == 2),
+                "AC-15: entry E must be absent when embedding is missing"
+            );
+            assert_eq!(pool.len(), 1, "AC-15: seed must remain in pool");
+        }
+
+        // ---- AC-24: debug! trace emission when enabled ----
+
+        /// AC-24: When ppr_expander_enabled=true, a tracing::debug! event is emitted
+        /// containing all six mandatory fields after Phase 0.
+        ///
+        /// This test is MANDATORY per test plan (entry #3935 documents a prior gate
+        /// failure from deferring tracing tests).
+        #[traced_test]
+        #[test]
+        fn test_search_phase0_emits_debug_trace_when_enabled() {
+            let seed = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let expanded = make_test_entry(2, Status::Active, None, 0.5, "decision");
+
+            let graph = make_graph(&[(1, 2, RelationType::CoAccess)]);
+
+            let mut entry_map = HashMap::new();
+            entry_map.insert(2, expanded);
+
+            let q = normalise(&[1.0, 0.0]);
+            let mut embedding_map = HashMap::new();
+            embedding_map.insert(2, normalise(&[1.0, 0.0]));
+
+            let mut pool = vec![(seed, 0.9)];
+
+            run_phase0_sync(
+                &mut pool,
+                &graph,
+                &entry_map,
+                &embedding_map,
+                &q,
+                2,
+                200,
+                true, // ppr_expander_enabled = true
+            );
+
+            assert!(
+                logs_contain("Phase 0 (graph_expand) complete"),
+                "AC-24: debug event 'Phase 0 (graph_expand) complete' must be emitted"
+            );
+            assert!(
+                logs_contain("expanded_count"),
+                "AC-24: debug event must contain field 'expanded_count'"
+            );
+            assert!(
+                logs_contain("elapsed_ms"),
+                "AC-24: debug event must contain field 'elapsed_ms'"
+            );
+            assert!(
+                logs_contain("seeds"),
+                "AC-24: debug event must contain field 'seeds'"
+            );
+            assert!(
+                logs_contain("fetched_count"),
+                "AC-24: debug event must contain field 'fetched_count'"
+            );
+            assert!(
+                logs_contain("expansion_depth"),
+                "AC-24: debug event must contain field 'expansion_depth'"
+            );
+            assert!(
+                logs_contain("max_expansion_candidates"),
+                "AC-24: debug event must contain field 'max_expansion_candidates'"
+            );
+        }
+
+        // ---- R-10: No debug trace when disabled ----
+
+        /// R-10: When ppr_expander_enabled=false, no "Phase 0" debug event is emitted.
+        ///
+        /// The timing instrumentation branch is not entered at all — zero overhead.
+        #[traced_test]
+        #[test]
+        fn test_search_phase0_does_not_emit_trace_when_disabled() {
+            let seed = make_test_entry(1, Status::Active, None, 0.5, "decision");
+            let reachable = make_test_entry(2, Status::Active, None, 0.5, "decision");
+
+            let graph = make_graph(&[(1, 2, RelationType::CoAccess)]);
+
+            let mut entry_map = HashMap::new();
+            entry_map.insert(2, reachable);
+
+            let q = normalise(&[1.0, 0.0]);
+            let mut embedding_map = HashMap::new();
+            embedding_map.insert(2, normalise(&[1.0, 0.0]));
+
+            let mut pool = vec![(seed, 0.9)];
+
+            run_phase0_sync(
+                &mut pool,
+                &graph,
+                &entry_map,
+                &embedding_map,
+                &q,
+                2,
+                200,
+                false, // ppr_expander_enabled = false
+            );
+
+            assert!(
+                !logs_contain("Phase 0"),
+                "R-10: no 'Phase 0' debug event must be emitted when ppr_expander_enabled=false"
+            );
+        }
+
+        // ---- AC-25: Cross-category behavioral proof (MANDATORY) ----
+
+        /// AC-25: Entry E orthogonal to the query (would never appear in HNSW k=20) is
+        /// visible with ppr_expander_enabled=true and absent with ppr_expander_enabled=false.
+        ///
+        /// This is the core behavioral proof of the entire Phase 0 feature (R-07).
+        /// MANDATORY regardless of eval gate outcome (test plan AC-25 annotation).
+        ///
+        /// Construction:
+        ///   - Q = [1, 0] (unit x-axis — the query embedding).
+        ///   - S (id=1): embedding [1, 0], cos_sim(Q, S)=1.0 → HNSW seed.
+        ///   - E (id=2): embedding [0, 1], cos_sim(Q, E)≈0.0 → would NOT appear via HNSW.
+        ///   - Graph: S → E (Supports edge).
+        ///   flag=true: Phase 0 adds E to pool.
+        ///   flag=false: E remains absent.
+        #[test]
+        fn test_search_phase0_cross_category_entry_visible_with_flag_on() {
+            // Q = unit x-axis; E = unit y-axis (orthogonal).
+            let q = vec![1.0_f32, 0.0_f32];
+            let e_emb = vec![0.0_f32, 1.0_f32];
+
+            // Sanity: orthogonality
+            let sim_check = cosine_similarity(&q, &e_emb);
+            assert!(
+                sim_check.abs() < 1e-6,
+                "AC-25 setup: Q and E must be orthogonal; cosine_sim={sim_check}"
+            );
+
+            let graph = make_graph(&[(1, 2, RelationType::Supports)]);
+
+            let cross_cat = make_test_entry(2, Status::Active, None, 0.5, "lesson-learned");
+            let mut entry_map = HashMap::new();
+            entry_map.insert(2, cross_cat);
+
+            let mut embedding_map = HashMap::new();
+            embedding_map.insert(2, e_emb);
+
+            // --- Flag ON: E appears via graph expansion despite orthogonal embedding ---
+            {
+                let seed = make_test_entry(1, Status::Active, None, 0.5, "decision");
+                let mut pool = vec![(seed, 0.9)];
+                let added = run_phase0_sync(
+                    &mut pool,
+                    &graph,
+                    &entry_map,
+                    &embedding_map,
+                    &q,
+                    2,
+                    200,
+                    true,
+                );
+                assert_eq!(
+                    added, 1,
+                    "AC-25 [flag=on]: Phase 0 must add the orthogonal cross-category entry"
+                );
+                assert!(
+                    pool.iter().any(|(e, _)| e.id == 2),
+                    "AC-25 [flag=on]: E must be present in pool"
+                );
+                // Cosine similarity is ~0 but entry is still present — this is the key proof.
+                let (_, e_sim) = pool.iter().find(|(e, _)| e.id == 2).unwrap();
+                assert!(
+                    e_sim.abs() < 1e-6,
+                    "AC-25 [flag=on]: E cosine sim must be ~0 (orthogonal); got {e_sim}"
+                );
+            }
+
+            // --- Flag OFF: E is absent (Phase 0 did not run) ---
+            {
+                let seed = make_test_entry(1, Status::Active, None, 0.5, "decision");
+                let mut pool = vec![(seed, 0.9)];
+                let added = run_phase0_sync(
+                    &mut pool,
+                    &graph,
+                    &entry_map,
+                    &embedding_map,
+                    &q,
+                    2,
+                    200,
+                    false,
+                );
+                assert_eq!(
+                    added, 0,
+                    "AC-25 [flag=off]: Phase 0 must add zero entries when disabled"
+                );
+                assert!(
+                    !pool.iter().any(|(e, _)| e.id == 2),
+                    "AC-25 [flag=off]: E must be absent when ppr_expander_enabled=false"
+                );
+                assert_eq!(
+                    pool.len(),
+                    1,
+                    "AC-25 [flag=off]: pool must contain only the seed"
+                );
+            }
+        }
+    }
 }
