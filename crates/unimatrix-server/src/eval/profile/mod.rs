@@ -16,6 +16,8 @@ pub(crate) mod types;
 pub(crate) mod validation;
 
 #[cfg(test)]
+mod layer_graph_tests;
+#[cfg(test)]
 mod layer_tests;
 #[cfg(test)]
 mod tests;
