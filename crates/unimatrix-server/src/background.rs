@@ -663,6 +663,8 @@ async fn run_single_tick(
     // compaction → promotion → graph-rebuild
     //   → contradiction_scan (if embed adapter ready, every CONTRADICTION_SCAN_INTERVAL_TICKS)
     //   → extraction_tick → structural_graph_tick (always)
+    //   → graph_enrichment_tick: S1 (always) → S2 (always, no-op if vocabulary empty)
+    //                            → S8 (every s8_batch_interval_ticks)
     //
     // Do not reorder these steps. The contradiction scan runs BEFORE graph inference so that
     // the contradiction_cache reflects the current entry set before Informs edges accumulate.
