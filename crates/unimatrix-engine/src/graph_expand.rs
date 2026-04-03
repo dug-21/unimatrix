@@ -65,6 +65,8 @@ use crate::graph::{RelationType, TypedRelationGraph};
 /// - Early exit when `max_candidates` reached: entries already in queue are discarded.
 /// - `can_expand_further`: a node at `current_depth == depth` is added to result but
 ///   does NOT enqueue its neighbors, enforcing the depth limit.
+// SECURITY: caller MUST apply SecurityGateway::is_quarantined() before inserting
+// returned IDs into result sets. graph_expand performs NO quarantine filtering.
 pub fn graph_expand(
     graph: &TypedRelationGraph,
     seed_ids: &[u64],
