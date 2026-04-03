@@ -46,6 +46,7 @@ use crate::services::contradiction_cache::{
     CONTRADICTION_SCAN_INTERVAL_TICKS, ContradictionScanCacheHandle, ContradictionScanResult,
 };
 use crate::services::effectiveness::EffectivenessStateHandle;
+use crate::services::graph_enrichment_tick::run_graph_enrichment_tick;
 use crate::services::nli_detection_tick::run_graph_inference_tick;
 use crate::services::phase_freq_table::{PhaseFreqTable, PhaseFreqTableHandle};
 use crate::services::status::{MaintenanceDataSnapshot, StatusService};
@@ -778,6 +779,13 @@ async fn run_single_tick(
         inference_config,
     )
     .await;
+
+    // --- Graph enrichment tick (always, crt-041) ---
+    // S1 (tag co-occurrence) and S2 (vocabulary) run unconditionally.
+    // S8 (search co-retrieval) is internally gated by tick % s8_batch_interval_ticks == 0.
+    // New edges are visible to PPR at the NEXT tick's TypedGraphState::rebuild (one-tick delay,
+    // same as co_access_promotion_tick — SR-09).
+    run_graph_enrichment_tick(store, inference_config, current_tick).await;
 
     // Update next scheduled time
     if let Ok(mut meta) = tick_metadata.lock() {

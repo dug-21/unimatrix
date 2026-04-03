@@ -28,6 +28,7 @@ pub(crate) mod confidence;
 pub(crate) mod contradiction_cache;
 pub(crate) mod effectiveness;
 pub(crate) mod gateway;
+pub(crate) mod graph_enrichment_tick;
 pub(crate) mod index_briefing;
 pub(crate) mod nli_detection;
 pub(crate) mod nli_detection_tick;
