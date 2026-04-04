@@ -18,6 +18,7 @@ mod write_ext;
 
 mod audit;
 pub mod cycle_review_index;
+pub mod goal_clusters;
 pub mod injection_log;
 pub mod observations;
 pub mod query_log;
@@ -32,6 +33,8 @@ pub mod test_helpers;
 
 // Re-exports: embedding blob serialization helpers (ADR-001, crt-043)
 pub use embedding::{decode_goal_embedding, encode_goal_embedding};
+// Re-exports: goal_clusters struct (crt-046)
+pub use goal_clusters::GoalClusterRow;
 
 // Re-exports: schema types (backend-agnostic)
 pub use error::{PoolKind, Result, StoreError};

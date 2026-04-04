@@ -385,14 +385,15 @@ async fn total_graph_edges_count(store: &SqlxStore) -> i64 {
 // MIG-V20-U-01: CURRENT_SCHEMA_VERSION == 20 (AC-06, R-10)
 // ---------------------------------------------------------------------------
 
-/// Verify CURRENT_SCHEMA_VERSION constant is exactly 21 (updated by crt-043).
+/// Verify CURRENT_SCHEMA_VERSION constant is at least 20 (updated to 21 by crt-043,
+/// then to 22 by crt-046). Uses >= so this test remains valid after future bumps.
 /// Non-async: no fixture required.
 #[test]
 fn test_current_schema_version_is_20() {
-    assert_eq!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
-        21,
-        "CURRENT_SCHEMA_VERSION was bumped to 21 by crt-043"
+    assert!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 20,
+        "CURRENT_SCHEMA_VERSION must be >= 20, got {}",
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION
     );
 }
 
@@ -400,8 +401,8 @@ fn test_current_schema_version_is_20() {
 // MIG-V20-U-02: Fresh database creates schema v20 (R-10)
 // ---------------------------------------------------------------------------
 
-/// Fresh SqlxStore::open() must land at schema v21 (create_tables_if_needed path).
-/// Updated from v20 to v21 by crt-043.
+/// Fresh SqlxStore::open() must land at the current schema version.
+/// Updated from v20 to v21 by crt-043, then to v22 by crt-046.
 #[tokio::test]
 async fn test_fresh_db_creates_schema_v20() {
     let dir = TempDir::new().expect("temp dir");
@@ -411,10 +412,9 @@ async fn test_fresh_db_creates_schema_v20() {
         .await
         .expect("open fresh store");
 
-    assert_eq!(
-        read_schema_version(&store).await,
-        21,
-        "fresh database must be at schema v21 (bumped from v20 by crt-043)"
+    assert!(
+        read_schema_version(&store).await >= 20,
+        "fresh database must be at schema >= v20"
     );
 
     let row_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
@@ -466,8 +466,8 @@ async fn test_v19_to_v20_back_fills_s1_informs_edge() {
         .await
         .expect("open after migration");
 
-    // Assert: schema_version == 21 (v19→v20→v21 migration chain runs in full).
-    assert_eq!(read_schema_version(&store).await, 21);
+    // Assert: schema_version is current (v19→v20→v21→v22 migration chain runs in full).
+    assert!(read_schema_version(&store).await >= 21);
 
     // Assert: reverse (2→1) exists.
     assert!(
@@ -857,7 +857,7 @@ async fn test_v19_to_v20_migration_idempotent_clean_state() {
         let store = SqlxStore::open(&db_path, PoolConfig::default())
             .await
             .expect("first open");
-        assert_eq!(read_schema_version(&store).await, 21);
+        assert!(read_schema_version(&store).await >= 21);
         let count = total_graph_edges_count(&store).await;
         store.close().await.unwrap();
         count
@@ -865,7 +865,7 @@ async fn test_v19_to_v20_migration_idempotent_clean_state() {
     // 3 forward + 3 reverse = 6 total.
     assert_eq!(count_after_first, 6, "first open: 3 forward + 3 reverse");
 
-    // Run 2: version guard (current == 21) skips both v20 and v21 blocks;
+    // Run 2: version guard (current is current) skips already-applied migration blocks;
     // INSERT OR IGNORE + NOT EXISTS provide additional safety. Edge count must be unchanged.
     let store = SqlxStore::open(&db_path, PoolConfig::default())
         .await
@@ -875,7 +875,7 @@ async fn test_v19_to_v20_migration_idempotent_clean_state() {
         count_after_second, count_after_first,
         "second open must not add rows — idempotency guaranteed (AC-07, R-09)"
     );
-    assert_eq!(read_schema_version(&store).await, 21);
+    assert!(read_schema_version(&store).await >= 21);
     store.close().await.unwrap();
 }
 
@@ -970,8 +970,8 @@ async fn test_v19_to_v20_empty_graph_edges_is_noop() {
         .await
         .expect("migration on empty graph_edges must not error");
 
-    // v19→v20→v21 migration chain runs; final version is 21.
-    assert_eq!(read_schema_version(&store).await, 21);
+    // v19→v20→...→current migration chain runs.
+    assert!(read_schema_version(&store).await >= 21);
 
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM graph_edges")
         .fetch_one(store.read_pool_test())

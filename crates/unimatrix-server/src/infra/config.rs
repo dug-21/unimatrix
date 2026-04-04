@@ -646,6 +646,33 @@ pub struct InferenceConfig {
     /// Default: 200. Valid range: [1, 1000] inclusive.
     #[serde(default = "default_max_expansion_candidates")]
     pub max_expansion_candidates: usize,
+
+    // -----------------------------------------------------------------------
+    // Goal-conditioned briefing blending fields (crt-046)
+    // -----------------------------------------------------------------------
+    /// Cosine similarity threshold for goal_clusters matching at briefing time.
+    ///
+    /// Rows with cosine similarity >= this threshold are considered matching clusters.
+    /// Passed to `query_goal_clusters_by_embedding` at call time — NOT a constant.
+    /// Default: 0.80. Range: (0.0, 1.0].
+    #[serde(default = "default_goal_cluster_similarity_threshold")]
+    pub goal_cluster_similarity_threshold: f32,
+
+    /// Weight applied to `EntryRecord.confidence` (Wilson-score composite) in the cluster_score
+    /// formula: `cluster_score = (EntryRecord.confidence × w_goal_cluster_conf) + (goal_cosine × w_goal_boost)`.
+    ///
+    /// NAMING COLLISION: `EntryRecord.confidence` (Wilson-score, from `store.get_by_ids()`)
+    /// is NOT the same as `IndexEntry.confidence` (raw HNSW cosine, from `briefing.index()`).
+    /// This weight applies to the Wilson-score value only (ADR-005, crt-046).
+    ///
+    /// Default: 0.35.
+    #[serde(default = "default_w_goal_cluster_conf")]
+    pub w_goal_cluster_conf: f32,
+
+    /// Weight applied to goal cosine similarity (`GoalClusterRow.similarity`) in the cluster_score
+    /// formula. Default: 0.25.
+    #[serde(default = "default_w_goal_boost")]
+    pub w_goal_boost: f32,
 }
 
 impl Default for InferenceConfig {
@@ -713,6 +740,10 @@ impl Default for InferenceConfig {
             ppr_expander_enabled: default_ppr_expander_enabled(),
             expansion_depth: default_expansion_depth(),
             max_expansion_candidates: default_max_expansion_candidates(),
+            // crt-046: goal-conditioned briefing blending fields
+            goal_cluster_similarity_threshold: default_goal_cluster_similarity_threshold(),
+            w_goal_cluster_conf: default_w_goal_cluster_conf(),
+            w_goal_boost: default_w_goal_boost(),
         }
     }
 }
@@ -832,6 +863,22 @@ fn default_expansion_depth() -> usize {
 
 fn default_max_expansion_candidates() -> usize {
     200
+}
+
+// ---------------------------------------------------------------------------
+// Goal-conditioned briefing blending default value functions (crt-046)
+// ---------------------------------------------------------------------------
+
+fn default_goal_cluster_similarity_threshold() -> f32 {
+    0.80
+}
+
+fn default_w_goal_cluster_conf() -> f32 {
+    0.35
+}
+
+fn default_w_goal_boost() -> f32 {
+    0.25
 }
 
 // ---------------------------------------------------------------------------
@@ -2678,6 +2725,34 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
                 project.inference.max_expansion_candidates
             } else {
                 global.inference.max_expansion_candidates
+            },
+            // crt-046: goal-conditioned briefing blending fields
+            goal_cluster_similarity_threshold: if (project
+                .inference
+                .goal_cluster_similarity_threshold
+                - default.inference.goal_cluster_similarity_threshold)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.goal_cluster_similarity_threshold
+            } else {
+                global.inference.goal_cluster_similarity_threshold
+            },
+            w_goal_cluster_conf: if (project.inference.w_goal_cluster_conf
+                - default.inference.w_goal_cluster_conf)
+                .abs()
+                > f32::EPSILON
+            {
+                project.inference.w_goal_cluster_conf
+            } else {
+                global.inference.w_goal_cluster_conf
+            },
+            w_goal_boost: if (project.inference.w_goal_boost - default.inference.w_goal_boost).abs()
+                > f32::EPSILON
+            {
+                project.inference.w_goal_boost
+            } else {
+                global.inference.w_goal_boost
             },
         },
         // crt-036: per-field project-wins merge for retention config
