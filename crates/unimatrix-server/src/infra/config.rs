@@ -1374,6 +1374,42 @@ impl InferenceConfig {
             });
         }
 
+        // -- crt-046: goal_cluster_similarity_threshold range check (0.0, 1.0] --
+        // Upper bound is INCLUSIVE (1.0 is valid — exact cosine match is a legitimate case).
+        // !v.is_finite() must prefix the comparison: NaN satisfies neither <= 0.0 nor > 1.0
+        // so without this guard NaN would pass validation silently.
+        let v = self.goal_cluster_similarity_threshold;
+        if !v.is_finite() || v <= 0.0 || v > 1.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "goal_cluster_similarity_threshold",
+                value: v.to_string(),
+                reason: "must be in (0.0, 1.0]",
+            });
+        }
+
+        // -- crt-046: w_goal_cluster_conf range check — finite, non-negative (no upper bound) --
+        let v = self.w_goal_cluster_conf;
+        if !v.is_finite() || v < 0.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "w_goal_cluster_conf",
+                value: v.to_string(),
+                reason: "must be finite and non-negative",
+            });
+        }
+
+        // -- crt-046: w_goal_boost range check — finite, non-negative (no upper bound) --
+        let v = self.w_goal_boost;
+        if !v.is_finite() || v < 0.0 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "w_goal_boost",
+                value: v.to_string(),
+                reason: "must be finite and non-negative",
+            });
+        }
+
         Ok(())
     }
 }
@@ -7959,6 +7995,139 @@ nli_informs_ppr_weight = 0.4
         assert_eq!(
             cfg.max_expansion_candidates, 100,
             "explicit max_expansion_candidates"
+        );
+    }
+
+    // -- crt-046: goal_cluster_similarity_threshold validation (range (0.0, 1.0]) --
+
+    #[test]
+    fn test_validate_goal_cluster_similarity_threshold_nan_fails() {
+        let c = InferenceConfig {
+            goal_cluster_similarity_threshold: f32::NAN,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "goal_cluster_similarity_threshold");
+    }
+
+    #[test]
+    fn test_validate_goal_cluster_similarity_threshold_zero_fails() {
+        // 0.0 is excluded (exclusive lower bound)
+        let c = InferenceConfig {
+            goal_cluster_similarity_threshold: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "goal_cluster_similarity_threshold");
+    }
+
+    #[test]
+    fn test_validate_goal_cluster_similarity_threshold_one_passes() {
+        // 1.0 is included (inclusive upper bound — exact cosine match is valid)
+        let c = InferenceConfig {
+            goal_cluster_similarity_threshold: 1.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "goal_cluster_similarity_threshold=1.0 must pass validation (inclusive upper bound)"
+        );
+    }
+
+    #[test]
+    fn test_validate_goal_cluster_similarity_threshold_above_one_fails() {
+        let c = InferenceConfig {
+            goal_cluster_similarity_threshold: 1.001,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "goal_cluster_similarity_threshold");
+    }
+
+    // -- crt-046: w_goal_cluster_conf validation (finite, non-negative) --
+
+    #[test]
+    fn test_validate_w_goal_cluster_conf_nan_fails() {
+        let c = InferenceConfig {
+            w_goal_cluster_conf: f32::NAN,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "w_goal_cluster_conf");
+    }
+
+    #[test]
+    fn test_validate_w_goal_cluster_conf_negative_fails() {
+        let c = InferenceConfig {
+            w_goal_cluster_conf: -0.001,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "w_goal_cluster_conf");
+    }
+
+    #[test]
+    fn test_validate_w_goal_cluster_conf_zero_passes() {
+        // 0.0 is valid — disables this weight without error
+        let c = InferenceConfig {
+            w_goal_cluster_conf: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "w_goal_cluster_conf=0.0 must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_validate_w_goal_cluster_conf_positive_passes() {
+        let c = InferenceConfig {
+            w_goal_cluster_conf: 0.5,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "w_goal_cluster_conf=0.5 must pass validation"
+        );
+    }
+
+    // -- crt-046: w_goal_boost validation (finite, non-negative) --
+
+    #[test]
+    fn test_validate_w_goal_boost_nan_fails() {
+        let c = InferenceConfig {
+            w_goal_boost: f32::NAN,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "w_goal_boost");
+    }
+
+    #[test]
+    fn test_validate_w_goal_boost_negative_fails() {
+        let c = InferenceConfig {
+            w_goal_boost: -0.001,
+            ..InferenceConfig::default()
+        };
+        assert_validate_fails_with_field(c, "w_goal_boost");
+    }
+
+    #[test]
+    fn test_validate_w_goal_boost_zero_passes() {
+        // 0.0 is valid — disables this weight without error
+        let c = InferenceConfig {
+            w_goal_boost: 0.0,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "w_goal_boost=0.0 must pass validation"
+        );
+    }
+
+    #[test]
+    fn test_validate_w_goal_boost_positive_passes() {
+        let c = InferenceConfig {
+            w_goal_boost: 0.25,
+            ..InferenceConfig::default()
+        };
+        assert!(
+            c.validate(Path::new("/fake")).is_ok(),
+            "w_goal_boost=0.25 must pass validation"
         );
     }
 }

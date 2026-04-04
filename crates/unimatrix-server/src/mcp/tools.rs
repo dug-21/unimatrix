@@ -1166,6 +1166,17 @@ impl UnimatrixServer {
                             cluster_entry_ids_raw.sort_unstable();
                             cluster_entry_ids_raw.dedup();
 
+                            // Safety cap: bound sequential store.get() calls to at most 50. IDs are sorted
+                            // ascending by u64 value for dedup correctness (not by relevance), so truncation
+                            // drops the numerically-highest (most recently created) IDs. This is acceptable
+                            // as a tail-case safety cap — a large cycle with many accessed entries × 5 clusters
+                            // can produce 250+ pre-dedup IDs; 50 reflects ~5 clusters × ~10 entries typical case.
+                            // NOTE: the entry_max_sim loop below still iterates all top_clusters rows and populates
+                            // similarity scores for IDs truncated here. Those map entries are never looked up in
+                            // the subsequent store.get() loop — they are harmless dead entries, not a bug.
+                            const CLUSTER_ID_CAP: usize = 50;
+                            cluster_entry_ids_raw.truncate(CLUSTER_ID_CAP);
+
                             // Build per-entry max_similarity map for cluster_score computation.
                             // Uses a pre-parsed HashMap to avoid repeated JSON parsing per entry.
                             let mut entry_max_sim: std::collections::HashMap<u64, f32> =
@@ -7001,5 +7012,104 @@ mod vnc012_coercion_tests {
             from_string.id, from_integer.id,
             "AC-07: string and integer forms must produce the same i64 value"
         );
+    }
+}
+
+// ---- crt-046 (GH#515): cluster_entry_ids_raw cap tests ----
+// These tests directly exercise the sort → dedup → truncate idiom used inside
+// context_briefing. The logic is inline, so we replicate it here to verify
+// correctness of the CLUSTER_ID_CAP constant and the truncation ordering.
+#[cfg(test)]
+mod crt046_cluster_id_cap_tests {
+    // Mirrors the CLUSTER_ID_CAP value from context_briefing.
+    const CLUSTER_ID_CAP: usize = 50;
+
+    /// Sort, dedup, then truncate — the exact sequence used in context_briefing.
+    fn apply_cap(mut ids: Vec<u64>) -> Vec<u64> {
+        ids.sort_unstable();
+        ids.dedup();
+        ids.truncate(CLUSTER_ID_CAP);
+        ids
+    }
+
+    #[test]
+    fn test_cluster_id_cap_truncates_to_50() {
+        // More than 50 unique IDs: result must be exactly CLUSTER_ID_CAP entries.
+        let ids: Vec<u64> = (1u64..=75).collect();
+        let result = apply_cap(ids);
+        assert_eq!(
+            result.len(),
+            CLUSTER_ID_CAP,
+            "more than 50 unique IDs must be truncated to exactly {CLUSTER_ID_CAP}"
+        );
+        // Truncation drops the numerically-highest IDs (those created most recently).
+        assert_eq!(result[0], 1, "first retained ID must be 1 (lowest)");
+        assert_eq!(
+            result[CLUSTER_ID_CAP - 1],
+            50,
+            "last retained ID must be 50 after truncation"
+        );
+    }
+
+    #[test]
+    fn test_cluster_id_cap_fewer_than_50_unchanged() {
+        // Fewer than 50 unique IDs: nothing is truncated.
+        let ids: Vec<u64> = (1u64..=20).collect();
+        let result = apply_cap(ids);
+        assert_eq!(result.len(), 20, "fewer than 50 IDs must not be truncated");
+    }
+
+    #[test]
+    fn test_cluster_id_cap_exactly_50_unchanged() {
+        // Exactly 50 unique IDs: nothing is truncated.
+        let ids: Vec<u64> = (1u64..=50).collect();
+        let result = apply_cap(ids);
+        assert_eq!(result.len(), 50, "exactly 50 IDs must not be truncated");
+    }
+
+    #[test]
+    fn test_cluster_id_cap_dedup_then_truncate() {
+        // Dedup-then-truncate interaction: overlapping cluster IDs that dedup to ≤50
+        // must not be truncated. Verifies dedup runs before truncation.
+        //
+        // Scenario: 5 clusters × 20 entries each, with heavy overlap.
+        // Before dedup: up to 100 entries. After dedup: ≤20 unique → no truncation.
+        let mut ids: Vec<u64> = Vec::new();
+        for _ in 0..5 {
+            ids.extend(1u64..=20); // 5 × 20 = 100 entries, all overlap
+        }
+        let result = apply_cap(ids);
+        // After dedup: 20 unique IDs. After truncation: still 20 (below cap).
+        assert_eq!(
+            result.len(),
+            20,
+            "dedup-then-truncate: 100 entries with 20 unique IDs must yield 20 after cap"
+        );
+        assert_eq!(result[0], 1, "first ID must be 1");
+        assert_eq!(result[19], 20, "last ID must be 20");
+    }
+
+    #[test]
+    fn test_cluster_id_cap_dedup_overlap_crossing_cap() {
+        // Overlap reduces 75 raw entries to exactly 51 unique IDs → capped to 50.
+        // Verifies the combined dedup + truncation path when result is just above cap.
+        let mut ids: Vec<u64> = Vec::new();
+        // 51 unique IDs, each duplicated once (102 total raw entries).
+        for id in 1u64..=51 {
+            ids.push(id);
+            ids.push(id);
+        }
+        let result = apply_cap(ids);
+        assert_eq!(
+            result.len(),
+            CLUSTER_ID_CAP,
+            "51 unique IDs must be capped to {CLUSTER_ID_CAP}"
+        );
+        // The numerically-highest ID (51) is dropped.
+        assert!(
+            !result.contains(&51),
+            "ID 51 must be truncated (highest u64 value)"
+        );
+        assert!(result.contains(&50), "ID 50 must be retained");
     }
 }
