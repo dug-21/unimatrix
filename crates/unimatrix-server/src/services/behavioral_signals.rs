@@ -418,6 +418,186 @@ pub(crate) fn blend_cluster_entries(
 }
 
 // ---------------------------------------------------------------------------
+// Step 8b orchestration
+// ---------------------------------------------------------------------------
+
+/// Run the step 8b behavioral signal pipeline for a completed cycle review call.
+///
+/// Called from the `context_cycle_review` handler on EVERY invocation — both
+/// cache-hit (`force=false`) and cache-miss paths (FR-09, Resolution 2, AC-15).
+///
+/// All errors are non-fatal: logs at `warn!` and returns `parse_failure_count`.
+/// The handler must never propagate step 8b errors to the MCP caller.
+///
+/// Returns `parse_failure_count: u32` — the number of unparseable `context_get`
+/// observation rows encountered during `collect_coaccess_entry_ids` (FR-03, R-04).
+pub(crate) async fn run_step_8b(
+    store: &SqlxStore,
+    feature_cycle: &str,
+    outcome: Option<&str>,
+) -> u32 {
+    // Step 1: Load session IDs.
+    let session_ids = match store.load_sessions_for_feature(feature_cycle).await {
+        Ok(ids) => ids,
+        Err(e) => {
+            warn!(
+                feature_cycle = feature_cycle,
+                error = %e,
+                "step 8b: load_sessions_for_feature failed — aborting step 8b"
+            );
+            return 0;
+        }
+    };
+
+    // Step 2: Load observations.
+    let observations = match store.load_observations_for_sessions(&session_ids).await {
+        Ok(obs) => obs,
+        Err(e) => {
+            warn!(
+                feature_cycle = feature_cycle,
+                error = %e,
+                "step 8b: load_observations_for_sessions failed — aborting step 8b"
+            );
+            return 0;
+        }
+    };
+
+    // Step 3: Collect co-access entry IDs grouped by session.
+    let (by_session, parse_failures) = collect_coaccess_entry_ids(&observations);
+
+    if parse_failures > 0 {
+        warn!(
+            feature_cycle = feature_cycle,
+            parse_failures = parse_failures,
+            "step 8b: {} context_get observation(s) failed to parse — entry IDs skipped",
+            parse_failures
+        );
+    }
+
+    // Step 4: Build canonical co-access pairs.
+    let (pairs, cap_hit) = build_coaccess_pairs(by_session);
+
+    // Step 5: Log if pair cap was reached.
+    if cap_hit {
+        warn!(
+            feature_cycle = feature_cycle,
+            pair_cap = PAIR_CAP,
+            "step 8b: pair cap ({}) reached for {} — some pairs not emitted",
+            PAIR_CAP,
+            feature_cycle
+        );
+    }
+
+    // Step 6: Determine edge weight from cycle outcome.
+    let weight = outcome_to_weight(outcome);
+
+    // Step 7: Emit behavioral edges (skip if no pairs — AC-04).
+    if pairs.is_empty() {
+        debug!(
+            feature_cycle = feature_cycle,
+            "step 8b: no co-access pairs for {} — skipping edge emission", feature_cycle
+        );
+    } else {
+        let (enqueued, skipped) = emit_behavioral_edges(store, &pairs, weight).await;
+        debug!(
+            feature_cycle = feature_cycle,
+            edges_enqueued = enqueued,
+            pairs_skipped = skipped,
+            "step 8b: {} edges enqueued, {} pairs skipped on conflict",
+            enqueued,
+            skipped
+        );
+    }
+
+    // Step 8: Get goal embedding.
+    let embedding_opt = match store.get_cycle_start_goal_embedding(feature_cycle).await {
+        Ok(opt) => opt,
+        Err(e) => {
+            warn!(
+                feature_cycle = feature_cycle,
+                error = %e,
+                "step 8b: get_cycle_start_goal_embedding failed — skipping goal_cluster write"
+            );
+            None
+        }
+    };
+
+    // Step 9: Populate goal cluster if embedding available.
+    if let Some(embedding) = embedding_opt {
+        // Collect flat union of all entry IDs accessed (across all sessions).
+        // Re-call collect_coaccess_entry_ids since by_session was consumed by build_coaccess_pairs.
+        let (by_session_2, _) = collect_coaccess_entry_ids(&observations);
+        let mut all_entry_ids: Vec<u64> = by_session_2
+            .values()
+            .flat_map(|v| v.iter().map(|(id, _)| *id))
+            .collect();
+        all_entry_ids.sort_unstable();
+        all_entry_ids.dedup();
+
+        // Determine phase from latest cycle_events row with non-NULL phase.
+        let phase_opt = get_latest_cycle_phase(store, feature_cycle).await;
+
+        match populate_goal_cluster(
+            store,
+            feature_cycle,
+            embedding,
+            &all_entry_ids,
+            phase_opt.as_deref(),
+            outcome,
+        )
+        .await
+        {
+            Ok(true) => debug!(
+                feature_cycle = feature_cycle,
+                "step 8b: goal_cluster row written"
+            ),
+            Ok(false) => debug!(
+                feature_cycle = feature_cycle,
+                "step 8b: goal_cluster UNIQUE conflict — INSERT OR IGNORE no-op (force=false re-run)"
+            ),
+            Err(e) => warn!(
+                feature_cycle = feature_cycle,
+                error = %e,
+                "step 8b: populate_goal_cluster failed — continuing"
+            ),
+        }
+    }
+
+    // Step 10: Return parse failures.
+    parse_failures as u32
+}
+
+/// Query the latest non-NULL phase from `cycle_events` for a cycle.
+///
+/// Used by `run_step_8b` to populate the `phase` column in `goal_clusters`.
+/// Returns `None` on no row, NULL phase, or SQL error (errors logged at warn!).
+///
+/// Uses `write_pool_server()` — `read_pool()` is crate-private to unimatrix-store.
+async fn get_latest_cycle_phase(store: &SqlxStore, cycle_id: &str) -> Option<String> {
+    let result = sqlx::query_scalar::<_, String>(
+        "SELECT phase FROM cycle_events \
+         WHERE cycle_id = ?1 AND phase IS NOT NULL \
+         ORDER BY timestamp DESC \
+         LIMIT 1",
+    )
+    .bind(cycle_id)
+    .fetch_optional(store.write_pool_server())
+    .await;
+
+    match result {
+        Ok(phase_opt) => phase_opt,
+        Err(e) => {
+            warn!(
+                cycle_id = cycle_id,
+                error = %e,
+                "get_latest_cycle_phase: SQL query failed — returning None"
+            );
+            None
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
 
