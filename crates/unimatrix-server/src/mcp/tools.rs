@@ -13,7 +13,7 @@ use rmcp::tool;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use unimatrix_core::{CoreError, EmbedService, NewEntry, QueryFilter, Status};
-use unimatrix_store::QueryLogRecord;
+use unimatrix_store::{QueryLogRecord, StoreError};
 
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::registry::Capability;
@@ -1070,13 +1070,215 @@ impl UnimatrixServer {
                 category_histogram,
             };
 
-            // 8. Delegate to IndexBriefingService
-            let entries = self
-                .services
-                .briefing
-                .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
-                .await
-                .map_err(rmcp::ErrorData::from)?;
+            // 8. Delegate to IndexBriefingService, with goal-conditioned blending (crt-046).
+            //
+            // Level 1 guard (ADR-004, Resolution 3): if no feature attribution OR
+            // current_goal is empty/absent, skip all blending (zero DB calls for cluster work).
+            let current_goal: &str = session_state
+                .as_ref()
+                .and_then(|ss| ss.current_goal.as_deref())
+                .unwrap_or("");
+            let feature_for_blending = session_state.as_ref().and_then(|ss| ss.feature.as_deref());
+
+            let should_blend = feature_for_blending.map(|f| !f.is_empty()).unwrap_or(false)
+                && !current_goal.is_empty();
+
+            let entries: Vec<crate::mcp::response::IndexEntry> = if should_blend {
+                let feature = feature_for_blending.unwrap();
+                let store = Arc::clone(&self.store);
+                let config = Arc::clone(&self.inference_config);
+
+                // Level 2 guard (ADR-004): get_cycle_start_goal_embedding.
+                // If absent or error, fall through to pure-semantic path.
+                let goal_embedding_opt: Option<Vec<f32>> = match store
+                    .get_cycle_start_goal_embedding(feature)
+                    .await
+                {
+                    Ok(opt) => opt,
+                    Err(e) => {
+                        tracing::warn!(
+                            feature = feature,
+                            error = %e,
+                            "context_briefing: get_cycle_start_goal_embedding error — cold-start"
+                        );
+                        None
+                    }
+                };
+
+                match goal_embedding_opt {
+                    None => {
+                        // Level 2 cold-start: no stored goal embedding.
+                        self.services
+                            .briefing
+                            .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
+                            .await
+                            .map_err(rmcp::ErrorData::from)?
+                    }
+                    Some(goal_embedding) => {
+                        // Cluster query (recency-capped, cosine-filtered, ADR-003).
+                        let matching_clusters = match store
+                            .query_goal_clusters_by_embedding(
+                                &goal_embedding,
+                                config.goal_cluster_similarity_threshold,
+                                crate::services::behavioral_signals::RECENCY_CAP,
+                            )
+                            .await
+                        {
+                            Ok(c) => c,
+                            Err(e) => {
+                                tracing::warn!(
+                                    error = %e,
+                                    "context_briefing: query_goal_clusters_by_embedding failed \
+                                     — cold-start"
+                                );
+                                vec![]
+                            }
+                        };
+
+                        if matching_clusters.is_empty() {
+                            // Cold-start: no matching clusters above threshold.
+                            self.services
+                                .briefing
+                                .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
+                                .await
+                                .map_err(rmcp::ErrorData::from)?
+                        } else {
+                            // Use at most 5 matching clusters (best cosine — sorted desc by query).
+                            let top_clusters = &matching_clusters[..matching_clusters.len().min(5)];
+
+                            // Collect union of entry IDs from top clusters.
+                            let mut cluster_entry_ids_raw: Vec<u64> = Vec::new();
+                            for cluster_row in top_clusters {
+                                match serde_json::from_str::<Vec<u64>>(&cluster_row.entry_ids_json)
+                                {
+                                    Ok(ids) => cluster_entry_ids_raw.extend(ids),
+                                    Err(e) => {
+                                        tracing::warn!(
+                                            feature_cycle = %cluster_row.feature_cycle,
+                                            error = %e,
+                                            "context_briefing: failed to parse entry_ids_json \
+                                             for cluster row — skipping"
+                                        );
+                                    }
+                                }
+                            }
+                            // Deduplicate entry IDs across clusters.
+                            cluster_entry_ids_raw.sort_unstable();
+                            cluster_entry_ids_raw.dedup();
+
+                            // Build per-entry max_similarity map for cluster_score computation.
+                            // Uses a pre-parsed HashMap to avoid repeated JSON parsing per entry.
+                            let mut entry_max_sim: std::collections::HashMap<u64, f32> =
+                                std::collections::HashMap::new();
+                            for cluster_row in top_clusters {
+                                if let Ok(ids) =
+                                    serde_json::from_str::<Vec<u64>>(&cluster_row.entry_ids_json)
+                                {
+                                    for id in ids {
+                                        let sim = cluster_row.similarity;
+                                        let entry = entry_max_sim.entry(id).or_insert(0.0_f32);
+                                        if sim > *entry {
+                                            *entry = sim;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Fetch Active EntryRecord objects individually (store.get_by_ids
+                            // does not exist; use store.get(id) per spec — OQ-1 resolved).
+                            // Active-status filter: only Status::Active entries included (FR-20).
+                            //
+                            // NAMING COLLISION WARNING (ADR-005 crt-046):
+                            // record.confidence below = EntryRecord.confidence (Wilson-score).
+                            // IndexEntry.confidence = raw HNSW cosine — NOT used here.
+                            // Both fields are named `confidence`. The wrong one silently
+                            // produces incorrect cluster_score weights — DO NOT swap them.
+                            let mut cluster_entries_with_scores: Vec<(
+                                crate::mcp::response::IndexEntry,
+                                f32,
+                            )> = Vec::new();
+
+                            for &id in &cluster_entry_ids_raw {
+                                match store.get(id).await {
+                                    Ok(record) if record.status == Status::Active => {
+                                        let goal_cosine: f32 =
+                                            entry_max_sim.get(&id).copied().unwrap_or(0.0);
+
+                                        // cluster_score uses EntryRecord.confidence
+                                        // (Wilson-score), NOT IndexEntry.confidence (cosine).
+                                        let cluster_score: f32 = (record.confidence as f32
+                                            * config.w_goal_cluster_conf)
+                                            + (goal_cosine * config.w_goal_boost);
+
+                                        let index_entry = crate::mcp::response::IndexEntry {
+                                            id: record.id,
+                                            topic: record.topic.clone(),
+                                            category: record.category.clone(),
+                                            confidence: record.confidence,
+                                            snippet: record
+                                                .content
+                                                .chars()
+                                                .take(crate::mcp::response::SNIPPET_CHARS)
+                                                .collect(),
+                                        };
+                                        cluster_entries_with_scores
+                                            .push((index_entry, cluster_score));
+                                    }
+                                    Ok(_) => {
+                                        // Inactive, deprecated, or quarantined — excluded (AC-10).
+                                        tracing::debug!(
+                                            entry_id = id,
+                                            "context_briefing: cluster entry not Active — excluded"
+                                        );
+                                    }
+                                    Err(StoreError::EntryNotFound(_)) => {
+                                        // Entry deleted after cluster was written — skip silently.
+                                        tracing::debug!(
+                                            entry_id = id,
+                                            "context_briefing: cluster entry not found — skip"
+                                        );
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!(
+                                            entry_id = id,
+                                            error = %e,
+                                            "context_briefing: store.get({id}) failed — skip"
+                                        );
+                                    }
+                                }
+                            }
+
+                            // Semantic search (existing path — k=20).
+                            let semantic_results = self
+                                .services
+                                .briefing
+                                .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
+                                .await
+                                .map_err(rmcp::ErrorData::from)?;
+
+                            // Score-based interleaving (Option A, ADR-005).
+                            // blend_cluster_entries is a pure function — no store access.
+                            if cluster_entries_with_scores.is_empty() {
+                                // No Active cluster candidates survived — pure semantic result.
+                                semantic_results
+                            } else {
+                                crate::services::behavioral_signals::blend_cluster_entries(
+                                    semantic_results,
+                                    cluster_entries_with_scores,
+                                    20, // k=20 — hardcoded per IndexBriefingService contract
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Level 1 cold-start — no DB calls (ADR-004, Resolution 3).
+                self.services
+                    .briefing
+                    .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
+                    .await
+                    .map_err(rmcp::ErrorData::from)?
+            };
 
             // 9. Collect entry IDs for audit + usage recording
             let entry_ids: Vec<u64> = entries.iter().map(|e| e.id).collect();

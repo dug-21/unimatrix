@@ -19,6 +19,7 @@ use crate::background::TickMetadata;
 use crate::error::ServerError;
 use crate::infra::audit::{AuditEvent, AuditLog};
 use crate::infra::categories::CategoryAllowlist;
+use crate::infra::config::InferenceConfig;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::registry::{AgentRegistry, TrustLevel};
 use crate::infra::session::SessionRegistry;
@@ -231,6 +232,10 @@ pub struct UnimatrixServer {
     /// Initialized with the built-in claude-code pack in `new()` (for tests).
     /// Overwritten from `main.rs` with the config-loaded registry (daemon/stdio paths).
     pub observation_registry: Arc<DomainPackRegistry>,
+    /// crt-046: inference config snapshot for goal-cluster blending weights in
+    /// the context_briefing handler. Initialized to default in `new()` (for tests).
+    /// Overwritten from `main.rs` with the startup-resolved config (daemon/stdio paths).
+    pub inference_config: Arc<InferenceConfig>,
 }
 
 impl UnimatrixServer {
@@ -326,6 +331,8 @@ impl UnimatrixServer {
             server_info,
             // col-023: built-in default for test server; overwritten in main.rs daemon/stdio paths.
             observation_registry: Arc::new(DomainPackRegistry::with_builtin_claude_code()),
+            // crt-046: default for test server; overwritten in main.rs daemon/stdio paths.
+            inference_config: Arc::new(InferenceConfig::default()),
         }
     }
 
