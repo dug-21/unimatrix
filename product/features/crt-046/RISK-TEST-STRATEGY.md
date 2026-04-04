@@ -272,6 +272,8 @@ Step 8b must execute after `store_cycle_review` (step 8a) and before the audit l
 **I-02: Analytics drain flush timing in integration tests**
 `enqueue_analytics` is fire-and-forget with a 500ms flush interval (entry #2148). Integration tests that query `graph_edges` immediately after `context_cycle_review` may fail intermittently unless they force a drain flush or wait for the drain interval. All AC tests involving `graph_edges` must flush the drain before asserting.
 
+**ADR-006 clarification**: Behavioral graph edge writes (`emit_behavioral_edges` / `write_graph_edge`) use `write_pool_server()` directly — not the analytics drain (see ADR-006). Drain flush is therefore NOT required before asserting behavioral `graph_edges` rows in step 8b integration tests (AC-01 extension, AC-15, R-02 contract test). The drain flush requirement in this I-02 entry applies only to tests that assert `graph_edges` rows written by other analytics-drain paths (NLI, co-access) in the same test body. The R-02 contract test (asserting `edges_enqueued` counter accuracy) does not require a drain flush because the write is synchronous.
+
 **I-03: `load_observations_for_sessions` returns non-`context_get` rows**
 The filter `tool = "context_get"` must be applied inside `collect_coaccess_entry_ids`, not assumed at the call site. If an upstream refactor stops filtering in `load_observations_for_sessions`, behavioral edge extraction must still be correct.
 

@@ -35,12 +35,15 @@ Responsibilities:
   canonical `(min, max)`, enforce 200-pair cap.
 - `outcome_to_weight(outcome: Option<&str>) -> f32` — `"success"` → 1.0,
   anything else → 0.5.
-- `emit_behavioral_edges(store, pairs, weight)` — enqueue
-  `AnalyticsWrite::GraphEdge` for both directions of each pair with
-  `relation_type = "Informs"`, `source = "behavioral"`,
-  `bootstrap_only = false`. Returns `(edges_enqueued: usize,
-  pairs_skipped_on_conflict: usize)` using the `write_graph_edge` bool
-  return contract (pattern #4041: increment only on `true`).
+- `emit_behavioral_edges(store, pairs, weight)` — writes both directed
+  edges for each pair directly via the module-private `write_graph_edge`
+  helper, which executes `INSERT OR IGNORE INTO graph_edges` on
+  `store.write_pool_server()` with `relation_type = "Informs"`,
+  `source = "behavioral"`, `bootstrap_only = false`. Does NOT use
+  `enqueue_analytics` — the analytics drain is fire-and-forget and cannot
+  satisfy the `write_graph_edge` return contract (ADR-006, Unimatrix #4124).
+  Returns `(edges_enqueued: usize, pairs_skipped_on_conflict: usize)`;
+  `edges_enqueued` increments only on `Ok(true)` (pattern #4041).
 - `populate_goal_cluster(store, feature_cycle, goal_embedding, entry_ids,
   phase, outcome)` — call `store.insert_goal_cluster(...)`. Returns
   `Ok(inserted: bool)` where `false` means INSERT OR IGNORE conflict (already
@@ -205,7 +208,7 @@ context_cycle_review handler (mcp/tools.rs)
         ├── collect_coaccess_entry_ids(observations)
         ├── build_coaccess_pairs(by_session)
         ├── emit_behavioral_edges(store, pairs, weight)
-        │     └── store.enqueue_analytics(GraphEdge × 2N)
+        │     └── write_graph_edge(store, ...) × 2N   [direct write_pool_server(); NOT analytics drain — ADR-006]
         └── populate_goal_cluster(store, feature_cycle, ...)
               └── store.insert_goal_cluster(...)
 
@@ -234,9 +237,15 @@ context_briefing handler (mcp/tools.rs)
 - **Separate module** `services/behavioral_signals.rs`: keeps `mcp/tools.rs`
   under 500 lines; single-responsibility; testable without a full handler stack.
   See ADR-001.
-- **Analytics drain for graph edges**: `AnalyticsWrite::GraphEdge` with
-  `INSERT OR IGNORE`. Idempotency, fire-and-forget, consistent with NLI and
-  co-access paths. See ADR-002.
+- **Direct `write_pool_server()` for behavioral graph edges**: `emit_behavioral_edges`
+  writes `INSERT OR IGNORE INTO graph_edges` via a `write_graph_edge` helper that
+  returns `Result<bool>` (`true` = new row, `false` = UNIQUE conflict). The
+  analytics drain (`enqueue_analytics`) cannot satisfy the `write_graph_edge` return
+  contract (pattern #4041) because it is fire-and-forget with no `rows_affected()`
+  feedback, and it sheds events under queue pressure regardless of `bootstrap_only`.
+  `edges_enqueued` increments on `Ok(true)` only. See ADR-006.
+  **Note**: SPEC FR-06/FR-07 and the IMPLEMENTATION-BRIEF Resolved Decisions table
+  originally specified `enqueue_analytics`; ADR-006 supersedes those entries.
 - **Direct `write_pool_server()` for `goal_clusters`**: structural table (not
   observational telemetry). Pattern consistent with `cycle_events` and
   `cycle_review_index`. Drain is unsuitable — immediate-read visibility is not
@@ -267,13 +276,12 @@ context_briefing handler (mcp/tools.rs)
 |-----------|-----------------|
 | `store.load_sessions_for_feature` | step 8b session enumeration |
 | `store.load_observations_for_sessions` | step 8b observation load |
-| `store.enqueue_analytics(GraphEdge)` | behavioral edge emission |
+| `store.write_pool_server()` | behavioral edge emission via `write_graph_edge` (direct write — NOT analytics drain; ADR-006) |
 | `store.get_cycle_start_goal` | pattern for new `get_cycle_start_goal_embedding` |
 | `encode_goal_embedding` / `decode_goal_embedding` | embedding BLOB encode/decode (crt-043 ADR-001) |
 | `IndexBriefingService::index()` | semantic search before blending |
 | `derive_briefing_query` | query derivation unchanged |
 | `session_state.current_goal` / `.feature` | goal and feature extraction at briefing time |
-| `AnalyticsWrite::GraphEdge` | fire-and-forget edge enqueue |
 
 ### New interfaces introduced
 
@@ -297,10 +305,10 @@ context_briefing handler (mcp/tools.rs)
 | `CURRENT_SCHEMA_VERSION` | `u64 = 22` | `unimatrix-store/src/migration.rs` |
 | `goal_clusters` table DDL | SQL in migration.rs + db.rs (must be byte-identical) | new, crt-046 |
 | `idx_goal_clusters_created_at` | `ON goal_clusters(created_at DESC)` | new, crt-046 |
-| `AnalyticsWrite::GraphEdge.source` | `String = "behavioral"` | `unimatrix-store/src/analytics.rs` |
-| `AnalyticsWrite::GraphEdge.relation_type` | `String = "Informs"` | `unimatrix-store/src/analytics.rs` |
-| `AnalyticsWrite::GraphEdge.bootstrap_only` | `bool = false` | `unimatrix-store/src/analytics.rs` |
-| `write_graph_edge` return contract | `true` = new row; `false` = UNIQUE conflict or error | pattern #4041 |
+| `graph_edges.source` for behavioral writes | `String = "behavioral"` | constant in `behavioral_signals.rs`; written via `write_graph_edge` helper (NOT `enqueue_analytics` — ADR-006) |
+| `graph_edges.relation_type` for behavioral writes | `String = "Informs"` | constant in `behavioral_signals.rs` |
+| `graph_edges.bootstrap_only` for behavioral writes | `bool = false` (integer 0) | constant in `behavioral_signals.rs` |
+| `write_graph_edge` return contract | `Ok(true)` = new row; `Ok(false)` = UNIQUE conflict; `Err(_)` = SQL failure | pattern #4041, ADR-006 (Unimatrix #4124) |
 | Cosine threshold | `InferenceConfig.goal_cluster_similarity_threshold: f32` (default 0.80) | `InferenceConfig` — not a constant; passed to `query_goal_clusters_by_embedding` |
 | Cluster confidence weight | `InferenceConfig.w_conf_cluster: f32` (default 0.35) | `InferenceConfig` — multiplied by `entry.confidence` in cluster_score formula |
 | Goal boost weight | `InferenceConfig.w_goal_boost: f32` (default 0.25) | `InferenceConfig` — multiplied by `goal_cosine` (row.similarity) in cluster_score formula |
@@ -384,12 +392,11 @@ retrieval (cold-start path) — no error propagated to caller.
   embed_service) in scope? Current architecture says no — cold-start path
   activates. Spec agent should confirm this is the correct behaviour for
   sessions without feature attribution.
-- OQ-3: `write_graph_edge` vs. `store.enqueue_analytics(GraphEdge)`: the SCOPE
-  specifies `enqueue_analytics`, which goes through the drain. Pattern #3883
-  specifies `write_pool_server()` directly for graph edge writes in the tick.
-  For the step 8b path (handler context, not tick), `enqueue_analytics` is
-  correct per the SCOPE. Delivery agent should confirm `GraphEdge` drain
-  semantics are compatible (SHEDDING POLICY note in analytics.rs says
-  bootstrap-only writes may be shed — behavioral edges are NOT bootstrap-only,
-  so they should not be shed). Delivery agent to verify the `bootstrap_only=false`
-  path is not subject to the shed policy.
+- OQ-3: RESOLVED by ADR-006 (Unimatrix #4124). Behavioral graph edge writes
+  use `write_pool_server()` directly via the `write_graph_edge` helper.
+  `enqueue_analytics(AnalyticsWrite::GraphEdge)` is NOT used for step 8b
+  emission and is NOT consumed by this feature for that purpose. The structural
+  incompatibility is definitive: `enqueue_analytics` is fire-and-forget
+  (returns `()`), so it cannot supply the `rows_affected()` feedback required
+  by the `write_graph_edge` return contract (pattern #4041). See
+  §Technology Decisions and ADR-006 for full rationale.
