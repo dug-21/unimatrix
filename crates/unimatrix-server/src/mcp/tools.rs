@@ -13,7 +13,7 @@ use rmcp::tool;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use unimatrix_core::{CoreError, EmbedService, NewEntry, QueryFilter, Status};
-use unimatrix_store::QueryLogRecord;
+use unimatrix_store::{QueryLogRecord, StoreError};
 
 use crate::infra::audit::{AuditEvent, Outcome};
 use crate::infra::registry::Capability;
@@ -1070,13 +1070,215 @@ impl UnimatrixServer {
                 category_histogram,
             };
 
-            // 8. Delegate to IndexBriefingService
-            let entries = self
-                .services
-                .briefing
-                .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
-                .await
-                .map_err(rmcp::ErrorData::from)?;
+            // 8. Delegate to IndexBriefingService, with goal-conditioned blending (crt-046).
+            //
+            // Level 1 guard (ADR-004, Resolution 3): if no feature attribution OR
+            // current_goal is empty/absent, skip all blending (zero DB calls for cluster work).
+            let current_goal: &str = session_state
+                .as_ref()
+                .and_then(|ss| ss.current_goal.as_deref())
+                .unwrap_or("");
+            let feature_for_blending = session_state.as_ref().and_then(|ss| ss.feature.as_deref());
+
+            let should_blend = feature_for_blending.map(|f| !f.is_empty()).unwrap_or(false)
+                && !current_goal.is_empty();
+
+            let entries: Vec<crate::mcp::response::IndexEntry> = if should_blend {
+                let feature = feature_for_blending.unwrap();
+                let store = Arc::clone(&self.store);
+                let config = Arc::clone(&self.inference_config);
+
+                // Level 2 guard (ADR-004): get_cycle_start_goal_embedding.
+                // If absent or error, fall through to pure-semantic path.
+                let goal_embedding_opt: Option<Vec<f32>> = match store
+                    .get_cycle_start_goal_embedding(feature)
+                    .await
+                {
+                    Ok(opt) => opt,
+                    Err(e) => {
+                        tracing::warn!(
+                            feature = feature,
+                            error = %e,
+                            "context_briefing: get_cycle_start_goal_embedding error — cold-start"
+                        );
+                        None
+                    }
+                };
+
+                match goal_embedding_opt {
+                    None => {
+                        // Level 2 cold-start: no stored goal embedding.
+                        self.services
+                            .briefing
+                            .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
+                            .await
+                            .map_err(rmcp::ErrorData::from)?
+                    }
+                    Some(goal_embedding) => {
+                        // Cluster query (recency-capped, cosine-filtered, ADR-003).
+                        let matching_clusters = match store
+                            .query_goal_clusters_by_embedding(
+                                &goal_embedding,
+                                config.goal_cluster_similarity_threshold,
+                                crate::services::behavioral_signals::RECENCY_CAP,
+                            )
+                            .await
+                        {
+                            Ok(c) => c,
+                            Err(e) => {
+                                tracing::warn!(
+                                    error = %e,
+                                    "context_briefing: query_goal_clusters_by_embedding failed \
+                                     — cold-start"
+                                );
+                                vec![]
+                            }
+                        };
+
+                        if matching_clusters.is_empty() {
+                            // Cold-start: no matching clusters above threshold.
+                            self.services
+                                .briefing
+                                .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
+                                .await
+                                .map_err(rmcp::ErrorData::from)?
+                        } else {
+                            // Use at most 5 matching clusters (best cosine — sorted desc by query).
+                            let top_clusters = &matching_clusters[..matching_clusters.len().min(5)];
+
+                            // Collect union of entry IDs from top clusters.
+                            let mut cluster_entry_ids_raw: Vec<u64> = Vec::new();
+                            for cluster_row in top_clusters {
+                                match serde_json::from_str::<Vec<u64>>(&cluster_row.entry_ids_json)
+                                {
+                                    Ok(ids) => cluster_entry_ids_raw.extend(ids),
+                                    Err(e) => {
+                                        tracing::warn!(
+                                            feature_cycle = %cluster_row.feature_cycle,
+                                            error = %e,
+                                            "context_briefing: failed to parse entry_ids_json \
+                                             for cluster row — skipping"
+                                        );
+                                    }
+                                }
+                            }
+                            // Deduplicate entry IDs across clusters.
+                            cluster_entry_ids_raw.sort_unstable();
+                            cluster_entry_ids_raw.dedup();
+
+                            // Build per-entry max_similarity map for cluster_score computation.
+                            // Uses a pre-parsed HashMap to avoid repeated JSON parsing per entry.
+                            let mut entry_max_sim: std::collections::HashMap<u64, f32> =
+                                std::collections::HashMap::new();
+                            for cluster_row in top_clusters {
+                                if let Ok(ids) =
+                                    serde_json::from_str::<Vec<u64>>(&cluster_row.entry_ids_json)
+                                {
+                                    for id in ids {
+                                        let sim = cluster_row.similarity;
+                                        let entry = entry_max_sim.entry(id).or_insert(0.0_f32);
+                                        if sim > *entry {
+                                            *entry = sim;
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Fetch Active EntryRecord objects individually (store.get_by_ids
+                            // does not exist; use store.get(id) per spec — OQ-1 resolved).
+                            // Active-status filter: only Status::Active entries included (FR-20).
+                            //
+                            // NAMING COLLISION WARNING (ADR-005 crt-046):
+                            // record.confidence below = EntryRecord.confidence (Wilson-score).
+                            // IndexEntry.confidence = raw HNSW cosine — NOT used here.
+                            // Both fields are named `confidence`. The wrong one silently
+                            // produces incorrect cluster_score weights — DO NOT swap them.
+                            let mut cluster_entries_with_scores: Vec<(
+                                crate::mcp::response::IndexEntry,
+                                f32,
+                            )> = Vec::new();
+
+                            for &id in &cluster_entry_ids_raw {
+                                match store.get(id).await {
+                                    Ok(record) if record.status == Status::Active => {
+                                        let goal_cosine: f32 =
+                                            entry_max_sim.get(&id).copied().unwrap_or(0.0);
+
+                                        // cluster_score uses EntryRecord.confidence
+                                        // (Wilson-score), NOT IndexEntry.confidence (cosine).
+                                        let cluster_score: f32 = (record.confidence as f32
+                                            * config.w_goal_cluster_conf)
+                                            + (goal_cosine * config.w_goal_boost);
+
+                                        let index_entry = crate::mcp::response::IndexEntry {
+                                            id: record.id,
+                                            topic: record.topic.clone(),
+                                            category: record.category.clone(),
+                                            confidence: record.confidence,
+                                            snippet: record
+                                                .content
+                                                .chars()
+                                                .take(crate::mcp::response::SNIPPET_CHARS)
+                                                .collect(),
+                                        };
+                                        cluster_entries_with_scores
+                                            .push((index_entry, cluster_score));
+                                    }
+                                    Ok(_) => {
+                                        // Inactive, deprecated, or quarantined — excluded (AC-10).
+                                        tracing::debug!(
+                                            entry_id = id,
+                                            "context_briefing: cluster entry not Active — excluded"
+                                        );
+                                    }
+                                    Err(StoreError::EntryNotFound(_)) => {
+                                        // Entry deleted after cluster was written — skip silently.
+                                        tracing::debug!(
+                                            entry_id = id,
+                                            "context_briefing: cluster entry not found — skip"
+                                        );
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!(
+                                            entry_id = id,
+                                            error = %e,
+                                            "context_briefing: store.get({id}) failed — skip"
+                                        );
+                                    }
+                                }
+                            }
+
+                            // Semantic search (existing path — k=20).
+                            let semantic_results = self
+                                .services
+                                .briefing
+                                .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
+                                .await
+                                .map_err(rmcp::ErrorData::from)?;
+
+                            // Score-based interleaving (Option A, ADR-005).
+                            // blend_cluster_entries is a pure function — no store access.
+                            if cluster_entries_with_scores.is_empty() {
+                                // No Active cluster candidates survived — pure semantic result.
+                                semantic_results
+                            } else {
+                                crate::services::behavioral_signals::blend_cluster_entries(
+                                    semantic_results,
+                                    cluster_entries_with_scores,
+                                    20, // k=20 — hardcoded per IndexBriefingService contract
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Level 1 cold-start — no DB calls (ADR-004, Resolution 3).
+                self.services
+                    .briefing
+                    .index(briefing_params, &ctx.audit_ctx, Some(&ctx.caller_id))
+                    .await
+                    .map_err(rmcp::ErrorData::from)?
+            };
 
             // 9. Collect entry IDs for audit + usage recording
             let entry_ids: Vec<u64> = entries.iter().map(|e| e.id).collect();
@@ -1380,38 +1582,27 @@ impl UnimatrixServer {
         // -----------------------------------------------------------------------
         // Step 2.5 (crt-033): Memoization check / force=true purged-signals gate.
         // Executes AFTER three-path observation load, BEFORE step 4 (is_empty check).
+        //
+        // crt-046 Resolution 2 / FR-09: The memoisation early-return is NOT taken here.
+        // Instead, we record the memo result and defer the return until AFTER step 8b.
+        // Step 8b must run on every context_cycle_review call — cache-hit or miss (AC-15).
         // -----------------------------------------------------------------------
         let force = params.force.unwrap_or(false);
+
+        // memo_hit holds (report, advisory) when a valid stored review was found AND
+        // force=false. On force=true or deserialization error, this is None.
+        let memo_hit: Option<(unimatrix_observe::RetrospectiveReport, Option<String>)>;
 
         if !force {
             // Normal path: check for a stored review before any computation.
             match store.get_cycle_review(&feature_cycle).await {
                 Ok(Some(record)) => {
-                    // Memoization hit — deserialize and return (skip steps 4–8a).
+                    // Memoization candidate — deserialize to check schema version.
                     match check_stored_review(&record, unimatrix_store::SUMMARY_SCHEMA_VERSION) {
                         Ok((report, advisory)) => {
-                            // 11. Audit (fire-and-forget, same as full path)
-                            self.audit_fire_and_forget(AuditEvent {
-                                event_id: 0,
-                                timestamp: 0,
-                                session_id: String::new(),
-                                agent_id: identity.agent_id.clone(),
-                                operation: "context_cycle_review".to_string(),
-                                target_ids: vec![],
-                                outcome: Outcome::Success,
-                                detail: format!(
-                                    "retrospective for {} (memoization hit)",
-                                    feature_cycle
-                                ),
-                            });
-                            // Apply evidence_limit at render time (C-03).
-                            let fmt = params.format.as_deref().unwrap_or("markdown");
-                            return dispatch_review_with_advisory(
-                                report,
-                                fmt,
-                                params.evidence_limit,
-                                advisory,
-                            );
+                            // Record memo hit — do NOT return early (FR-09, crt-046 Resolution 2).
+                            // Step 8b will run below; return from memo_hit AFTER step 8b.
+                            memo_hit = Some((report, advisory));
                         }
                         Err(e) => {
                             // ADR-003: deserialization error → treat as cache miss.
@@ -1422,11 +1613,13 @@ impl UnimatrixServer {
                                 e
                             );
                             // Fall through to full pipeline.
+                            memo_hit = None;
                         }
                     }
                 }
                 Ok(None) => {
                     // Cache miss — proceed to full pipeline.
+                    memo_hit = None;
                 }
                 Err(e) => {
                     // Read error — treat as cache miss (ADR-003).
@@ -1436,9 +1629,14 @@ impl UnimatrixServer {
                         e
                     );
                     // Fall through to full pipeline.
+                    memo_hit = None;
                 }
             }
-        } else if attributed.is_empty() {
+        } else {
+            memo_hit = None;
+        }
+
+        if force && attributed.is_empty() {
             // force=true AND observations are empty.
             // Sole discriminator is get_cycle_review() return value (OQ-01, FR-05/FR-06).
             match store.get_cycle_review(&feature_cycle).await {
@@ -1529,428 +1727,409 @@ impl UnimatrixServer {
         // If force=true AND attributed is non-empty: step 2.5 check is skipped entirely;
         // fall through to step 4 and full pipeline (FR-04).
 
-        // 6. Check for data availability
-        if attributed.is_empty() {
-            // No new data -- check for cached MetricVector
-            let cached = store
-                .get_metrics(&feature_cycle)
+        // -----------------------------------------------------------------------
+        // Full pipeline — only runs when memo_hit is None (cache miss or force=true).
+        // On memo_hit, steps 6–8a are skipped; step 8b still runs below (FR-09).
+        // -----------------------------------------------------------------------
+        // `full_report` holds the freshly computed RetrospectiveReport on the full
+        // pipeline path. None on the memo_hit path (cached report is in memo_hit).
+        let mut full_report: Option<unimatrix_observe::RetrospectiveReport> = None;
+        // `cycle_outcome` is derived from cycle_events on the full pipeline path
+        // and passed to run_step_8b. None on cache-hit — outcome not needed (INSERT OR IGNORE).
+        let mut cycle_outcome: Option<String> = None;
+
+        if memo_hit.is_none() {
+            // 6. Check for data availability
+            if attributed.is_empty() {
+                // No new data -- check for cached MetricVector
+                let cached = store
+                    .get_metrics(&feature_cycle)
+                    .await
+                    .map_err(|e| ServerError::Core(CoreError::Store(e)))
+                    .map_err(rmcp::ErrorData::from)?;
+
+                match cached {
+                    Some(mv) => {
+                        // Return cached result (FR-09.6)
+                        let report = unimatrix_observe::RetrospectiveReport {
+                            feature_cycle: feature_cycle.clone(),
+                            session_count: 0,
+                            total_records: 0,
+                            metrics: mv,
+                            hotspots: vec![],
+                            is_cached: true,
+                            baseline_comparison: None,
+                            entries_analysis: None,
+                            narratives: None,
+                            recommendations: vec![],
+                            session_summaries: None,
+                            feature_knowledge_reuse: None,
+                            rework_session_count: None,
+                            context_reload_pct: None,
+                            attribution: None,
+                            phase_narrative: None,
+                            goal: None,
+                            cycle_type: None,
+                            attribution_path: None,
+                            is_in_progress: None,
+                            phase_stats: None,
+                        };
+
+                        // Cached path also respects format (vnc-011)
+                        let format = params.format.as_deref().unwrap_or("markdown");
+                        return match format {
+                            "markdown" | "summary" => Ok(format_retrospective_markdown(&report)),
+                            "json" => Ok(format_retrospective_report(&report)),
+                            _ => Err(rmcp::model::ErrorData::new(
+                                ERROR_INVALID_PARAMS,
+                                format!(
+                                    "Unknown format '{}'. Valid values: \"markdown\", \"json\".",
+                                    format
+                                ),
+                                None,
+                            )),
+                        };
+                    }
+                    None => {
+                        // No data, no cache (FR-09.7)
+                        return Err(rmcp::model::ErrorData::new(
+                            ERROR_NO_OBSERVATION_DATA,
+                            format!(
+                                "No observation data found for feature '{}'. Ensure hook scripts are installed and sessions have been run.",
+                                feature_cycle
+                            ),
+                            None,
+                        ));
+                    }
+                }
+            }
+
+            // 7a. Load historical MetricVectors for baseline
+            let all_metrics = store
+                .list_all_metrics()
                 .await
                 .map_err(|e| ServerError::Core(CoreError::Store(e)))
                 .map_err(rmcp::ErrorData::from)?;
 
-            match cached {
-                Some(mv) => {
-                    // Return cached result (FR-09.6)
-                    let report = unimatrix_observe::RetrospectiveReport {
-                        feature_cycle: feature_cycle.clone(),
-                        session_count: 0,
-                        total_records: 0,
-                        metrics: mv,
-                        hotspots: vec![],
-                        is_cached: true,
-                        baseline_comparison: None,
-                        entries_analysis: None,
-                        narratives: None,
-                        recommendations: vec![],
-                        session_summaries: None,
-                        feature_knowledge_reuse: None,
-                        rework_session_count: None,
-                        context_reload_pct: None,
-                        attribution: None,
-                        phase_narrative: None,
-                        goal: None,
-                        cycle_type: None,
-                        attribution_path: None,
-                        is_in_progress: None,
-                        phase_stats: None,
-                    };
-
-                    // Cached path also respects format (vnc-011)
-                    let format = params.format.as_deref().unwrap_or("markdown");
-                    return match format {
-                        "markdown" | "summary" => Ok(format_retrospective_markdown(&report)),
-                        "json" => Ok(format_retrospective_report(&report)),
-                        _ => Err(rmcp::model::ErrorData::new(
-                            ERROR_INVALID_PARAMS,
-                            format!(
-                                "Unknown format '{}'. Valid values: \"markdown\", \"json\".",
-                                format
-                            ),
-                            None,
-                        )),
-                    };
-                }
-                None => {
-                    // No data, no cache (FR-09.7)
-                    return Err(rmcp::model::ErrorData::new(
-                        ERROR_NO_OBSERVATION_DATA,
-                        format!(
-                            "No observation data found for feature '{}'. Ensure hook scripts are installed and sessions have been run.",
-                            feature_cycle
-                        ),
-                        None,
-                    ));
+            // 7b. Collect historical vectors, excluding current feature
+            let mut history: Vec<unimatrix_observe::MetricVector> = Vec::new();
+            for (fc, mv) in &all_metrics {
+                if fc != &feature_cycle {
+                    history.push(mv.clone());
                 }
             }
-        }
 
-        // 7a. Load historical MetricVectors for baseline
-        let all_metrics = store
-            .list_all_metrics()
-            .await
-            .map_err(|e| ServerError::Core(CoreError::Store(e)))
-            .map_err(rmcp::ErrorData::from)?;
-
-        // 7b. Collect historical vectors, excluding current feature
-        let mut history: Vec<unimatrix_observe::MetricVector> = Vec::new();
-        for (fc, mv) in &all_metrics {
-            if fc != &feature_cycle {
-                history.push(mv.clone());
-            }
-        }
-
-        // 7c. Run detection with history for PhaseDurationOutlierRule
-        let history_slice = if history.is_empty() {
-            None
-        } else {
-            Some(history.as_slice())
-        };
-        let rules = unimatrix_observe::default_rules(history_slice);
-        let hotspots = unimatrix_observe::detect_hotspots(&attributed, &rules);
-
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let metrics = unimatrix_observe::compute_metric_vector(&attributed, &hotspots, now);
-
-        // 8. Store MetricVector (nxs-009: typed API, no bincode serialization)
-        store.store_metrics(&feature_cycle, &metrics);
-
-        // 10a. Compute baseline comparison
-        let baseline = unimatrix_observe::compute_baselines(&history)
-            .map(|baselines| unimatrix_observe::compare_to_baseline(&metrics, &baselines));
-
-        // 10b. Drain accumulated entry analysis from signal consumers (col-009, FR-10.5)
-        // vnc-005: drain_for(&feature_cycle) replaces drain_all() — drains only the
-        // bucket for this feature cycle, leaving other feature cycles' data intact.
-        let entries_analysis = {
-            let mut pending = self
-                .pending_entries_analysis
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
-            let drained = pending.drain_for(&feature_cycle);
-            if drained.is_empty() {
+            // 7c. Run detection with history for PhaseDurationOutlierRule
+            let history_slice = if history.is_empty() {
                 None
             } else {
-                Some(drained)
-            }
-        };
+                Some(history.as_slice())
+            };
+            let rules = unimatrix_observe::default_rules(history_slice);
+            let hotspots = unimatrix_observe::detect_hotspots(&attributed, &rules);
 
-        // 10c. Build report with baseline and entries_analysis
-        let mut report = unimatrix_observe::build_report(
-            &feature_cycle,
-            &attributed,
-            metrics,
-            hotspots,
-            baseline,
-            entries_analysis,
-        );
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            let metrics = unimatrix_observe::compute_metric_vector(&attributed, &hotspots, now);
 
-        // 10d. col-010b: Synthesize recommendations (both paths)
-        let recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
-        report.recommendations = recommendations;
+            // 8. Store MetricVector (nxs-009: typed API, no bincode serialization)
+            store.store_metrics(&feature_cycle, &metrics);
 
-        // 10e. col-010b/col-012: Narratives — now on SQL path.
-        report.narratives = Some(unimatrix_observe::synthesize_narratives(&report.hotspots));
+            // 10a. Compute baseline comparison
+            let baseline = unimatrix_observe::compute_baselines(&history)
+                .map(|baselines| unimatrix_observe::compare_to_baseline(&metrics, &baselines));
 
-        // 10f. col-010b: Fire-and-forget lesson-learned write (ADR-002: self.clone())
-        if !report.hotspots.is_empty() || !report.recommendations.is_empty() {
-            let server = self.clone();
-            let report_for_ll = report.clone();
-            let fc_for_ll = feature_cycle.clone();
-            tokio::spawn(async move {
-                if let Err(e) = write_lesson_learned(&server, &report_for_ll, &fc_for_ll).await {
-                    tracing::warn!("lesson-learned write failed for {}: {}", fc_for_ll, e);
+            // 10b. Drain accumulated entry analysis from signal consumers (col-009, FR-10.5)
+            // vnc-005: drain_for(&feature_cycle) replaces drain_all() — drains only the
+            // bucket for this feature cycle, leaving other feature cycles' data intact.
+            let entries_analysis = {
+                let mut pending = self
+                    .pending_entries_analysis
+                    .lock()
+                    .unwrap_or_else(|e| e.into_inner());
+                let drained = pending.drain_for(&feature_cycle);
+                if drained.is_empty() {
+                    None
+                } else {
+                    Some(drained)
                 }
-            });
-        }
+            };
 
-        // col-020: Multi-session retrospective steps (best-effort, all fields default to None)
-        // Steps 11-17 depend on session_records from step 11. If step 11 fails, all are skipped.
-        let session_data: Option<(
-            Vec<unimatrix_observe::SessionSummary>,
-            Vec<unimatrix_store::SessionRecord>,
-        )> = match (|| async {
-            // Step 11: Compute session summaries (C1)
-            let mut summaries = unimatrix_observe::compute_session_summaries(&attributed);
+            // 10c. Build report with baseline and entries_analysis
+            let mut report = unimatrix_observe::build_report(
+                &feature_cycle,
+                &attributed,
+                metrics,
+                hotspots,
+                baseline,
+                entries_analysis,
+            );
 
-            // Enrich with outcome from SessionRecord
-            let session_records = store
-                .scan_sessions_by_feature(&feature_cycle)
-                .await
-                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
+            // 10d. col-010b: Synthesize recommendations (both paths)
+            let recommendations = unimatrix_observe::recommendations_for_hotspots(&report.hotspots);
+            report.recommendations = recommendations;
 
-            // Build session_id -> outcome map
-            let outcome_map: std::collections::HashMap<String, Option<String>> = session_records
-                .iter()
-                .map(|sr| (sr.session_id.clone(), sr.outcome.clone()))
-                .collect();
+            // 10e. col-010b/col-012: Narratives — now on SQL path.
+            report.narratives = Some(unimatrix_observe::synthesize_narratives(&report.hotspots));
 
-            // Attach outcomes to summaries
-            for summary in &mut summaries {
-                if let Some(outcome) = outcome_map.get(&summary.session_id) {
-                    summary.outcome = outcome.clone();
-                }
-            }
-
-            Ok::<_, Box<dyn std::error::Error + Send + Sync>>((summaries, session_records))
-        })()
-        .await
-        {
-            Ok(data) => Some(data),
-            Err(e) => {
-                tracing::warn!("col-020: session summaries failed: {e}");
-                None
-            }
-        };
-
-        if let Some((summaries, session_records)) = session_data {
-            // Step 12: Context reload percentage (C1, best-effort)
-            let reload_pct = unimatrix_observe::compute_context_reload_pct(&summaries, &attributed);
-            report.context_reload_pct = Some(reload_pct);
-
-            // Step 13-14: Knowledge reuse (C3/C4, best-effort; col-026: cross-feature split)
-            match compute_knowledge_reuse_for_sessions(&store, &session_records, &feature_cycle)
-                .await
-            {
-                Ok(mut reuse) => {
-                    // col-026: set total_stored from feature_entries count for this cycle.
-                    // compute_knowledge_reuse leaves total_stored=0; caller fills it here.
-                    match sqlx::query_scalar::<_, i64>(
-                        "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?",
-                    )
-                    .bind(&feature_cycle)
-                    .fetch_one(store.write_pool_server())
-                    .await
+            // 10f. col-010b: Fire-and-forget lesson-learned write (ADR-002: self.clone())
+            if !report.hotspots.is_empty() || !report.recommendations.is_empty() {
+                let server = self.clone();
+                let report_for_ll = report.clone();
+                let fc_for_ll = feature_cycle.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = write_lesson_learned(&server, &report_for_ll, &fc_for_ll).await
                     {
-                        Ok(count) => reuse.total_stored = count as u64,
-                        Err(e) => {
-                            tracing::warn!(
-                                "col-026: total_stored count failed for {}: {e}",
-                                feature_cycle
-                            );
-                        }
+                        tracing::warn!("lesson-learned write failed for {}: {}", fc_for_ll, e);
                     }
-                    report.feature_knowledge_reuse = Some(reuse);
-                }
-                Err(e) => tracing::warn!("col-020: knowledge reuse computation failed: {e}"),
+                });
             }
 
-            // Step 15: Rework session count (case-insensitive substring match per human override)
-            let rework_count = session_records
-                .iter()
-                .filter(|sr| {
-                    if let Some(outcome) = &sr.outcome {
-                        let lower = outcome.to_lowercase();
-                        lower.contains("result:rework") || lower.contains("result:failed")
-                    } else {
-                        false
+            // col-020: Multi-session retrospective steps (best-effort, all fields default to None)
+            // Steps 11-17 depend on session_records from step 11. If step 11 fails, all are skipped.
+            let session_data: Option<(
+                Vec<unimatrix_observe::SessionSummary>,
+                Vec<unimatrix_store::SessionRecord>,
+            )> = match (|| async {
+                // Step 11: Compute session summaries (C1)
+                let mut summaries = unimatrix_observe::compute_session_summaries(&attributed);
+
+                // Enrich with outcome from SessionRecord
+                let session_records = store
+                    .scan_sessions_by_feature(&feature_cycle)
+                    .await
+                    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
+
+                // Build session_id -> outcome map
+                let outcome_map: std::collections::HashMap<String, Option<String>> =
+                    session_records
+                        .iter()
+                        .map(|sr| (sr.session_id.clone(), sr.outcome.clone()))
+                        .collect();
+
+                // Attach outcomes to summaries
+                for summary in &mut summaries {
+                    if let Some(outcome) = outcome_map.get(&summary.session_id) {
+                        summary.outcome = outcome.clone();
                     }
-                })
-                .count() as u64;
-            report.rework_session_count = Some(rework_count);
+                }
 
-            // Step 16: Attribution metadata (ADR-003)
-            match (|| async {
-                let store_for_discover = Arc::clone(&store);
-                let registry_for_discover = Arc::clone(&self.observation_registry);
-                let fc_for_discover = feature_cycle.clone();
-                let discovered_ids = crate::infra::timeout::spawn_blocking_with_timeout(
-                    crate::infra::timeout::MCP_HANDLER_TIMEOUT,
-                    move || {
-                        use unimatrix_observe::ObservationSource;
-                        let source = crate::services::observation::SqlObservationSource::new(
-                            store_for_discover,
-                            registry_for_discover,
-                        );
-                        source.discover_sessions_for_feature(&fc_for_discover)
-                    },
-                )
-                .await
-                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
-                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
-
-                let attributed_count = session_records
-                    .iter()
-                    .filter(|sr| sr.feature_cycle.as_deref() == Some(&feature_cycle))
-                    .count();
-                let total_count = discovered_ids.len();
-
-                Ok::<_, Box<dyn std::error::Error + Send + Sync>>(
-                    unimatrix_observe::AttributionMetadata {
-                        attributed_session_count: attributed_count,
-                        total_session_count: total_count,
-                    },
-                )
+                Ok::<_, Box<dyn std::error::Error + Send + Sync>>((summaries, session_records))
             })()
             .await
             {
-                Ok(meta) => report.attribution = Some(meta),
-                Err(e) => tracing::warn!("col-020: attribution metadata failed: {e}"),
-            }
-
-            // Step 17: Idempotent counter update (ADR-002, best-effort)
-            {
-                let total_sessions = session_records.len() as i64;
-                let total_tool_calls = report.metrics.universal.total_tool_calls as i64;
-                let total_duration_secs = report.metrics.universal.total_duration_secs as i64;
-                // Ensure record exists before setting counters
-                match store.get_topic_delivery(&feature_cycle).await {
-                    Ok(None) => {
-                        let now = std::time::SystemTime::now()
-                            .duration_since(std::time::UNIX_EPOCH)
-                            .unwrap_or_default()
-                            .as_secs();
-                        store.upsert_topic_delivery(&unimatrix_store::TopicDeliveryRecord {
-                            topic: feature_cycle.clone(),
-                            created_at: now,
-                            completed_at: None,
-                            status: "active".to_string(),
-                            github_issue: None,
-                            total_sessions: 0,
-                            total_tool_calls: 0,
-                            total_duration_secs: 0,
-                            phases_completed: None,
-                        });
-                        match store
-                            .set_topic_delivery_counters(
-                                &feature_cycle,
-                                total_sessions,
-                                total_tool_calls,
-                                total_duration_secs,
-                            )
-                            .await
-                        {
-                            Ok(()) => {}
-                            Err(e) => tracing::warn!("col-020: counter update failed: {e}"),
-                        }
-                    }
-                    Ok(Some(_)) => {
-                        match store
-                            .set_topic_delivery_counters(
-                                &feature_cycle,
-                                total_sessions,
-                                total_tool_calls,
-                                total_duration_secs,
-                            )
-                            .await
-                        {
-                            Ok(()) => {}
-                            Err(e) => tracing::warn!("col-020: counter update failed: {e}"),
-                        }
-                    }
-                    Err(e) => tracing::warn!("col-020: counter update failed: {e}"),
+                Ok(data) => Some(data),
+                Err(e) => {
+                    tracing::warn!("col-020: session summaries failed: {e}");
+                    None
                 }
-            }
+            };
 
-            // Assign session summaries to report
-            report.session_summaries = Some(summaries);
-        }
+            if let Some((summaries, session_records)) = session_data {
+                // Step 12: Context reload percentage (C1, best-effort)
+                let reload_pct =
+                    unimatrix_observe::compute_context_reload_pct(&summaries, &attributed);
+                report.context_reload_pct = Some(reload_pct);
 
-        // 10g. crt-025: Phase narrative assembly
-        // col-026: events are hoisted to outer scope so steps 10h (PhaseStats) and
-        // 10i (is_in_progress) can borrow them after step 10g. Both build_phase_narrative
-        // (step 10g) and compute_phase_stats (step 10h) borrow &[CycleEventRecord].
-        // Query 1: cycle event log for this feature cycle
-        let event_rows = sqlx::query(
-            "SELECT seq, event_type, phase, outcome, next_phase, timestamp \
-               FROM cycle_events \
-              WHERE cycle_id = ?1 \
-              ORDER BY timestamp ASC, seq ASC",
-        )
-        .bind(&feature_cycle)
-        .fetch_all(store.write_pool_server())
-        .await
-        .map_err(|e| {
-            tracing::warn!(
-                "crt-025: cycle_events query failed for {}: {}",
-                feature_cycle,
-                e
-            );
-        });
+                // Step 13-14: Knowledge reuse (C3/C4, best-effort; col-026: cross-feature split)
+                match compute_knowledge_reuse_for_sessions(&store, &session_records, &feature_cycle)
+                    .await
+                {
+                    Ok(mut reuse) => {
+                        // col-026: set total_stored from feature_entries count for this cycle.
+                        // compute_knowledge_reuse leaves total_stored=0; caller fills it here.
+                        match sqlx::query_scalar::<_, i64>(
+                            "SELECT COUNT(*) FROM feature_entries WHERE feature_id = ?",
+                        )
+                        .bind(&feature_cycle)
+                        .fetch_one(store.write_pool_server())
+                        .await
+                        {
+                            Ok(count) => reuse.total_stored = count as u64,
+                            Err(e) => {
+                                tracing::warn!(
+                                    "col-026: total_stored count failed for {}: {e}",
+                                    feature_cycle
+                                );
+                            }
+                        }
+                        report.feature_knowledge_reuse = Some(reuse);
+                    }
+                    Err(e) => tracing::warn!("col-020: knowledge reuse computation failed: {e}"),
+                }
 
-        // col-026: outer option to hold events for steps 10h and 10i
-        let mut cycle_events_vec: Option<Vec<unimatrix_observe::CycleEventRecord>> = None;
-
-        if let Ok(event_rows) = event_rows {
-            if !event_rows.is_empty() {
-                use unimatrix_observe::{CycleEventRecord, PhaseCategoryDist};
-
-                // Map rows to CycleEventRecord
-                let events: Vec<CycleEventRecord> = event_rows
+                // Step 15: Rework session count (case-insensitive substring match per human override)
+                let rework_count = session_records
                     .iter()
-                    .map(|row| {
-                        use sqlx::Row;
-                        CycleEventRecord {
-                            seq: row.try_get::<i64, _>("seq").unwrap_or(0),
-                            event_type: row.try_get::<String, _>("event_type").unwrap_or_default(),
-                            phase: row.try_get::<Option<String>, _>("phase").unwrap_or(None),
-                            outcome: row.try_get::<Option<String>, _>("outcome").unwrap_or(None),
-                            next_phase: row
-                                .try_get::<Option<String>, _>("next_phase")
-                                .unwrap_or(None),
-                            timestamp: row.try_get::<i64, _>("timestamp").unwrap_or(0),
+                    .filter(|sr| {
+                        if let Some(outcome) = &sr.outcome {
+                            let lower = outcome.to_lowercase();
+                            lower.contains("result:rework") || lower.contains("result:failed")
+                        } else {
+                            false
                         }
                     })
-                    .collect();
+                    .count() as u64;
+                report.rework_session_count = Some(rework_count);
 
-                // Query 2: current feature phase/category distribution
-                let current_dist: PhaseCategoryDist = match sqlx::query(
-                    "SELECT fe.phase, e.category, COUNT(*) AS cnt \
-                       FROM feature_entries fe \
-                       JOIN entries e ON e.id = fe.entry_id \
-                      WHERE fe.feature_id = ?1 \
-                        AND fe.phase IS NOT NULL \
-                      GROUP BY fe.phase, e.category",
-                )
-                .bind(&feature_cycle)
-                .fetch_all(store.write_pool_server())
+                // Step 16: Attribution metadata (ADR-003)
+                match (|| async {
+                    let store_for_discover = Arc::clone(&store);
+                    let registry_for_discover = Arc::clone(&self.observation_registry);
+                    let fc_for_discover = feature_cycle.clone();
+                    let discovered_ids = crate::infra::timeout::spawn_blocking_with_timeout(
+                        crate::infra::timeout::MCP_HANDLER_TIMEOUT,
+                        move || {
+                            use unimatrix_observe::ObservationSource;
+                            let source = crate::services::observation::SqlObservationSource::new(
+                                store_for_discover,
+                                registry_for_discover,
+                            );
+                            source.discover_sessions_for_feature(&fc_for_discover)
+                        },
+                    )
+                    .await
+                    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?
+                    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
+
+                    let attributed_count = session_records
+                        .iter()
+                        .filter(|sr| sr.feature_cycle.as_deref() == Some(&feature_cycle))
+                        .count();
+                    let total_count = discovered_ids.len();
+
+                    Ok::<_, Box<dyn std::error::Error + Send + Sync>>(
+                        unimatrix_observe::AttributionMetadata {
+                            attributed_session_count: attributed_count,
+                            total_session_count: total_count,
+                        },
+                    )
+                })()
                 .await
                 {
-                    Ok(rows) => {
-                        use sqlx::Row;
-                        let mut dist: PhaseCategoryDist = std::collections::HashMap::new();
-                        for row in &rows {
-                            let phase: String = row.try_get("phase").unwrap_or_default();
-                            let category: String = row.try_get("category").unwrap_or_default();
-                            let cnt: i64 = row.try_get("cnt").unwrap_or(0);
-                            dist.entry(phase).or_default().insert(category, cnt as u64);
-                        }
-                        dist
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            "crt-025: phase/category dist query failed for {}: {}",
-                            feature_cycle,
-                            e
-                        );
-                        std::collections::HashMap::new()
-                    }
-                };
+                    Ok(meta) => report.attribution = Some(meta),
+                    Err(e) => tracing::warn!("col-020: attribution metadata failed: {e}"),
+                }
 
-                // Query 3: cross-feature baseline (excludes current feature)
-                let cross_dist: std::collections::HashMap<String, PhaseCategoryDist> =
-                    match sqlx::query(
-                        "SELECT fe.feature_id, fe.phase, e.category, COUNT(*) AS cnt \
+                // Step 17: Idempotent counter update (ADR-002, best-effort)
+                {
+                    let total_sessions = session_records.len() as i64;
+                    let total_tool_calls = report.metrics.universal.total_tool_calls as i64;
+                    let total_duration_secs = report.metrics.universal.total_duration_secs as i64;
+                    // Ensure record exists before setting counters
+                    match store.get_topic_delivery(&feature_cycle).await {
+                        Ok(None) => {
+                            let now = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs();
+                            store.upsert_topic_delivery(&unimatrix_store::TopicDeliveryRecord {
+                                topic: feature_cycle.clone(),
+                                created_at: now,
+                                completed_at: None,
+                                status: "active".to_string(),
+                                github_issue: None,
+                                total_sessions: 0,
+                                total_tool_calls: 0,
+                                total_duration_secs: 0,
+                                phases_completed: None,
+                            });
+                            match store
+                                .set_topic_delivery_counters(
+                                    &feature_cycle,
+                                    total_sessions,
+                                    total_tool_calls,
+                                    total_duration_secs,
+                                )
+                                .await
+                            {
+                                Ok(()) => {}
+                                Err(e) => tracing::warn!("col-020: counter update failed: {e}"),
+                            }
+                        }
+                        Ok(Some(_)) => {
+                            match store
+                                .set_topic_delivery_counters(
+                                    &feature_cycle,
+                                    total_sessions,
+                                    total_tool_calls,
+                                    total_duration_secs,
+                                )
+                                .await
+                            {
+                                Ok(()) => {}
+                                Err(e) => tracing::warn!("col-020: counter update failed: {e}"),
+                            }
+                        }
+                        Err(e) => tracing::warn!("col-020: counter update failed: {e}"),
+                    }
+                }
+
+                // Assign session summaries to report
+                report.session_summaries = Some(summaries);
+            }
+
+            // 10g. crt-025: Phase narrative assembly
+            // col-026: events are hoisted to outer scope so steps 10h (PhaseStats) and
+            // 10i (is_in_progress) can borrow them after step 10g. Both build_phase_narrative
+            // (step 10g) and compute_phase_stats (step 10h) borrow &[CycleEventRecord].
+            // Query 1: cycle event log for this feature cycle
+            let event_rows = sqlx::query(
+                "SELECT seq, event_type, phase, outcome, next_phase, timestamp \
+                   FROM cycle_events \
+                  WHERE cycle_id = ?1 \
+                  ORDER BY timestamp ASC, seq ASC",
+            )
+            .bind(&feature_cycle)
+            .fetch_all(store.write_pool_server())
+            .await
+            .map_err(|e| {
+                tracing::warn!(
+                    "crt-025: cycle_events query failed for {}: {}",
+                    feature_cycle,
+                    e
+                );
+            });
+
+            // col-026: outer option to hold events for steps 10h and 10i
+            let mut cycle_events_vec: Option<Vec<unimatrix_observe::CycleEventRecord>> = None;
+
+            if let Ok(event_rows) = event_rows {
+                if !event_rows.is_empty() {
+                    use unimatrix_observe::{CycleEventRecord, PhaseCategoryDist};
+
+                    // Map rows to CycleEventRecord
+                    let events: Vec<CycleEventRecord> = event_rows
+                        .iter()
+                        .map(|row| {
+                            use sqlx::Row;
+                            CycleEventRecord {
+                                seq: row.try_get::<i64, _>("seq").unwrap_or(0),
+                                event_type: row
+                                    .try_get::<String, _>("event_type")
+                                    .unwrap_or_default(),
+                                phase: row.try_get::<Option<String>, _>("phase").unwrap_or(None),
+                                outcome: row
+                                    .try_get::<Option<String>, _>("outcome")
+                                    .unwrap_or(None),
+                                next_phase: row
+                                    .try_get::<Option<String>, _>("next_phase")
+                                    .unwrap_or(None),
+                                timestamp: row.try_get::<i64, _>("timestamp").unwrap_or(0),
+                            }
+                        })
+                        .collect();
+
+                    // Query 2: current feature phase/category distribution
+                    let current_dist: PhaseCategoryDist = match sqlx::query(
+                        "SELECT fe.phase, e.category, COUNT(*) AS cnt \
                            FROM feature_entries fe \
                            JOIN entries e ON e.id = fe.entry_id \
-                          WHERE fe.feature_id IN ( \
-                                SELECT DISTINCT feature_id FROM feature_entries WHERE phase IS NOT NULL \
-                            ) \
-                            AND fe.feature_id != ?1 \
+                          WHERE fe.feature_id = ?1 \
                             AND fe.phase IS NOT NULL \
-                          GROUP BY fe.feature_id, fe.phase, e.category",
+                          GROUP BY fe.phase, e.category",
                     )
                     .bind(&feature_cycle)
                     .fetch_all(store.write_pool_server())
@@ -1958,30 +2137,18 @@ impl UnimatrixServer {
                     {
                         Ok(rows) => {
                             use sqlx::Row;
-                            let mut by_feature: std::collections::HashMap<
-                                String,
-                                PhaseCategoryDist,
-                            > = std::collections::HashMap::new();
+                            let mut dist: PhaseCategoryDist = std::collections::HashMap::new();
                             for row in &rows {
-                                let feature_id: String =
-                                    row.try_get("feature_id").unwrap_or_default();
-                                let phase: String =
-                                    row.try_get("phase").unwrap_or_default();
-                                let category: String =
-                                    row.try_get("category").unwrap_or_default();
+                                let phase: String = row.try_get("phase").unwrap_or_default();
+                                let category: String = row.try_get("category").unwrap_or_default();
                                 let cnt: i64 = row.try_get("cnt").unwrap_or(0);
-                                by_feature
-                                    .entry(feature_id)
-                                    .or_default()
-                                    .entry(phase)
-                                    .or_default()
-                                    .insert(category, cnt as u64);
+                                dist.entry(phase).or_default().insert(category, cnt as u64);
                             }
-                            by_feature
+                            dist
                         }
                         Err(e) => {
                             tracing::warn!(
-                                "crt-025: cross-feature dist query failed for {}: {}",
+                                "crt-025: phase/category dist query failed for {}: {}",
                                 feature_cycle,
                                 e
                             );
@@ -1989,86 +2156,198 @@ impl UnimatrixServer {
                         }
                     };
 
-                // Build phase narrative (pure function); borrows &events
-                let narrative =
-                    unimatrix_observe::build_phase_narrative(&events, &current_dist, &cross_dist);
-                report.phase_narrative = Some(narrative);
+                    // Query 3: cross-feature baseline (excludes current feature)
+                    let cross_dist: std::collections::HashMap<String, PhaseCategoryDist> =
+                        match sqlx::query(
+                            "SELECT fe.feature_id, fe.phase, e.category, COUNT(*) AS cnt \
+                               FROM feature_entries fe \
+                               JOIN entries e ON e.id = fe.entry_id \
+                              WHERE fe.feature_id IN ( \
+                                    SELECT DISTINCT feature_id FROM feature_entries WHERE phase IS NOT NULL \
+                                ) \
+                                AND fe.feature_id != ?1 \
+                                AND fe.phase IS NOT NULL \
+                              GROUP BY fe.feature_id, fe.phase, e.category",
+                        )
+                        .bind(&feature_cycle)
+                        .fetch_all(store.write_pool_server())
+                        .await
+                        {
+                            Ok(rows) => {
+                                use sqlx::Row;
+                                let mut by_feature: std::collections::HashMap<
+                                    String,
+                                    PhaseCategoryDist,
+                                > = std::collections::HashMap::new();
+                                for row in &rows {
+                                    let feature_id: String =
+                                        row.try_get("feature_id").unwrap_or_default();
+                                    let phase: String =
+                                        row.try_get("phase").unwrap_or_default();
+                                    let category: String =
+                                        row.try_get("category").unwrap_or_default();
+                                    let cnt: i64 = row.try_get("cnt").unwrap_or(0);
+                                    by_feature
+                                        .entry(feature_id)
+                                        .or_default()
+                                        .entry(phase)
+                                        .or_default()
+                                        .insert(category, cnt as u64);
+                                }
+                                by_feature
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    "crt-025: cross-feature dist query failed for {}: {}",
+                                    feature_cycle,
+                                    e
+                                );
+                                std::collections::HashMap::new()
+                            }
+                        };
 
-                // Stash events for steps 10h and 10i (both borrow from this vec)
-                cycle_events_vec = Some(events);
+                    // Build phase narrative (pure function); borrows &events
+                    let narrative = unimatrix_observe::build_phase_narrative(
+                        &events,
+                        &current_dist,
+                        &cross_dist,
+                    );
+                    report.phase_narrative = Some(narrative);
+
+                    // Extract cycle outcome from cycle_stop event for step 8b.
+                    // cycle_stop carries the authoritative outcome for the cycle.
+                    // Fallback: last cycle_phase_end outcome (if no cycle_stop yet).
+                    cycle_outcome = events
+                        .iter()
+                        .find(|e| e.event_type == "cycle_stop")
+                        .and_then(|e| e.outcome.clone())
+                        .or_else(|| {
+                            events
+                                .iter()
+                                .rev()
+                                .find(|e| e.event_type == "cycle_phase_end")
+                                .and_then(|e| e.outcome.clone())
+                        });
+
+                    // Stash events for steps 10h and 10i (both borrow from this vec)
+                    cycle_events_vec = Some(events);
+                }
+                // If event_rows is empty, phase_narrative remains None (AC-12/13)
+                // and cycle_events_vec remains None → is_in_progress = None
             }
-            // If event_rows is empty, phase_narrative remains None (AC-12/13)
-            // and cycle_events_vec remains None → is_in_progress = None
-        }
 
-        // 10h. col-026: PhaseStats computation (best-effort, pure — no DB)
-        {
-            let events_slice = cycle_events_vec.as_deref().unwrap_or(&[]);
-            let phase_stats = compute_phase_stats(events_slice, &attributed);
-            report.phase_stats = if phase_stats.is_empty() {
-                None
-            } else {
-                Some(phase_stats)
-            };
-        }
-
-        // 10i. col-026: goal, cycle_type, is_in_progress, attribution_path (best-effort)
-        match (|| async {
-            let goal = store
-                .get_cycle_start_goal(&feature_cycle)
-                .await
-                .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
-            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(goal)
-        })()
-        .await
-        {
-            Ok(goal_opt) => {
-                let cycle_type = infer_cycle_type(goal_opt.as_deref());
-                report.goal = goal_opt;
-                report.cycle_type = Some(cycle_type);
+            // 10h. col-026: PhaseStats computation (best-effort, pure — no DB)
+            {
+                let events_slice = cycle_events_vec.as_deref().unwrap_or(&[]);
+                let phase_stats = compute_phase_stats(events_slice, &attributed);
+                report.phase_stats = if phase_stats.is_empty() {
+                    None
+                } else {
+                    Some(phase_stats)
+                };
             }
-            Err(e) => {
-                tracing::warn!("col-026: get_cycle_start_goal failed for {feature_cycle}: {e}");
-                // report.goal remains None, report.cycle_type remains None
+
+            // 10i. col-026: goal, cycle_type, is_in_progress, attribution_path (best-effort)
+            match (|| async {
+                let goal = store
+                    .get_cycle_start_goal(&feature_cycle)
+                    .await
+                    .map_err(|e| -> Box<dyn std::error::Error + Send + Sync> { Box::new(e) })?;
+                Ok::<_, Box<dyn std::error::Error + Send + Sync>>(goal)
+            })()
+            .await
+            {
+                Ok(goal_opt) => {
+                    let cycle_type = infer_cycle_type(goal_opt.as_deref());
+                    report.goal = goal_opt;
+                    report.cycle_type = Some(cycle_type);
+                }
+                Err(e) => {
+                    tracing::warn!("col-026: get_cycle_start_goal failed for {feature_cycle}: {e}");
+                    // report.goal remains None, report.cycle_type remains None
+                }
             }
-        }
 
-        // is_in_progress: derived in-memory from cycle_events (no DB call)
-        report.is_in_progress = derive_is_in_progress(cycle_events_vec.as_deref());
+            // is_in_progress: derived in-memory from cycle_events (no DB call)
+            report.is_in_progress = derive_is_in_progress(cycle_events_vec.as_deref());
 
-        // attribution_path: label recorded at path-selection time in step 3
-        report.attribution_path = attribution_path_label.map(|s| s.to_string());
+            // attribution_path: label recorded at path-selection time in step 3
+            report.attribution_path = attribution_path_label.map(|s| s.to_string());
 
-        // -----------------------------------------------------------------------
-        // Step 8a (crt-033): Serialize and store the computed review.
-        // Executes AFTER full pipeline, BEFORE step 11 audit.
-        // evidence_limit truncation is NOT applied here — the full report is stored (C-03).
-        // Uses write_pool_server() directly — MUST NOT be in spawn_blocking (ADR-001).
-        // -----------------------------------------------------------------------
-        match build_cycle_review_record(&feature_cycle, &report) {
-            Ok(record) => {
-                if let Err(e) = store.store_cycle_review(&record).await {
+            // -------------------------------------------------------------------
+            // Step 8a (crt-033): Serialize and store the computed review.
+            // Executes AFTER full pipeline, BEFORE step 8b and audit.
+            // evidence_limit truncation is NOT applied here — the full report is stored (C-03).
+            // Uses write_pool_server() directly — MUST NOT be in spawn_blocking (ADR-001).
+            // -------------------------------------------------------------------
+            match build_cycle_review_record(&feature_cycle, &report) {
+                Ok(record) => {
+                    if let Err(e) = store.store_cycle_review(&record).await {
+                        tracing::warn!(
+                            "crt-033: store_cycle_review failed for {}: {} — continuing",
+                            feature_cycle,
+                            e
+                        );
+                        // Log and continue — GH #409 gate note: if this fails, the purge gate
+                        // will not fire for this cycle. This is acceptable over failing the caller.
+                    }
+                }
+                Err(e) => {
+                    // serde_json::to_string failed — should not occur after serde audit (ADR-003)
+                    // but propagate defensively rather than panicking.
                     tracing::warn!(
-                        "crt-033: store_cycle_review failed for {}: {} — continuing",
+                        "crt-033: build_cycle_review_record serialization failed for {}: {} — continuing",
                         feature_cycle,
                         e
                     );
-                    // Log and continue — GH #409 gate note: if this fails, the purge gate
-                    // will not fire for this cycle. This is acceptable over failing the caller.
                 }
             }
-            Err(e) => {
-                // serde_json::to_string failed — should not occur after serde audit (ADR-003)
-                // but propagate defensively rather than panicking.
-                tracing::warn!(
-                    "crt-033: build_cycle_review_record serialization failed for {}: {} — continuing",
-                    feature_cycle,
-                    e
-                );
-            }
+
+            full_report = Some(report);
+        } // end of full pipeline block (memo_hit.is_none())
+
+        // -----------------------------------------------------------------------
+        // Step 8b (crt-046): Behavioral signal emission — ALWAYS RUNS (FR-09, Resolution 2).
+        // Runs on EVERY context_cycle_review call: cache-hit (force=false) or cache-miss.
+        // All errors are non-fatal — step 8b never causes the handler to fail.
+        // parse_failure_count is returned as a top-level field in the JSON response (Resolution 1).
+        // -----------------------------------------------------------------------
+        let parse_failure_count: u32 = crate::services::behavioral_signals::run_step_8b(
+            &store,
+            &feature_cycle,
+            cycle_outcome.as_deref(),
+        )
+        .await;
+
+        // -----------------------------------------------------------------------
+        // Memoisation early-return — AFTER step 8b (FR-09, Resolution 2, AC-15).
+        //
+        // On cache-hit (force=false AND memo_hit is Some): return the cached
+        // report now that step 8b has run. Includes parse_failure_count (Resolution 1).
+        // -----------------------------------------------------------------------
+        if let Some((memo_report, advisory)) = memo_hit {
+            // 11. Audit (cache-hit path label)
+            self.audit_fire_and_forget(AuditEvent {
+                event_id: 0,
+                timestamp: 0,
+                session_id: String::new(),
+                agent_id: identity.agent_id,
+                operation: "context_cycle_review".to_string(),
+                target_ids: vec![],
+                outcome: Outcome::Success,
+                detail: format!("retrospective for {} (memoization hit)", feature_cycle),
+            });
+            let fmt = params.format.as_deref().unwrap_or("markdown");
+            return dispatch_review_with_advisory_and_parse_failures(
+                memo_report,
+                fmt,
+                params.evidence_limit,
+                advisory,
+                parse_failure_count,
+            );
         }
 
-        // 11. Audit
+        // 11. Audit (full pipeline path)
         self.audit_fire_and_forget(AuditEvent {
             event_id: 0,
             timestamp: 0,
@@ -2080,26 +2359,62 @@ impl UnimatrixServer {
             detail: format!("retrospective for {}", feature_cycle),
         });
 
-        // 12. vnc-011: Dispatch to format-specific output path
+        // 12. vnc-011: Dispatch to format-specific output path (full pipeline result).
+        // parse_failure_count is injected at the top level of the JSON response (Resolution 1).
+        let report = full_report
+            .expect("full_report must be Some when memo_hit is None — logic invariant violated");
         let format = params.format.as_deref().unwrap_or("markdown");
         match format {
             "markdown" | "summary" => {
                 // Markdown path: formatter controls its own evidence selection (k=3 by timestamp).
                 // evidence_limit is irrelevant here.
-                Ok(format_retrospective_markdown(&report))
+                // Append parse_failure_count as a trailing note when non-zero (or always for AC-13).
+                let mut result = format_retrospective_markdown(&report);
+                result.content.push(rmcp::model::Content::text(format!(
+                    "\nparse_failure_count: {}",
+                    parse_failure_count
+                )));
+                Ok(result)
             }
             "json" => {
-                // JSON path: keep existing evidence_limit default of 3 (col-010b ADR-001)
+                // JSON path: keep existing evidence_limit default of 3 (col-010b ADR-001).
+                // parse_failure_count is injected as a top-level field alongside the report.
                 let evidence_limit = params.evidence_limit.unwrap_or(3);
-                if evidence_limit > 0 {
+                let report_to_serialize = if evidence_limit > 0 {
                     let mut truncated = report.clone();
                     for hotspot in &mut truncated.hotspots {
                         hotspot.evidence.truncate(evidence_limit);
                     }
-                    Ok(format_retrospective_report(&truncated))
+                    truncated
                 } else {
-                    Ok(format_retrospective_report(&report))
-                }
+                    report
+                };
+                // Build JSON object with parse_failure_count as a top-level field (Resolution 1).
+                // Serialize report fields, then insert parse_failure_count alongside them.
+                let json_str = match serde_json::to_value(&report_to_serialize) {
+                    Ok(mut val) => {
+                        if let Some(obj) = val.as_object_mut() {
+                            obj.insert(
+                                "parse_failure_count".to_string(),
+                                serde_json::Value::Number(parse_failure_count.into()),
+                            );
+                        }
+                        serde_json::to_string_pretty(&val).unwrap_or_default()
+                    }
+                    Err(_) => {
+                        // Fallback: return plain report without parse_failure_count field
+                        // (should not occur in practice — serde_json failure is unexpected).
+                        tracing::warn!(
+                            "crt-046: serde_json::to_value failed for {} — \
+                             parse_failure_count not injected into response",
+                            feature_cycle
+                        );
+                        serde_json::to_string_pretty(&report_to_serialize).unwrap_or_default()
+                    }
+                };
+                Ok(rmcp::model::CallToolResult::success(vec![
+                    rmcp::model::Content::text(json_str),
+                ]))
             }
             _ => {
                 // Unrecognized format: return error
@@ -2361,6 +2676,87 @@ fn dispatch_review_with_advisory(
                     .push(rmcp::model::Content::text(format!("\n\n{}", note)));
             }
             Ok(result)
+        }
+        _ => Err(rmcp::model::ErrorData::new(
+            ERROR_INVALID_PARAMS,
+            format!(
+                "Unknown format '{}'. Valid values: \"markdown\", \"json\".",
+                format
+            ),
+            None,
+        )),
+    }
+}
+
+/// Apply evidence-limit truncation and format dispatch for the memo-hit path,
+/// injecting `parse_failure_count` as a top-level field (crt-046 Resolution 1).
+///
+/// Mirror of `dispatch_review_with_advisory` but includes `parse_failure_count` in
+/// the JSON response and appends it as a trailing note in the markdown response.
+fn dispatch_review_with_advisory_and_parse_failures(
+    report: unimatrix_observe::RetrospectiveReport,
+    format: &str,
+    evidence_limit: Option<usize>,
+    advisory: Option<String>,
+    parse_failure_count: u32,
+) -> Result<rmcp::model::CallToolResult, rmcp::model::ErrorData> {
+    use crate::error::ERROR_INVALID_PARAMS;
+    use crate::mcp::response::format_retrospective_markdown;
+
+    match format {
+        "markdown" | "summary" => {
+            let mut result = format_retrospective_markdown(&report);
+            if let Some(note) = advisory {
+                result
+                    .content
+                    .push(rmcp::model::Content::text(format!("\n\n{}", note)));
+            }
+            result.content.push(rmcp::model::Content::text(format!(
+                "\nparse_failure_count: {}",
+                parse_failure_count
+            )));
+            Ok(result)
+        }
+        "json" => {
+            let evidence_limit = evidence_limit.unwrap_or(3);
+            let final_report = if evidence_limit > 0 {
+                let mut truncated = report.clone();
+                for hotspot in &mut truncated.hotspots {
+                    hotspot.evidence.truncate(evidence_limit);
+                }
+                truncated
+            } else {
+                report
+            };
+            // Inject parse_failure_count as a top-level field alongside the report.
+            let json_str = match serde_json::to_value(&final_report) {
+                Ok(mut val) => {
+                    if let Some(obj) = val.as_object_mut() {
+                        obj.insert(
+                            "parse_failure_count".to_string(),
+                            serde_json::Value::Number(parse_failure_count.into()),
+                        );
+                        if let Some(note) = advisory {
+                            obj.insert("advisory".to_string(), serde_json::Value::String(note));
+                        }
+                    }
+                    serde_json::to_string_pretty(&val).unwrap_or_default()
+                }
+                Err(_) => {
+                    // Fallback: original format without parse_failure_count injection.
+                    use crate::mcp::response::format_retrospective_report;
+                    let mut result = format_retrospective_report(&final_report);
+                    if let Some(note) = advisory {
+                        result
+                            .content
+                            .push(rmcp::model::Content::text(format!("\n\n{}", note)));
+                    }
+                    return Ok(result);
+                }
+            };
+            Ok(rmcp::model::CallToolResult::success(vec![
+                rmcp::model::Content::text(json_str),
+            ]))
         }
         _ => Err(rmcp::model::ErrorData::new(
             ERROR_INVALID_PARAMS,

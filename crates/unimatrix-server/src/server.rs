@@ -19,6 +19,7 @@ use crate::background::TickMetadata;
 use crate::error::ServerError;
 use crate::infra::audit::{AuditEvent, AuditLog};
 use crate::infra::categories::CategoryAllowlist;
+use crate::infra::config::InferenceConfig;
 use crate::infra::embed_handle::EmbedServiceHandle;
 use crate::infra::registry::{AgentRegistry, TrustLevel};
 use crate::infra::session::SessionRegistry;
@@ -231,6 +232,10 @@ pub struct UnimatrixServer {
     /// Initialized with the built-in claude-code pack in `new()` (for tests).
     /// Overwritten from `main.rs` with the config-loaded registry (daemon/stdio paths).
     pub observation_registry: Arc<DomainPackRegistry>,
+    /// crt-046: inference config snapshot for goal-cluster blending weights in
+    /// the context_briefing handler. Initialized to default in `new()` (for tests).
+    /// Overwritten from `main.rs` with the startup-resolved config (daemon/stdio paths).
+    pub inference_config: Arc<InferenceConfig>,
 }
 
 impl UnimatrixServer {
@@ -326,6 +331,8 @@ impl UnimatrixServer {
             server_info,
             // col-023: built-in default for test server; overwritten in main.rs daemon/stdio paths.
             observation_registry: Arc::new(DomainPackRegistry::with_builtin_claude_code()),
+            // crt-046: default for test server; overwritten in main.rs daemon/stdio paths.
+            inference_config: Arc::new(InferenceConfig::default()),
         }
     }
 
@@ -2128,13 +2135,13 @@ mod tests {
                 .await
                 .unwrap();
 
-            // Verify schema version is now current (21, crt-043 goal_embedding + phase)
+            // Verify schema version is now current (22, crt-046 goal_clusters table)
             let version: i64 =
                 sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 21);
+            assert_eq!(version, 22);
 
             // Verify backfill: quarantined entry should have pre_quarantine_status = 0
             let pre_q: Option<i64> =
@@ -2159,7 +2166,7 @@ mod tests {
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 21, "schema version should remain 21 on re-open");
+            assert_eq!(version, 22, "schema version should remain 22 on re-open");
         }
     }
 

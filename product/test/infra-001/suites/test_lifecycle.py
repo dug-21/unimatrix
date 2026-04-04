@@ -2324,3 +2324,205 @@ def test_quarantine_excludes_endpoint_from_graph_traversal(admin_server):
     assert_tool_success(search_resp)
     assert_search_not_contains(search_resp, entry_b_id)
     assert_search_contains(search_resp, entry_a_id)
+
+
+# =============================================================================
+# crt-046: Behavioral Signal Delivery — lifecycle integration tests
+# =============================================================================
+
+import hashlib as _hashlib
+import json as _json
+import os as _os
+import sqlite3 as _sqlite3
+import uuid as _uuid
+
+
+def _compute_db_path_lifecycle(project_dir):
+    """Compute the server's SQLite DB path from project_dir."""
+    canonical = _os.path.realpath(project_dir)
+    digest = _hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    return _os.path.join(_os.path.expanduser("~"), ".unimatrix", digest, "unimatrix.db")
+
+
+def _seed_context_get_obs_lifecycle(db_path, feature_cycle, session_id, entry_ids):
+    """Seed context_get observations for a session."""
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    now_secs = int(time.time())
+    now_millis = now_secs * 1000
+    base_ts = now_millis - 3_600_000
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO sessions (session_id, feature_cycle, started_at, status) "
+            "VALUES (?, ?, ?, 0)",
+            (session_id, feature_cycle, now_secs),
+        )
+        for i, eid in enumerate(entry_ids):
+            conn.execute(
+                "INSERT INTO observations (session_id, ts_millis, hook, tool, input) "
+                "VALUES (?, ?, 'PreToolUse', 'context_get', ?)",
+                (session_id, base_ts + i * 1000, _json.dumps({"id": eid})),
+            )
+        conn.commit()
+        conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    finally:
+        conn.close()
+
+
+def test_cycle_review_to_briefing_blending_chain(server):
+    """crt-046 AC-05+AC-07 lifecycle: Full chain — cycle with goal + review → briefing blending.
+
+    1. Start a cycle with a goal text (triggers goal embedding storage in cycle_events).
+    2. Store two entries; seed context_get observations for them.
+    3. Call context_cycle_review (step 8b: emits edges + writes goal_clusters row).
+    4. Call context_briefing with the same feature — cluster entries may appear in results.
+    5. Assert both calls succeed and return non-error responses.
+
+    This test validates the end-to-end path from cycle start → review → briefing.
+    The goal_clusters row is written by step 8b; the briefing blending path reads it.
+    If the goal embedding was stored (crt-043 async write), blending is attempted.
+    Cold-start fallback (no embedding) is also acceptable — the test asserts success.
+    """
+    feature_cycle = f"crt046-lc01-{_uuid.uuid4().hex[:8]}"
+    session_id = f"sess-{_uuid.uuid4().hex[:8]}"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+
+    # Start cycle with a goal
+    cycle_resp = server.context_cycle(
+        "start",
+        feature_cycle,
+        goal="implementing behavioral signal delivery for crt-046 feature",
+        agent_id="human",
+        timeout=30.0,
+    )
+    assert_tool_success(cycle_resp)
+
+    # Store entries that will be in the cluster
+    r_a = server.context_store(
+        "crt-046 lifecycle chain entry A unique lc01 alpha behavioral signal",
+        "testing",
+        "pattern",
+        agent_id="human",
+        format="json",
+    )
+    r_b = server.context_store(
+        "crt-046 lifecycle chain entry B unique lc01 beta behavioral signal",
+        "testing",
+        "pattern",
+        agent_id="human",
+        format="json",
+    )
+    id_a = extract_entry_id(r_a)
+    id_b = extract_entry_id(r_b)
+
+    # Seed context_get observations
+    _seed_context_get_obs_lifecycle(db_path, feature_cycle, session_id, [id_a, id_b])
+
+    # Call review — step 8b runs, emits edges, writes goal_clusters row
+    review_resp = server.context_cycle_review(
+        feature_cycle, agent_id="human", format="json", force=True, timeout=30.0
+    )
+    assert_tool_success(review_resp)
+
+    # Verify goal_clusters row was created (if goal embedding was stored)
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    try:
+        gc_count = conn.execute(
+            "SELECT COUNT(*) FROM goal_clusters WHERE feature_cycle = ?",
+            (feature_cycle,),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    # goal_clusters may or may not have a row depending on whether the async
+    # goal embedding write from crt-043 completed before step 8b ran.
+    # Both outcomes are acceptable; the test just validates no crash.
+
+    # Call briefing with the same feature — blending path or cold-start
+    briefing_resp = server.context_briefing(
+        "developer",
+        "behavioral signal delivery testing crt-046",
+        feature=feature_cycle,
+        agent_id="human",
+        format="json",
+        timeout=30.0,
+    )
+    assert_tool_success(briefing_resp)
+
+    result_text = get_result_text(briefing_resp)
+    assert result_text is not None, (
+        "lc01: context_briefing must return a result in the full chain test."
+    )
+
+
+def test_step8b_runs_on_force_false_lifecycle(server):
+    """crt-046 AC-15, R-01 lifecycle: Full lifecycle — force=false review still runs step 8b.
+
+    1. Store entries and seed context_get observations.
+    2. First review call (force=True — cache miss, full pipeline).
+    3. Record graph_edges count for behavioral source.
+    4. Second review call (force=False — cache hit, memoisation path).
+    5. Assert graph_edges count identical (step 8b ran idempotently, not bypassed).
+    """
+    feature_cycle = f"crt046-lc02-{_uuid.uuid4().hex[:8]}"
+    session_id = f"sess-{_uuid.uuid4().hex[:8]}"
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+
+    r_a = server.context_store(
+        "crt-046 lifecycle force-false entry A unique lc02 gamma",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    r_b = server.context_store(
+        "crt-046 lifecycle force-false entry B unique lc02 delta",
+        "testing",
+        "convention",
+        agent_id="human",
+        format="json",
+    )
+    id_a = extract_entry_id(r_a)
+    id_b = extract_entry_id(r_b)
+
+    _seed_context_get_obs_lifecycle(db_path, feature_cycle, session_id, [id_a, id_b])
+
+    # First call — full pipeline (force=True)
+    resp1 = server.context_cycle_review(
+        feature_cycle, agent_id="human", format="json", force=True, timeout=30.0
+    )
+    assert_tool_success(resp1)
+
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    try:
+        count_after_first = conn.execute(
+            "SELECT COUNT(*) FROM graph_edges WHERE source = 'behavioral'"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+    assert count_after_first > 0, (
+        "lc02: Behavioral edges must exist after first review call."
+    )
+
+    # Second call — memo hit (force=False); step 8b must still run
+    resp2 = server.context_cycle_review(
+        feature_cycle, agent_id="human", format="json", force=False, timeout=30.0
+    )
+    assert_tool_success(resp2)
+
+    conn = _sqlite3.connect(db_path)
+    conn.execute("PRAGMA journal_mode=WAL")
+    try:
+        count_after_second = conn.execute(
+            "SELECT COUNT(*) FROM graph_edges WHERE source = 'behavioral'"
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+    assert count_after_second == count_after_first, (
+        f"lc02 AC-15: graph_edges count must be identical after force=false call. "
+        f"First={count_after_first}, second={count_after_second}. "
+        "step 8b must run on every call (FR-09, Resolution 2)."
+    )

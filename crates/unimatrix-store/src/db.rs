@@ -435,6 +435,49 @@ impl SqlxStore {
         Ok(())
     }
 
+    /// Read the cycle_start goal embedding for the given cycle (crt-046).
+    ///
+    /// Queries `cycle_events WHERE event_type = 'cycle_start' AND goal_embedding IS NOT NULL`
+    /// for the given `cycle_id`, ordered by `timestamp ASC`, returning the first row.
+    ///
+    /// Returns `Ok(None)` when:
+    /// - No `cycle_start` event exists for the cycle.
+    /// - The `goal_embedding` column is NULL.
+    /// - The BLOB fails to decode (decode error treated as absence — cold-start path).
+    ///
+    /// Uses `read_pool()`. `async fn` — no `spawn_blocking` (ADR #2266, #2249).
+    pub async fn get_cycle_start_goal_embedding(&self, cycle_id: &str) -> Result<Option<Vec<f32>>> {
+        let blob: Option<Option<Vec<u8>>> = sqlx::query_scalar::<_, Option<Vec<u8>>>(
+            "SELECT goal_embedding
+             FROM cycle_events
+             WHERE cycle_id = ?1
+               AND event_type = 'cycle_start'
+               AND goal_embedding IS NOT NULL
+             ORDER BY timestamp ASC
+             LIMIT 1",
+        )
+        .bind(cycle_id)
+        .fetch_optional(self.read_pool())
+        .await
+        .map_err(|e| crate::error::StoreError::Database(e.into()))?;
+
+        match blob {
+            None => Ok(None),
+            Some(None) => Ok(None),
+            Some(Some(bytes)) => match crate::embedding::decode_goal_embedding(&bytes) {
+                Ok(vec) => Ok(Some(vec)),
+                Err(e) => {
+                    tracing::warn!(
+                        cycle_id = %cycle_id,
+                        error = %e,
+                        "get_cycle_start_goal_embedding: decode failed; treating as absent"
+                    );
+                    Ok(None)
+                }
+            },
+        }
+    }
+
     /// WAL checkpoint + VACUUM compaction. Run during graceful shutdown when
     /// `Arc::try_unwrap(store)` succeeds. Safe to call from async context.
     pub async fn compact(&self) -> Result<()> {
@@ -896,6 +939,29 @@ pub(crate) async fn create_tables_if_needed(
             raw_signals_available INTEGER NOT NULL DEFAULT 1,
             summary_json          TEXT    NOT NULL
         )",
+    )
+    .execute(&mut *conn)
+    .await?;
+
+    // goal_clusters: structural table for goal-conditioned briefing blending (crt-046, ADR-002).
+    // DDL must be byte-identical to the v22 migration block in migration.rs.
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS goal_clusters (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            feature_cycle   TEXT    NOT NULL UNIQUE,
+            goal_embedding  BLOB    NOT NULL,
+            phase           TEXT,
+            entry_ids_json  TEXT    NOT NULL,
+            outcome         TEXT,
+            created_at      INTEGER NOT NULL
+        )",
+    )
+    .execute(&mut *conn)
+    .await?;
+
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_goal_clusters_created_at
+            ON goal_clusters(created_at DESC)",
     )
     .execute(&mut *conn)
     .await?;

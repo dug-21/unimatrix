@@ -23,6 +23,7 @@ use crate::infra::nli_handle::NliServiceHandle;
 use crate::infra::rayon_pool::RayonPool;
 use crate::infra::registry::TrustLevel;
 use crate::infra::usage_dedup::UsageDedup;
+pub(crate) mod behavioral_signals;
 pub(crate) mod co_access_promotion_tick;
 pub(crate) mod confidence;
 pub(crate) mod contradiction_cache;

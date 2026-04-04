@@ -696,6 +696,8 @@ async fn tokio_main_daemon(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     server.session_registry = Arc::clone(&session_registry);
     // col-023: thread startup-configured domain pack registry into MCP tool handlers.
     server.observation_registry = Arc::clone(&observation_registry);
+    // crt-046: thread inference config for goal-cluster blending weights in context_briefing.
+    server.inference_config = Arc::clone(&inference_config);
 
     // Extract state handles before services is moved.
     let confidence_state_handle = services.confidence_state_handle();
@@ -1091,6 +1093,8 @@ async fn tokio_main_stdio(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     server.session_registry = Arc::clone(&session_registry);
     // col-023: thread startup-configured domain pack registry into MCP tool handlers.
     server.observation_registry = Arc::clone(&observation_registry);
+    // crt-046: thread inference config for goal-cluster blending weights in context_briefing.
+    server.inference_config = Arc::clone(&inference_config);
 
     // crt-019: extract ConfidenceStateHandle before services is moved.
     let confidence_state_handle = services.confidence_state_handle();

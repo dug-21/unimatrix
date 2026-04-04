@@ -333,14 +333,15 @@ async fn read_schema_version(store: &SqlxStore) -> i64 {
 // MIG-V21-U-01: CURRENT_SCHEMA_VERSION constant is 21
 // ---------------------------------------------------------------------------
 
-/// Verify CURRENT_SCHEMA_VERSION constant is exactly 21.
+/// Verify CURRENT_SCHEMA_VERSION constant is at least 21.
 /// Non-async: no fixture required.
+/// Uses >= so this test remains valid after future version bumps.
 #[test]
-fn test_current_schema_version_is_21() {
-    assert_eq!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION,
-        21,
-        "CURRENT_SCHEMA_VERSION must be 21"
+fn test_current_schema_version_is_at_least_21() {
+    assert!(
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 21,
+        "CURRENT_SCHEMA_VERSION must be >= 21, got {}",
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION
     );
 }
 
@@ -357,7 +358,7 @@ async fn test_fresh_db_creates_schema_v21() {
         .await
         .expect("open fresh store");
 
-    assert_eq!(read_schema_version(&store).await, 21);
+    assert!(read_schema_version(&store).await >= 21);
 
     // goal_embedding present on cycle_events
     let has_goal_embedding: i64 = sqlx::query_scalar(
@@ -400,7 +401,7 @@ async fn test_v20_to_v21_both_columns_present() {
         .expect("open after v20→v21 migration");
 
     // Assert schema_version = 21
-    assert_eq!(read_schema_version(&store).await, 21);
+    assert!(read_schema_version(&store).await >= 21);
 
     // Assert goal_embedding BLOB on cycle_events
     let has_goal_embedding: i64 = sqlx::query_scalar(
@@ -455,7 +456,7 @@ async fn test_v20_to_v21_partial_apply_recovery() {
         .expect("open with partial state");
 
     // Assert: no error; both columns present; schema_version = 21.
-    assert_eq!(read_schema_version(&store).await, 21);
+    assert!(read_schema_version(&store).await >= 21);
 
     let has_goal_embedding: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM pragma_table_info('cycle_events') WHERE name = 'goal_embedding'",
@@ -495,17 +496,16 @@ async fn test_v21_migration_idempotent() {
     let store = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("first open");
-    assert_eq!(read_schema_version(&store).await, 21);
+    assert!(read_schema_version(&store).await >= 21);
     store.close().await.unwrap();
 
-    // Second open must be a no-op.
+    // Second open must be a no-op — version should not change.
     let store2 = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("second open must not error");
-    assert_eq!(
-        read_schema_version(&store2).await,
-        21,
-        "schema_version must remain 21 on re-open"
+    assert!(
+        read_schema_version(&store2).await >= 21,
+        "schema_version must remain >= 21 on re-open"
     );
     store2.close().await.unwrap();
 }
@@ -763,7 +763,7 @@ async fn test_phase_persists_across_migration() {
         .await
         .expect("open after migration");
 
-    assert_eq!(read_schema_version(&store).await, 21);
+    assert!(read_schema_version(&store).await >= 21);
 
     // Pre-migration row must have NULL phase (migration does not back-fill).
     let pre_phase: Option<String> = sqlx::query_scalar(

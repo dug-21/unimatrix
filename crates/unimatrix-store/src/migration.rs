@@ -15,9 +15,9 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 20 to 21 by crt-043 (goal_embedding BLOB on
-/// cycle_events + phase TEXT on observations + composite index on observations(topic_signal,phase)).
-pub const CURRENT_SCHEMA_VERSION: u64 = 21;
+/// Current schema version. Incremented from 21 to 22 by crt-046 (goal_clusters table +
+/// idx_goal_clusters_created_at index for goal-conditioned briefing blending).
+pub const CURRENT_SCHEMA_VERSION: u64 = 22;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -843,8 +843,8 @@ async fn run_main_migrations(
         // No backfill: pre-v21 rows have goal_embedding = NULL and phase = NULL.
         // NULL is the accepted cold-start baseline for both columns (NFR-04).
 
-        // Bump schema_version to 21 within the outer transaction so that if a v22 block
-        // is added later it observes the correct intermediate version.
+        // Bump schema_version to 21 within the outer transaction so that the v22 block
+        // below observes the correct intermediate version.
         sqlx::query("UPDATE counters SET value = 21 WHERE name = 'schema_version'")
             .execute(&mut **txn)
             .await
@@ -853,7 +853,47 @@ async fn run_main_migrations(
             })?;
     }
 
-    // Update schema_version counter to CURRENT_SCHEMA_VERSION (21).
+    // v21 → v22: goal_clusters table + idx_goal_clusters_created_at index (crt-046).
+    //
+    // New structural table for goal-conditioned briefing blending (ADR-002, ADR-003).
+    // Migration is additive only — no column drops or alterations.
+    if current_version < 22 {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS goal_clusters (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                feature_cycle   TEXT    NOT NULL UNIQUE,
+                goal_embedding  BLOB    NOT NULL,
+                phase           TEXT,
+                entry_ids_json  TEXT    NOT NULL,
+                outcome         TEXT,
+                created_at      INTEGER NOT NULL
+            )",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_goal_clusters_created_at
+                ON goal_clusters(created_at DESC)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query("UPDATE counters SET value = 22 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
+    // Update schema_version counter to CURRENT_SCHEMA_VERSION.
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
         .execute(&mut **txn)

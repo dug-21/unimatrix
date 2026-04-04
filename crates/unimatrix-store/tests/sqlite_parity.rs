@@ -1012,14 +1012,75 @@ async fn test_sql_analytics_query() {
 // Updated to 19 for crt-035 (bidirectional CoAccess back-fill).
 // Updated to 20 for crt-044 (bidirectional S1/S2/S8 back-fill).
 // Updated to 21 for crt-043 (goal_embedding BLOB + phase TEXT + composite index).
+// Updated to 22 for crt-046 (goal_clusters table + idx_goal_clusters_created_at).
 #[tokio::test]
 async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 21,
-        "schema version must be 21 after crt-043 (was 20 after crt-044)"
+        version, 22,
+        "schema version must be 22 after crt-046 (was 21 after crt-043)"
+    );
+    store.close().await.unwrap();
+}
+
+// === SCHEMA DDL: goal_clusters (crt-046) ===
+
+#[tokio::test]
+async fn test_create_tables_goal_clusters_exists() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='goal_clusters'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .unwrap();
+
+    assert_eq!(
+        count, 1,
+        "goal_clusters table must exist after create_tables_if_needed"
+    );
+    store.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_create_tables_goal_clusters_schema() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let col_count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('goal_clusters')")
+            .fetch_one(store.read_pool_test())
+            .await
+            .unwrap();
+
+    assert_eq!(
+        col_count, 7,
+        "goal_clusters must have exactly 7 columns: \
+         id, feature_cycle, goal_embedding, phase, entry_ids_json, outcome, created_at"
+    );
+    store.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn test_create_tables_goal_clusters_index_exists() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let store = open_test_store(&dir).await;
+
+    let count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM sqlite_master \
+         WHERE type='index' AND name='idx_goal_clusters_created_at'",
+    )
+    .fetch_one(store.read_pool_test())
+    .await
+    .unwrap();
+
+    assert_eq!(
+        count, 1,
+        "idx_goal_clusters_created_at must exist after create_tables_if_needed"
     );
     store.close().await.unwrap();
 }
