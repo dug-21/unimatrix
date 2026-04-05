@@ -1025,29 +1025,32 @@ impl InferenceConfig {
 
         // -- NLI f32 threshold range checks (0.0, 1.0) exclusive --
 
-        if self.nli_entailment_threshold <= 0.0 || self.nli_entailment_threshold >= 1.0 {
+        let v = self.nli_entailment_threshold;
+        if !v.is_finite() || v <= 0.0 || v >= 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "nli_entailment_threshold",
-                value: self.nli_entailment_threshold.to_string(),
+                value: v.to_string(),
                 reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
 
-        if self.nli_contradiction_threshold <= 0.0 || self.nli_contradiction_threshold >= 1.0 {
+        let v = self.nli_contradiction_threshold;
+        if !v.is_finite() || v <= 0.0 || v >= 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "nli_contradiction_threshold",
-                value: self.nli_contradiction_threshold.to_string(),
+                value: v.to_string(),
                 reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
 
-        if self.nli_auto_quarantine_threshold <= 0.0 || self.nli_auto_quarantine_threshold >= 1.0 {
+        let v = self.nli_auto_quarantine_threshold;
+        if !v.is_finite() || v <= 0.0 || v >= 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "nli_auto_quarantine_threshold",
-                value: self.nli_auto_quarantine_threshold.to_string(),
+                value: v.to_string(),
                 reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
@@ -1086,21 +1089,23 @@ impl InferenceConfig {
         }
 
         // -- crt-029: supports_candidate_threshold range check (0.0, 1.0) exclusive --
-        if self.supports_candidate_threshold <= 0.0 || self.supports_candidate_threshold >= 1.0 {
+        let v = self.supports_candidate_threshold;
+        if !v.is_finite() || v <= 0.0 || v >= 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "supports_candidate_threshold",
-                value: self.supports_candidate_threshold.to_string(),
+                value: v.to_string(),
                 reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
 
         // -- crt-029: supports_edge_threshold range check (0.0, 1.0) exclusive --
-        if self.supports_edge_threshold <= 0.0 || self.supports_edge_threshold >= 1.0 {
+        let v = self.supports_edge_threshold;
+        if !v.is_finite() || v <= 0.0 || v >= 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "supports_edge_threshold",
-                value: self.supports_edge_threshold.to_string(),
+                value: v.to_string(),
                 reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
@@ -1158,7 +1163,7 @@ impl InferenceConfig {
         ];
 
         for (field, value) in fusion_weight_checks {
-            if *value < 0.0 || *value > 1.0 {
+            if !value.is_finite() || *value < 0.0 || *value > 1.0 {
                 return Err(ConfigError::NliFieldOutOfRange {
                     path: path.to_path_buf(),
                     field,
@@ -1176,7 +1181,7 @@ impl InferenceConfig {
         ];
 
         for (field, value) in phase_weight_checks {
-            if *value < 0.0 || *value > 1.0 {
+            if !value.is_finite() || *value < 0.0 || *value > 1.0 {
                 return Err(ConfigError::NliFieldOutOfRange {
                     path: path.to_path_buf(),
                     field,
@@ -1218,11 +1223,12 @@ impl InferenceConfig {
         // -- PPR f64 range checks (crt-030) --
 
         // ppr_alpha: (0.0, 1.0) exclusive
-        if self.ppr_alpha <= 0.0 || self.ppr_alpha >= 1.0 {
+        let v = self.ppr_alpha;
+        if !v.is_finite() || v <= 0.0 || v >= 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "ppr_alpha",
-                value: self.ppr_alpha.to_string(),
+                value: v.to_string(),
                 reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
@@ -1238,21 +1244,23 @@ impl InferenceConfig {
         }
 
         // ppr_inclusion_threshold: (0.0, 1.0) exclusive
-        if self.ppr_inclusion_threshold <= 0.0 || self.ppr_inclusion_threshold >= 1.0 {
+        let v = self.ppr_inclusion_threshold;
+        if !v.is_finite() || v <= 0.0 || v >= 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "ppr_inclusion_threshold",
-                value: self.ppr_inclusion_threshold.to_string(),
+                value: v.to_string(),
                 reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
 
         // ppr_blend_weight: [0.0, 1.0] inclusive
-        if self.ppr_blend_weight < 0.0 || self.ppr_blend_weight > 1.0 {
+        let v = self.ppr_blend_weight;
+        if !v.is_finite() || v < 0.0 || v > 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "ppr_blend_weight",
-                value: self.ppr_blend_weight.to_string(),
+                value: v.to_string(),
                 reason: "must be in range [0.0, 1.0] inclusive",
             });
         }
@@ -1279,31 +1287,34 @@ impl InferenceConfig {
         }
 
         // -- crt-037: nli_informs_cosine_floor range check (0.0, 1.0) exclusive --
-        if self.nli_informs_cosine_floor <= 0.0 || self.nli_informs_cosine_floor >= 1.0 {
+        let v = self.nli_informs_cosine_floor;
+        if !v.is_finite() || v <= 0.0 || v >= 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "nli_informs_cosine_floor",
-                value: self.nli_informs_cosine_floor.to_string(),
+                value: v.to_string(),
                 reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
 
         // -- crt-037: nli_informs_ppr_weight range check [0.0, 1.0] inclusive --
-        if self.nli_informs_ppr_weight < 0.0 || self.nli_informs_ppr_weight > 1.0 {
+        let v = self.nli_informs_ppr_weight;
+        if !v.is_finite() || v < 0.0 || v > 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "nli_informs_ppr_weight",
-                value: self.nli_informs_ppr_weight.to_string(),
+                value: v.to_string(),
                 reason: "must be in range [0.0, 1.0] inclusive",
             });
         }
 
         // -- crt-040: supports_cosine_threshold range check (0.0, 1.0) exclusive --
-        if self.supports_cosine_threshold <= 0.0 || self.supports_cosine_threshold >= 1.0 {
+        let v = self.supports_cosine_threshold;
+        if !v.is_finite() || v <= 0.0 || v >= 1.0 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
                 field: "supports_cosine_threshold",
-                value: self.supports_cosine_threshold.to_string(),
+                value: v.to_string(),
                 reason: "must be in range (0.0, 1.0) exclusive",
             });
         }
@@ -8129,5 +8140,162 @@ nli_informs_ppr_weight = 0.4
             c.validate(Path::new("/fake")).is_ok(),
             "w_goal_boost=0.25 must pass validation"
         );
+    }
+
+    // -- bugfix-523 Item 3: NaN/Inf guards for the 19 previously-unguarded float fields --
+
+    // Group A — individual threshold fields (11 NaN tests)
+
+    #[test]
+    fn test_nan_guard_nli_entailment_threshold() {
+        let mut c = InferenceConfig::default();
+        c.nli_entailment_threshold = f32::NAN;
+        assert_validate_fails_with_field(c, "nli_entailment_threshold");
+    }
+
+    #[test]
+    fn test_nan_guard_nli_contradiction_threshold() {
+        let mut c = InferenceConfig::default();
+        c.nli_contradiction_threshold = f32::NAN;
+        assert_validate_fails_with_field(c, "nli_contradiction_threshold");
+    }
+
+    #[test]
+    fn test_nan_guard_nli_auto_quarantine_threshold() {
+        let mut c = InferenceConfig::default();
+        c.nli_auto_quarantine_threshold = f32::NAN;
+        assert_validate_fails_with_field(c, "nli_auto_quarantine_threshold");
+    }
+
+    #[test]
+    fn test_nan_guard_supports_candidate_threshold() {
+        let mut c = InferenceConfig::default();
+        c.supports_candidate_threshold = f32::NAN;
+        assert_validate_fails_with_field(c, "supports_candidate_threshold");
+    }
+
+    #[test]
+    fn test_nan_guard_supports_edge_threshold() {
+        let mut c = InferenceConfig::default();
+        c.supports_edge_threshold = f32::NAN;
+        assert_validate_fails_with_field(c, "supports_edge_threshold");
+    }
+
+    #[test]
+    fn test_nan_guard_ppr_alpha() {
+        let mut c = InferenceConfig::default();
+        c.ppr_alpha = f64::NAN;
+        assert_validate_fails_with_field(c, "ppr_alpha");
+    }
+
+    #[test]
+    fn test_nan_guard_ppr_inclusion_threshold() {
+        let mut c = InferenceConfig::default();
+        c.ppr_inclusion_threshold = f64::NAN;
+        assert_validate_fails_with_field(c, "ppr_inclusion_threshold");
+    }
+
+    #[test]
+    fn test_nan_guard_ppr_blend_weight() {
+        let mut c = InferenceConfig::default();
+        c.ppr_blend_weight = f64::NAN;
+        assert_validate_fails_with_field(c, "ppr_blend_weight");
+    }
+
+    #[test]
+    fn test_nan_guard_nli_informs_cosine_floor() {
+        let mut c = InferenceConfig::default();
+        c.nli_informs_cosine_floor = f32::NAN;
+        assert_validate_fails_with_field(c, "nli_informs_cosine_floor");
+    }
+
+    #[test]
+    fn test_nan_guard_nli_informs_ppr_weight() {
+        let mut c = InferenceConfig::default();
+        c.nli_informs_ppr_weight = f32::NAN;
+        assert_validate_fails_with_field(c, "nli_informs_ppr_weight");
+    }
+
+    #[test]
+    fn test_nan_guard_supports_cosine_threshold() {
+        let mut c = InferenceConfig::default();
+        c.supports_cosine_threshold = f32::NAN;
+        assert_validate_fails_with_field(c, "supports_cosine_threshold");
+    }
+
+    // Group B — fusion weight fields in loop (6 NaN tests)
+
+    #[test]
+    fn test_nan_guard_w_sim() {
+        let mut c = InferenceConfig::default();
+        c.w_sim = f64::NAN;
+        assert_validate_fails_with_field(c, "w_sim");
+    }
+
+    #[test]
+    fn test_nan_guard_w_nli() {
+        let mut c = InferenceConfig::default();
+        c.w_nli = f64::NAN;
+        assert_validate_fails_with_field(c, "w_nli");
+    }
+
+    #[test]
+    fn test_nan_guard_w_conf() {
+        let mut c = InferenceConfig::default();
+        c.w_conf = f64::NAN;
+        assert_validate_fails_with_field(c, "w_conf");
+    }
+
+    #[test]
+    fn test_nan_guard_w_coac() {
+        let mut c = InferenceConfig::default();
+        c.w_coac = f64::NAN;
+        assert_validate_fails_with_field(c, "w_coac");
+    }
+
+    #[test]
+    fn test_nan_guard_w_util() {
+        let mut c = InferenceConfig::default();
+        c.w_util = f64::NAN;
+        assert_validate_fails_with_field(c, "w_util");
+    }
+
+    #[test]
+    fn test_nan_guard_w_prov() {
+        let mut c = InferenceConfig::default();
+        c.w_prov = f64::NAN;
+        assert_validate_fails_with_field(c, "w_prov");
+    }
+
+    // Group C — phase weight fields in loop (2 NaN tests)
+
+    #[test]
+    fn test_nan_guard_w_phase_histogram() {
+        let mut c = InferenceConfig::default();
+        c.w_phase_histogram = f64::NAN;
+        assert_validate_fails_with_field(c, "w_phase_histogram");
+    }
+
+    #[test]
+    fn test_nan_guard_w_phase_explicit() {
+        let mut c = InferenceConfig::default();
+        c.w_phase_explicit = f64::NAN;
+        assert_validate_fails_with_field(c, "w_phase_explicit");
+    }
+
+    // Representative Inf tests (AC-25, AC-26)
+
+    #[test]
+    fn test_inf_guard_nli_entailment_threshold_f32() {
+        let mut c = InferenceConfig::default();
+        c.nli_entailment_threshold = f32::INFINITY;
+        assert_validate_fails_with_field(c, "nli_entailment_threshold");
+    }
+
+    #[test]
+    fn test_inf_guard_ppr_alpha_f64() {
+        let mut c = InferenceConfig::default();
+        c.ppr_alpha = f64::INFINITY;
+        assert_validate_fails_with_field(c, "ppr_alpha");
     }
 }
