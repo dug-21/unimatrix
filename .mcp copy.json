@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "unimatrix": {
+      "command": "/usr/local/cargo/bin/unimatrix",
+      "args": [],
+      "env": {
+        "RUST_LOG": "unimatrix_server=debug"
+      }
+    }
+  }
+}

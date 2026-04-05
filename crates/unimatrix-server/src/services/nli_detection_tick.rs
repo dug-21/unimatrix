@@ -3174,9 +3174,8 @@ mod tests {
 
         let config = path_c_config(); // threshold = 0.65
         // 5 qualifying pairs (cosine=0.70), 3 below threshold (cosine=0.50).
-        let mut candidate_pairs: Vec<(u64, u64, f32)> = (1_u64..=5)
-            .map(|i| (i, i + 100, 0.70_f32))
-            .collect();
+        let mut candidate_pairs: Vec<(u64, u64, f32)> =
+            (1_u64..=5).map(|i| (i, i + 100, 0.70_f32)).collect();
         candidate_pairs.extend((6_u64..=8).map(|i| (i, i + 100, 0.50_f32)));
 
         let existing = HashSet::new();
@@ -3261,8 +3260,7 @@ mod tests {
             .expect("TC-15: post-write metrics");
 
         assert_eq!(
-            after.inferred_edge_count,
-            baseline_inferred,
+            after.inferred_edge_count, baseline_inferred,
             "TC-15: inferred_edge_count must not change after cosine_supports write (source='nli' filter)"
         );
         assert!(
@@ -3283,8 +3281,7 @@ mod tests {
 
         let config = path_c_config();
         // Both (1,2) and (2,1) present — only one Supports edge must be written.
-        let candidate_pairs: Vec<(u64, u64, f32)> =
-            vec![(1, 2, 0.70_f32), (2, 1, 0.70_f32)];
+        let candidate_pairs: Vec<(u64, u64, f32)> = vec![(1, 2, 0.70_f32), (2, 1, 0.70_f32)];
         let existing = HashSet::new();
         let category_map: HashMap<u64, &str> = [(1_u64, "lesson-learned"), (2_u64, "decision")]
             .into_iter()
