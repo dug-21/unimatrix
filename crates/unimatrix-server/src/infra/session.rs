@@ -328,8 +328,12 @@ impl SessionRegistry {
 
         match sessions.get_mut(session_id) {
             None => {
-                // Session not registered. Return Set as no-op indicator.
-                // The event is still persisted as observation by the caller.
+                // Returns Set even when the session is absent from the registry (no-op case).
+                // Callers that need to distinguish "set on live session" from "session not
+                // registered" MUST check get_state().is_none() before calling — Set here
+                // is indistinguishable from a successful write.
+                // GH #519: handle_cycle_event pre-registers evicted sessions before calling
+                // this function so that the None arm is never reached for cycle_start events.
                 tracing::debug!(session_id, "set_feature_force: session not in registry");
                 SetFeatureResult::Set
             }

@@ -724,6 +724,21 @@ async fn dispatch_request(
                     message: "insufficient capability: SessionWrite required".to_string(),
                 };
             }
+            // GH #519 (SEC-01): Validate session_id before any registry or DB writes.
+            // This is load-bearing for the evicted-session re-registration path: without
+            // this guard a malformed session_id could be forced into the registry via
+            // handle_cycle_event's register_session call on cycle_start.
+            if let Err(e) = sanitize_session_id(&event.session_id) {
+                tracing::warn!(
+                    session_id = %event.session_id,
+                    error = %e,
+                    "UDS: RecordEvent rejected: invalid session_id"
+                );
+                return HookResponse::Error {
+                    code: ERR_INVALID_PAYLOAD,
+                    message: e,
+                };
+            }
             tracing::info!(
                 event_type = event.event_type,
                 session_id = event.session_id,
@@ -840,6 +855,22 @@ async fn dispatch_request(
                     code: -32003,
                     message: "insufficient capability: SessionWrite required".to_string(),
                 };
+            }
+            // GH #519 (SEC-01): Validate all session_ids in the batch before any writes.
+            // Reject the entire batch on the first invalid id — partial writes would be
+            // harder to diagnose and are not consistent with the single-event guard.
+            for event in &events {
+                if let Err(e) = sanitize_session_id(&event.session_id) {
+                    tracing::warn!(
+                        session_id = %event.session_id,
+                        error = %e,
+                        "UDS: RecordEvents rejected: invalid session_id in batch"
+                    );
+                    return HookResponse::Error {
+                        code: ERR_INVALID_PAYLOAD,
+                        message: e,
+                    };
+                }
             }
             tracing::info!(count = events.len(), "UDS: batch events recorded");
 
@@ -2334,6 +2365,31 @@ fn handle_cycle_event(
             String::new()
         }
     };
+
+    // Step 1b: Pre-register evicted session (GH #519, Start only).
+    //
+    // If the session was evicted (drain_and_signal_session ran before cycle_start arrived),
+    // re-register it with the feature set so that set_feature_force and set_current_phase
+    // both operate on a live registry entry, and enrich_topic_signal can read the feature
+    // for all subsequent observations from this session_id.
+    //
+    // Guard: only when session is absent — register_session overwrites and would reset
+    // injection_history, coaccess_seen, and other accumulated state for live sessions.
+    if lifecycle == CycleLifecycle::Start
+        && !feature_cycle.is_empty()
+        && session_registry.get_state(&event.session_id).is_none()
+    {
+        session_registry.register_session(
+            &event.session_id,
+            None, // role unknown at re-registration time
+            Some(feature_cycle.clone()),
+        );
+        tracing::info!(
+            session_id = %event.session_id,
+            feature_cycle = %feature_cycle,
+            "col-022: re-registered evicted session for cycle_start attribution"
+        );
+    }
 
     // Step 2: Force-set attribution (Start only, col-022 ADR-002).
     let attribution_result = if lifecycle == CycleLifecycle::Start && !feature_cycle.is_empty() {
@@ -7370,6 +7426,135 @@ mod tests {
             count, 0,
             "GH #430 regression: process_session_close wrote {count} ENTRIES row(s) \
              with topic LIKE 'session/%'; write_auto_outcome_entry must be absent"
+        );
+    }
+
+    // -- GH #519: evicted session re-registration on cycle_start --
+
+    /// GH #519: cycle_start on evicted session re-registers and attributes observations.
+    ///
+    /// Regression: when drain_and_signal_session fires before context_cycle(start) arrives,
+    /// set_feature_force silently no-ops (session absent), enrich_topic_signal returns None,
+    /// and all subsequent observations get topic_signal = NULL.
+    ///
+    /// Fix: handle_cycle_event pre-registers the session before set_feature_force when
+    /// get_state() is None on CycleLifecycle::Start.
+    #[tokio::test]
+    async fn cycle_start_on_evicted_session_re_registers_and_attributes_observations() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let registry = make_registry();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        // Step 1: Register session, then evict it via drain_and_signal_session.
+        registry.register_session("sess-evicted", None, None);
+        registry.drain_and_signal_session("sess-evicted", "success");
+
+        // Step 2: Confirm the session is evicted.
+        assert!(
+            registry.get_state("sess-evicted").is_none(),
+            "session must be evicted before the test proceeds"
+        );
+
+        // Step 3: Dispatch cycle_start for the evicted session (simulates SM firing
+        // context_cycle after drain_and_signal_session already ran).
+        let cycle_start_event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "sess-evicted",
+            serde_json::json!({
+                "feature_cycle": "col-999",
+                "next_phase": "discovery"
+            }),
+            Some("col-999".to_string()),
+        );
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvent {
+                event: cycle_start_event,
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+        assert!(
+            matches!(resp, HookResponse::Ack),
+            "cycle_start dispatch must return Ack"
+        );
+
+        // Step 4: Session must be re-registered.
+        let state = registry
+            .get_state("sess-evicted")
+            .expect("session must be re-registered after cycle_start on evicted session");
+
+        // Step 5: feature must be col-999.
+        assert_eq!(
+            state.feature.as_deref(),
+            Some("col-999"),
+            "feature must be col-999 after re-registration"
+        );
+
+        // Step 6: current_phase must be set to the next_phase from the event.
+        assert_eq!(
+            state.current_phase.as_deref(),
+            Some("discovery"),
+            "current_phase must be set to 'discovery' from cycle_start payload"
+        );
+
+        // Step 7: Dispatch a follow-up PreToolUse observation with no explicit topic_signal.
+        // enrich_topic_signal must now read the re-registered session's feature and fill it in.
+        let pre_tool_event = ImplantEvent {
+            event_type: "PreToolUse".to_string(),
+            session_id: "sess-evicted".to_string(),
+            timestamp: unix_now_secs(),
+            payload: serde_json::json!({"tool": "Read", "input": "some file"}),
+            topic_signal: None, // no explicit signal — must be enriched from registry
+        };
+
+        let _resp2 = dispatch_request(
+            HookRequest::RecordEvent {
+                event: pre_tool_event,
+            },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Yield to the runtime so the fire-and-forget spawn_blocking insert completes.
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        // Step 8: Verify the PreToolUse observation in DB has topic_signal = "col-999".
+        let topic: Option<String> = sqlx::query_scalar(
+            "SELECT topic_signal FROM observations \
+             WHERE session_id = 'sess-evicted' AND hook = 'PreToolUse' \
+             ORDER BY ts_millis DESC LIMIT 1",
+        )
+        .fetch_optional(store.write_pool_server())
+        .await
+        .expect("observation query must succeed");
+
+        assert_eq!(
+            topic.as_deref(),
+            Some("col-999"),
+            "GH #519 regression: PreToolUse observation after cycle_start on evicted session \
+             must have topic_signal = 'col-999', got {:?}",
+            topic
         );
     }
 }
