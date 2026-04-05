@@ -554,13 +554,24 @@ pub async fn run_graph_inference_tick(
         return;
     }
 
+    // Explicit nli_enabled gate — must be AFTER candidate_pairs.is_empty() check
+    // and BEFORE get_provider().await to avoid the async call when NLI is intentionally off.
+    // Message is intentionally distinct from the get_provider() Err message so operators
+    // can distinguish intentional-off (this message) vs. transient-not-ready (Err message).
+    if !config.nli_enabled {
+        tracing::debug!("graph inference tick: NLI disabled by config; Path B skipped");
+        return;
+    }
+
     // R-01 CRITICAL: get_provider() is the SOLE entry point to Phase 6/7/8.
     // Err return here structurally prevents ANY Phase 8 write without a successful provider.
     // No code path from get_provider() Err to write_nli_edge for Supports edges exists.
+    // The nli_enabled=false case is handled by the explicit gate above; Err here is a
+    // transient provider-not-ready condition only.
     let provider = match nli_handle.get_provider().await {
         Ok(p) => p,
         Err(_) => {
-            // Expected when nli_enabled=false (production default).
+            // Transient: provider not yet initialized or temporarily unavailable.
             // Phase 4b Informs writes already complete above — returning here is not a failure.
             tracing::debug!("graph inference tick: NLI provider not ready; Supports path skipped");
             return;
@@ -793,7 +804,7 @@ async fn run_cosine_supports_path(
         let src_cat = match category_map.get(src_id) {
             Some(cat) => *cat,
             None => {
-                tracing::warn!(
+                tracing::debug!(
                     src_id,
                     "Path C: source entry not found in category_map (deprecated mid-tick?) — skipping"
                 );
@@ -803,7 +814,7 @@ async fn run_cosine_supports_path(
         let tgt_cat = match category_map.get(tgt_id) {
             Some(cat) => *cat,
             None => {
-                tracing::warn!(
+                tracing::debug!(
                     tgt_id,
                     "Path C: target entry not found in category_map (deprecated mid-tick?) — skipping"
                 );
@@ -3308,6 +3319,384 @@ mod tests {
             1,
             "TC-17: (1,2) and (2,1) must produce at most one Supports edge; got {}",
             supports.len()
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // bugfix-523 Item 1 — NLI tick gate (AC-01 / AC-02 / AC-03)
+    // -----------------------------------------------------------------------
+
+    /// AC-01 (bugfix-523): Path B is skipped when nli_enabled=false and candidate_pairs is
+    /// non-empty. The non-empty pair list is mandatory — the empty-pairs fast-exit fires
+    /// before the nli_enabled gate, so an empty list would not exercise the new gate.
+    ///
+    /// Behavioral proxy: no Supports edges with source != EDGE_SOURCE_COSINE_SUPPORTS
+    /// are written, confirming Path B (NLI) did not execute.
+    #[tokio::test]
+    async fn test_nli_gate_path_b_skipped_nli_disabled() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let arc_store = Arc::new(unimatrix_store::test_helpers::open_test_store(&tmp).await);
+
+        insert_test_entry(&arc_store, 1).await;
+        insert_test_entry(&arc_store, 2).await;
+
+        let vector_index = Arc::new(
+            unimatrix_vector::VectorIndex::new(
+                Arc::clone(&arc_store),
+                unimatrix_core::VectorConfig::default(),
+            )
+            .expect("VectorIndex"),
+        );
+        let dim = unimatrix_core::VectorConfig::default().dimension;
+        let mut emb = vec![0.0_f32; dim];
+        emb[0] = 1.0;
+        vector_index.insert(1, &emb).await.expect("insert 1");
+        vector_index.insert(2, &emb).await.expect("insert 2");
+
+        // nli_enabled=false + supports_candidate_threshold low enough to produce candidates.
+        let config = InferenceConfig {
+            nli_enabled: false,
+            supports_candidate_threshold: 0.60,
+            ..InferenceConfig::default()
+        };
+
+        // Handle in Loading state — get_provider() returns Err.
+        // The new gate fires before get_provider() is reached when nli_enabled=false.
+        let not_ready_handle = NliServiceHandle::new();
+
+        run_graph_inference_tick(
+            &arc_store,
+            &not_ready_handle,
+            &vector_index,
+            &make_rayon_pool(),
+            &config,
+        )
+        .await;
+
+        let edges = arc_store.query_graph_edges().await.unwrap();
+        // No NLI-sourced Supports edges (source != EDGE_SOURCE_COSINE_SUPPORTS).
+        let nli_supports: Vec<_> = edges
+            .iter()
+            .filter(|e| e.relation_type == "Supports" && e.source != EDGE_SOURCE_COSINE_SUPPORTS)
+            .collect();
+        assert_eq!(
+            nli_supports.len(),
+            0,
+            "AC-01: no NLI Supports edges when nli_enabled=false; edges={edges:?}"
+        );
+    }
+
+    /// AC-02 part 1 (bugfix-523): Path A (Informs) still runs when nli_enabled=false.
+    /// Proves the gate does not precede Phase A.
+    #[tokio::test]
+    async fn test_nli_gate_path_a_informs_edges_still_written_nli_disabled() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let arc_store = Arc::new(unimatrix_store::test_helpers::open_test_store(&tmp).await);
+
+        let config = InferenceConfig {
+            nli_enabled: false,
+            // Set threshold above any cosine we produce to suppress Supports candidates
+            // (keeps test focus on Informs-only, avoids candidate_pairs noise).
+            supports_candidate_threshold: 1.1,
+            ..InferenceConfig::default()
+        };
+
+        let (src_cat, tgt_cat) = (
+            config.informs_category_pairs[0][0].clone(),
+            config.informs_category_pairs[0][1].clone(),
+        );
+
+        sqlx::query(
+            "INSERT OR IGNORE INTO entries \
+             (id, title, content, topic, category, source, status, confidence, \
+              created_at, updated_at, last_accessed_at, access_count, \
+              created_by, modified_by, content_hash, previous_hash, \
+              version, feature_cycle, trust_source, helpful_count, unhelpful_count, \
+              pre_quarantine_status, correction_count, embedding_dim) \
+             VALUES (101, 'src', 'src content', 'test', ?1, 'test', 0, 0.5, \
+                     1000, 1000, 0, 0, 'test', 'test', 'h1', '', 1, 'crt-001', '', 0, 0, NULL, 0, 0)",
+        )
+        .bind(src_cat.as_str())
+        .execute(arc_store.write_pool_server())
+        .await
+        .unwrap();
+
+        sqlx::query(
+            "INSERT OR IGNORE INTO entries \
+             (id, title, content, topic, category, source, status, confidence, \
+              created_at, updated_at, last_accessed_at, access_count, \
+              created_by, modified_by, content_hash, previous_hash, \
+              version, feature_cycle, trust_source, helpful_count, unhelpful_count, \
+              pre_quarantine_status, correction_count, embedding_dim) \
+             VALUES (102, 'tgt', 'tgt content', 'test', ?1, 'test', 0, 0.5, \
+                     2000, 2000, 0, 0, 'test', 'test', 'h2', '', 1, 'crt-002', '', 0, 0, NULL, 0, 0)",
+        )
+        .bind(tgt_cat.as_str())
+        .execute(arc_store.write_pool_server())
+        .await
+        .unwrap();
+
+        let vector_index = Arc::new(
+            unimatrix_vector::VectorIndex::new(
+                Arc::clone(&arc_store),
+                unimatrix_core::VectorConfig::default(),
+            )
+            .expect("VectorIndex"),
+        );
+        let dim = unimatrix_core::VectorConfig::default().dimension;
+        let mut emb = vec![0.0_f32; dim];
+        emb[0] = 1.0;
+        vector_index.insert(101, &emb).await.expect("insert 101");
+        vector_index.insert(102, &emb).await.expect("insert 102");
+
+        let not_ready_handle = NliServiceHandle::new();
+
+        run_graph_inference_tick(
+            &arc_store,
+            &not_ready_handle,
+            &vector_index,
+            &make_rayon_pool(),
+            &config,
+        )
+        .await;
+
+        let edges = arc_store.query_graph_edges().await.unwrap();
+        let informs_count = edges
+            .iter()
+            .filter(|e| e.relation_type == "Informs")
+            .count();
+        assert!(
+            informs_count >= 1,
+            "AC-02 (Path A): at least one Informs edge must be written when nli_enabled=false; edges={edges:?}"
+        );
+    }
+
+    /// AC-02 part 2 (bugfix-523): Path C (cosine Supports) still runs when nli_enabled=false.
+    /// Proves the gate does not precede run_cosine_supports_path (Path C gate position check).
+    ///
+    /// Config overrides informs_category_pairs to include both pair orderings so that
+    /// regardless of which entry the HNSW selects as source vs. neighbor, the category
+    /// filter passes and the cosine Supports edge is written.
+    #[tokio::test]
+    async fn test_nli_gate_path_c_cosine_supports_edges_still_written_nli_disabled() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let arc_store = Arc::new(unimatrix_store::test_helpers::open_test_store(&tmp).await);
+
+        insert_test_entry_with_category(&arc_store, 201, "lesson-learned").await;
+        insert_test_entry_with_category(&arc_store, 202, "decision").await;
+
+        let vector_index = Arc::new(
+            unimatrix_vector::VectorIndex::new(
+                Arc::clone(&arc_store),
+                unimatrix_core::VectorConfig::default(),
+            )
+            .expect("VectorIndex"),
+        );
+        let dim = unimatrix_core::VectorConfig::default().dimension;
+        // Identical embeddings → cosine = 1.0 >= supports_cosine_threshold (0.65 default).
+        let mut emb = vec![0.0_f32; dim];
+        emb[0] = 1.0;
+        vector_index.insert(201, &emb).await.expect("insert 201");
+        vector_index.insert(202, &emb).await.expect("insert 202");
+
+        // Include both orderings of the category pair so the test passes regardless of
+        // which direction the HNSW scan produces (source candidates are shuffle-selected).
+        let config = InferenceConfig {
+            nli_enabled: false,
+            informs_category_pairs: vec![
+                ["lesson-learned".to_string(), "decision".to_string()],
+                ["decision".to_string(), "lesson-learned".to_string()],
+            ],
+            ..InferenceConfig::default()
+        };
+
+        let not_ready_handle = NliServiceHandle::new();
+
+        run_graph_inference_tick(
+            &arc_store,
+            &not_ready_handle,
+            &vector_index,
+            &make_rayon_pool(),
+            &config,
+        )
+        .await;
+
+        let edges = arc_store.query_graph_edges().await.unwrap();
+        let cosine_supports: Vec<_> = edges
+            .iter()
+            .filter(|e| e.relation_type == "Supports" && e.source == EDGE_SOURCE_COSINE_SUPPORTS)
+            .collect();
+        assert!(
+            !cosine_supports.is_empty(),
+            "AC-02 (Path C): cosine Supports edge must be written when nli_enabled=false; edges={edges:?}"
+        );
+    }
+
+    /// AC-03 (bugfix-523): NLI-enabled path is not regressed by the new gate.
+    /// When nli_enabled=true the gate condition is false, execution reaches get_provider().
+    /// The handle is in Loading state so get_provider() returns Err — function returns
+    /// without panic and no NLI Supports edges are written (not a regression: same as TC-02).
+    #[tokio::test]
+    async fn test_nli_gate_nli_enabled_path_not_regressed() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let arc_store = Arc::new(unimatrix_store::test_helpers::open_test_store(&tmp).await);
+
+        insert_test_entry(&arc_store, 10).await;
+        insert_test_entry(&arc_store, 20).await;
+
+        let vector_index = Arc::new(
+            unimatrix_vector::VectorIndex::new(
+                Arc::clone(&arc_store),
+                unimatrix_core::VectorConfig::default(),
+            )
+            .expect("VectorIndex"),
+        );
+        let dim = unimatrix_core::VectorConfig::default().dimension;
+        let mut emb = vec![0.0_f32; dim];
+        emb[0] = 1.0;
+        vector_index.insert(10, &emb).await.expect("insert 10");
+        vector_index.insert(20, &emb).await.expect("insert 20");
+
+        // nli_enabled=true — the new gate MUST NOT fire.
+        // Handle in Loading state so get_provider() returns Err (NliNotReady),
+        // confirming that execution reached get_provider() (gate condition was false).
+        let config = InferenceConfig {
+            nli_enabled: true,
+            ..InferenceConfig::default()
+        };
+        let not_ready_handle = NliServiceHandle::new();
+
+        run_graph_inference_tick(
+            &arc_store,
+            &not_ready_handle,
+            &vector_index,
+            &make_rayon_pool(),
+            &config,
+        )
+        .await;
+
+        // Function must return without panic (gate does not fire).
+        // No NLI Supports edges because provider returned Err — this is expected, not a regression.
+        let edges = arc_store.query_graph_edges().await.unwrap();
+        let nli_supports: Vec<_> = edges
+            .iter()
+            .filter(|e| e.relation_type == "Supports" && e.source != EDGE_SOURCE_COSINE_SUPPORTS)
+            .collect();
+        assert_eq!(
+            nli_supports.len(),
+            0,
+            "AC-03: NLI Supports edges = 0 (provider not ready); no regression from gate; edges={edges:?}"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // bugfix-523 Item 2 — log downgrade behavioral proxy (AC-04 / AC-05)
+    // Log level is NOT asserted per ADR-001(c) (entry #4143). Behavioral-only coverage.
+    // -----------------------------------------------------------------------
+
+    /// AC-04 src branch (bugfix-523): run_cosine_supports_path skips pair when src_id is
+    /// absent from category_map. No panic, no Supports edge written.
+    /// Log level (debug! at this site) verified by code review only per ADR-001(c).
+    #[tokio::test]
+    async fn test_cosine_supports_path_skips_missing_category_map_src() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        insert_test_entry_with_category(&store, 1, "lesson-learned").await;
+        insert_test_entry_with_category(&store, 2, "decision").await;
+
+        let config = InferenceConfig::default();
+        let candidate_pairs: Vec<(u64, u64, f32)> = vec![(1, 2, 0.80_f32)];
+        let existing: HashSet<(u64, u64)> = HashSet::new();
+        // src_id=1 is intentionally absent from category_map — tgt_id=2 present only.
+        let category_map: HashMap<u64, &str> = [(2_u64, "decision")].into_iter().collect();
+        let ts = current_timestamp_secs();
+
+        run_cosine_supports_path(
+            &store,
+            &config,
+            &candidate_pairs,
+            &existing,
+            &category_map,
+            ts,
+        )
+        .await;
+
+        let edges = store.query_graph_edges().await.unwrap();
+        assert!(
+            edges.is_empty(),
+            "AC-04 (src): pair skipped when src_id absent from category_map; edges={edges:?}"
+        );
+    }
+
+    /// AC-04 tgt branch (bugfix-523): run_cosine_supports_path skips pair when tgt_id is
+    /// absent from category_map. No panic, no Supports edge written.
+    /// Log level (debug! at this site) verified by code review only per ADR-001(c).
+    #[tokio::test]
+    async fn test_cosine_supports_path_skips_missing_category_map_tgt() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        insert_test_entry_with_category(&store, 1, "lesson-learned").await;
+        insert_test_entry_with_category(&store, 2, "decision").await;
+
+        let config = InferenceConfig::default();
+        let candidate_pairs: Vec<(u64, u64, f32)> = vec![(1, 2, 0.80_f32)];
+        let existing: HashSet<(u64, u64)> = HashSet::new();
+        // src_id=1 present, tgt_id=2 intentionally absent from category_map.
+        let category_map: HashMap<u64, &str> = [(1_u64, "lesson-learned")].into_iter().collect();
+        let ts = current_timestamp_secs();
+
+        run_cosine_supports_path(
+            &store,
+            &config,
+            &candidate_pairs,
+            &existing,
+            &category_map,
+            ts,
+        )
+        .await;
+
+        let edges = store.query_graph_edges().await.unwrap();
+        assert!(
+            edges.is_empty(),
+            "AC-04 (tgt): pair skipped when tgt_id absent from category_map; edges={edges:?}"
+        );
+    }
+
+    /// AC-05 (bugfix-523): run_cosine_supports_path skips pair when cosine is non-finite (NaN).
+    /// No panic, no Supports edge written.
+    /// The non-finite cosine site (line ~776) remains tracing::warn! — verified by code review
+    /// only per ADR-001(c) (entry #4143). Not asserted here.
+    #[tokio::test]
+    async fn test_cosine_supports_path_nonfinite_cosine_handled() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+        insert_test_entry_with_category(&store, 1, "lesson-learned").await;
+        insert_test_entry_with_category(&store, 2, "decision").await;
+
+        let config = InferenceConfig::default();
+        // NaN cosine — non-finite guard fires before any threshold or category check.
+        let candidate_pairs: Vec<(u64, u64, f32)> = vec![(1, 2, f32::NAN)];
+        let existing: HashSet<(u64, u64)> = HashSet::new();
+        // Both entries present so the non-finite cosine branch is reached (not category_map miss).
+        let category_map: HashMap<u64, &str> = [(1_u64, "lesson-learned"), (2_u64, "decision")]
+            .into_iter()
+            .collect();
+        let ts = current_timestamp_secs();
+
+        run_cosine_supports_path(
+            &store,
+            &config,
+            &candidate_pairs,
+            &existing,
+            &category_map,
+            ts,
+        )
+        .await;
+
+        let edges = store.query_graph_edges().await.unwrap();
+        assert!(
+            edges.is_empty(),
+            "AC-05: pair with NaN cosine must be skipped; no Supports edge written; edges={edges:?}"
         );
     }
 }
