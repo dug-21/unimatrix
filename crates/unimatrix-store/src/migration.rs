@@ -15,9 +15,9 @@ use crate::error::{Result, StoreError};
 use crate::migration_compat;
 use crate::schema::{deserialize_entry, serialize_entry};
 
-/// Current schema version. Incremented from 21 to 22 by crt-046 (goal_clusters table +
-/// idx_goal_clusters_created_at index for goal-conditioned briefing blending).
-pub const CURRENT_SCHEMA_VERSION: u64 = 22;
+/// Current schema version. Incremented from 22 to 23 by bugfix-509 (compound index
+/// idx_entry_tags_tag_entry_id on entry_tags to fix O(K) linear scan in S1 co-occurrence self-join).
+pub const CURRENT_SCHEMA_VERSION: u64 = 23;
 
 /// Minimum co-access count to bootstrap a CoAccess edge into graph_edges.
 /// Pairs below this threshold are too infrequent to represent meaningful relationships.
@@ -893,6 +893,27 @@ async fn run_main_migrations(
             })?;
     }
 
+    // v22 → v23: compound (tag, entry_id) index on entry_tags (bugfix-509).
+    // Fixes O(K) linear scan per tag bucket in S1 co-occurrence self-join.
+    if current_version < 23 {
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_entry_tags_tag_entry_id \
+             ON entry_tags(tag, entry_id)",
+        )
+        .execute(&mut **txn)
+        .await
+        .map_err(|e| StoreError::Migration {
+            source: Box::new(e),
+        })?;
+
+        sqlx::query("UPDATE counters SET value = 23 WHERE name = 'schema_version'")
+            .execute(&mut **txn)
+            .await
+            .map_err(|e| StoreError::Migration {
+                source: Box::new(e),
+            })?;
+    }
+
     // Update schema_version counter to CURRENT_SCHEMA_VERSION.
     sqlx::query("INSERT OR REPLACE INTO counters (name, value) VALUES ('schema_version', ?1)")
         .bind(CURRENT_SCHEMA_VERSION as i64)
@@ -1182,6 +1203,7 @@ async fn run_v5_to_v6_migration(txn: &mut sqlx::Transaction<'_, sqlx::Sqlite>) -
         "CREATE INDEX idx_entries_created_at ON entries(created_at)",
         "CREATE INDEX idx_entry_tags_tag ON entry_tags(tag)",
         "CREATE INDEX idx_entry_tags_entry_id ON entry_tags(entry_id)",
+        "CREATE INDEX idx_entry_tags_tag_entry_id ON entry_tags(tag, entry_id)",
         "CREATE INDEX idx_co_access_b ON co_access(entry_id_b)",
         "CREATE INDEX idx_sessions_feature_cycle ON sessions(feature_cycle)",
         "CREATE INDEX idx_sessions_started_at ON sessions(started_at)",

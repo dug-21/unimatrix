@@ -1013,14 +1013,15 @@ async fn test_sql_analytics_query() {
 // Updated to 20 for crt-044 (bidirectional S1/S2/S8 back-fill).
 // Updated to 21 for crt-043 (goal_embedding BLOB + phase TEXT + composite index).
 // Updated to 22 for crt-046 (goal_clusters table + idx_goal_clusters_created_at).
+// Updated to 23 for bugfix-509 (compound idx_entry_tags_tag_entry_id index).
 #[tokio::test]
 async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 22,
-        "schema version must be 22 after crt-046 (was 21 after crt-043)"
+        version, 23,
+        "schema version must be 23 after bugfix-509 (was 22 after crt-046)"
     );
     store.close().await.unwrap();
 }
