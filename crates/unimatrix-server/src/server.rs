@@ -2135,13 +2135,13 @@ mod tests {
                 .await
                 .unwrap();
 
-            // Verify schema version is now current (22, crt-046 goal_clusters table)
+            // Verify schema version is now current (23, bugfix-509 compound index)
             let version: i64 =
                 sqlx::query_scalar("SELECT value FROM counters WHERE name = 'schema_version'")
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 22);
+            assert_eq!(version, 23);
 
             // Verify backfill: quarantined entry should have pre_quarantine_status = 0
             let pre_q: Option<i64> =
@@ -2166,7 +2166,7 @@ mod tests {
                     .fetch_one(store.read_pool_test())
                     .await
                     .unwrap();
-            assert_eq!(version, 22, "schema version should remain 22 on re-open");
+            assert_eq!(version, 23, "schema version should remain 23 on re-open");
         }
     }
 
