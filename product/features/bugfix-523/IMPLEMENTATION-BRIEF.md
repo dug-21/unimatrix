@@ -20,13 +20,16 @@ NLI Tick Gate + Log Downgrade + NaN Guards + Session Sanitization
 
 ## Component Map
 
-| Component | Pseudocode | Test Plan |
-|-----------|-----------|-----------|
-| nli_detection_tick (Items 1 + 2) | pseudocode/nli_detection_tick.md | test-plan/nli_detection_tick.md |
-| config (Item 3) | pseudocode/config.md | test-plan/config.md |
-| listener (Item 4) | pseudocode/listener.md | test-plan/listener.md |
+| Component | Source File | Pseudocode | Test Plan |
+|-----------|-------------|-----------|-----------|
+| nli-tick-gate (Item 1) | `crates/unimatrix-server/src/services/nli_detection_tick.rs` | pseudocode/nli-tick-gate.md | test-plan/nli-tick-gate.md |
+| log-downgrade (Item 2) | `crates/unimatrix-server/src/services/nli_detection_tick.rs` | pseudocode/log-downgrade.md | test-plan/log-downgrade.md |
+| nan-guards (Item 3) | `crates/unimatrix-server/src/infra/config.rs` | pseudocode/nan-guards.md | test-plan/nan-guards.md |
+| session-sanitization (Item 4) | `crates/unimatrix-server/src/uds/listener.rs` | pseudocode/session-sanitization.md | test-plan/session-sanitization.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+Note: Items 1 and 2 share `nli_detection_tick.rs` and MUST be assigned to the same implementation agent (SR-06 / C-08 constraint).
+
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
