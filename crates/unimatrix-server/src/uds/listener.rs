@@ -663,6 +663,19 @@ async fn dispatch_request(
                     message: "insufficient capability: SessionWrite required".to_string(),
                 };
             }
+            // GH #523 (SEC-02): Validate session_id before any registry or DB writes.
+            // Mirrors the RecordEvent general arm guard. Closes the last session injection gap.
+            if let Err(e) = sanitize_session_id(&event.session_id) {
+                tracing::warn!(
+                    session_id = %event.session_id,
+                    error = %e,
+                    "UDS: RecordEvent (rework_candidate) rejected: invalid session_id"
+                );
+                return HookResponse::Error {
+                    code: ERR_INVALID_PAYLOAD,
+                    message: e,
+                };
+            }
             let tool_name = event
                 .payload
                 .get("tool_name")
@@ -7555,6 +7568,115 @@ mod tests {
             "GH #519 regression: PreToolUse observation after cycle_start on evicted session \
              must have topic_signal = 'col-999', got {:?}",
             topic
+        );
+    }
+
+    // -- bugfix-523 Item 4: sanitize_session_id guard in post_tool_use_rework_candidate arm --
+
+    /// AC-28 (T-08): Invalid session_id in rework_candidate arm is rejected before registry write.
+    /// Dispatch with malformed session_id returns HookResponse::Error { code: ERR_INVALID_PAYLOAD }.
+    #[tokio::test]
+    async fn test_dispatch_rework_candidate_invalid_session_id_rejected() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let registry = make_registry();
+        // Register no session — record_rework_event must not be reached before session exists.
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let event = ImplantEvent {
+            event_type: "post_tool_use_rework_candidate".to_string(),
+            session_id: "../../etc/passwd".to_string(),
+            timestamp: unix_now_secs(),
+            payload: serde_json::json!({
+                "tool_name": "Bash",
+                "file_path": "/some/file.rs",
+                "had_failure": false
+            }),
+            topic_signal: None,
+        };
+
+        let response = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Assert: guard fires and returns ERR_INVALID_PAYLOAD — not Ack.
+        match response {
+            HookResponse::Error { code, .. } => {
+                assert_eq!(
+                    code, ERR_INVALID_PAYLOAD,
+                    "expected ERR_INVALID_PAYLOAD code, got {code}"
+                );
+            }
+            other => panic!("expected HookResponse::Error, got {other:?}"),
+        }
+
+        // Assert: no session was registered by this call — record_rework_event not reached.
+        assert!(
+            registry.get_state("../../etc/passwd").is_none(),
+            "malformed session_id must not be registered in session registry"
+        );
+    }
+
+    /// AC-29 (T-09): Valid session_id in rework_candidate arm proceeds to record_rework_event.
+    /// Regression guard: sanitize_session_id must not reject valid session IDs.
+    #[tokio::test]
+    async fn test_dispatch_rework_candidate_valid_session_id_succeeds() {
+        let store = make_store().await;
+        let embed = make_embed_service();
+        let registry = make_registry();
+        registry.register_session("session-abc123", None, None);
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+
+        let event = ImplantEvent {
+            event_type: "post_tool_use_rework_candidate".to_string(),
+            session_id: "session-abc123".to_string(),
+            timestamp: unix_now_secs(),
+            payload: serde_json::json!({
+                "tool_name": "Edit",
+                "file_path": "/some/file.rs",
+                "had_failure": false
+            }),
+            topic_signal: None,
+        };
+
+        let response = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Assert: valid session_id proceeds to Ack — sanitize guard does not reject it.
+        assert!(
+            matches!(response, HookResponse::Ack),
+            "expected HookResponse::Ack for valid session_id, got {response:?}"
+        );
+
+        // Assert: session registry was updated — record_rework_event was called.
+        let state = registry
+            .get_state("session-abc123")
+            .expect("session must still exist after successful dispatch");
+        assert_eq!(
+            state.rework_events.len(),
+            1,
+            "record_rework_event must have been called once (rework_events.len() == 1)"
         );
     }
 }
