@@ -587,6 +587,12 @@ pub(crate) async fn create_tables_if_needed(
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_entry_tags_entry_id ON entry_tags(entry_id)")
         .execute(&mut *conn)
         .await?;
+    sqlx::query(
+        "CREATE INDEX IF NOT EXISTS idx_entry_tags_tag_entry_id \
+         ON entry_tags(tag, entry_id)",
+    )
+    .execute(&mut *conn)
+    .await?;
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS vector_map (
