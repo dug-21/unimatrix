@@ -935,7 +935,8 @@ def test_cycle_start_goal_does_not_block_response(server):
     result = server.call_tool("context_cycle", {"type": "start", "topic": "smoke-timing-test", "goal": "timing test goal"})
     elapsed = time.monotonic() - start
     assert elapsed < 1.0, f"context_cycle start blocked for {elapsed:.2f}s (expected < 1.0s)"
-    assert "error" not in str(result).lower() or result is not None
+    assert result is not None
+    assert "error" not in str(result).lower()
 
 
 # === crt-023: NLI Lifecycle (W1-4) ===========================================
