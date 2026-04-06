@@ -217,6 +217,16 @@ impl EmbedServiceHandle {
         }
     }
 
+    /// Set the handle to Ready state with a given adapter (test only).
+    ///
+    /// Mirrors `NliServiceHandle::set_ready_for_test`. Use this in unit tests to
+    /// bypass the ONNX loading path and exercise branches that require a live adapter.
+    #[cfg(test)]
+    pub async fn set_ready_for_test(&self, adapter: Arc<EmbedAdapter>) {
+        let mut state = self.state.write().await;
+        *state = EmbedState::Ready(adapter);
+    }
+
     /// Set state directly for testing.
     #[cfg(test)]
     async fn set_failed_for_test(&self, msg: String, attempts: u32) {
@@ -239,9 +249,58 @@ impl EmbedServiceHandle {
     }
 }
 
+/// Stub `EmbeddingProvider` that always returns an error.
+///
+/// Used in unit tests to exercise the embed-error branch inside
+/// `handle_cycle_event`'s fire-and-forget spawn without a live ONNX model.
+#[cfg(test)]
+pub(crate) struct EmbedErrorProvider;
+
+#[cfg(test)]
+impl unimatrix_embed::EmbeddingProvider for EmbedErrorProvider {
+    fn embed(&self, _text: &str) -> unimatrix_embed::Result<Vec<f32>> {
+        Err(unimatrix_embed::EmbedError::InferenceFailed(
+            "stub error for testing".to_string(),
+        ))
+    }
+
+    fn embed_batch(&self, texts: &[&str]) -> unimatrix_embed::Result<Vec<Vec<f32>>> {
+        texts.iter().map(|_| self.embed("")).collect()
+    }
+
+    fn dimension(&self) -> usize {
+        384
+    }
+
+    fn name(&self) -> &str {
+        "error-stub"
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Minimal mock provider — deterministic fixed-value embeddings; no ONNX required.
+    struct MockEmbedProvider;
+
+    impl unimatrix_embed::EmbeddingProvider for MockEmbedProvider {
+        fn embed(&self, _text: &str) -> unimatrix_embed::Result<Vec<f32>> {
+            Ok(vec![0.0_f32; 384])
+        }
+
+        fn embed_batch(&self, texts: &[&str]) -> unimatrix_embed::Result<Vec<Vec<f32>>> {
+            texts.iter().map(|_| self.embed("")).collect()
+        }
+
+        fn dimension(&self) -> usize {
+            384
+        }
+
+        fn name(&self) -> &str {
+            "mock-test"
+        }
+    }
 
     #[tokio::test]
     async fn test_new_starts_loading() {
@@ -317,5 +376,25 @@ mod tests {
 
         handle.set_failed_for_test("err".to_string(), 2).await;
         assert_eq!(handle.current_attempts().await, 2);
+    }
+
+    #[tokio::test]
+    async fn test_set_ready_for_test_transitions_to_ready() {
+        let handle = EmbedServiceHandle::new();
+        assert!(!handle.is_ready());
+
+        let provider: Arc<dyn unimatrix_embed::EmbeddingProvider> = Arc::new(MockEmbedProvider);
+        let adapter = Arc::new(unimatrix_core::EmbedAdapter::new(provider));
+        handle.set_ready_for_test(adapter).await;
+
+        assert!(handle.is_ready());
+        assert!(handle.get_adapter().await.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_embed_error_provider_returns_error() {
+        let provider = EmbedErrorProvider;
+        let result = unimatrix_embed::EmbeddingProvider::embed(&provider, "test");
+        assert!(result.is_err());
     }
 }
