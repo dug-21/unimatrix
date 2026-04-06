@@ -94,8 +94,16 @@ impl TypedGraphState {
 
         // Fix 4 (GH #444): filter out Quarantined entries before building the graph.
         // Quarantined nodes must not propagate PPR mass to their neighbors.
-        // Deprecated entries are retained: Supersedes-chain traversal (SR-01) requires
-        // them for `find_terminal_active` to resolve deprecated → active chains.
+        //
+        // Deprecated entries are intentionally retained (not filtered here):
+        // - SR-01 Supersedes-chain traversal requires them for `find_terminal_active`
+        //   to resolve deprecated → active chains.
+        // - After compaction removes deprecated-endpoint edges from GRAPH_EDGES
+        //   (bugfix-471), deprecated nodes appear in `all_entries` with no outgoing
+        //   CoAccess edges. This is EXPECTED and CORRECT — do not add a filter to
+        //   exclude deprecated nodes from this snapshot. Doing so would break
+        //   Supersedes-chain traversal for any chain that passes through a deprecated
+        //   intermediate node.
         let all_entries: Vec<EntryRecord> = all_entries_raw
             .into_iter()
             .filter(|e| e.status != Status::Quarantined)

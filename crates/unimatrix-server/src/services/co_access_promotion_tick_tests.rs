@@ -1036,3 +1036,78 @@ async fn test_quarantine_mixed_batch_only_active_pairs_promoted_with_correct_wei
         "weight must be 1.0 (5/5 with quarantine-filtered max_count), not 0.5 (5/10)"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Group K: Deprecated-endpoint filtering (GH #528)
+// ---------------------------------------------------------------------------
+
+/// GH-528: deprecated-endpoint pair must not be promoted, and must not inflate max_count.
+///
+/// Seed three entries: A=active, B=active, D=deprecated.
+/// co_access: A↔D (count=10, deprecated endpoint), A↔B (count=5, both active).
+/// Only A↔B qualifies for promotion.
+///
+/// PRIMARY assertion: A↔B weight = 1.0 (5/5). If the subquery still uses the denylist
+/// filter and includes D-endpoint pairs, max_count=10, producing weight=0.5 instead of 1.0.
+/// This verifies the subquery-side allowlist fix is applied (not just the outer JOIN).
+///
+/// SECONDARY assertion: only A↔B edges (both directions) appear in graph_edges.
+/// The A↔D edge must be absent — deprecated endpoints are excluded by the allowlist.
+///
+/// Seeding order: seed D with status=Deprecated BEFORE calling seed_co_access for the
+/// pair involving D. seed_co_access uses INSERT OR IGNORE on entries rows, so setting
+/// the status first ensures the deprecated status is not overwritten by the helper.
+#[tokio::test]
+async fn test_deprecated_endpoint_pair_not_promoted() {
+    let tmp = tempfile::TempDir::new().unwrap();
+    let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
+
+    // A=1 (active), B=2 (active), D=3 (deprecated, status=1)
+    // Seed D with deprecated status BEFORE seed_co_access to preserve status
+    // (seed_co_access uses INSERT OR IGNORE on entries, so prior status wins).
+    seed_entry(&store, 1, 0).await; // A: active
+    seed_entry(&store, 2, 0).await; // B: active
+    seed_entry(&store, 3, 1).await; // D: deprecated
+
+    // Deprecated pair has a higher count than the active pair.
+    // This is the primary correctness check: if the subquery includes D-endpoint
+    // pairs in max_count computation, max_count=10, and the active edge weight
+    // becomes 5/10=0.5 instead of 5/5=1.0.
+    seed_co_access(&store, 1, 3, 10).await; // A↔D: count=10 (D deprecated, must be excluded)
+    seed_co_access(&store, 1, 2, 5).await; // A↔B: count=5  (both active, must be promoted)
+
+    run_co_access_promotion_tick(&store, &make_config(200), 10).await;
+
+    // SECONDARY: only A↔B edges (2 directed edges) promoted — A↔D absent.
+    assert_eq!(
+        count_co_access_edges(&store).await,
+        2,
+        "only A↔B (both directions) must be promoted — A↔D excluded (D is deprecated)"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 1, 2).await.is_some(),
+        "forward edge A→B must exist"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 2, 1).await.is_some(),
+        "reverse edge B→A must exist"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 1, 3).await.is_none(),
+        "A→D edge must not exist (D is deprecated)"
+    );
+    assert!(
+        fetch_co_access_edge(&store, 3, 1).await.is_none(),
+        "D→A edge must not exist (D is deprecated)"
+    );
+
+    // PRIMARY: weight must be 1.0 (5/5 with allowlist max_count), not 0.5 (5/10).
+    // A failing subquery-side filter would set max_count=10 from A↔D, yielding weight=0.5.
+    let edge = fetch_co_access_edge(&store, 1, 2)
+        .await
+        .expect("A→B edge must exist");
+    assert!(
+        (edge.weight - 1.0).abs() < 1e-9,
+        "weight must be 1.0 (5/5 with deprecated-filtered max_count), not 0.5 (5/10)"
+    );
+}
