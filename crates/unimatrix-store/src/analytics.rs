@@ -389,13 +389,14 @@ async fn execute_analytics_write(
     #[allow(unreachable_patterns)]
     match event {
         AnalyticsWrite::CoAccess { id_a, id_b } => {
-            // Quarantine filtering is intentionally absent at write time.
+            // Status filtering is intentionally absent at write time.
             // The tick-side JOIN in `co_access_promotion_tick.rs` is the
-            // authoritative gate that prevents quarantined-endpoint pairs from
-            // being promoted into GRAPH_EDGES. Writing co_access rows regardless
-            // of status preserves the signal for future status transitions and
-            // avoids a hot-path status lookup on every co-access event.
-            // A write-time guard is tracked as a follow-up in GH #477.
+            // authoritative correctness gate: it inner-joins both endpoints
+            // against entries and filters to Active status before promoting
+            // pairs into GRAPH_EDGES. Writing co_access rows regardless of
+            // endpoint status preserves the signal for future status transitions
+            // and avoids a hot-path status lookup on every co-access event.
+            // See Unimatrix entry #3979 for the rationale.
             //
             // Normalize order to satisfy schema CHECK (entry_id_a < entry_id_b).
             let (a, b) = if id_a <= id_b {

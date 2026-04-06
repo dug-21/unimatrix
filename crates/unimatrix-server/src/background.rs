@@ -512,10 +512,10 @@ async fn run_single_tick(
     {
         let compaction_result = sqlx::query(
             "DELETE FROM graph_edges
-             WHERE source_id NOT IN (SELECT id FROM entries WHERE status != ?1)
-                OR target_id NOT IN (SELECT id FROM entries WHERE status != ?1)",
+             WHERE source_id NOT IN (SELECT id FROM entries WHERE status = ?1)
+                OR target_id NOT IN (SELECT id FROM entries WHERE status = ?1)",
         )
-        .bind(Status::Quarantined as u8 as i64)
+        .bind(Status::Active as u8 as i64)
         .execute(store.write_pool_server())
         .await;
 
@@ -2828,10 +2828,10 @@ mod tests {
         // run_single_tick. If you change one, change both.
         sqlx::query(
             "DELETE FROM graph_edges
-             WHERE source_id NOT IN (SELECT id FROM entries WHERE status != ?1)
-                OR target_id NOT IN (SELECT id FROM entries WHERE status != ?1)",
+             WHERE source_id NOT IN (SELECT id FROM entries WHERE status = ?1)
+                OR target_id NOT IN (SELECT id FROM entries WHERE status = ?1)",
         )
-        .bind(unimatrix_store::Status::Quarantined as u8 as i64)
+        .bind(unimatrix_store::Status::Active as u8 as i64)
         .execute(store.write_pool_server())
         .await
         .expect("compaction DELETE must succeed")
@@ -3110,6 +3110,198 @@ mod tests {
         assert_eq!(
             rows_deleted, 2,
             "exactly 2 quarantined-target edges must be deleted"
+        );
+    }
+
+    /// GH #471: Deprecated entry as CoAccess source — edges FROM a deprecated entry must
+    /// be deleted by compaction (previously the denylist form kept them alive).
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_removes_deprecated_source_co_access() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        // Insert one active entry (id=40) and one entry that will be deprecated (id=41).
+        insert_test_entry(&store, 40).await;
+        insert_test_entry(&store, 41).await;
+
+        // CoAccess edge FROM the soon-to-be-deprecated entry.
+        insert_graph_edge(&store, 41, 40, "CoAccess").await;
+
+        // Edge between two active entries — must survive.
+        insert_graph_edge(&store, 40, 40, "CoAccess").await;
+
+        // Deprecate entry 41.
+        store
+            .update_status(41, unimatrix_store::Status::Deprecated)
+            .await
+            .expect("update_status to Deprecated must succeed");
+
+        let rows_deleted = run_graph_edges_compaction(&store).await;
+
+        // Edge from deprecated source must be gone.
+        assert_eq!(
+            count_graph_edges(&store, 41, 40).await,
+            0,
+            "edge from deprecated source (41→40) must be deleted by compaction"
+        );
+
+        // Edge between active entries must survive.
+        assert_eq!(
+            count_graph_edges(&store, 40, 40).await,
+            1,
+            "edge between active entries (40→40) must survive compaction"
+        );
+
+        assert_eq!(
+            rows_deleted, 1,
+            "exactly 1 deprecated-source edge must be deleted"
+        );
+    }
+
+    /// GH #471: Deprecated entry as CoAccess target — edges TO a deprecated entry must
+    /// be deleted by compaction.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_removes_deprecated_target_co_access() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        // Insert one active entry (id=50) and one entry that will be deprecated (id=51).
+        insert_test_entry(&store, 50).await;
+        insert_test_entry(&store, 51).await;
+
+        // CoAccess edge TO the soon-to-be-deprecated entry.
+        insert_graph_edge(&store, 50, 51, "CoAccess").await;
+
+        // Edge between two active entries — must survive.
+        insert_graph_edge(&store, 50, 50, "CoAccess").await;
+
+        // Deprecate entry 51.
+        store
+            .update_status(51, unimatrix_store::Status::Deprecated)
+            .await
+            .expect("update_status to Deprecated must succeed");
+
+        let rows_deleted = run_graph_edges_compaction(&store).await;
+
+        // Edge to deprecated target must be gone.
+        assert_eq!(
+            count_graph_edges(&store, 50, 51).await,
+            0,
+            "edge to deprecated target (50→51) must be deleted by compaction"
+        );
+
+        // Edge between active entries must survive.
+        assert_eq!(
+            count_graph_edges(&store, 50, 50).await,
+            1,
+            "edge between active entries (50→50) must survive compaction"
+        );
+
+        assert_eq!(
+            rows_deleted, 1,
+            "exactly 1 deprecated-target edge must be deleted"
+        );
+    }
+
+    /// GH #471: Deprecated entry as Supports source — edges FROM a deprecated entry must
+    /// be deleted by compaction.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_removes_deprecated_source_supports() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        // Insert one active entry (id=60) and one entry that will be deprecated (id=61).
+        insert_test_entry(&store, 60).await;
+        insert_test_entry(&store, 61).await;
+
+        // Supports edge FROM the soon-to-be-deprecated entry.
+        insert_graph_edge(&store, 61, 60, "Supports").await;
+
+        // Edge between two active entries — must survive.
+        insert_graph_edge(&store, 60, 60, "Supports").await;
+
+        // Deprecate entry 61.
+        store
+            .update_status(61, unimatrix_store::Status::Deprecated)
+            .await
+            .expect("update_status to Deprecated must succeed");
+
+        let rows_deleted = run_graph_edges_compaction(&store).await;
+
+        // Edge from deprecated source must be gone.
+        assert_eq!(
+            count_graph_edges(&store, 61, 60).await,
+            0,
+            "Supports edge from deprecated source (61→60) must be deleted by compaction"
+        );
+
+        // Edge between active entries must survive.
+        assert_eq!(
+            count_graph_edges(&store, 60, 60).await,
+            1,
+            "Supports edge between active entries (60→60) must survive compaction"
+        );
+
+        assert_eq!(
+            rows_deleted, 1,
+            "exactly 1 deprecated-source Supports edge must be deleted"
+        );
+    }
+
+    /// GH #471: Deprecated entry as Supports target — edges TO a deprecated entry must
+    /// be deleted by compaction.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_compaction_removes_deprecated_target_supports() {
+        use tempfile::TempDir;
+        use unimatrix_store::test_helpers::open_test_store;
+
+        let tmp = TempDir::new().expect("tempdir");
+        let store = open_test_store(&tmp).await;
+
+        // Insert one active entry (id=70) and one entry that will be deprecated (id=71).
+        insert_test_entry(&store, 70).await;
+        insert_test_entry(&store, 71).await;
+
+        // Supports edge TO the soon-to-be-deprecated entry.
+        insert_graph_edge(&store, 70, 71, "Supports").await;
+
+        // Edge between two active entries — must survive.
+        insert_graph_edge(&store, 70, 70, "Supports").await;
+
+        // Deprecate entry 71.
+        store
+            .update_status(71, unimatrix_store::Status::Deprecated)
+            .await
+            .expect("update_status to Deprecated must succeed");
+
+        let rows_deleted = run_graph_edges_compaction(&store).await;
+
+        // Edge to deprecated target must be gone.
+        assert_eq!(
+            count_graph_edges(&store, 70, 71).await,
+            0,
+            "Supports edge to deprecated target (70→71) must be deleted by compaction"
+        );
+
+        // Edge between active entries must survive.
+        assert_eq!(
+            count_graph_edges(&store, 70, 70).await,
+            1,
+            "Supports edge between active entries (70→70) must survive compaction"
+        );
+
+        assert_eq!(
+            rows_deleted, 1,
+            "exactly 1 deprecated-target Supports edge must be deleted"
         );
     }
 
