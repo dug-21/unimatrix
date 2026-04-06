@@ -687,19 +687,6 @@ impl StatusService {
         }
 
         // Phase 5: Coherence dimensions
-        let now_ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        let (freshness_dim, stale_conf_count) = coherence::confidence_freshness_score(
-            &active_entries,
-            now_ts,
-            coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
-        );
-        report.confidence_freshness_score = freshness_dim;
-        report.stale_confidence_count = stale_conf_count;
-
         let graph_point_count = self.vector_index.point_count();
         let graph_stale_count = self.vector_index.stale_count();
         let graph_stale_ratio = if graph_point_count == 0 {
@@ -763,13 +750,7 @@ impl StatusService {
             coherence::contradiction_density_score(report.total_quarantined, report.total_active);
 
         // Lambda computation + recommendations
-        let oldest_stale = coherence::oldest_stale_age(
-            &active_entries,
-            now_ts,
-            coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
-        );
         report.coherence = coherence::compute_lambda(
-            report.confidence_freshness_score,
             report.graph_quality_score,
             embed_dim,
             report.contradiction_density_score,
@@ -789,14 +770,8 @@ impl StatusService {
             }
 
             let mut coherence_by_source = Vec::new();
-            for (source, entries) in &source_groups {
-                let (source_freshness, _) = coherence::confidence_freshness_score(
-                    &entries.iter().map(|e| (*e).clone()).collect::<Vec<_>>(),
-                    now_ts,
-                    coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
-                );
+            for (source, _entries) in &source_groups {
                 let source_lambda = coherence::compute_lambda(
-                    source_freshness,
                     report.graph_quality_score,
                     embed_dim,
                     report.contradiction_density_score,
@@ -811,8 +786,6 @@ impl StatusService {
         report.maintenance_recommendations = coherence::generate_recommendations(
             report.coherence,
             coherence::DEFAULT_LAMBDA_THRESHOLD,
-            report.stale_confidence_count,
-            oldest_stale,
             report.graph_stale_ratio,
             report.embedding_inconsistencies.len(),
             report.total_quarantined,
