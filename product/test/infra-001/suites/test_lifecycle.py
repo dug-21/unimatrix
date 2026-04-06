@@ -2118,16 +2118,18 @@ def test_context_status_supports_edge_count_increases_after_tick(shared_server):
 
 @pytest.mark.xfail(
     reason="No embedding model in CI — candidate_pairs empty without embeddings; "
-    "test validates inferred_edge_count backward compat (AC-15/NFR-06) after Path C writes"
+    "test validates inferred_edge_count increases when Path C (cosine_supports) writes edges (bugfix-491)"
 )
 def test_inferred_edge_count_unchanged_by_cosine_supports(shared_server):
-    """crt-040 AC-15/R-05: inferred_edge_count does not change when Path C writes edges.
+    """crt-040 / bugfix-491: inferred_edge_count increases when Path C (cosine_supports) writes edges.
 
     Steps:
     1. Record baseline inferred_edge_count and supports_edge_count via context_status.
     2. Wait for a tick where Path C would write edges (cross-category pairs qualifying).
-    3. Assert inferred_edge_count unchanged (backward compat — counts only source='nli').
-    4. Assert supports_edge_count >= baseline (Path C edges counted source-agnostically).
+    3. Assert inferred_edge_count >= baseline (cosine_supports edges ARE counted —
+       bugfix-491 changed the SQL to exclusive NOT IN ('co_access', '') filter so all
+       inference sources including cosine_supports are counted automatically).
+    4. Assert supports_edge_count >= baseline (Path C edges counted in both metrics).
 
     Marked xfail: no ONNX model in CI means no Path C writes occur during the tick.
     Remove xfail when embedding model is present.
@@ -2141,13 +2143,13 @@ def test_inferred_edge_count_unchanged_by_cosine_supports(shared_server):
 
     # Store entries to prime candidate pairs for the tick.
     server.context_store(
-        "inferred edge count backward compat lesson crt040 p1q2r3",
+        "inferred edge count lesson crt040 p1q2r3",
         "crt-040-compat",
         "lesson-learned",
         agent_id="human",
     )
     server.context_store(
-        "inferred edge count backward compat decision crt040 s4t5u6",
+        "inferred edge count decision crt040 s4t5u6",
         "crt-040-compat",
         "decision",
         agent_id="human",
@@ -2161,10 +2163,10 @@ def test_inferred_edge_count_unchanged_by_cosine_supports(shared_server):
     after_inferred = report1.get("inferred_edge_count", 0)
     after_supports = report1.get("supports_edge_count", 0)
 
-    assert after_inferred == baseline_inferred, (
-        f"crt-040 AC-15: inferred_edge_count must not change when Path C writes edges. "
+    assert after_inferred >= baseline_inferred, (
+        f"bugfix-491: inferred_edge_count must not decrease after Path C writes edges. "
         f"Baseline={baseline_inferred}, After={after_inferred}. "
-        "The SQL for inferred_edge_count filters source='nli' only (NFR-06 backward compat)."
+        "cosine_supports edges ARE counted (exclusive NOT IN filter — source NOT IN ('co_access', ''))."
     )
     assert after_supports >= baseline_supports, (
         f"crt-040: supports_edge_count must be >= baseline after tick. "
@@ -2230,15 +2232,17 @@ def test_s1_edges_visible_in_status_after_tick(shared_server):
 
 @pytest.mark.xfail(
     reason="GH#291 — Background tick interval (15 min default) exceeds integration test timeout. "
-    "Validates inferred_edge_count backward compat (AC-30/R-13) after S1/S2/S8 tick."
+    "Validates inferred_edge_count increases when S1/S2/S8 edges are written (bugfix-491)."
 )
 def test_inferred_edge_count_unchanged_by_s1_s2_s8(shared_server):
-    """crt-041 AC-30/R-13: inferred_edge_count counts only source='nli' after S1/S2/S8 run.
+    """crt-041 / bugfix-491: inferred_edge_count increases when S1/S2/S8 edges are written.
 
     1. Record baseline inferred_edge_count and cross_category_edge_count.
     2. Store entries qualifying for S1 (shared tags across categories).
     3. Wait for tick where S1 runs.
-    4. Assert inferred_edge_count unchanged (S1/S2/S8 edges are NOT nli-sourced).
+    4. Assert inferred_edge_count >= baseline (S1/S2/S8 edges ARE counted —
+       bugfix-491 changed the SQL to exclusive NOT IN ('co_access', '') filter so all
+       inference sources including S1/S2/S8 are counted automatically).
     5. Assert cross_category_edge_count increased (S1 wrote edges).
     """
     server = shared_server
@@ -2270,10 +2274,11 @@ def test_inferred_edge_count_unchanged_by_s1_s2_s8(shared_server):
         report = parse_status_report(resp)
         if report.get("cross_category_edge_count", 0) > baseline_cross:
             tick_seen = True
-            assert report.get("inferred_edge_count", 0) == baseline_inferred, (
-                "crt-041 R-13: inferred_edge_count must not count S1/S2/S8 edges. "
+            assert report.get("inferred_edge_count", 0) >= baseline_inferred, (
+                "bugfix-491: inferred_edge_count must not decrease after S1/S2/S8 edges are written. "
                 f"Baseline={baseline_inferred}, "
-                f"after tick={report.get('inferred_edge_count', 0)}."
+                f"after tick={report.get('inferred_edge_count', 0)}. "
+                "S1/S2/S8 edges ARE counted (exclusive NOT IN filter)."
             )
             break
 
