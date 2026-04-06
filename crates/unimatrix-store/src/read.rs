@@ -1011,17 +1011,18 @@ impl SqlxStore {
     /// from the background maintenance tick (NFR-01 col-029).
     pub async fn compute_graph_cohesion_metrics(&self) -> Result<GraphCohesionMetrics> {
         // --- Query 1: pure graph_edges aggregates (no JOIN) ---
-        // Counts non-bootstrap Supports edges and NLI-inferred edges.
-        // Single-row result; COALESCE guards the SUM columns.
-        let row1 = sqlx::query(
+        // Counts non-bootstrap Supports edges and all-source inferred edges (exclusive
+        // co_access filter). Single-row result; COALESCE guards the SUM columns.
+        let row1 = sqlx::query(&format!(
             "SELECT \
-                COALESCE(SUM(CASE WHEN relation_type = 'Supports' THEN 1 ELSE 0 END), 0) \
-                    AS supports_edge_count, \
-                COALESCE(SUM(CASE WHEN source = 'nli' THEN 1 ELSE 0 END), 0) \
-                    AS inferred_edge_count \
-             FROM graph_edges \
-             WHERE bootstrap_only = 0",
-        )
+                    COALESCE(SUM(CASE WHEN relation_type = 'Supports' THEN 1 ELSE 0 END), 0) \
+                        AS supports_edge_count, \
+                    COALESCE(SUM(CASE WHEN source NOT IN ('{}', '') THEN 1 ELSE 0 END), 0) \
+                        AS inferred_edge_count \
+                 FROM graph_edges \
+                 WHERE bootstrap_only = 0",
+            EDGE_SOURCE_CO_ACCESS
+        ))
         .fetch_one(self.read_pool())
         .await
         .map_err(|e| StoreError::Database(e.into()))?;
@@ -1759,7 +1760,21 @@ pub struct GraphCohesionMetrics {
     /// Average in+out degree: `(2 * non_bootstrap_edge_count) / active_entry_count`.
     /// Returns `0.0` when `active_entry_count = 0`.
     pub mean_entry_degree: f64,
-    /// Non-bootstrap edges with `source = EDGE_SOURCE_NLI` (`"nli"`).
+    /// Non-bootstrap edges whose source is not `EDGE_SOURCE_CO_ACCESS` (`"co_access"`) —
+    /// i.e., all edges produced by runtime inference signal (NLI, cosine similarity, S1/S2/S8
+    /// graph enrichment, behavioral Informs, and any future inference sources).
+    ///
+    /// Uses an exclusive filter (`source NOT IN ('co_access', '')`) so new inference sources
+    /// are counted automatically without requiring a code change. The empty-string guard is
+    /// purely defensive — no code path writes an empty `source`, but it prevents a silent
+    /// miscount if one ever does.
+    ///
+    /// `co_access` edges originate from the co_access promotion tick (live signal,
+    /// `bootstrap_only = 0`) and the v13 migration bootstrap (`bootstrap_only = 1`, already
+    /// filtered by `WHERE bootstrap_only = 0`). Both are excluded here because co_access
+    /// promotion is a co-retrieval bookkeeping path, not structural inference.
+    ///
+    /// Returns `0` when no non-bootstrap non-co_access edges exist.
     pub inferred_edge_count: u64,
 }
 

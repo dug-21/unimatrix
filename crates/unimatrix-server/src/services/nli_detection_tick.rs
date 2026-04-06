@@ -40,7 +40,10 @@ use std::sync::Arc;
 
 use unimatrix_core::{Store, VectorIndex};
 use unimatrix_embed::{CrossEncoderProvider, NliScores};
-use unimatrix_store::{EDGE_SOURCE_COSINE_SUPPORTS, EntryRecord, Status};
+use unimatrix_store::{
+    EDGE_SOURCE_CO_ACCESS, EDGE_SOURCE_COSINE_SUPPORTS, EDGE_SOURCE_NLI, EDGE_SOURCE_S1,
+    EDGE_SOURCE_S2, EDGE_SOURCE_S8, EntryRecord, Status,
+};
 
 use crate::infra::config::InferenceConfig;
 use crate::infra::nli_handle::NliServiceHandle;
@@ -3221,63 +3224,78 @@ mod tests {
         );
     }
 
-    /// TC-15: inferred_edge_count unchanged after Path C writes cosine_supports edge (AC-15, R-05).
-    /// Confirms the SQL for inferred_edge_count still filters on source='nli' only (NFR-06).
+    /// TC-15: inferred_edge_count counts all inference sources and excludes co_access.
+    ///
+    /// Documents the semantic contract of the exclusive filter
+    /// (`source NOT IN ('co_access', '')`):
+    /// - Every named inference source (nli, cosine_supports, S1, S2, S8, behavioral) increments
+    ///   `inferred_edge_count` by exactly 1 when a non-bootstrap edge is inserted with that source.
+    /// - `co_access` edges (bootstrap_only=0) do NOT increment `inferred_edge_count`, because
+    ///   co_access promotion is a co-retrieval bookkeeping path, not structural inference.
+    ///
+    /// New inference sources added in future features are automatically counted without any
+    /// code change (open/closed: open for extension, closed to silent miscounting).
     #[tokio::test]
-    async fn test_inferred_edge_count_unchanged_after_path_c_write() {
+    async fn test_inferred_edge_count_table_driven() {
+        // Each row: (source_value, should_increment: bool, label)
+        let cases: &[(&str, bool, &str)] = &[
+            (EDGE_SOURCE_NLI, true, "nli"),
+            (EDGE_SOURCE_COSINE_SUPPORTS, true, "cosine_supports"),
+            (EDGE_SOURCE_S1, true, "S1"),
+            (EDGE_SOURCE_S2, true, "S2"),
+            (EDGE_SOURCE_S8, true, "S8"),
+            ("behavioral", true, "behavioral"),
+            (EDGE_SOURCE_CO_ACCESS, false, "co_access (excluded)"),
+        ];
+
         let tmp = tempfile::TempDir::new().unwrap();
         let store = unimatrix_store::test_helpers::open_test_store(&tmp).await;
-        insert_test_entry_with_category(&store, 1, "lesson-learned").await;
-        insert_test_entry_with_category(&store, 2, "decision").await;
-        insert_test_entry_with_category(&store, 3, "lesson-learned").await;
-        insert_test_entry_with_category(&store, 4, "decision").await;
 
-        // Insert one nli-sourced edge to establish a non-zero baseline.
+        // Insert enough entries for each case (one unique pair per case).
+        // Cases are indexed 0..N; pair IDs are (case_idx*2+1, case_idx*2+2).
+        for i in 0..(cases.len() as u64) {
+            insert_test_entry_with_category(&store, i * 2 + 1, "lesson-learned").await;
+            insert_test_entry_with_category(&store, i * 2 + 2, "decision").await;
+        }
+
         let ts = current_timestamp_secs();
-        write_graph_edge(&store, 3, 4, "Supports", 0.80_f32, ts, "nli", "{}").await;
 
-        let baseline = store
-            .compute_graph_cohesion_metrics()
-            .await
-            .expect("TC-15: baseline metrics");
-        let baseline_inferred = baseline.inferred_edge_count;
+        for (idx, (source, should_increment, label)) in cases.iter().enumerate() {
+            let src_id = (idx as u64) * 2 + 1;
+            let tgt_id = (idx as u64) * 2 + 2;
 
-        // Now run Path C to write a cosine_supports edge for a different pair.
-        let config = path_c_config();
-        let candidate_pairs: Vec<(u64, u64, f32)> = vec![(1, 2, 0.70_f32)];
-        let existing = HashSet::new();
-        let category_map: HashMap<u64, &str> = [
-            (1_u64, "lesson-learned"),
-            (2_u64, "decision"),
-            (3_u64, "lesson-learned"),
-            (4_u64, "decision"),
-        ]
-        .into_iter()
-        .collect();
+            let before = store
+                .compute_graph_cohesion_metrics()
+                .await
+                .expect("TC-15: metrics before insert");
+            let before_inferred = before.inferred_edge_count;
 
-        run_cosine_supports_path(
-            &store,
-            &config,
-            &candidate_pairs,
-            &existing,
-            &category_map,
-            ts,
-        )
-        .await;
+            write_graph_edge(
+                &store, src_id, tgt_id, "Supports", 0.80_f32, ts, source, "{}",
+            )
+            .await;
 
-        let after = store
-            .compute_graph_cohesion_metrics()
-            .await
-            .expect("TC-15: post-write metrics");
+            let after = store
+                .compute_graph_cohesion_metrics()
+                .await
+                .expect("TC-15: metrics after insert");
 
-        assert_eq!(
-            after.inferred_edge_count, baseline_inferred,
-            "TC-15: inferred_edge_count must not change after cosine_supports write (source='nli' filter)"
-        );
-        assert!(
-            after.supports_edge_count > baseline.supports_edge_count,
-            "TC-15: supports_edge_count must increase after Path C write (source-agnostic count)"
-        );
+            if *should_increment {
+                assert_eq!(
+                    after.inferred_edge_count,
+                    before_inferred + 1,
+                    "TC-15: source='{}' ({}) must increment inferred_edge_count by 1",
+                    source,
+                    label,
+                );
+            } else {
+                assert_eq!(
+                    after.inferred_edge_count, before_inferred,
+                    "TC-15: source='{}' ({}) must NOT increment inferred_edge_count (excluded source)",
+                    source, label,
+                );
+            }
+        }
     }
 
     /// TC-17: Reversed pair (A,B) and (B,A) both in candidate_pairs produces at most one edge (R-08).

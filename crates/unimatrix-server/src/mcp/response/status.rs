@@ -82,7 +82,8 @@ pub struct StatusReport {
     /// Average in+out degree across active entries: (2 * non_bootstrap_edges) / active_entries.
     /// 0.0 when no active entries exist or when compute_graph_cohesion_metrics() fails.
     pub mean_entry_degree: f64,
-    /// Non-bootstrap edges with source = 'nli' (NLI-inferred edges from GH #412).
+    /// All-source inferred edges (all non-bootstrap, non-co_access-promotion edges; includes
+    /// NLI, cosine_supports, S1/S2/S8, behavioral, and future inference sources).
     pub inferred_edge_count: u64,
     /// Count of active entries with `embedding_dim = 0` (never embedded, GH #444).
     ///
@@ -559,7 +560,7 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 report.mean_entry_degree,
             ));
             text.push_str(&format!(
-                "- Inferred (NLI) edges: {}\n",
+                "- Inferred edges: {}\n",
                 report.inferred_edge_count,
             ));
             if !report.maintenance_recommendations.is_empty() {
@@ -1130,8 +1131,8 @@ mod tests {
             "Missing Mean entry degree label"
         );
         assert!(
-            text.contains("Inferred (NLI) edges:"),
-            "Missing Inferred (NLI) edges label"
+            text.contains("Inferred edges:"),
+            "Missing Inferred edges label"
         );
 
         // Verify numeric values
