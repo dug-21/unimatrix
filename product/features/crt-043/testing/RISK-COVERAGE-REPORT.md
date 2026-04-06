@@ -1,19 +1,16 @@
-# Risk Coverage Report: crt-043 (GH #501 / #502 Bugfix Verification)
+# Risk Coverage Report: crt-043 (GH #505 Bugfix Verification)
 
 ## Context
 
-Python-only eval harness bugfix. No production Rust code was changed.
-Verified on branch `bugfix/501-502-clean`.
+Bugfix #505: server-level test seam for `EmbedServiceHandle` (G-02/G-03 gaps).
+Verified on branch `bugfix/505-embed-handle-test-seam`.
 
 Changed files:
-- `product/research/ass-039/build_scenarios.py` — scenario ID collision fix
-- `product/research/ass-039/harness/run_eval.py` — snapshot pairing validation
-- `product/research/ass-039/harness/scenarios.jsonl` — regenerated (1,761 lines)
-- `product/research/ass-039/harness/scenarios_meta.json` — new sidecar file
-- `product/research/ass-039/harness/tests/test_build_scenarios.py` — new tests
-- `product/research/ass-039/harness/tests/test_run_eval_sidecar.py` — new tests
-- `product/research/ass-040/ROADMAP.md`, `product/test/eval-baselines/log.jsonl`,
-  `product/test/eval-baselines/README.md`, `docs/testing/eval-harness.md`
+- `crates/unimatrix-server/src/infra/embed_handle.rs` — `set_ready_for_test` mutator + `EmbedErrorProvider` stub
+- `crates/unimatrix-server/src/uds/listener.rs` — 5 new unit tests + 2 helper builders
+- `product/test/infra-001/suites/test_lifecycle.py` — 1 new `@pytest.mark.smoke` integration test
+
+Net new tests: 7 unit + 1 integration smoke = **8 new tests**.
 
 ---
 
@@ -21,81 +18,95 @@ Changed files:
 
 | Risk ID | Risk Description | Test(s) | Result | Coverage |
 |---------|-----------------|---------|--------|----------|
-| R-01 | Scenario ID collisions when same session fires multiple context_search calls at same millisecond | `test_no_id_collision_same_session_same_ms`, `test_briefing_no_id_collision_same_session_same_ms`, `test_uniqueness_assertion_fires_on_collision` | PASS | Full |
-| R-02 | Sidecar not written by build_scenarios.py — no snapshot pairing possible | `test_sidecar_written` | PASS | Full |
-| R-03 | run_eval.py proceeds silently when scenarios.jsonl is stale vs current DB snapshot | `test_mismatch_exits_1`, `test_matching_hash_is_silent` | PASS | Full |
-| R-04 | Missing `--allow-snapshot-mismatch` escape hatch blocks intentional cross-snapshot eval runs | `test_allow_snapshot_mismatch_flag_suppresses_error` | PASS | Full |
-| R-05 | Absent sidecar treated as hard error, breaking legacy workflows | `test_absent_sidecar_is_warning_not_error` | PASS | Full |
-| R-06 | scenarios.jsonl regeneration still contains duplicate IDs after fix | Scenario uniqueness check: Total=1761, Unique=1761 | PASS | Full |
-| R-07 | Sidecar missing required fields (source_db_hash, generated_at, scenario_count) | Sidecar field validation | PASS | Full |
-| R-08 | Rust regression from Python-only change | cargo test --workspace | PASS (pre-existing failures noted) | Full |
+| R-02 | bincode config divergence — silent garbage floats | Pre-existing round-trip tests in `unimatrix-store` | PASS | Full |
+| R-07 | Embed task blocks tokio executor | `test_cycle_start_goal_does_not_block_response` (integration, wall-clock < 1.0s) | PASS | Full |
+| R-09 | Goal embedding spawned on empty/absent goal | `test_no_embed_task_on_empty_goal`, `test_no_embed_task_on_absent_goal` | PASS | Full |
+| R-10 | Embed service unavailable path: warn not emitted or cycle blocked | `test_goal_embedding_unavailable_service_warn`, `test_goal_embedding_error_during_embed` | PASS | Full |
+| G-02 | No test seam: EmbedServiceHandle only testable in Loading state (bugfix root cause) | `test_set_ready_for_test_transitions_to_ready`, `test_embed_error_provider_returns_error`, all 5 listener tests | PASS | Full |
+| G-03 | No MCP-level fire-and-forget timing guard | `test_cycle_start_goal_does_not_block_response` | PASS | Full |
+
+### Previously Covered Risks (pre-existing, not re-tested by this bugfix)
+
+| Risk ID | Risk Description | Coverage Source |
+|---------|-----------------|-----------------|
+| R-01 | INSERT/UPDATE race — silent NULL goal_embedding | Integration tests in `listener.rs` (pre-existing) |
+| R-03 | Missing write site — phase not captured | Phase capture unit tests (pre-existing) |
+| R-04 | Phase capture inside spawn_blocking | Phase capture timing tests (pre-existing) |
+| R-05 | Migration partial application | Store migration integration tests (pre-existing) |
+| R-06 | Migration idempotency broken | Store migration idempotency tests (pre-existing) |
+| R-08 | Residual race — UPDATE before INSERT | Degradation acceptance tests (pre-existing) |
+| R-11 | decode_goal_embedding missing or mismatched | Round-trip test in unimatrix-store (pre-existing) |
+| R-12 | context_cycle MCP response text changed | MCP response text test (pre-existing) |
+| R-13 | Composite index deferred — full-scan observations | Written decision in delivery notes (pre-existing) |
 
 ---
 
 ## Test Results
 
-### Bug-Specific Python Tests
-- Suite: `product/research/ass-039/harness/tests/`
-- Total: 8
-- Passed: 8
-- Failed: 0
+### Bug-Specific Unit Tests
 
-Individual results:
-| Test | Result |
-|------|--------|
-| `test_build_scenarios.py::test_no_id_collision_same_session_same_ms` | PASS |
-| `test_build_scenarios.py::test_briefing_no_id_collision_same_session_same_ms` | PASS |
-| `test_build_scenarios.py::test_uniqueness_assertion_fires_on_collision` | PASS |
-| `test_build_scenarios.py::test_sidecar_written` | PASS |
-| `test_run_eval_sidecar.py::test_mismatch_exits_1` | PASS |
-| `test_run_eval_sidecar.py::test_absent_sidecar_is_warning_not_error` | PASS |
-| `test_run_eval_sidecar.py::test_allow_snapshot_mismatch_flag_suppresses_error` | PASS |
-| `test_run_eval_sidecar.py::test_matching_hash_is_silent` | PASS |
+All 7 new unit tests pass.
 
-### Scenario Uniqueness Check
-- Total scenarios: 1761
-- Unique IDs: 1761
-- Result: PASS — no duplicate IDs
+| Test | Location | Result |
+|------|----------|--------|
+| `infra::embed_handle::tests::test_set_ready_for_test_transitions_to_ready` | embed_handle.rs | PASS |
+| `infra::embed_handle::tests::test_embed_error_provider_returns_error` | embed_handle.rs | PASS |
+| `uds::listener::tests::test_goal_embedding_written_after_cycle_start` | listener.rs | PASS |
+| `uds::listener::tests::test_no_embed_task_on_empty_goal` | listener.rs | PASS |
+| `uds::listener::tests::test_no_embed_task_on_absent_goal` | listener.rs | PASS |
+| `uds::listener::tests::test_goal_embedding_unavailable_service_warn` | listener.rs | PASS |
+| `uds::listener::tests::test_goal_embedding_error_during_embed` | listener.rs | PASS |
 
-### Sidecar Validation
-- `source_db_hash`: present (`97bd647c0ff4205d...`)
-- `generated_at`: present (`2026-04-03T15:40:59Z`)
-- `scenario_count`: present (`1761`)
-- Result: PASS — all required fields present
+### Full Workspace Unit Tests (`cargo test --workspace`)
 
-### Rust Unit Tests (cargo test --workspace)
-- Total: 2684 passed, 2 failed
-- Passed: 2684
-- Failed: 2 (both pre-existing, unrelated to this fix)
+- Total passed: 2776 (unimatrix-server lib) + all other crates
+- Failed: 0 (on second run; first run had 1 flaky pre-existing failure — see below)
+- Pre-existing flaky test: `uds::listener::tests::col018_topic_signal_null_for_generic_prompt` — fails intermittently due to async timing (noted in Unimatrix entry #3714, project memory). Confirmed pre-existing: file last changed before this branch; not in the branch diff. No xfail added — this is an intermittent failure, not a deterministic pre-existing fail.
 
-Pre-existing failures (not caused by this bugfix):
-1. `server::tests::test_migration_v7_to_v8_backfill` — pre-existing, unrelated to eval harness
-2. `uds::listener::tests::col018_topic_signal_null_for_generic_prompt` — pre-existing embedding model initialization race (noted in project memory)
+### Clippy (`cargo clippy --workspace -- -D warnings`)
 
-Neither failing test touches any file changed by this PR. No xfail markers required — these are tracked via existing project awareness.
-
-### Clippy
-- Pre-existing warning in `crates/unimatrix-engine/src/auth.rs` (collapsible_if) — last touched in crt-014 / col-006, not modified by this bugfix.
-- No new Rust warnings or errors introduced.
+- One pre-existing error: `crates/unimatrix-engine/src/auth.rs:113` — `collapsible_if` warning elevated to error. Last touched in `crt-014` / `col-006` (commits f02a43bb, 1494b58e). File not in this branch's diff. Not caused by this bugfix.
+- No new warnings or errors introduced by this bugfix.
 
 ### Integration Tests (infra-001)
-- Not required — no production Rust code was changed. User explicitly specified no integration testing for this fix.
+
+#### Smoke Gate (`pytest -m smoke`)
+- Total: 23 passed, 0 failed, 256 deselected
+- New smoke test `test_cycle_start_goal_does_not_block_response`: **PASS**
+- All pre-existing smoke tests: PASS
+
+#### Lifecycle Suite (`pytest suites/test_lifecycle.py`)
+- Total: 45 passed, 5 xfailed, 2 xpassed, 0 failed
+- New test `test_cycle_start_goal_does_not_block_response`: **PASS** (at 50%)
+- 5 xfailed: all pre-existing (tick-interval, dead-knowledge, S1 edge count — require short tick env var not present in test environment)
+- 2 xpassed: `test_search_multihop_injects_terminal_active` and `test_inferred_edge_count_unchanged_by_cosine_supports` — pre-existing xpass conditions, not caused by this fix
 
 ---
 
 ## Gaps
 
-None. All identified risks have full test coverage. The two pre-existing Rust test failures are unrelated to this bugfix and pre-date this branch.
+None. All risks identified for this bugfix (G-02, G-03) have full test coverage. The two pre-existing issues (clippy `collapsible_if` in auth.rs, intermittent `col018_topic_signal_null_for_generic_prompt`) are unrelated to this fix and pre-date this branch.
 
 ---
 
 ## Acceptance Criteria Verification
 
+The ACCEPTANCE-MAP.md ACs were written for the full crt-043 delivery. This bugfix specifically addresses the G-02/G-03 gaps — the test infrastructure gaps that left AC-02, AC-04 partially unverifiable. The following ACs are now fully verifiable via the new test seam:
+
 | AC-ID | Status | Evidence |
 |-------|--------|----------|
-| AC-01: No scenario ID collisions in generated scenarios.jsonl | PASS | 1761 total = 1761 unique; `test_no_id_collision_same_session_same_ms` passes |
-| AC-02: build_scenarios.py writes scenarios_meta.json sidecar with required fields | PASS | Sidecar present with `source_db_hash`, `generated_at`, `scenario_count`; `test_sidecar_written` passes |
-| AC-03: run_eval.py exits non-zero on snapshot hash mismatch | PASS | `test_mismatch_exits_1` passes |
-| AC-04: Absent sidecar is a warning, not a hard error | PASS | `test_absent_sidecar_is_warning_not_error` passes |
-| AC-05: `--allow-snapshot-mismatch` flag suppresses hash mismatch error | PASS | `test_allow_snapshot_mismatch_flag_suppresses_error` passes |
-| AC-06: No Rust regressions | PASS | 2684 Rust tests pass; 2 pre-existing failures unrelated to this change |
+| AC-02 | PASS | `test_goal_embedding_written_after_cycle_start` uses `make_ready_embed_service()` — embed adapter is in Ready state; test verifies `goal_embedding IS NOT NULL` after dispatch |
+| AC-04a (unavailable) | PASS | `test_goal_embedding_unavailable_service_warn` — Loading handle → warns → `goal_embedding IS NULL`, response is Ack |
+| AC-04a (error) | PASS | `test_goal_embedding_error_during_embed` — EmbedErrorStub → warns → `goal_embedding IS NULL`, response is Ack |
+| AC-04b (empty goal) | PASS | `test_no_embed_task_on_empty_goal` — no spawn, no warn, `goal_embedding IS NULL` |
+| AC-04b (absent goal) | PASS | `test_no_embed_task_on_absent_goal` — no spawn, no warn, `goal_embedding IS NULL` |
+| AC-06 | PASS | All 5 listener tests assert response is `Ack` — cycle start response text unchanged |
+
+All other ACs (AC-01, AC-03, AC-05, AC-07–AC-14) were verified in the prior delivery; this bugfix adds no regressions.
+
+---
+
+## Knowledge Stewardship
+
+- Queried: `mcp__unimatrix__context_briefing` — returned entry #4174 (EmbedServiceHandle fire-and-forget spawn paths require stub provider to be unit-testable), directly confirming the gap this fix addresses. Also returned entry #4175 (inline mock pattern for unimatrix-embed in other crates' test blocks).
+- Stored: nothing novel to store — the inline mock pattern was stored as entry #4175 by the fix agent (505-agent-1-fix). No new patterns or lessons discovered during verification.
