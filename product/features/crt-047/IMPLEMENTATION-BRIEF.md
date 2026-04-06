@@ -21,18 +21,18 @@
 
 | Component | Pseudocode | Test Plan |
 |-----------|-----------|-----------|
-| schema / cycle_review_index | pseudocode/cycle_review_index.md | test-plan/cycle_review_index.md |
-| migration v23→v24 | pseudocode/migration.md | test-plan/migration.md |
-| services/curation_health | pseudocode/curation_health.md | test-plan/curation_health.md |
-| context_cycle_review handler | pseudocode/context_cycle_review.md | test-plan/context_cycle_review.md |
-| context_status Phase 7c | pseudocode/context_status_phase7c.md | test-plan/context_status_phase7c.md |
+| schema / cycle_review_index | product/features/crt-047/pseudocode/cycle_review_index.md | product/features/crt-047/test-plan/cycle_review_index.md |
+| migration v23→v24 | product/features/crt-047/pseudocode/migration.md | product/features/crt-047/test-plan/migration.md |
+| services/curation_health | product/features/crt-047/pseudocode/curation_health.md | product/features/crt-047/test-plan/curation_health.md |
+| context_cycle_review handler | product/features/crt-047/pseudocode/context_cycle_review.md | product/features/crt-047/test-plan/context_cycle_review.md |
+| context_status Phase 7c | product/features/crt-047/pseudocode/context_status_phase7c.md | product/features/crt-047/test-plan/context_status_phase7c.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
+| Pseudocode Overview | product/features/crt-047/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/crt-047/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
