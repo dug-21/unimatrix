@@ -374,6 +374,7 @@ mod tests {
             computed_at,
             raw_signals_available: 1,
             summary_json: format!(r#"{{"feature_cycle":"{feature_cycle}"}}"#),
+            ..Default::default()
         };
         store
             .store_cycle_review(&record)
