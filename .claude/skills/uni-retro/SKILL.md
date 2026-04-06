@@ -241,7 +241,7 @@ git push origin main
 ```
 RETROSPECTIVE COMPLETE — Knowledge base updated.
 
-Feature: {feature-id}
+Cycle: {feature-id}
 PR: #{pr-number} (merged)
 
 Retrospective summary:
@@ -252,7 +252,7 @@ Retrospective summary:
 Knowledged leveraged:
 - {Summary of knowledge items served by Unimatrix}
 
-Knowledge extracted:
+Knowledge curated:
 - Patterns: {count} new, {count} updated
 - Procedures: {count} new, {count} updated
 - Lessons learned: {count} new ({count} from hotspots, {count} from gate failures)
