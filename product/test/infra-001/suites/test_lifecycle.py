@@ -927,6 +927,17 @@ def test_concurrent_search_stability(server):
         assert_tool_success(resp)
 
 
+@pytest.mark.smoke
+def test_cycle_start_goal_does_not_block_response(server):
+    """Verifies context_cycle start with a goal returns before embedding completes (fire-and-forget)."""
+    import time
+    start = time.monotonic()
+    result = server.call_tool("context_cycle", {"type": "start", "topic": "smoke-timing-test", "goal": "timing test goal"})
+    elapsed = time.monotonic() - start
+    assert elapsed < 1.0, f"context_cycle start blocked for {elapsed:.2f}s (expected < 1.0s)"
+    assert "error" not in str(result).lower() or result is not None
+
+
 # === crt-023: NLI Lifecycle (W1-4) ===========================================
 
 

@@ -7627,6 +7627,409 @@ mod tests {
         );
     }
 
+    // -- crt-043: goal embedding fire-and-forget tests (G-02) --
+
+    /// Minimal deterministic embedding provider for unit tests (no ONNX required).
+    struct MockEmbedProvider;
+
+    impl unimatrix_embed::EmbeddingProvider for MockEmbedProvider {
+        fn embed(&self, _text: &str) -> unimatrix_embed::Result<Vec<f32>> {
+            Ok(vec![0.0_f32; 384])
+        }
+
+        fn embed_batch(&self, texts: &[&str]) -> unimatrix_embed::Result<Vec<Vec<f32>>> {
+            texts.iter().map(|_| self.embed("")).collect()
+        }
+
+        fn dimension(&self) -> usize {
+            384
+        }
+
+        fn name(&self) -> &str {
+            "mock-test"
+        }
+    }
+
+    /// Stub embedding provider that always returns an error.
+    struct EmbedErrorStub;
+
+    impl unimatrix_embed::EmbeddingProvider for EmbedErrorStub {
+        fn embed(&self, _text: &str) -> unimatrix_embed::Result<Vec<f32>> {
+            Err(unimatrix_embed::EmbedError::InferenceFailed(
+                "stub error for testing".to_string(),
+            ))
+        }
+
+        fn embed_batch(&self, texts: &[&str]) -> unimatrix_embed::Result<Vec<Vec<f32>>> {
+            texts.iter().map(|_| self.embed("")).collect()
+        }
+
+        fn dimension(&self) -> usize {
+            384
+        }
+
+        fn name(&self) -> &str {
+            "error-stub"
+        }
+    }
+
+    /// Build a Ready-state embed service handle backed by MockEmbedProvider (no ONNX required).
+    async fn make_ready_embed_service() -> Arc<EmbedServiceHandle> {
+        let handle = EmbedServiceHandle::new();
+        let provider: Arc<dyn unimatrix_embed::EmbeddingProvider> = Arc::new(MockEmbedProvider);
+        let adapter = Arc::new(unimatrix_core::EmbedAdapter::new(provider));
+        handle.set_ready_for_test(adapter).await;
+        handle
+    }
+
+    /// Build a Ready-state embed service handle backed by EmbedErrorStub.
+    async fn make_error_embed_service() -> Arc<EmbedServiceHandle> {
+        let handle = EmbedServiceHandle::new();
+        let provider: Arc<dyn unimatrix_embed::EmbeddingProvider> = Arc::new(EmbedErrorStub);
+        let adapter = Arc::new(unimatrix_core::EmbedAdapter::new(provider));
+        handle.set_ready_for_test(adapter).await;
+        handle
+    }
+
+    /// crt-043 / G-02-T1: cycle_start with a non-empty goal writes goal_embedding to DB.
+    ///
+    /// Pre-inserts the cycle_events row (the INSERT spawn is also fire-and-forget; pre-inserting
+    /// avoids a double race). After dispatch, `tokio::task::yield_now` gives the embed spawn
+    /// a chance to complete the UPDATE. The row must have goal_embedding IS NOT NULL.
+    #[tokio::test]
+    async fn test_goal_embedding_written_after_cycle_start() {
+        let store = make_store().await;
+        let embed = make_ready_embed_service().await;
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s-ge1", None, Some("crt-043-test".to_string()));
+
+        // Pre-insert the cycle_events row so the UPDATE has a target row immediately.
+        store
+            .insert_cycle_event(
+                "crt-043-test",
+                0,
+                CYCLE_START_EVENT,
+                Some("start"),
+                None,
+                None,
+                1000,
+                Some("test goal"),
+            )
+            .await
+            .expect("pre-insert must succeed");
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s-ge1",
+            serde_json::json!({"feature_cycle": "crt-043-test", "goal": "test goal"}),
+            None,
+        );
+
+        let _ = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Yield to allow the fire-and-forget embed spawn to complete the UPDATE.
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+
+        let row: (Option<Vec<u8>>, Option<String>) = sqlx::query_as(
+            "SELECT goal_embedding, phase FROM cycle_events WHERE cycle_id = 'crt-043-test' ORDER BY seq ASC LIMIT 1",
+        )
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("pre-inserted cycle_events row must exist");
+
+        assert!(
+            row.0.is_some(),
+            "goal_embedding must be written after cycle_start with a non-empty goal"
+        );
+        assert_eq!(row.1.as_deref(), Some("start"), "phase must be 'start'");
+    }
+
+    /// crt-043 / G-02-T2: cycle_start with an empty goal leaves goal_embedding NULL.
+    ///
+    /// Empty goal → trimmed to empty → no embed spawn → goal_embedding stays NULL.
+    #[tokio::test]
+    async fn test_no_embed_task_on_empty_goal() {
+        let store = make_store().await;
+        let embed = make_ready_embed_service().await;
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s-ge2", None, Some("crt-043-empty".to_string()));
+
+        // Pre-insert with goal = NULL (simulates what the INSERT spawn would write for empty goal).
+        store
+            .insert_cycle_event(
+                "crt-043-empty",
+                0,
+                CYCLE_START_EVENT,
+                None,
+                None,
+                None,
+                1000,
+                None, // empty goal stored as NULL
+            )
+            .await
+            .expect("pre-insert must succeed");
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s-ge2",
+            serde_json::json!({"feature_cycle": "crt-043-empty", "goal": ""}),
+            None,
+        );
+
+        let _ = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+
+        let row: (Option<Vec<u8>>,) = sqlx::query_as(
+            "SELECT goal_embedding FROM cycle_events WHERE cycle_id = 'crt-043-empty' ORDER BY seq ASC LIMIT 1",
+        )
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("pre-inserted cycle_events row must exist");
+
+        assert!(
+            row.0.is_none(),
+            "goal_embedding must be NULL when goal is empty string"
+        );
+    }
+
+    /// crt-043 / G-02-T3: cycle_start with no goal key leaves goal_embedding NULL.
+    ///
+    /// Absent goal → goal_for_event = None → trimmed_goal = None → no embed spawn.
+    #[tokio::test]
+    async fn test_no_embed_task_on_absent_goal() {
+        let store = make_store().await;
+        let embed = make_ready_embed_service().await;
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s-ge3", None, Some("crt-043-absent".to_string()));
+
+        // Pre-insert with goal = NULL.
+        store
+            .insert_cycle_event(
+                "crt-043-absent",
+                0,
+                CYCLE_START_EVENT,
+                None,
+                None,
+                None,
+                1000,
+                None,
+            )
+            .await
+            .expect("pre-insert must succeed");
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s-ge3",
+            serde_json::json!({"feature_cycle": "crt-043-absent"}), // no "goal" key
+            None,
+        );
+
+        let _ = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+
+        let row: (Option<Vec<u8>>,) = sqlx::query_as(
+            "SELECT goal_embedding FROM cycle_events WHERE cycle_id = 'crt-043-absent' ORDER BY seq ASC LIMIT 1",
+        )
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("pre-inserted cycle_events row must exist");
+
+        assert!(
+            row.0.is_none(),
+            "goal_embedding must be NULL when goal key is absent from payload"
+        );
+    }
+
+    /// crt-043 / G-02-T4: embed service in Loading state — tool call succeeds, goal_embedding NULL.
+    ///
+    /// The Loading handle returns EmbedNotReady; the spawn logs a warning and leaves
+    /// goal_embedding = NULL. The cycle_start response is non-error (FR-B-10).
+    #[tokio::test]
+    async fn test_goal_embedding_unavailable_service_warn() {
+        let store = make_store().await;
+        // Deliberately Loading (not Ready) — tests the EmbedNotReady degradation path.
+        let embed = make_embed_service();
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s-ge4", None, Some("crt-043-unavail".to_string()));
+
+        // Pre-insert with goal = "test" (the embed spawn has a row to UPDATE, but won't).
+        store
+            .insert_cycle_event(
+                "crt-043-unavail",
+                0,
+                CYCLE_START_EVENT,
+                None,
+                None,
+                None,
+                1000,
+                Some("test"),
+            )
+            .await
+            .expect("pre-insert must succeed");
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s-ge4",
+            serde_json::json!({"feature_cycle": "crt-043-unavail", "goal": "test"}),
+            None,
+        );
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Tool call must succeed — cycle_start is not blocked by embed unavailability.
+        assert!(
+            matches!(resp, HookResponse::Ack),
+            "cycle_start must succeed even when embed service is Loading"
+        );
+
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+
+        let row: (Option<Vec<u8>>,) = sqlx::query_as(
+            "SELECT goal_embedding FROM cycle_events WHERE cycle_id = 'crt-043-unavail' ORDER BY seq ASC LIMIT 1",
+        )
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("pre-inserted cycle_events row must exist");
+
+        assert!(
+            row.0.is_none(),
+            "goal_embedding must be NULL when embed service is unavailable"
+        );
+    }
+
+    /// crt-043 / G-02-T5: embed provider returns error — tool call succeeds, goal_embedding NULL.
+    ///
+    /// The Ready handle is backed by EmbedErrorStub. The spawn logs a warning
+    /// and leaves goal_embedding = NULL. The cycle_start response is non-error.
+    #[tokio::test]
+    async fn test_goal_embedding_error_during_embed() {
+        let store = make_store().await;
+        let embed = make_error_embed_service().await;
+        let (vs, es, adapt) = make_dispatch_deps(&store);
+        let registry = make_registry();
+        registry.register_session("s-ge5", None, Some("crt-043-err".to_string()));
+
+        // Pre-insert with goal = "test".
+        store
+            .insert_cycle_event(
+                "crt-043-err",
+                0,
+                CYCLE_START_EVENT,
+                None,
+                None,
+                None,
+                1000,
+                Some("test"),
+            )
+            .await
+            .expect("pre-insert must succeed");
+
+        let event = make_cycle_event(
+            CYCLE_START_EVENT,
+            "s-ge5",
+            serde_json::json!({"feature_cycle": "crt-043-err", "goal": "test"}),
+            None,
+        );
+
+        let resp = dispatch_request(
+            HookRequest::RecordEvent { event },
+            &store,
+            &embed,
+            &vs,
+            &es,
+            &adapt,
+            "0.1.0",
+            &registry,
+            &make_pending(),
+            &make_services(&store, &embed, &vs, &es, &adapt),
+        )
+        .await;
+
+        // Tool call must succeed even when the embed provider errors.
+        assert!(
+            matches!(resp, HookResponse::Ack),
+            "cycle_start must succeed even when embed provider returns error"
+        );
+
+        for _ in 0..20 {
+            tokio::task::yield_now().await;
+        }
+
+        let row: (Option<Vec<u8>>,) = sqlx::query_as(
+            "SELECT goal_embedding FROM cycle_events WHERE cycle_id = 'crt-043-err' ORDER BY seq ASC LIMIT 1",
+        )
+        .fetch_one(store.write_pool_server())
+        .await
+        .expect("pre-inserted cycle_events row must exist");
+
+        assert!(
+            row.0.is_none(),
+            "goal_embedding must be NULL when embed provider returns error"
+        );
+    }
+
     /// AC-29 (T-09): Valid session_id in rework_candidate arm proceeds to record_rework_event.
     /// Regression guard: sanitize_session_id must not reject valid session IDs.
     #[tokio::test]
