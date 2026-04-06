@@ -32,9 +32,11 @@ pub use source::ObservationSource;
 pub use synthesis::synthesize_narratives;
 pub use types::{
     AttributionMetadata, BaselineComparison, BaselineEntry, BaselineSet, BaselineStatus,
+    CurationBaselineComparison, CurationHealthBlock, CurationHealthSummary, CurationSnapshot,
     CycleEventRecord, EntryAnalysis, EntryRef, EvidenceCluster, EvidenceRecord,
     FeatureKnowledgeReuse, GateResult, HotspotCategory, HotspotFinding, HotspotNarrative,
     MetricVector, ObservationRecord, ObservationStats, ParsedSession, PhaseCategoryComparison,
     PhaseCategoryDist, PhaseMetrics, PhaseNarrative, PhaseStats, Recommendation,
-    RetrospectiveReport, SessionSummary, Severity, ToolDistribution, UniversalMetrics,
+    RetrospectiveReport, SessionSummary, Severity, ToolDistribution, TrendDirection,
+    UniversalMetrics,
 };

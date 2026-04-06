@@ -943,7 +943,14 @@ pub(crate) async fn create_tables_if_needed(
             schema_version        INTEGER NOT NULL,
             computed_at           INTEGER NOT NULL,
             raw_signals_available INTEGER NOT NULL DEFAULT 1,
-            summary_json          TEXT    NOT NULL
+            summary_json          TEXT    NOT NULL,
+            corrections_total     INTEGER NOT NULL DEFAULT 0,
+            corrections_agent     INTEGER NOT NULL DEFAULT 0,
+            corrections_human     INTEGER NOT NULL DEFAULT 0,
+            corrections_system    INTEGER NOT NULL DEFAULT 0,
+            deprecations_total    INTEGER NOT NULL DEFAULT 0,
+            orphan_deprecations   INTEGER NOT NULL DEFAULT 0,
+            first_computed_at     INTEGER NOT NULL DEFAULT 0
         )",
     )
     .execute(&mut *conn)

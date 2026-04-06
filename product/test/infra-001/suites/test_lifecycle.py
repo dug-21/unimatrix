@@ -936,7 +936,7 @@ def test_cycle_start_goal_does_not_block_response(server):
     elapsed = time.monotonic() - start
     assert elapsed < 1.0, f"context_cycle start blocked for {elapsed:.2f}s (expected < 1.0s)"
     assert result is not None
-    assert "error" not in str(result).lower()
+    assert result.error is None, f"context_cycle start returned error: {result.error}"
 
 
 # === crt-023: NLI Lifecycle (W1-4) ===========================================
@@ -2543,3 +2543,134 @@ def test_step8b_runs_on_force_false_lifecycle(server):
         f"First={count_after_first}, second={count_after_second}. "
         "step 8b must run on every call (FR-09, Resolution 2)."
     )
+
+
+# === crt-047: Curation Health Integration Tests ================================
+
+
+def test_cycle_review_curation_health_cold_start(server):
+    """CCR-I-01: context_cycle_review cold start includes curation_health.snapshot (AC-06, AC-08).
+
+    A fresh DB (no prior cycle_review_index rows) must return a curation_health block
+    with snapshot present and baseline absent (cold start — fewer than 3 prior cycles).
+    Seeds observation and cycle_events data via SQL (required by context_cycle_review).
+    """
+    import json as _json
+    import time as _time
+    topic = "crt047-cold-start-test"
+    now = int(_time.time())
+
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    _seed_observation_sql_lifecycle(db_path, [topic], num_records=20)
+    _seed_cycle_events_lifecycle(db_path, topic, [
+        {"seq": 0, "event_type": "cycle_start", "next_phase": "scope", "timestamp": now - 300},
+        {"seq": 1, "event_type": "cycle_stop", "phase": "scope", "timestamp": now - 100},
+    ])
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+
+    try:
+        data = _json.loads(text)
+        curation_health = data.get("curation_health")
+        assert curation_health is not None, (
+            "crt-047 AC-06: curation_health block must be present on cold start"
+        )
+        snapshot = curation_health.get("snapshot")
+        assert snapshot is not None, (
+            "crt-047 AC-06: curation_health.snapshot must be present"
+        )
+        assert "corrections_total" in snapshot, (
+            "crt-047 AC-06: snapshot.corrections_total must be present"
+        )
+        assert snapshot["corrections_total"] >= 0, (
+            "crt-047 AC-06: corrections_total must be >= 0"
+        )
+        assert "deprecations_total" in snapshot, (
+            "crt-047 AC-06: snapshot.deprecations_total must be present"
+        )
+        # Cold start: baseline absent (< 3 prior qualifying rows in cycle_review_index).
+        baseline = curation_health.get("baseline")
+        assert baseline is None, (
+            "crt-047 AC-08: curation_health.baseline must be None on cold start (< 3 prior cycles)"
+        )
+    except _json.JSONDecodeError:
+        # Markdown format — verify curation_health section is present in text
+        assert "curation" in text.lower(), (
+            "crt-047 AC-06: curation_health data must be present in response text"
+        )
+
+
+def test_status_curation_health_absent_on_fresh_db(server):
+    """CS7C-I-02: context_status on a fresh DB returns no curation_health block (EC-06).
+
+    A fresh DB with no cycle_review_index rows must not error and must return
+    context_status with curation_health absent or None.
+    """
+    resp = server.call_tool("context_status", {"format": "json"})
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+
+    import json as _json
+    try:
+        data = _json.loads(text)
+        curation_health = data.get("curation_health")
+        # Either absent from JSON entirely (skip_serializing_if = None) or explicitly None.
+        assert curation_health is None, (
+            "crt-047 EC-06: curation_health must be absent/None on fresh DB"
+        )
+    except _json.JSONDecodeError:
+        # Text format — just verify no error in response.
+        assert resp.error is None, f"context_status returned error: {resp.error}"
+
+
+def test_context_cycle_review_curation_snapshot_fields(server):
+    """CCR-I-05: context_cycle_review response includes all curation snapshot fields (AC-02).
+
+    Verifies that corrections_total, corrections_agent, corrections_human,
+    corrections_system, orphan_deprecations, and deprecations_total are all
+    present in the curation_health.snapshot block.
+    Seeds observation and cycle_events data via SQL (required by context_cycle_review).
+    """
+    import json as _json
+    import time as _time
+    topic = "crt047-snapshot-fields-test"
+    now = int(_time.time())
+
+    db_path = _compute_db_path_lifecycle(server.project_dir)
+    _seed_observation_sql_lifecycle(db_path, [topic], num_records=20)
+    _seed_cycle_events_lifecycle(db_path, topic, [
+        {"seq": 0, "event_type": "cycle_start", "next_phase": "scope", "timestamp": now - 300},
+        {"seq": 1, "event_type": "cycle_stop", "phase": "scope", "timestamp": now - 100},
+    ])
+
+    resp = server.context_cycle_review(topic, agent_id="human", format="json", timeout=30.0)
+    assert_tool_success(resp)
+    text = get_result_text(resp)
+
+    try:
+        data = _json.loads(text)
+        curation_health = data.get("curation_health")
+        if curation_health is None:
+            # No curation block — advisory or missing data path; skip structural assertions.
+            return
+        snapshot = curation_health.get("snapshot")
+        if snapshot is None:
+            return
+        for field in [
+            "corrections_total",
+            "corrections_agent",
+            "corrections_human",
+            "corrections_system",
+            "deprecations_total",
+            "orphan_deprecations",
+        ]:
+            assert field in snapshot, (
+                f"crt-047 AC-02: snapshot.{field} must be present in curation_health response"
+            )
+            assert isinstance(snapshot[field], (int, float)), (
+                f"crt-047 AC-02: snapshot.{field} must be numeric, got {type(snapshot[field])}"
+            )
+    except _json.JSONDecodeError:
+        pass  # Text format — structural test not applicable

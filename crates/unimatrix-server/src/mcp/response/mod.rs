@@ -644,6 +644,7 @@ mod tests {
             inferred_edge_count: 0,
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
+            curation_health: None,             // crt-047
         }
     }
 
@@ -739,6 +740,7 @@ mod tests {
             inferred_edge_count: 0,
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
+            curation_health: None,             // crt-047
         };
         let result = format_status_report(&report, ResponseFormat::Summary);
         let text = result_text(&result);
@@ -1001,6 +1003,7 @@ mod tests {
             inferred_edge_count: 0,
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
+            curation_health: None,             // crt-047
         };
 
         let result = format_status_report(&report, ResponseFormat::Summary);
@@ -1081,6 +1084,7 @@ mod tests {
             inferred_edge_count: 0,
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
+            curation_health: None,             // crt-047
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1163,6 +1167,7 @@ mod tests {
             inferred_edge_count: 0,
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
+            curation_health: None,             // crt-047
         };
 
         let result = format_status_report(&report, ResponseFormat::Json);
@@ -1237,6 +1242,7 @@ mod tests {
             inferred_edge_count: 0,
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
+            curation_health: None,             // crt-047
         };
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1315,6 +1321,7 @@ mod tests {
             inferred_edge_count: 0,
             category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
+            curation_health: None,             // crt-047
         }
     }
 
@@ -1460,6 +1467,7 @@ mod tests {
             inferred_edge_count: 0,
             category_lifecycle: Vec::new(), // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
+            curation_health: None,             // crt-047
         }
     }
 

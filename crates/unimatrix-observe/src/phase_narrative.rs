@@ -504,6 +504,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -548,6 +549,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
 
         let json = serde_json::to_string(&report).expect("serialize");

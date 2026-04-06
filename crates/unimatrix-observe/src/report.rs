@@ -48,6 +48,7 @@ pub fn build_report(
         attribution_path: None,
         is_in_progress: None,
         phase_stats: None,
+        curation_health: None, // crt-047: populated by context_cycle_review handler
     }
 }
 

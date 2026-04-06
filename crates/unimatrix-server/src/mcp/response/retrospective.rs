@@ -1259,6 +1259,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         }
     }
 

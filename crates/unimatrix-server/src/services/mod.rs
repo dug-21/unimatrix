@@ -27,6 +27,7 @@ pub(crate) mod behavioral_signals;
 pub(crate) mod co_access_promotion_tick;
 pub(crate) mod confidence;
 pub(crate) mod contradiction_cache;
+pub(crate) mod curation_health;
 pub(crate) mod effectiveness;
 pub(crate) mod gateway;
 pub(crate) mod graph_enrichment_tick;

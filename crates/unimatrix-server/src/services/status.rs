@@ -29,6 +29,7 @@ use crate::server::PendingEntriesAnalysis;
 use crate::services::ServiceError;
 use crate::services::confidence::ConfidenceStateHandle;
 use crate::services::contradiction_cache::ContradictionScanCacheHandle;
+use crate::services::curation_health;
 use unimatrix_store::cycle_review_index::CycleReviewRecord;
 
 /// Minimum number of voted entries required for empirical Bayesian prior estimation.
@@ -59,6 +60,14 @@ const COLD_START_BETA: f64 = 3.0;
 ///
 /// Not inlined at the call site (C-11, NFR-05).
 pub(crate) const PENDING_REVIEWS_K_WINDOW_SECS: i64 = 90 * 24 * 3600; // 7_776_000
+
+/// Number of prior cycles to include in the curation health baseline window (crt-047).
+///
+/// Used by Phase 7c of `compute_report()`. Must match the window size used by
+/// `context_cycle_review` for consistency (FR-18).
+///
+/// Not inlined at the call site (FR-10).
+pub(crate) const CURATION_BASELINE_WINDOW: usize = 10;
 
 /// Compute empirical Bayesian prior (alpha0, beta0) from voted-entry population.
 ///
@@ -563,6 +572,7 @@ impl StatusService {
             effectiveness: None,
             category_lifecycle: Vec::new(), // populated after Phase 8 via category_allowlist
             pending_cycle_reviews: Vec::new(), // populated by Phase 7b (crt-033)
+            curation_health: None,          // populated by Phase 7c (crt-047)
         };
 
         // Phase 2: Contradiction scan — read from cache populated by background tick.
@@ -865,6 +875,30 @@ impl StatusService {
                     // report.pending_cycle_reviews remains Vec::new() (set by StatusReport initializer)
                 }
             }
+        }
+
+        // Phase 7c: Curation health aggregate (crt-047).
+        //
+        // Reads the last CURATION_BASELINE_WINDOW cycle_review_index rows ordered by
+        // first_computed_at DESC (excluding rows with first_computed_at = 0).
+        // Uses read_pool() internally via get_curation_baseline_window() — consistent
+        // with all other Phase 7 reads (ADR-001, crt-033).
+        // All computation is delegated to curation_health::compute_curation_summary().
+        // On failure: degrade gracefully to None; do NOT fail compute_report().
+        {
+            let curation_window = self
+                .store
+                .get_curation_baseline_window(CURATION_BASELINE_WINDOW)
+                .await
+                .unwrap_or_else(|e| {
+                    tracing::error!(
+                        "crt-047: get_curation_baseline_window failed: {} — \
+                         curation_health will be absent from this response",
+                        e
+                    );
+                    vec![]
+                });
+            report.curation_health = curation_health::compute_curation_summary(&curation_window);
         }
 
         // Phase 8: Effectiveness analysis (crt-018)
@@ -2810,6 +2844,13 @@ mod tests_crt033 {
             computed_at: now,
             raw_signals_available: 1,
             summary_json: r#"{"reviewed":true}"#.to_string(),
+            corrections_total: 0,
+            corrections_agent: 0,
+            corrections_human: 0,
+            corrections_system: 0,
+            deprecations_total: 0,
+            orphan_deprecations: 0,
+            first_computed_at: 0,
         };
         store
             .store_cycle_review(&review_b)
@@ -2861,6 +2902,13 @@ mod tests_crt033 {
                 computed_at: now,
                 raw_signals_available: 1,
                 summary_json: r#"{}"#.to_string(),
+                corrections_total: 0,
+                corrections_agent: 0,
+                corrections_human: 0,
+                corrections_system: 0,
+                deprecations_total: 0,
+                orphan_deprecations: 0,
+                first_computed_at: 0,
             };
             store
                 .store_cycle_review(&review)
@@ -3194,6 +3242,13 @@ mod crt_036_gc_block_tests {
                     computed_at: *computed_at,
                     raw_signals_available: 1,
                     summary_json: summary_json_original.to_string(),
+                    corrections_total: 0,
+                    corrections_agent: 0,
+                    corrections_human: 0,
+                    corrections_system: 0,
+                    deprecations_total: 0,
+                    orphan_deprecations: 0,
+                    first_computed_at: 0,
                 })
                 .await
                 .expect("store review");
@@ -3263,6 +3318,13 @@ mod crt_036_gc_block_tests {
                 computed_at: now + 1000,
                 raw_signals_available: 1,
                 summary_json: "{}".to_string(),
+                corrections_total: 0,
+                corrections_agent: 0,
+                corrections_human: 0,
+                corrections_system: 0,
+                deprecations_total: 0,
+                orphan_deprecations: 0,
+                first_computed_at: 0,
             })
             .await
             .expect("store retained cycle");
@@ -3278,6 +3340,13 @@ mod crt_036_gc_block_tests {
                     computed_at: now - (2000 - i as i64),
                     raw_signals_available: 1,
                     summary_json: "{}".to_string(),
+                    corrections_total: 0,
+                    corrections_agent: 0,
+                    corrections_human: 0,
+                    corrections_system: 0,
+                    deprecations_total: 0,
+                    orphan_deprecations: 0,
+                    first_computed_at: 0,
                 })
                 .await
                 .expect("store purgeable cycle");
@@ -3379,6 +3448,13 @@ mod crt_036_gc_block_tests {
                     computed_at: now - (500 - i as i64),
                     raw_signals_available: 1,
                     summary_json: "{}".to_string(),
+                    corrections_total: 0,
+                    corrections_agent: 0,
+                    corrections_human: 0,
+                    corrections_system: 0,
+                    deprecations_total: 0,
+                    orphan_deprecations: 0,
+                    first_computed_at: 0,
                 })
                 .await
                 .expect("store reviewed");
@@ -3444,6 +3520,13 @@ mod crt_036_gc_block_tests {
                     computed_at: *computed_at,
                     raw_signals_available: 1,
                     summary_json: "{}".to_string(),
+                    corrections_total: 0,
+                    corrections_agent: 0,
+                    corrections_human: 0,
+                    corrections_system: 0,
+                    deprecations_total: 0,
+                    orphan_deprecations: 0,
+                    first_computed_at: 0,
                 })
                 .await
                 .expect("store review");
@@ -3532,6 +3615,332 @@ mod crt_036_gc_block_tests {
         assert!(
             logs_contain("no cycle_review_index row"),
             "AC-15: warn! must include the reason string"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// crt-047: Phase 7c tests (context_status curation health)
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests_crt047 {
+    use std::sync::Arc;
+
+    use unimatrix_adapt::AdaptationService;
+    use unimatrix_core::{VectorConfig, VectorIndex};
+    use unimatrix_store::SqlxStore as Store;
+    use unimatrix_store::{CycleReviewRecord, SUMMARY_SCHEMA_VERSION};
+
+    use crate::infra::categories::CategoryAllowlist;
+    use crate::infra::embed_handle::EmbedServiceHandle;
+    use crate::services::confidence::ConfidenceState;
+    use crate::services::contradiction_cache::new_contradiction_cache_handle;
+    use crate::services::status::{CURATION_BASELINE_WINDOW, StatusService};
+
+    fn make_status_service(store: &Arc<Store>) -> StatusService {
+        let vector_index = Arc::new(
+            VectorIndex::new(Arc::clone(store), VectorConfig::default()).expect("vector index"),
+        );
+        let embed_service = EmbedServiceHandle::new();
+        let adapt_service = Arc::new(AdaptationService::new(
+            unimatrix_adapt::AdaptConfig::default(),
+        ));
+        let confidence_state = Arc::new(std::sync::RwLock::new(ConfidenceState::default()));
+        let contradiction_cache = new_contradiction_cache_handle();
+        let test_rayon_pool = Arc::new(
+            crate::infra::rayon_pool::RayonPool::new(1, "crt047_pool")
+                .expect("test rayon pool construction"),
+        );
+        let observation_registry =
+            Arc::new(unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code());
+        let confidence_params = Arc::new(unimatrix_engine::confidence::ConfidenceParams::default());
+        let category_allowlist = Arc::new(CategoryAllowlist::new());
+        StatusService::new(
+            Arc::clone(store),
+            vector_index,
+            embed_service,
+            adapt_service,
+            confidence_state,
+            confidence_params,
+            contradiction_cache,
+            test_rayon_pool,
+            observation_registry,
+            category_allowlist,
+        )
+    }
+
+    async fn open_store(dir: &tempfile::TempDir) -> Arc<Store> {
+        Arc::new(
+            Store::open(
+                &dir.path().join("test.db"),
+                unimatrix_store::pool_config::PoolConfig::default(),
+            )
+            .await
+            .expect("store open"),
+        )
+    }
+
+    fn now_ts() -> i64 {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64
+    }
+
+    /// Seed a `cycle_review_index` row with a real `first_computed_at > 0`.
+    ///
+    /// `ts_offset` is subtracted from now to give each row a distinct,
+    /// predictable timestamp (positive offset = older row).
+    async fn seed_curation_row(
+        store: &Arc<Store>,
+        feature_cycle: &str,
+        corrections_total: i64,
+        corrections_agent: i64,
+        corrections_human: i64,
+        deprecations_total: i64,
+        orphan_deprecations: i64,
+        ts_offset: i64,
+    ) {
+        let now = now_ts();
+        store
+            .store_cycle_review(&CycleReviewRecord {
+                feature_cycle: feature_cycle.to_string(),
+                schema_version: SUMMARY_SCHEMA_VERSION, // = 2 post-crt-047
+                computed_at: now - ts_offset,
+                raw_signals_available: 0,
+                summary_json: "{}".to_string(),
+                corrections_total,
+                corrections_agent,
+                corrections_human,
+                corrections_system: 0,
+                deprecations_total,
+                orphan_deprecations,
+                first_computed_at: now - ts_offset,
+            })
+            .await
+            .expect("seed curation row");
+    }
+
+    // -----------------------------------------------------------------------
+    // CS7C-U-01 (AC-09): curation_health block present when qualifying rows exist
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_status_curation_health_present_when_rows_exist() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+
+        // Insert 3 rows with first_computed_at > 0 and schema_version = 2.
+        for i in 0..3 {
+            seed_curation_row(
+                &store,
+                &format!("test-cycle-{i}"),
+                2,
+                2,
+                0,
+                1,
+                0,
+                (i + 1) * 100,
+            )
+            .await;
+        }
+
+        let svc = make_status_service(&store);
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must succeed");
+
+        let ch = report
+            .curation_health
+            .expect("curation_health must be Some when rows exist");
+        assert!(
+            ch.correction_rate_mean >= 0.0,
+            "correction_rate_mean must be non-negative"
+        );
+        assert!(
+            !ch.correction_rate_mean.is_nan(),
+            "correction_rate_mean must not be NaN"
+        );
+        assert!(
+            !ch.orphan_ratio_mean.is_nan(),
+            "orphan_ratio_mean must not be NaN"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // CS7C-U-02 (EC-06): curation_health absent when no qualifying rows
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_status_curation_health_absent_when_no_qualifying_rows() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+
+        // Fresh DB: no cycle_review_index rows at all.
+        let svc = make_status_service(&store);
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must not fail on empty DB");
+
+        assert!(
+            report.curation_health.is_none(),
+            "curation_health must be None when no qualifying rows exist"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // CS7C-U-03 (AC-10): Trend absent when fewer than 6 cycles
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_status_curation_health_trend_absent_with_five_cycles() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+
+        // Insert exactly 5 qualifying rows.
+        for i in 0..5 {
+            seed_curation_row(&store, &format!("cyc-{i}"), 3, 3, 0, 0, 0, (i + 1) * 100).await;
+        }
+
+        let svc = make_status_service(&store);
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must succeed");
+
+        let ch = report
+            .curation_health
+            .expect("curation_health must be Some with 5 rows");
+        assert!(
+            ch.trend.is_none(),
+            "trend must be None when fewer than 6 qualifying rows"
+        );
+        assert!(
+            ch.correction_rate_mean > 0.0,
+            "correction_rate_mean must be positive with non-zero corrections"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // CS7C-U-04 (AC-10): Trend present when 7 cycles available
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_status_curation_health_trend_present_with_seven_cycles() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+
+        // Insert 7 rows. Doesn't matter what direction — trend must be Some.
+        for i in 0..7 {
+            seed_curation_row(
+                &store,
+                &format!("cyc7-{i}"),
+                (i + 1) as i64,
+                (i + 1) as i64,
+                0,
+                0,
+                0,
+                (i + 1) * 100,
+            )
+            .await;
+        }
+
+        let svc = make_status_service(&store);
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must succeed");
+
+        let ch = report
+            .curation_health
+            .expect("curation_health must be Some with 7 rows");
+        assert!(
+            ch.trend.is_some(),
+            "trend must be Some when 7 qualifying rows exist"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // CS7C-U-05 (AC-10): Source breakdown percentages
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_status_curation_health_source_breakdown_percentages() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+
+        // 5 rows each with corrections_total=6, corrections_agent=4, corrections_human=2.
+        for i in 0..5 {
+            seed_curation_row(&store, &format!("src-{i}"), 6, 4, 2, 0, 0, (i + 1) * 100).await;
+        }
+
+        let svc = make_status_service(&store);
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must succeed");
+
+        let ch = report
+            .curation_health
+            .expect("curation_health must be Some");
+        assert!(
+            (ch.agent_pct - 66.666_666).abs() < 0.1,
+            "agent_pct must be ~66.7%, got {}",
+            ch.agent_pct
+        );
+        assert!(
+            (ch.human_pct - 33.333_333).abs() < 0.1,
+            "human_pct must be ~33.3%, got {}",
+            ch.human_pct
+        );
+        assert!(
+            (ch.agent_pct + ch.human_pct - 100.0).abs() < 0.01,
+            "agent_pct + human_pct must sum to ~100.0"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // CS7C-U-06 (AC-09): Window capped at CURATION_BASELINE_WINDOW = 10
+    // -----------------------------------------------------------------------
+
+    #[tokio::test]
+    async fn test_status_curation_health_window_capped_at_ten() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let store = open_store(&dir).await;
+
+        // Insert 15 rows with distinct first_computed_at.
+        for i in 0..15 {
+            seed_curation_row(&store, &format!("cap-{i:02}"), 1, 1, 0, 0, 0, (i + 1) * 100).await;
+        }
+
+        let svc = make_status_service(&store);
+        let (report, _) = svc
+            .compute_report(None, None, false)
+            .await
+            .expect("compute_report must succeed");
+
+        let ch = report
+            .curation_health
+            .expect("curation_health must be Some with 15 rows");
+        assert_eq!(
+            ch.cycles_in_window, CURATION_BASELINE_WINDOW,
+            "cycles_in_window must be capped at CURATION_BASELINE_WINDOW ({})",
+            CURATION_BASELINE_WINDOW
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // CS7C-U-07 (AC-09): CURATION_BASELINE_WINDOW constant value
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_curation_baseline_window_constant_is_ten() {
+        assert_eq!(
+            CURATION_BASELINE_WINDOW, 10,
+            "CURATION_BASELINE_WINDOW must be 10 (FR-10, FR-18)"
         );
     }
 }

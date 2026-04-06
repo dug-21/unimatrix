@@ -384,7 +384,7 @@ async fn test_fresh_db_creates_schema_v23() {
         .await
         .expect("open fresh store");
 
-    assert_eq!(read_schema_version(&store).await, 23);
+    assert!(read_schema_version(&store).await >= 23);
 
     // Compound index must be present on a fresh database.
     let index_count: i64 = sqlx::query_scalar(
@@ -416,8 +416,8 @@ async fn test_v22_to_v23_migration_creates_compound_index() {
         .await
         .expect("open after v22→v23 migration");
 
-    // Assert schema_version == 23.
-    assert_eq!(read_schema_version(&store).await, 23);
+    // Assert schema_version >= 23.
+    assert!(read_schema_version(&store).await >= 23);
 
     // Assert idx_entry_tags_tag_entry_id index exists.
     let index_count: i64 = sqlx::query_scalar(
@@ -492,17 +492,16 @@ async fn test_v23_migration_idempotent() {
     let store = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("first open");
-    assert_eq!(read_schema_version(&store).await, 23);
+    assert!(read_schema_version(&store).await >= 23);
     store.close().await.unwrap();
 
     // Second open must be a no-op.
     let store2 = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("second open must not error");
-    assert_eq!(
-        read_schema_version(&store2).await,
-        23,
-        "schema_version must remain 23 on re-open"
+    assert!(
+        read_schema_version(&store2).await >= 23,
+        "schema_version must remain >= 23 on re-open"
     );
     store2.close().await.unwrap();
 }

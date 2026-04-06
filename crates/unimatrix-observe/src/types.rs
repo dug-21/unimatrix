@@ -441,6 +441,110 @@ pub struct RetrospectiveReport {
     /// `None` when no `cycle_events` rows exist for this cycle.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub phase_stats: Option<Vec<PhaseStats>>,
+
+    /// Curation health block computed at review time (crt-047).
+    ///
+    /// Contains the per-cycle `CurationSnapshot` (raw correction and deprecation counts)
+    /// and an optional `CurationBaselineComparison` (σ position vs. rolling baseline).
+    ///
+    /// `None` when:
+    /// - `compute_curation_snapshot()` failed (non-fatal, logged as warning).
+    /// - `force=false` memoization hit returned a cached record without curation data
+    ///   (i.e., the record was written before crt-047, `schema_version = 1`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub curation_health: Option<CurationHealthBlock>,
+}
+
+// ---------------------------------------------------------------------------
+// crt-047: Curation health types
+// ---------------------------------------------------------------------------
+
+/// Per-cycle correction and deprecation counts computed from ENTRIES at review time.
+///
+/// `corrections_total = corrections_agent + corrections_human` (computed, not a raw count).
+/// `corrections_system` is informational only; it is excluded from `corrections_total`
+/// and from the σ baseline computation (ADR-002, crt-047).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurationSnapshot {
+    /// `corrections_agent + corrections_human` — intentional curation only.
+    pub corrections_total: u32,
+    /// Corrections where `trust_source = 'agent'`.
+    pub corrections_agent: u32,
+    /// Corrections where `trust_source IN ('human', 'privileged')`.
+    pub corrections_human: u32,
+    /// Corrections for all other `trust_source` values (informational; not in total).
+    pub corrections_system: u32,
+    /// All entries with `status = 'deprecated'` in the cycle window (orphan + chain).
+    pub deprecations_total: u32,
+    /// Entries deprecated AND `superseded_by IS NULL` in the cycle window.
+    pub orphan_deprecations: u32,
+}
+
+// NOTE: `CurationBaseline` is an intermediate compute type that lives only in
+// `unimatrix-server/services/curation_health.rs`. It is not serialized and
+// not added here to avoid cross-crate conflicts.
+
+/// σ-distance of the current cycle's curation metrics vs. the rolling baseline.
+///
+/// Produced by `compare_to_baseline()` when `>= CURATION_MIN_HISTORY` qualifying
+/// prior cycles exist in `cycle_review_index`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurationBaselineComparison {
+    /// σ distance of `corrections_total` from baseline mean.
+    /// Positive = more corrections than normal; negative = fewer.
+    pub corrections_total_sigma: f64,
+    /// σ distance of `orphan_ratio` from baseline mean.
+    /// `orphan_ratio = orphan_deprecations / deprecations_total`; 0.0 when denom = 0.
+    pub orphan_ratio_sigma: f64,
+    /// Number of prior cycles that contributed to the baseline.
+    pub history_cycles: usize,
+    /// `false` when either sigma exceeds `CURATION_SIGMA_THRESHOLD` (1.5σ).
+    pub within_normal_range: bool,
+}
+
+/// Trend direction for the rolling correction rate (crt-047).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TrendDirection {
+    Increasing,
+    Decreasing,
+    Stable,
+}
+
+/// Aggregate curation health view for `context_status` (crt-047).
+///
+/// Produced by `compute_curation_summary()` over the last N rows in
+/// `cycle_review_index`. `None` when the window is empty.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurationHealthSummary {
+    /// Mean `corrections_total` across the window.
+    pub correction_rate_mean: f64,
+    /// Population stddev of `corrections_total`.
+    pub correction_rate_stddev: f64,
+    /// Mean fraction of corrections attributable to agents (%).
+    pub agent_pct: f64,
+    /// Mean fraction of corrections attributable to humans (%).
+    pub human_pct: f64,
+    /// Mean orphan ratio (`orphan_deprecations / deprecations_total`).
+    pub orphan_ratio_mean: f64,
+    /// Population stddev of orphan ratio.
+    pub orphan_ratio_stddev: f64,
+    /// Trend direction; `None` when fewer than `CURATION_MIN_TREND_HISTORY` cycles.
+    pub trend: Option<TrendDirection>,
+    /// Number of cycles that contributed to the aggregate.
+    pub cycles_in_window: usize,
+}
+
+/// Output container for the `context_cycle_review` curation health block (crt-047).
+///
+/// Serialized into `RetrospectiveReport.curation_health` and stored in `summary_json`.
+/// On cache-hit (`force=false`) the stored value is returned as-is.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CurationHealthBlock {
+    /// Raw per-cycle correction and deprecation counts.
+    pub snapshot: CurationSnapshot,
+    /// σ position vs. rolling baseline; `None` when fewer than 3 qualifying prior cycles.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub baseline: Option<CurationBaselineComparison>,
 }
 
 #[cfg(test)]
@@ -665,6 +769,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -741,6 +846,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
 
         let json = serde_json::to_string(&report).expect("serialize");
@@ -1077,6 +1183,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
         let json = serde_json::to_string(&report).expect("serialize");
         assert!(!json.contains("\"goal\""), "goal should be absent");
@@ -1122,6 +1229,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
         report.goal = Some("Design the API surface".to_string());
         report.cycle_type = Some("Design".to_string());
@@ -1217,6 +1325,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
         report.phase_stats = None;
         let json = serde_json::to_string(&report).expect("serialize");
@@ -1250,6 +1359,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
         report.phase_stats = Some(vec![]);
         let json = serde_json::to_string(&report).expect("serialize");

@@ -136,6 +136,13 @@ pub struct StatusReport {
     /// Populated unconditionally by Phase 7b of compute_report() (C-07).
     /// (crt-033, FR-09)
     pub pending_cycle_reviews: Vec<String>,
+    /// Aggregate curation health summary across the last N reviewed cycles (crt-047).
+    ///
+    /// Computed in Phase 7c by `curation_health::compute_curation_summary()` over
+    /// `get_curation_baseline_window(CURATION_BASELINE_WINDOW)`.
+    /// `None` when no qualifying rows exist in `cycle_review_index`
+    /// (i.e., no cycles have been reviewed since crt-047 deployment, or window is empty).
+    pub curation_health: Option<unimatrix_observe::CurationHealthSummary>,
 }
 
 impl Default for StatusReport {
@@ -195,6 +202,7 @@ impl Default for StatusReport {
             effectiveness: None,
             category_lifecycle: Vec::new(),
             pending_cycle_reviews: Vec::new(),
+            curation_health: None,
         }
     }
 }
@@ -883,6 +891,10 @@ struct StatusReportJson {
     /// Empty array when no cycles are pending review.
     /// Always serialized even as an empty array (FR-11: no skip_serializing_if).
     pending_cycle_reviews: Vec<String>,
+    /// Aggregate curation health across the last N reviewed cycles (crt-047).
+    /// Absent from JSON when None (no qualifying window rows).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    curation_health: Option<unimatrix_observe::CurationHealthSummary>,
 }
 
 #[derive(Serialize)]
@@ -1662,6 +1674,8 @@ impl From<&StatusReport> for StatusReportJson {
                 .collect(),
             // crt-033: pending cycle reviews — always included, even as empty array (FR-11).
             pending_cycle_reviews: r.pending_cycle_reviews.clone(),
+            // crt-047: curation health aggregate — absent when None.
+            curation_health: r.curation_health.clone(),
         }
     }
 }
