@@ -429,16 +429,16 @@ async fn test_v17_to_v18_migration_table_has_five_columns() {
         .await
         .expect("open store after migration");
 
-    // Assert: exactly 5 columns in cycle_review_index.
+    // Assert: at least 5 columns in cycle_review_index (later migrations add more).
     let col_count: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM pragma_table_info('cycle_review_index')")
             .fetch_one(store.read_pool_test())
             .await
             .expect("pragma_table_info count");
 
-    assert_eq!(
-        col_count, 5,
-        "cycle_review_index must have exactly 5 columns after v17→v18 migration"
+    assert!(
+        col_count >= 5,
+        "cycle_review_index must have at least 5 columns after v17→v18 migration, got {col_count}"
     );
 
     // Assert all five column names.

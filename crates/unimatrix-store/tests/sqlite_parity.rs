@@ -1014,14 +1014,15 @@ async fn test_sql_analytics_query() {
 // Updated to 21 for crt-043 (goal_embedding BLOB + phase TEXT + composite index).
 // Updated to 22 for crt-046 (goal_clusters table + idx_goal_clusters_created_at).
 // Updated to 23 for bugfix-509 (compound idx_entry_tags_tag_entry_id index).
+// Updated to 24 for crt-047 (curation health metrics columns on cycle_review_index).
 #[tokio::test]
 async fn test_schema_version_is_14() {
     let dir = tempfile::TempDir::new().unwrap();
     let store = open_test_store(&dir).await;
     let version = store.read_counter("schema_version").await.unwrap();
     assert_eq!(
-        version, 23,
-        "schema version must be 23 after bugfix-509 (was 22 after crt-046)"
+        version, 24,
+        "schema version must be 24 after crt-047 (was 23 after bugfix-509)"
     );
     store.close().await.unwrap();
 }
@@ -1407,8 +1408,8 @@ async fn test_create_tables_cycle_review_index_schema() {
 
     assert_eq!(
         rows.len(),
-        5,
-        "cycle_review_index must have exactly 5 columns (crt-033)"
+        12,
+        "cycle_review_index must have exactly 12 columns (5 original + 7 new from crt-047)"
     );
 
     let names: Vec<String> = rows
@@ -1435,6 +1436,35 @@ async fn test_create_tables_cycle_review_index_schema() {
     assert!(
         names.contains(&"summary_json".to_string()),
         "cycle_review_index must have summary_json column"
+    );
+    // crt-047: seven new curation health columns
+    assert!(
+        names.contains(&"corrections_total".to_string()),
+        "cycle_review_index must have corrections_total column (crt-047)"
+    );
+    assert!(
+        names.contains(&"corrections_agent".to_string()),
+        "cycle_review_index must have corrections_agent column (crt-047)"
+    );
+    assert!(
+        names.contains(&"corrections_human".to_string()),
+        "cycle_review_index must have corrections_human column (crt-047)"
+    );
+    assert!(
+        names.contains(&"corrections_system".to_string()),
+        "cycle_review_index must have corrections_system column (crt-047)"
+    );
+    assert!(
+        names.contains(&"deprecations_total".to_string()),
+        "cycle_review_index must have deprecations_total column (crt-047)"
+    );
+    assert!(
+        names.contains(&"orphan_deprecations".to_string()),
+        "cycle_review_index must have orphan_deprecations column (crt-047)"
+    );
+    assert!(
+        names.contains(&"first_computed_at".to_string()),
+        "cycle_review_index must have first_computed_at column (crt-047)"
     );
 
     store.close().await.unwrap();

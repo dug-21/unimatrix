@@ -1,40 +1,44 @@
-//! Integration tests for the v22→v23 schema migration (bugfix-509).
+//! Integration tests for the v23→v24 schema migration (crt-047).
 //!
 //! Covers:
-//!   MIG-V23-U-01 — CURRENT_SCHEMA_VERSION constant is >= 23
-//!   MIG-V23-U-02 — Fresh database initializes directly to v23
-//!   MIG-V23-U-03 — v22→v23 migration creates idx_entry_tags_tag_entry_id
-//!   MIG-V23-U-04 — Compound index has the correct columns (PRAGMA index_info)
-//!   MIG-V23-U-05 — Idempotency: re-open v23 database is a no-op
+//!   MIG-V24-U-01 — CURRENT_SCHEMA_VERSION constant is >= 24
+//!   MIG-V24-U-02 — Fresh database initializes directly to v24
+//!   MIG-V24-U-03 — v23→v24 migration adds all seven columns
+//!   MIG-V24-U-04 — Idempotency: re-open v24 database is a no-op
+//!   MIG-V24-U-05 — Partial column pre-existence: idempotency (ADR-004)
 //!
-//! Pattern: create a v22-shaped database programmatically (all tables from v21→v22 migration,
-//! including goal_clusters table, but NOT including the new compound index).
-//! Open with current SqlxStore to trigger v22→v23 migration. Assert schema state.
+//! Pattern: create a v23-shaped database programmatically (all DDL from v22→v23 migration,
+//! including idx_entry_tags_tag_entry_id, but NOT including the seven new columns on
+//! cycle_review_index). Open with current SqlxStore to trigger v23→v24 migration. Assert
+//! schema state.
 
 #![cfg(feature = "test-support")]
 
 use std::path::Path;
 
 use sqlx::ConnectOptions as _;
+use sqlx::Row as _;
 use sqlx::sqlite::SqliteConnectOptions;
 use tempfile::TempDir;
 use unimatrix_store::SqlxStore;
 use unimatrix_store::pool_config::PoolConfig;
 
 // ---------------------------------------------------------------------------
-// V22 database builder
+// V23 database builder
 // ---------------------------------------------------------------------------
 
-/// Create a v22-shaped database at the given path.
+/// Create a v23-shaped database at the given path.
 ///
-/// The v22 DDL = v21 DDL + goal_clusters table + idx_goal_clusters_created_at index.
-/// Does NOT include idx_entry_tags_tag_entry_id (that is added by the v23 migration).
-async fn create_v22_database(path: &Path) {
+/// The v23 DDL = v22 DDL + idx_entry_tags_tag_entry_id compound index.
+/// Does NOT include the seven new curation health columns on cycle_review_index
+/// (those are added by the v24 migration).
+/// Seeds at least one cycle_review_index row to verify DEFAULT 0 lands on new columns.
+async fn create_v23_database(path: &Path) {
     let opts = SqliteConnectOptions::new()
         .filename(path)
         .create_if_missing(true);
 
-    let mut conn = opts.connect().await.expect("open v22 setup conn");
+    let mut conn = opts.connect().await.expect("open v23 setup conn");
 
     sqlx::query("PRAGMA journal_mode = WAL")
         .execute(&mut conn)
@@ -259,6 +263,7 @@ async fn create_v22_database(path: &Path) {
             goal           TEXT,
             goal_embedding BLOB
         )",
+        // v23 cycle_review_index: 5 columns only — new columns absent intentionally
         "CREATE TABLE cycle_review_index (
             feature_cycle         TEXT    PRIMARY KEY,
             schema_version        INTEGER NOT NULL,
@@ -282,7 +287,8 @@ async fn create_v22_database(path: &Path) {
         "CREATE INDEX idx_entries_created_at ON entries(created_at)",
         "CREATE INDEX idx_entry_tags_tag ON entry_tags(tag)",
         "CREATE INDEX idx_entry_tags_entry_id ON entry_tags(entry_id)",
-        // NOTE: idx_entry_tags_tag_entry_id is intentionally absent — it is added by v23 migration.
+        // v23 compound index is present
+        "CREATE INDEX idx_entry_tags_tag_entry_id ON entry_tags(tag, entry_id)",
         "CREATE INDEX idx_co_access_b ON co_access(entry_id_b)",
         "CREATE INDEX idx_sessions_feature_cycle ON sessions(feature_cycle)",
         "CREATE INDEX idx_sessions_started_at ON sessions(started_at)",
@@ -309,9 +315,9 @@ async fn create_v22_database(path: &Path) {
             .expect("create table/index");
     }
 
-    // Seed counters at v22.
+    // Seed counters at v23.
     for seed in &[
-        "INSERT INTO counters (name, value) VALUES ('schema_version', 22)",
+        "INSERT INTO counters (name, value) VALUES ('schema_version', 23)",
         "INSERT INTO counters (name, value) VALUES ('next_entry_id', 1)",
         "INSERT INTO counters (name, value) VALUES ('next_signal_id', 0)",
         "INSERT INTO counters (name, value) VALUES ('next_log_id', 0)",
@@ -323,30 +329,17 @@ async fn create_v22_database(path: &Path) {
             .expect("seed counters");
     }
 
-    // Seed a few entries and entry_tags rows so the migration runs on real data.
+    // Seed a pre-existing cycle_review_index row (5-column shape).
+    // After migration, this row must have DEFAULT 0 for all seven new columns.
     sqlx::query(
-        "INSERT INTO entries (id, title, content, topic, category, source, status, confidence,
-            created_at, updated_at, last_accessed_at, access_count, correction_count,
-            embedding_dim, created_by, modified_by, content_hash, previous_hash, version,
-            feature_cycle, trust_source, helpful_count, unhelpful_count)
+        "INSERT INTO cycle_review_index
+             (feature_cycle, schema_version, computed_at, raw_signals_available, summary_json)
          VALUES
-             (1, 'Entry A', 'content a', 'rust', 'pattern', 'agent', 0, 0.5, 0, 0, 0, 0, 0, 0, '', '', '', '', 0, '', '', 0, 0),
-             (2, 'Entry B', 'content b', 'rust', 'pattern', 'agent', 0, 0.5, 0, 0, 0, 0, 0, 0, '', '', '', '', 0, '', '', 0, 0),
-             (3, 'Entry C', 'content c', 'rust', 'convention', 'agent', 0, 0.5, 0, 0, 0, 0, 0, 0, '', '', '', '', 0, '', '', 0, 0)",
+             ('pre-existing-cycle', 1, 1700000000, 1, '{\"test\":true}')",
     )
     .execute(&mut conn)
     .await
-    .expect("seed entries");
-
-    sqlx::query(
-        "INSERT INTO entry_tags (entry_id, tag) VALUES
-             (1, 'rust'), (1, 'storage'),
-             (2, 'rust'), (2, 'migration'),
-             (3, 'rust'), (3, 'storage')",
-    )
-    .execute(&mut conn)
-    .await
-    .expect("seed entry_tags");
+    .expect("seed cycle_review_index");
 }
 
 // ---------------------------------------------------------------------------
@@ -361,138 +354,127 @@ async fn read_schema_version(store: &SqlxStore) -> i64 {
 }
 
 // ---------------------------------------------------------------------------
-// MIG-V23-U-01: CURRENT_SCHEMA_VERSION constant is >= 23
+// MIG-V24-U-01: CURRENT_SCHEMA_VERSION constant is >= 24
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_current_schema_version_is_at_least_23() {
+fn test_current_schema_version_is_at_least_24() {
     assert!(
-        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 23,
-        "CURRENT_SCHEMA_VERSION must be >= 23 after bugfix-509, got {}",
+        unimatrix_store::migration::CURRENT_SCHEMA_VERSION >= 24,
+        "CURRENT_SCHEMA_VERSION must be >= 24 after crt-047, got {}",
         unimatrix_store::migration::CURRENT_SCHEMA_VERSION
     );
 }
 
 // ---------------------------------------------------------------------------
-// MIG-V23-U-02: Fresh database initializes directly to v23
+// MIG-V24-U-02: Fresh database initializes directly to v24
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_fresh_db_creates_schema_v23() {
+async fn test_fresh_db_creates_schema_v24() {
     let dir = TempDir::new().expect("temp dir");
     let store = SqlxStore::open(&dir.path().join("test.db"), PoolConfig::test_default())
         .await
         .expect("open fresh store");
 
-    assert!(read_schema_version(&store).await >= 23);
+    assert_eq!(read_schema_version(&store).await, 24);
 
-    // Compound index must be present on a fresh database.
-    let index_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sqlite_master \
-         WHERE type='index' AND name='idx_entry_tags_tag_entry_id'",
-    )
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("sqlite_master idx_entry_tags_tag_entry_id");
-    assert_eq!(
-        index_count, 1,
-        "idx_entry_tags_tag_entry_id must exist on fresh db"
-    );
+    // All seven new columns must be present on a fresh database.
+    for col in &[
+        "corrections_total",
+        "corrections_agent",
+        "corrections_human",
+        "corrections_system",
+        "deprecations_total",
+        "orphan_deprecations",
+        "first_computed_at",
+    ] {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM pragma_table_info('cycle_review_index') WHERE name = ?1",
+        )
+        .bind(col)
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("pragma_table_info");
+        assert_eq!(count, 1, "column {col} must exist on fresh db");
+    }
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// MIG-V23-U-03: v22→v23 migration creates idx_entry_tags_tag_entry_id
+// MIG-V24-U-03: v23→v24 migration adds all seven columns (AC-14, AC-01)
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v22_to_v23_migration_creates_compound_index() {
+async fn test_v23_to_v24_migration_adds_all_seven_columns() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v22_database(&db_path).await;
+    create_v23_database(&db_path).await;
 
     let store = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
-        .expect("open after v22→v23 migration");
+        .expect("open after v23→v24 migration");
 
-    // Assert schema_version >= 23.
-    assert!(read_schema_version(&store).await >= 23);
+    assert_eq!(read_schema_version(&store).await, 24);
 
-    // Assert idx_entry_tags_tag_entry_id index exists.
-    let index_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM sqlite_master \
-         WHERE type='index' AND name='idx_entry_tags_tag_entry_id'",
-    )
-    .fetch_one(store.read_pool_test())
-    .await
-    .expect("sqlite_master idx_entry_tags_tag_entry_id");
-    assert_eq!(
-        index_count, 1,
-        "idx_entry_tags_tag_entry_id must exist after v22→v23 migration"
-    );
-
-    store.close().await.unwrap();
-}
-
-// ---------------------------------------------------------------------------
-// MIG-V23-U-04: Compound index physically contains the correct columns
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-async fn test_v22_to_v23_compound_index_has_correct_columns() {
-    let dir = TempDir::new().expect("temp dir");
-    let db_path = dir.path().join("test.db");
-    create_v22_database(&db_path).await;
-
-    let store = SqlxStore::open(&db_path, PoolConfig::test_default())
+    // Each of the seven new columns must be present.
+    for col in &[
+        "corrections_total",
+        "corrections_agent",
+        "corrections_human",
+        "corrections_system",
+        "deprecations_total",
+        "orphan_deprecations",
+        "first_computed_at",
+    ] {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM pragma_table_info('cycle_review_index') WHERE name = ?1",
+        )
+        .bind(col)
+        .fetch_one(store.read_pool_test())
         .await
-        .expect("open after v22→v23 migration");
+        .expect("pragma_table_info");
+        assert_eq!(count, 1, "column {col} must exist after v23→v24 migration");
+    }
 
-    // PRAGMA index_info returns one row per column in the index.
-    // We expect 2 rows: tag (seqno=0) and entry_id (seqno=1).
-    let row_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM pragma_index_info('idx_entry_tags_tag_entry_id')")
-            .fetch_one(store.read_pool_test())
-            .await
-            .expect("pragma_index_info count");
-    assert!(
-        row_count >= 1,
-        "PRAGMA index_info must return at least one row for idx_entry_tags_tag_entry_id, \
-         got {row_count} (index was not physically created)"
-    );
-
-    // Verify the first column is 'tag'.
-    let first_col: String = sqlx::query_scalar(
-        "SELECT name FROM pragma_index_info('idx_entry_tags_tag_entry_id') \
-         ORDER BY seqno LIMIT 1",
+    // The pre-existing row must have DEFAULT 0 for all seven new columns.
+    let row = sqlx::query(
+        "SELECT corrections_total, corrections_agent, corrections_human,
+                corrections_system, deprecations_total, orphan_deprecations,
+                first_computed_at
+         FROM cycle_review_index WHERE feature_cycle = 'pre-existing-cycle'",
     )
     .fetch_one(store.read_pool_test())
     .await
-    .expect("pragma_index_info first col");
-    assert_eq!(
-        first_col, "tag",
-        "first column of compound index must be 'tag', got '{first_col}'"
-    );
+    .expect("pre-existing row");
+
+    for col_idx in 0usize..7 {
+        assert_eq!(
+            row.get::<i64, _>(col_idx),
+            0,
+            "column index {col_idx} must be 0 (DEFAULT 0) for pre-existing row"
+        );
+    }
 
     store.close().await.unwrap();
 }
 
 // ---------------------------------------------------------------------------
-// MIG-V23-U-05: Idempotency — re-open v23 database is a no-op
+// MIG-V24-U-04: Idempotency — re-open v24 database is a no-op
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_v23_migration_idempotent() {
+async fn test_v24_migration_idempotent() {
     let dir = TempDir::new().expect("temp dir");
     let db_path = dir.path().join("test.db");
-    create_v22_database(&db_path).await;
+    create_v23_database(&db_path).await;
 
     // First open triggers migration.
     let store = SqlxStore::open(&db_path, PoolConfig::test_default())
         .await
         .expect("first open");
-    assert!(read_schema_version(&store).await >= 23);
+    assert!(read_schema_version(&store).await >= 24);
     store.close().await.unwrap();
 
     // Second open must be a no-op.
@@ -500,8 +482,87 @@ async fn test_v23_migration_idempotent() {
         .await
         .expect("second open must not error");
     assert!(
-        read_schema_version(&store2).await >= 23,
-        "schema_version must remain >= 23 on re-open"
+        read_schema_version(&store2).await >= 24,
+        "schema_version must remain >= 24 on re-open"
     );
     store2.close().await.unwrap();
+}
+
+// ---------------------------------------------------------------------------
+// MIG-V24-U-05: Partial column pre-existence — idempotency (R-03, ADR-004)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_v24_migration_idempotent_when_some_columns_pre_exist() {
+    let dir = TempDir::new().expect("temp dir");
+    let db_path = dir.path().join("test.db");
+    create_v23_database(&db_path).await;
+
+    // Manually add three of seven columns before migration runs,
+    // simulating a crashed mid-migration state.
+    {
+        let opts = SqliteConnectOptions::new().filename(&db_path);
+        let mut conn = opts
+            .connect()
+            .await
+            .expect("raw conn for partial migration");
+
+        sqlx::query(
+            "ALTER TABLE cycle_review_index \
+             ADD COLUMN corrections_total INTEGER NOT NULL DEFAULT 0",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("partial add corrections_total");
+
+        sqlx::query(
+            "ALTER TABLE cycle_review_index \
+             ADD COLUMN corrections_agent INTEGER NOT NULL DEFAULT 0",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("partial add corrections_agent");
+
+        sqlx::query(
+            "ALTER TABLE cycle_review_index \
+             ADD COLUMN corrections_human INTEGER NOT NULL DEFAULT 0",
+        )
+        .execute(&mut conn)
+        .await
+        .expect("partial add corrections_human");
+
+        // schema_version counter intentionally stays at 23 (crash before bump).
+    }
+
+    // Opening the store must complete the migration without error.
+    let store = SqlxStore::open(&db_path, PoolConfig::test_default())
+        .await
+        .expect("open after partial migration must succeed");
+
+    // All seven columns must be present.
+    for col in &[
+        "corrections_total",
+        "corrections_agent",
+        "corrections_human",
+        "corrections_system",
+        "deprecations_total",
+        "orphan_deprecations",
+        "first_computed_at",
+    ] {
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM pragma_table_info('cycle_review_index') WHERE name = ?1",
+        )
+        .bind(col)
+        .fetch_one(store.read_pool_test())
+        .await
+        .expect("pragma_table_info");
+        assert_eq!(
+            count, 1,
+            "column {col} must exist after partial-recovery migration"
+        );
+    }
+
+    assert_eq!(read_schema_version(&store).await, 24);
+
+    store.close().await.unwrap();
 }
