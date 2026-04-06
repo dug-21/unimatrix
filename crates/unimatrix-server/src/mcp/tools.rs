@@ -1784,6 +1784,7 @@ impl UnimatrixServer {
                             attribution_path: None,
                             is_in_progress: None,
                             phase_stats: None,
+                            curation_health: None, // crt-047
                         };
 
                         // Cached path also respects format (vnc-011)
@@ -2286,12 +2287,71 @@ impl UnimatrixServer {
             report.attribution_path = attribution_path_label.map(|s| s.to_string());
 
             // -------------------------------------------------------------------
-            // Step 8a (crt-033): Serialize and store the computed review.
-            // Executes AFTER full pipeline, BEFORE step 8b and audit.
-            // evidence_limit truncation is NOT applied here — the full report is stored (C-03).
-            // Uses write_pool_server() directly — MUST NOT be in spawn_blocking (ADR-001).
+            // Step 8a-crt-047: Compute curation snapshot BEFORE store_cycle_review.
+            // Read (ENTRIES via write_pool_server) must complete before the write
+            // step acquires the write connection (I-01: read → compute → write order).
+            // Non-fatal: failures produce curation_health = None in the response.
             // -------------------------------------------------------------------
-            match build_cycle_review_record(&feature_cycle, &report) {
+
+            // Derive cycle_start_ts from cycle_events already read by the handler.
+            // Returns 0 if no cycle_start event found (EC-02: open window, over-count risk).
+            let cycle_start_ts = extract_cycle_start_ts(cycle_events_vec.as_deref());
+            if cycle_start_ts == 0 {
+                tracing::warn!(
+                    "crt-047: no cycle_start event found for {} — \
+                     orphan_deprecations window is [0, now], over-counting risk (EC-02)",
+                    feature_cycle
+                );
+            }
+
+            let review_ts = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs() as i64;
+
+            // Snapshot computation: ENTRIES queries via write_pool_server().
+            // read_pool() is pub(crate) in unimatrix-store and not cross-crate accessible.
+            let curation_snapshot: Option<unimatrix_observe::CurationSnapshot> =
+                match crate::services::curation_health::compute_curation_snapshot(
+                    &store,
+                    &feature_cycle,
+                    cycle_start_ts,
+                    review_ts,
+                )
+                .await
+                {
+                    Ok(snapshot) => Some(snapshot),
+                    Err(e) => {
+                        tracing::warn!(
+                            "crt-047: compute_curation_snapshot failed for {}: {} — \
+                             curation_health will be absent from response",
+                            feature_cycle,
+                            e
+                        );
+                        None
+                    }
+                };
+
+            // -------------------------------------------------------------------
+            // Step 8a (crt-033 + crt-047): Build record including snapshot columns.
+            // first_computed_at = cycle_start_ts for new rows (fallback: review_ts).
+            // store_cycle_review() two-step upsert preserves it on subsequent writes (ADR-001).
+            // -------------------------------------------------------------------
+            // Window size for context_cycle_review baseline (matches status.rs constant).
+            const CURATION_BASELINE_WINDOW_FOR_REVIEW: usize = 10;
+
+            let first_computed_at = if cycle_start_ts > 0 {
+                cycle_start_ts
+            } else {
+                review_ts
+            };
+
+            match build_cycle_review_record(
+                &feature_cycle,
+                &report,
+                curation_snapshot.as_ref(),
+                first_computed_at,
+            ) {
                 Ok(record) => {
                     if let Err(e) = store.store_cycle_review(&record).await {
                         tracing::warn!(
@@ -2313,6 +2373,42 @@ impl UnimatrixServer {
                     );
                 }
             }
+
+            // -------------------------------------------------------------------
+            // Step 8a-post (crt-047): Compute baseline comparison AFTER store.
+            // Reads the updated window from cycle_review_index (read after write).
+            // Non-fatal: .unwrap_or_default() on baseline window failure.
+            // -------------------------------------------------------------------
+            let curation_health_block: Option<unimatrix_observe::CurationHealthBlock> =
+                if let Some(ref snapshot) = curation_snapshot {
+                    let baseline_rows = store
+                        .get_curation_baseline_window(CURATION_BASELINE_WINDOW_FOR_REVIEW)
+                        .await
+                        .unwrap_or_default();
+
+                    let baseline_opt = crate::services::curation_health::compute_curation_baseline(
+                        &baseline_rows,
+                        CURATION_BASELINE_WINDOW_FOR_REVIEW,
+                    );
+
+                    let comparison_opt = baseline_opt.map(|baseline| {
+                        crate::services::curation_health::compare_to_baseline(
+                            snapshot,
+                            &baseline,
+                            baseline.history_cycles,
+                        )
+                    });
+
+                    Some(unimatrix_observe::CurationHealthBlock {
+                        snapshot: snapshot.clone(),
+                        baseline: comparison_opt,
+                    })
+                } else {
+                    None
+                };
+
+            // Attach curation health block to report before storage in full_report.
+            report.curation_health = curation_health_block;
 
             full_report = Some(report);
         } // end of full pipeline block (memo_hit.is_none())
@@ -2585,6 +2681,25 @@ impl UnimatrixServer {
 // crt-033: Memoization helpers for context_cycle_review
 // ---------------------------------------------------------------------------
 
+/// Derive `cycle_start_ts` from an optional slice of `CycleEventRecord`s.
+///
+/// Returns the minimum `timestamp` of rows with `event_type = "cycle_start"`.
+/// Returns `0` when no `cycle_start` event is found or the slice is `None`.
+/// A return value of `0` signals an open window — the caller should log a warning
+/// because the curation snapshot will over-count orphan deprecations (EC-02).
+fn extract_cycle_start_ts(cycle_events: Option<&[unimatrix_observe::CycleEventRecord]>) -> i64 {
+    let events = match cycle_events {
+        None => return 0,
+        Some(e) => e,
+    };
+    events
+        .iter()
+        .filter(|e| e.event_type == "cycle_start")
+        .map(|e| e.timestamp)
+        .min()
+        .unwrap_or(0)
+}
+
 /// Deserialize a stored `CycleReviewRecord` into a `RetrospectiveReport`.
 ///
 /// Returns `(report, advisory)` where `advisory` is `Some(msg)` when the stored
@@ -2619,11 +2734,20 @@ fn check_stored_review(
 /// Sets `schema_version = SUMMARY_SCHEMA_VERSION`, `raw_signals_available = 1`,
 /// and `computed_at` to the current unix timestamp.
 ///
+/// `snapshot` populates the seven crt-047 curation health columns; `None` leaves
+/// them at zero (pre-crt-047 behaviour preserved for callers that skip snapshot).
+///
+/// `first_computed_at` is set by the caller to `cycle_start_ts` (new rows) or to
+/// `review_ts` when no cycle_start event exists. `store_cycle_review()` preserves
+/// the existing `first_computed_at` on subsequent overwrites (ADR-001 crt-047).
+///
 /// Evidence-limit truncation MUST NOT be applied before this call (C-03).
 /// 4MB ceiling enforcement is delegated to `store_cycle_review()` (NFR-03).
 fn build_cycle_review_record(
     feature_cycle: &str,
     report: &unimatrix_observe::RetrospectiveReport,
+    snapshot: Option<&unimatrix_observe::CurationSnapshot>,
+    first_computed_at: i64,
 ) -> Result<unimatrix_store::CycleReviewRecord, serde_json::Error> {
     // Serialize the full report — no evidence_limit truncation (C-03).
     let summary_json = serde_json::to_string(report)?;
@@ -2633,12 +2757,32 @@ fn build_cycle_review_record(
         .unwrap_or_default()
         .as_secs() as i64;
 
+    // Map snapshot fields to i64 record columns; default to 0 when snapshot unavailable.
+    let (ct, ca, ch, cs, dt, od) = match snapshot {
+        None => (0i64, 0i64, 0i64, 0i64, 0i64, 0i64),
+        Some(s) => (
+            s.corrections_total as i64,
+            s.corrections_agent as i64,
+            s.corrections_human as i64,
+            s.corrections_system as i64,
+            s.deprecations_total as i64,
+            s.orphan_deprecations as i64,
+        ),
+    };
+
     Ok(unimatrix_store::CycleReviewRecord {
         feature_cycle: feature_cycle.to_string(),
         schema_version: unimatrix_store::SUMMARY_SCHEMA_VERSION,
         computed_at,
         raw_signals_available: 1i32, // live signals — full pipeline just ran
         summary_json,
+        corrections_total: ct,
+        corrections_agent: ca,
+        corrections_human: ch,
+        corrections_system: cs,
+        deprecations_total: dt,
+        orphan_deprecations: od,
+        first_computed_at,
     })
 }
 
@@ -3994,6 +4138,7 @@ mod tests {
                 attribution_path: None,
                 is_in_progress: None,
                 phase_stats: None,
+                curation_health: None, // crt-047
             };
             serde_json::to_string(&report).expect("test report must serialize")
         };
@@ -4003,6 +4148,7 @@ mod tests {
             computed_at: 1_700_000_000,
             raw_signals_available: 1,
             summary_json: valid_json,
+            ..Default::default() // crt-047: curation health fields default to 0
         }
     }
 
@@ -4104,9 +4250,10 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
 
-        let record = build_cycle_review_record("feat-x", &report)
+        let record = build_cycle_review_record("feat-x", &report, None, 0)
             .expect("build_cycle_review_record must succeed");
 
         assert_eq!(record.feature_cycle, "feat-x");
@@ -4171,6 +4318,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
 
         // Clone and truncate
@@ -4223,6 +4371,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
 
         let content = build_lesson_learned_content(&report);
@@ -4273,6 +4422,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
 
         let content = build_lesson_learned_content(&report);
@@ -4307,6 +4457,7 @@ mod tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         };
 
         let content = build_lesson_learned_content(&report);
@@ -6090,6 +6241,7 @@ mod cycle_review_integration_tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         }
     }
 
@@ -6141,6 +6293,7 @@ mod cycle_review_integration_tests {
             attribution_path: None,
             is_in_progress: None,
             phase_stats: None,
+            curation_health: None, // crt-047
         }
     }
 
@@ -6156,7 +6309,7 @@ mod cycle_review_integration_tests {
         let (store, _dir) = open_store().await;
         let report = minimal_report("col-test");
 
-        let record = build_cycle_review_record("col-test", &report)
+        let record = build_cycle_review_record("col-test", &report, None, 0)
             .expect("build_cycle_review_record must succeed");
 
         // raw_signals_available must be 1 (live signals present).
@@ -6206,7 +6359,8 @@ mod cycle_review_integration_tests {
         let report = minimal_report("memo-test");
 
         // First "call": build + store.
-        let record = build_cycle_review_record("memo-test", &report).expect("build must succeed");
+        let record =
+            build_cycle_review_record("memo-test", &report, None, 0).expect("build must succeed");
         store
             .store_cycle_review(&record)
             .await
@@ -6258,7 +6412,8 @@ mod cycle_review_integration_tests {
         let report = minimal_report("force-test");
 
         // Initial store (first call).
-        let record1 = build_cycle_review_record("force-test", &report).expect("build must succeed");
+        let record1 =
+            build_cycle_review_record("force-test", &report, None, 0).expect("build must succeed");
         store
             .store_cycle_review(&record1)
             .await
@@ -6273,6 +6428,7 @@ mod cycle_review_integration_tests {
             computed_at: initial_computed_at + 1, // guaranteed > T1
             raw_signals_available: 1,
             summary_json: serde_json::to_string(&report).expect("serialize"),
+            ..Default::default() // crt-047: curation health fields default to 0
         };
         store
             .store_cycle_review(&record2)
@@ -6310,7 +6466,8 @@ mod cycle_review_integration_tests {
         let report = minimal_report("purged-test");
 
         // INSERT a stored record directly (no live observations exist).
-        let record = build_cycle_review_record("purged-test", &report).expect("build must succeed");
+        let record =
+            build_cycle_review_record("purged-test", &report, None, 0).expect("build must succeed");
         store
             .store_cycle_review(&record)
             .await
@@ -6428,6 +6585,7 @@ mod cycle_review_integration_tests {
             computed_at: 1_700_000_000,
             raw_signals_available: 1,
             summary_json: valid_json,
+            ..Default::default() // crt-047: curation health fields default to 0
         };
         store
             .store_cycle_review(&old_record)
@@ -6484,7 +6642,8 @@ mod cycle_review_integration_tests {
         let report = report_with_evidence("ev-test", 3, 5);
 
         // Assert A (storage): build + store — no evidence_limit applied.
-        let record = build_cycle_review_record("ev-test", &report).expect("build must succeed");
+        let record =
+            build_cycle_review_record("ev-test", &report, None, 0).expect("build must succeed");
         store
             .store_cycle_review(&record)
             .await
@@ -6611,10 +6770,10 @@ mod cycle_review_integration_tests {
         let report_a = minimal_report("concurrent-A");
         let report_b = minimal_report("concurrent-B");
 
-        let record_a =
-            build_cycle_review_record("concurrent-A", &report_a).expect("build A must succeed");
-        let record_b =
-            build_cycle_review_record("concurrent-B", &report_b).expect("build B must succeed");
+        let record_a = build_cycle_review_record("concurrent-A", &report_a, None, 0)
+            .expect("build A must succeed");
+        let record_b = build_cycle_review_record("concurrent-B", &report_b, None, 0)
+            .expect("build B must succeed");
 
         // Run both stores concurrently via tokio::join! (OQ-03).
         let (result_a, result_b) = tokio::join!(
