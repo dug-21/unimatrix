@@ -611,11 +611,9 @@ mod tests {
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
             coherence: 1.0,
-            confidence_freshness_score: 1.0,
             graph_quality_score: 1.0,
             embedding_consistency_score: 1.0,
             contradiction_density_score: 1.0,
-            stale_confidence_count: 0,
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
@@ -707,11 +705,9 @@ mod tests {
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
             coherence: 1.0,
-            confidence_freshness_score: 1.0,
             graph_quality_score: 1.0,
             embedding_consistency_score: 1.0,
             contradiction_density_score: 1.0,
-            stale_confidence_count: 0,
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
@@ -970,11 +966,9 @@ mod tests {
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
             coherence: 1.0,
-            confidence_freshness_score: 1.0,
             graph_quality_score: 1.0,
             embedding_consistency_score: 1.0,
             contradiction_density_score: 1.0,
-            stale_confidence_count: 0,
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
@@ -1051,11 +1045,9 @@ mod tests {
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
             coherence: 1.0,
-            confidence_freshness_score: 1.0,
             graph_quality_score: 1.0,
             embedding_consistency_score: 1.0,
             contradiction_density_score: 1.0,
-            stale_confidence_count: 0,
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
@@ -1134,11 +1126,9 @@ mod tests {
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
             coherence: 1.0,
-            confidence_freshness_score: 1.0,
             graph_quality_score: 1.0,
             embedding_consistency_score: 1.0,
             contradiction_density_score: 1.0,
-            stale_confidence_count: 0,
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
@@ -1209,11 +1199,9 @@ mod tests {
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
             coherence: 1.0,
-            confidence_freshness_score: 1.0,
             graph_quality_score: 1.0,
             embedding_consistency_score: 1.0,
             contradiction_density_score: 1.0,
-            stale_confidence_count: 0,
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
@@ -1288,11 +1276,9 @@ mod tests {
             }],
             stale_pairs_cleaned: 3,
             coherence: 1.0,
-            confidence_freshness_score: 1.0,
             graph_quality_score: 1.0,
             embedding_consistency_score: 1.0,
             contradiction_density_score: 1.0,
-            stale_confidence_count: 0,
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
@@ -1431,17 +1417,14 @@ mod tests {
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
             coherence: 0.7450,
-            confidence_freshness_score: 0.8200,
             graph_quality_score: 0.6500,
             embedding_consistency_score: 0.9000,
             contradiction_density_score: 0.7000,
-            stale_confidence_count: 15,
             confidence_refreshed_count: 10,
             graph_stale_ratio: 0.15,
             graph_compacted: true,
             unembedded_active_count: 0,
             maintenance_recommendations: vec![
-                "15 entries have stale confidence (oldest: 2 days) -- run with maintain: true to refresh".to_string(),
                 "HNSW graph has 15% stale nodes -- run with maintain: true to compact".to_string(),
             ],
             total_outcomes: 0,
@@ -1471,84 +1454,6 @@ mod tests {
         }
     }
 
-    // UT-C6-01: JSON format includes all 10 coherence fields
-    #[test]
-    fn test_coherence_json_all_fields() {
-        let report = make_coherence_status_report();
-        let result = format_status_report(&report, ResponseFormat::Json);
-        let text = result_text(&result);
-        let parsed: serde_json::Value = serde_json::from_str(&text).unwrap();
-
-        assert!(parsed["coherence"].is_number(), "coherence field missing");
-        assert!(
-            parsed["confidence_freshness_score"].is_number(),
-            "confidence_freshness_score missing"
-        );
-        assert!(
-            parsed["graph_quality_score"].is_number(),
-            "graph_quality_score missing"
-        );
-        assert!(
-            parsed["embedding_consistency_score"].is_number(),
-            "embedding_consistency_score missing"
-        );
-        assert!(
-            parsed["contradiction_density_score"].is_number(),
-            "contradiction_density_score missing"
-        );
-        assert!(
-            parsed["stale_confidence_count"].is_number(),
-            "stale_confidence_count missing"
-        );
-        assert!(
-            parsed["confidence_refreshed_count"].is_number(),
-            "confidence_refreshed_count missing"
-        );
-        assert!(
-            parsed["graph_stale_ratio"].is_number(),
-            "graph_stale_ratio missing"
-        );
-        assert!(
-            parsed["graph_compacted"].is_boolean(),
-            "graph_compacted missing"
-        );
-        assert!(
-            parsed["maintenance_recommendations"].is_array(),
-            "maintenance_recommendations missing"
-        );
-
-        assert_eq!(parsed["coherence"].as_f64().unwrap(), 0.745);
-        assert_eq!(parsed["confidence_freshness_score"].as_f64().unwrap(), 0.82);
-        assert_eq!(parsed["graph_quality_score"].as_f64().unwrap(), 0.65);
-        assert_eq!(parsed["stale_confidence_count"].as_u64().unwrap(), 15);
-        assert_eq!(parsed["confidence_refreshed_count"].as_u64().unwrap(), 10);
-        assert_eq!(parsed["graph_compacted"].as_bool().unwrap(), true);
-        assert_eq!(
-            parsed["maintenance_recommendations"]
-                .as_array()
-                .unwrap()
-                .len(),
-            2
-        );
-    }
-
-    // UT-C6-02: JSON f64 precision verification
-    #[test]
-    fn test_coherence_json_f64_precision() {
-        let mut report = make_coherence_status_report();
-        report.coherence = 0.845;
-        let result = format_status_report(&report, ResponseFormat::Json);
-        let text = result_text(&result);
-        assert!(
-            text.contains("0.845"),
-            "JSON should contain 0.845 without f32 artifacts, got: {text}"
-        );
-        assert!(
-            !text.contains("0.8450000"),
-            "JSON should not contain f32 precision artifact"
-        );
-    }
-
     // UT-C6-03: Markdown format includes coherence section
     #[test]
     fn test_coherence_markdown_section() {
@@ -1561,10 +1466,6 @@ mod tests {
             "markdown should have Coherence section"
         );
         assert!(text.contains("**Lambda**"), "should show Lambda label");
-        assert!(
-            text.contains("**Confidence Freshness**"),
-            "should show Confidence Freshness label"
-        );
         assert!(
             text.contains("**Graph Quality**"),
             "should show Graph Quality label"
@@ -1581,10 +1482,6 @@ mod tests {
             text.contains("0.7450"),
             "lambda should be formatted to 4 decimal places"
         );
-        assert!(
-            text.contains("0.8200"),
-            "confidence freshness should be 4 decimal places"
-        );
     }
 
     // UT-C6-04: Summary format includes coherence line
@@ -1597,10 +1494,6 @@ mod tests {
         assert!(
             text.contains("Coherence:"),
             "summary should contain Coherence line"
-        );
-        assert!(
-            text.contains("confidence_freshness:"),
-            "should show dimension breakdowns"
         );
         assert!(text.contains("graph_quality:"), "should show graph_quality");
         assert!(
@@ -1626,7 +1519,7 @@ mod tests {
                 .as_array()
                 .unwrap()
                 .len(),
-            2
+            1
         );
 
         let result = format_status_report(&report, ResponseFormat::Markdown);
@@ -1709,34 +1602,6 @@ mod tests {
         );
     }
 
-    // UT-C6-08: Stale confidence count rendering
-    #[test]
-    fn test_coherence_stale_confidence_rendering() {
-        let report = make_coherence_status_report();
-        let result = format_status_report(&report, ResponseFormat::Summary);
-        let text = result_text(&result);
-        assert!(
-            text.contains("Stale confidence: 15 entries"),
-            "should show stale count in summary"
-        );
-
-        let result = format_status_report(&report, ResponseFormat::Markdown);
-        let text = result_text(&result);
-        assert!(
-            text.contains("Stale confidence entries: 15"),
-            "should show stale count in markdown"
-        );
-
-        let mut report2 = make_status_report();
-        report2.stale_confidence_count = 0;
-        let result = format_status_report(&report2, ResponseFormat::Summary);
-        let text = result_text(&result);
-        assert!(
-            !text.contains("Stale confidence:"),
-            "should not show stale line when count is 0"
-        );
-    }
-
     // UT-C6-09: Confidence refreshed count rendering
     #[test]
     fn test_coherence_confidence_refreshed_rendering() {
@@ -1784,22 +1649,6 @@ mod tests {
             !text.contains("Graph stale ratio:"),
             "should not show stale ratio when 0.0 in summary"
         );
-    }
-
-    // UT-C6-11: Default coherence values
-    #[test]
-    fn test_coherence_default_values() {
-        let report = make_status_report();
-        assert_eq!(report.coherence, 1.0);
-        assert_eq!(report.confidence_freshness_score, 1.0);
-        assert_eq!(report.graph_quality_score, 1.0);
-        assert_eq!(report.embedding_consistency_score, 1.0);
-        assert_eq!(report.contradiction_density_score, 1.0);
-        assert_eq!(report.stale_confidence_count, 0);
-        assert_eq!(report.confidence_refreshed_count, 0);
-        assert_eq!(report.graph_stale_ratio, 0.0);
-        assert_eq!(report.graph_compacted, false);
-        assert!(report.maintenance_recommendations.is_empty());
     }
 
     // -- alc-002: trust_level_str and capability_str unit tests --

@@ -2906,3 +2906,23 @@ def test_context_cycle_review_curation_health_present(server):
     except _json.JSONDecodeError:
         pass  # Text format — structural assertions not applicable
 
+
+# === crt-048: Drop Freshness from Lambda ===================================
+
+
+def test_status_json_no_freshness_fields(server):
+    """AC-06, R-05: Removed JSON keys must be absent from context_status wire response.
+
+    crt-048 removes confidence_freshness_score and stale_confidence_count from
+    StatusReport. This test verifies their absence at the MCP wire level —
+    complementing the unit-level JSON key-absence test in mcp/response/status.rs.
+    """
+    resp = server.context_status(agent_id="human", format="json")
+    report = parse_status_report(resp)
+    assert "confidence_freshness_score" not in report, (
+        "crt-048 AC-06: confidence_freshness_score must be absent from context_status JSON"
+    )
+    assert "stale_confidence_count" not in report, (
+        "crt-048 AC-06: stale_confidence_count must be absent from context_status JSON"
+    )
+

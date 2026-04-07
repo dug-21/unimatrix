@@ -222,13 +222,11 @@ by the crt-043 composite index already in place).
 
 ---
 
-### Group 8 — Open Carry-forwards
-
-Two items from the prior roadmap remain open:
+### Group 8 — Carry-forwards
 
 | Issue | Title | Notes |
 |-------|-------|-------|
-| #415 | co_access direct boost → PPR deprecation plan | Phase 1 measurement complete. Phase 2 gate (CC@k ≥ baseline+0.10) requires re-measurement against behavioral ground truth — prior soft-GT metrics invalid for this gate. Re-baseline after conf-boost-c ships (Group 1). |
+| ✅ #415 | co_access direct boost → PPR deprecation plan | COMPLETE (PR #449). `w_coac` reduced to 0.0; co_access boost moved entirely to PPR graph topology. |
 | #409 | Intelligence-driven retention for analytic tables | Unblocked. Entry auto-deprecation for adaptive categories. `K` configurable parameter governing learning-signal retention across co_access, query_log, audit_log. |
 
 ---

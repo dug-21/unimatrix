@@ -51,16 +51,12 @@ pub struct StatusReport {
     pub stale_pairs_cleaned: u64,
     /// Composite lambda coherence score [0.0, 1.0].
     pub coherence: f64,
-    /// Confidence freshness dimension score.
-    pub confidence_freshness_score: f64,
     /// Graph quality dimension score.
     pub graph_quality_score: f64,
     /// Embedding consistency dimension score (1.0 if not checked).
     pub embedding_consistency_score: f64,
     /// Contradiction density dimension score.
     pub contradiction_density_score: f64,
-    /// Number of entries with stale confidence.
-    pub stale_confidence_count: u64,
     /// Number of entries whose confidence was refreshed this call.
     pub confidence_refreshed_count: u64,
     /// Stale node ratio in HNSW graph.
@@ -169,11 +165,9 @@ impl Default for StatusReport {
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
             coherence: 1.0,
-            confidence_freshness_score: 1.0,
             graph_quality_score: 1.0,
             embedding_consistency_score: 1.0,
             contradiction_density_score: 1.0,
-            stale_confidence_count: 0,
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
@@ -256,19 +250,12 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
                 ));
             }
             text.push_str(&format!(
-                "\nCoherence: {:.4} (confidence_freshness: {:.4}, graph_quality: {:.4}, embedding_consistency: {:.4}, contradiction_density: {:.4})",
+                "\nCoherence: {:.4} (graph_quality: {:.4}, embedding_consistency: {:.4}, contradiction_density: {:.4})",
                 report.coherence,
-                report.confidence_freshness_score,
                 report.graph_quality_score,
                 report.embedding_consistency_score,
                 report.contradiction_density_score,
             ));
-            if report.stale_confidence_count > 0 {
-                text.push_str(&format!(
-                    "\nStale confidence: {} entries",
-                    report.stale_confidence_count
-                ));
-            }
             if report.confidence_refreshed_count > 0 {
                 text.push_str(&format!(
                     "\nConfidence refreshed: {} entries",
@@ -506,10 +493,6 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             text.push_str("\n### Coherence\n\n");
             text.push_str(&format!("- **Lambda**: {:.4}\n", report.coherence));
             text.push_str(&format!(
-                "- **Confidence Freshness**: {:.4}\n",
-                report.confidence_freshness_score
-            ));
-            text.push_str(&format!(
                 "- **Graph Quality**: {:.4}\n",
                 report.graph_quality_score
             ));
@@ -520,10 +503,6 @@ pub fn format_status_report(report: &StatusReport, format: ResponseFormat) -> Ca
             text.push_str(&format!(
                 "- **Contradiction Density**: {:.4}\n\n",
                 report.contradiction_density_score
-            ));
-            text.push_str(&format!(
-                "Stale confidence entries: {}\n",
-                report.stale_confidence_count
             ));
             text.push_str(&format!(
                 "Confidence refreshed: {}\n",
@@ -845,11 +824,9 @@ struct StatusReportJson {
     correction_chains: CorrectionChainsJson,
     security: SecurityJson,
     coherence: f64,
-    confidence_freshness_score: f64,
     graph_quality_score: f64,
     embedding_consistency_score: f64,
     contradiction_density_score: f64,
-    stale_confidence_count: u64,
     confidence_refreshed_count: u64,
     graph_stale_ratio: f64,
     graph_compacted: bool,
@@ -1458,6 +1435,56 @@ mod tests {
             .collect();
         assert_eq!(recovered, report.pending_cycle_reviews);
     }
+
+    // --- crt-048: freshness field removal tests ---
+
+    /// Test: text format must not contain confidence_freshness or stale_confidence strings.
+    #[test]
+    fn test_status_text_no_freshness_line() {
+        let report = StatusReport::default();
+        let result = format_status_report(&report, ResponseFormat::Summary);
+        let output = result_text(&result);
+        assert!(
+            !output.contains("confidence_freshness"),
+            "text format must not contain confidence_freshness"
+        );
+        assert!(
+            !output.contains("stale_confidence"),
+            "text format must not contain stale_confidence"
+        );
+    }
+
+    /// Test: markdown format must not contain Confidence Freshness bullet or stale confidence.
+    #[test]
+    fn test_status_markdown_no_freshness_bullet() {
+        let report = StatusReport::default();
+        let result = format_status_report(&report, ResponseFormat::Markdown);
+        let output = result_text(&result);
+        assert!(
+            !output.contains("Confidence Freshness"),
+            "markdown must not contain Confidence Freshness bullet"
+        );
+        assert!(
+            !output.contains("stale_confidence"),
+            "markdown must not contain stale confidence count"
+        );
+    }
+
+    /// Test: JSON format must not serialize removed field keys (R-05, AC-06).
+    #[test]
+    fn test_status_json_no_freshness_keys() {
+        let report = StatusReport::default();
+        let result = format_status_report(&report, ResponseFormat::Json);
+        let output = result_text(&result);
+        assert!(
+            !output.contains("confidence_freshness_score"),
+            "JSON must not serialize confidence_freshness_score key"
+        );
+        assert!(
+            !output.contains("stale_confidence_count"),
+            "JSON must not serialize stale_confidence_count key"
+        );
+    }
 }
 
 impl From<&StatusReport> for StatusReportJson {
@@ -1619,11 +1646,9 @@ impl From<&StatusReport> for StatusReportJson {
                 entries_without_attribution: r.entries_without_attribution,
             },
             coherence: r.coherence,
-            confidence_freshness_score: r.confidence_freshness_score,
             graph_quality_score: r.graph_quality_score,
             embedding_consistency_score: r.embedding_consistency_score,
             contradiction_density_score: r.contradiction_density_score,
-            stale_confidence_count: r.stale_confidence_count,
             confidence_refreshed_count: r.confidence_refreshed_count,
             graph_stale_ratio: r.graph_stale_ratio,
             graph_compacted: r.graph_compacted,

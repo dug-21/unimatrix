@@ -539,11 +539,9 @@ impl StatusService {
             top_co_access_pairs: Vec::new(),
             stale_pairs_cleaned: 0,
             coherence: 1.0,
-            confidence_freshness_score: 1.0,
             graph_quality_score: 1.0,
             embedding_consistency_score: 1.0,
             contradiction_density_score: 1.0,
-            stale_confidence_count: 0,
             confidence_refreshed_count: 0,
             graph_stale_ratio: 0.0,
             graph_compacted: false,
@@ -687,19 +685,6 @@ impl StatusService {
         }
 
         // Phase 5: Coherence dimensions
-        let now_ts = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-
-        let (freshness_dim, stale_conf_count) = coherence::confidence_freshness_score(
-            &active_entries,
-            now_ts,
-            coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
-        );
-        report.confidence_freshness_score = freshness_dim;
-        report.stale_confidence_count = stale_conf_count;
-
         let graph_point_count = self.vector_index.point_count();
         let graph_stale_count = self.vector_index.stale_count();
         let graph_stale_ratio = if graph_point_count == 0 {
@@ -763,13 +748,7 @@ impl StatusService {
             coherence::contradiction_density_score(report.total_quarantined, report.total_active);
 
         // Lambda computation + recommendations
-        let oldest_stale = coherence::oldest_stale_age(
-            &active_entries,
-            now_ts,
-            coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
-        );
         report.coherence = coherence::compute_lambda(
-            report.confidence_freshness_score,
             report.graph_quality_score,
             embed_dim,
             report.contradiction_density_score,
@@ -789,14 +768,8 @@ impl StatusService {
             }
 
             let mut coherence_by_source = Vec::new();
-            for (source, entries) in &source_groups {
-                let (source_freshness, _) = coherence::confidence_freshness_score(
-                    &entries.iter().map(|e| (*e).clone()).collect::<Vec<_>>(),
-                    now_ts,
-                    coherence::DEFAULT_STALENESS_THRESHOLD_SECS,
-                );
+            for (source, _entries) in &source_groups {
                 let source_lambda = coherence::compute_lambda(
-                    source_freshness,
                     report.graph_quality_score,
                     embed_dim,
                     report.contradiction_density_score,
@@ -811,8 +784,6 @@ impl StatusService {
         report.maintenance_recommendations = coherence::generate_recommendations(
             report.coherence,
             coherence::DEFAULT_LAMBDA_THRESHOLD,
-            report.stale_confidence_count,
-            oldest_stale,
             report.graph_stale_ratio,
             report.embedding_inconsistencies.len(),
             report.total_quarantined,
@@ -3941,6 +3912,42 @@ mod tests_crt047 {
         assert_eq!(
             CURATION_BASELINE_WINDOW, 10,
             "CURATION_BASELINE_WINDOW must be 10 (FR-10, FR-18)"
+        );
+    }
+
+    // -----------------------------------------------------------------------
+    // AC-13 / R-06: coherence_by_source loop uses 3-dimension compute_lambda
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn coherence_by_source_uses_three_dim_lambda() {
+        use crate::infra::coherence::{compute_lambda, DEFAULT_WEIGHTS};
+
+        // Source A: strong graph (0.9), weak contradiction (0.3), embedding absent.
+        // With DEFAULT_WEIGHTS (graph=0.46, contradiction=0.31, embedding=0.23),
+        // renormalized over 2 active dims (0.46+0.31=0.77):
+        //   lambda_a = 0.9*(0.46/0.77) + 0.3*(0.31/0.77) ≈ 0.538 + 0.121 = 0.659
+        let lambda_a = compute_lambda(0.9, None, 0.3, &DEFAULT_WEIGHTS);
+
+        // Source B: weak graph (0.3), strong contradiction (0.9), embedding absent.
+        //   lambda_b = 0.3*(0.46/0.77) + 0.9*(0.31/0.77) ≈ 0.179 + 0.362 = 0.541
+        let lambda_b = compute_lambda(0.3, None, 0.9, &DEFAULT_WEIGHTS);
+
+        assert!(
+            lambda_a > lambda_b,
+            "source A (strong graph) should have higher lambda than source B (strong contradiction): {} vs {}",
+            lambda_a,
+            lambda_b
+        );
+        assert!(
+            (0.0..=1.0).contains(&lambda_a),
+            "lambda_a must be in [0.0, 1.0], got {}",
+            lambda_a
+        );
+        assert!(
+            (0.0..=1.0).contains(&lambda_b),
+            "lambda_b must be in [0.0, 1.0], got {}",
+            lambda_b
         );
     }
 }
