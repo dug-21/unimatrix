@@ -161,7 +161,7 @@ fn build_session_summary(
                 && r.tool
                     .as_deref()
                     .map(normalize_tool_name)
-                    .map_or(false, |t| {
+                    .is_some_and(|t| {
                         matches!(t, "context_search" | "context_lookup" | "context_get")
                     })
         })
@@ -174,7 +174,7 @@ fn build_session_summary(
                 && r.tool
                     .as_deref()
                     .map(normalize_tool_name)
-                    .map_or(false, |t| t == "context_store")
+                    .is_some_and(|t| t == "context_store")
         })
         .count() as u64;
 
@@ -185,7 +185,7 @@ fn build_session_summary(
                 && r.tool
                     .as_deref()
                     .map(normalize_tool_name)
-                    .map_or(false, |t| {
+                    .is_some_and(|t| {
                         matches!(
                             t,
                             "context_correct" | "context_deprecate" | "context_quarantine"
