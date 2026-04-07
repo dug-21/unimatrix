@@ -27,7 +27,7 @@ Before the roadmap, a clear-eyed list of where Unimatrix has strayed from its do
 ### Domain Coupling
 | Gap | Severity | Status |
 |-----|----------|--------|
-| Freshness half-life hardcoded at 168h | Critical | **Fixed** — W0-3 config externalization |
+| Time-based freshness in Lambda — domain-specific assumption | Critical | **Resolved** — freshness dimension dropped from Lambda entirely (#520); Lambda is now a 3-dimension structural health metric (graph, contradiction, embedding) |
 | "lesson-learned" category name hardcoded in scoring | Critical | **Fixed** — W0-3 `boosted_categories` config |
 | Lambda dimension weights hardcoded | Critical | **Fixed** — W0-3; W3-1 will learn them |
 | SERVER_INSTRUCTIONS const uses dev-workflow language | High | **Fixed** — W0-3 `[server] instructions` config |
