@@ -1946,8 +1946,13 @@ impl UnimatrixServer {
                 report.context_reload_pct = Some(reload_pct);
 
                 // Step 13-14: Knowledge reuse (C3/C4, best-effort; col-026: cross-feature split)
-                match compute_knowledge_reuse_for_sessions(&store, &session_records, &feature_cycle)
-                    .await
+                match compute_knowledge_reuse_for_sessions(
+                    &store,
+                    &session_records,
+                    &feature_cycle,
+                    &attributed,
+                )
+                .await
                 {
                     Ok(mut reuse) => {
                         // col-026: set total_stored from feature_entries count for this cycle.
@@ -3192,15 +3197,23 @@ async fn batch_entry_meta_lookup(
 /// Compute Tier 1 cross-session knowledge reuse (col-020 C3, ADR-001, col-026 C3).
 ///
 /// Loads query_log + injection_log for the given sessions, then delegates to the
+/// Maximum number of distinct explicit read IDs passed to batch_entry_meta_lookup
+/// for the explicit_read_by_category category join (ADR-004).
+/// The cap applies only to the category join input.
+/// explicit_read_count is always computed from the full uncapped HashSet.
+const EXPLICIT_READ_META_CAP: usize = 500;
+
 /// knowledge_reuse module for the actual computation.
 ///
 /// col-026: accepts `current_feature_cycle` for the cross-feature/intra-cycle split.
 /// Uses a single batch IN-clause query (ADR-003, pattern #883) instead of N individual
 /// store.get() calls to fetch entry metadata.
+/// crt-049: accepts `attributed` observation slice for explicit read ID extraction.
 async fn compute_knowledge_reuse_for_sessions(
     store: &Arc<unimatrix_store::SqlxStore>,
     session_records: &[unimatrix_store::SessionRecord],
     current_feature_cycle: &str,
+    attributed: &[unimatrix_observe::ObservationRecord],
 ) -> std::result::Result<
     unimatrix_observe::FeatureKnowledgeReuse,
     Box<dyn std::error::Error + Send + Sync>,
@@ -3253,6 +3266,40 @@ async fn compute_knowledge_reuse_for_sessions(
         all_entry_ids.insert(record.entry_id);
     }
 
+    // crt-049 Step A: Extract explicit read IDs from in-memory attributed slice (no DB call).
+    // Uses normalize_tool_name to strip mcp__unimatrix__ prefix (AC-06 GATE).
+    let explicit_ids: std::collections::HashSet<u64> =
+        crate::mcp::knowledge_reuse::extract_explicit_read_ids(attributed);
+
+    tracing::debug!(
+        "crt-049: explicit read IDs extracted: {} distinct",
+        explicit_ids.len()
+    );
+
+    // crt-049 Step B: Apply cardinality cap before category join lookup (ADR-004).
+    // Cap applies only to the batch lookup input, NOT to explicit_read_count.
+    let lookup_ids: Vec<u64> = if explicit_ids.len() > EXPLICIT_READ_META_CAP {
+        tracing::warn!(
+            count = explicit_ids.len(),
+            cap = EXPLICIT_READ_META_CAP,
+            "explicit read ID count exceeds cap; explicit_read_by_category will be partial"
+        );
+        explicit_ids
+            .iter()
+            .copied()
+            .take(EXPLICIT_READ_META_CAP)
+            .collect()
+    } else {
+        explicit_ids.iter().copied().collect()
+    };
+
+    // crt-049 Step C: Batch metadata lookup for explicit read category join (new DB call).
+    // Uses same batch_entry_meta_lookup function as existing call (pattern #883, col-026).
+    // Chunked at 100 IDs per IN-clause; no N+1 per-ID queries.
+    // Returns empty map when lookup_ids is empty (no DB call made in that case).
+    let explicit_meta_map: std::collections::HashMap<u64, crate::mcp::knowledge_reuse::EntryMeta> =
+        batch_entry_meta_lookup(store, &lookup_ids).await;
+
     // col-026 ADR-003: single batch IN-clause query for all entry metadata.
     // Chunked at 100 IDs per query (pattern #883). Replaces the N-individual store.get() loop.
     let ids_vec: Vec<u64> = all_entry_ids.iter().copied().collect();
@@ -3266,13 +3313,6 @@ async fn compute_knowledge_reuse_for_sessions(
 
     // Delegate to C3 knowledge_reuse module for computation.
     // entry_meta_lookup closure returns a filtered view of meta_map_owned for requested IDs.
-    // explicit_read_ids / explicit_read_meta are populated by the crt-049 attributed path
-    // (compute_knowledge_reuse_for_sessions signature extension — see tools.rs agent).
-    // Temporarily empty until that plumbing is complete; no behavioral regression for existing
-    // code paths since the new fields default to zero / empty.
-    let explicit_read_ids_empty = std::collections::HashSet::<u64>::new();
-    let explicit_read_meta_empty =
-        std::collections::HashMap::<u64, crate::mcp::knowledge_reuse::EntryMeta>::new();
     let reuse = crate::mcp::knowledge_reuse::compute_knowledge_reuse(
         &query_logs,
         &injection_logs,
@@ -3296,13 +3336,15 @@ async fn compute_knowledge_reuse_for_sessions(
                 })
                 .collect()
         },
-        &explicit_read_ids_empty,
-        &explicit_read_meta_empty,
+        &explicit_ids,
+        &explicit_meta_map,
     );
 
     tracing::debug!(
-        "col-020b: knowledge reuse result: search_exposure_count={}, cross_session_count={}, cross_feature={}, intra_cycle={}",
+        "crt-049: knowledge reuse result: search_exposure_count={}, explicit_read_count={}, total_served={}, cross_session_count={}, cross_feature={}, intra_cycle={}",
         reuse.search_exposure_count,
+        reuse.explicit_read_count,
+        reuse.total_served,
         reuse.cross_session_count,
         reuse.cross_feature_reuse,
         reuse.intra_cycle_reuse,
@@ -4761,12 +4803,92 @@ mod tests {
         // Empty sessions slice: all data flows will be empty, but the async
         // store lookups still exercise the pre-fetch path. Before the fix this
         // would panic; after the fix it returns Ok with zero counts.
-        let result = compute_knowledge_reuse_for_sessions(&store, &[], "test-cycle").await;
+        let result = compute_knowledge_reuse_for_sessions(&store, &[], "test-cycle", &[]).await;
 
         assert!(result.is_ok(), "expected Ok, got {:?}", result.err());
         let reuse = result.unwrap();
         assert_eq!(reuse.search_exposure_count, 0);
+        assert_eq!(reuse.explicit_read_count, 0);
         assert_eq!(reuse.cross_session_count, 0);
+    }
+
+    // -- crt-049: compute_knowledge_reuse_for_sessions explicit read signal tests --
+
+    /// AC-05: attributed slice with a context_get PreToolUse observation produces
+    /// explicit_read_count > 0. Validates that extract_explicit_read_ids is called
+    /// and its result flows through to FeatureKnowledgeReuse (R-07).
+    #[tokio::test]
+    async fn test_compute_knowledge_reuse_for_sessions_explicit_read_count_from_attributed() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("test_kruse_ac05.db");
+        let store = unimatrix_store::SqlxStore::open(&path, unimatrix_store::PoolConfig::default())
+            .await
+            .expect("open test store");
+        let store = std::sync::Arc::new(store);
+
+        // Build a PreToolUse observation for context_get with integer-form id (AC-05).
+        let attributed = vec![unimatrix_observe::ObservationRecord {
+            ts: 1000,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
+            session_id: "s1".to_string(),
+            tool: Some("context_get".to_string()),
+            input: Some(serde_json::json!({"id": 42})),
+            response_size: None,
+            response_snippet: None,
+        }];
+
+        // sessions is empty — no query_log or injection_log records needed;
+        // explicit read extraction is in-memory from attributed slice.
+        let result =
+            compute_knowledge_reuse_for_sessions(&store, &[], "test-cycle", &attributed).await;
+
+        assert!(result.is_ok(), "expected Ok, got {:?}", result.err());
+        let reuse = result.unwrap();
+        // AC-05: explicit_read_count must reflect the in-memory observation, not DB queries.
+        assert_eq!(reuse.explicit_read_count, 1);
+        // Entry 42 likely doesn't exist in the test DB; by_category may be empty but count is set.
+        assert_eq!(reuse.search_exposure_count, 0);
+    }
+
+    /// AC-05 variant: mcp__unimatrix__ prefixed tool name is normalized (AC-06 GATE).
+    /// Value::String input (hook listener path) is parsed correctly.
+    #[tokio::test]
+    async fn test_compute_knowledge_reuse_for_sessions_prefixed_tool_name_normalized() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("test_kruse_prefix.db");
+        let store = unimatrix_store::SqlxStore::open(&path, unimatrix_store::PoolConfig::default())
+            .await
+            .expect("open test store");
+        let store = std::sync::Arc::new(store);
+
+        // Hook listener path: tool carries mcp__ prefix, input arrives as raw JSON string.
+        let attributed = vec![unimatrix_observe::ObservationRecord {
+            ts: 1000,
+            event_type: "PreToolUse".to_string(),
+            source_domain: "claude-code".to_string(),
+            session_id: "s1".to_string(),
+            tool: Some("mcp__unimatrix__context_get".to_string()),
+            input: Some(serde_json::Value::String(r#"{"id": 99}"#.to_string())),
+            response_size: None,
+            response_snippet: None,
+        }];
+
+        let result =
+            compute_knowledge_reuse_for_sessions(&store, &[], "test-cycle", &attributed).await;
+
+        assert!(result.is_ok(), "expected Ok, got {:?}", result.err());
+        let reuse = result.unwrap();
+        assert_eq!(
+            reuse.explicit_read_count, 1,
+            "normalize_tool_name must strip mcp__unimatrix__ prefix"
+        );
+    }
+
+    /// Structural: EXPLICIT_READ_META_CAP constant must equal 500 (ADR-004).
+    #[test]
+    fn test_explicit_read_meta_cap_constant_exists() {
+        assert_eq!(EXPLICIT_READ_META_CAP, 500);
     }
 
     // ---- crt-026: Component 2 (context_store histogram recording) tests ----
