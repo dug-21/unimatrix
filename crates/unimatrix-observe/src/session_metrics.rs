@@ -211,7 +211,7 @@ fn build_session_summary(
 /// Strip MCP server prefix from tool names.
 /// Returns the bare tool name for Unimatrix MCP tools,
 /// or the input unchanged for Claude-native tools.
-fn normalize_tool_name(tool: &str) -> &str {
+pub fn normalize_tool_name(tool: &str) -> &str {
     tool.strip_prefix("mcp__unimatrix__").unwrap_or(tool)
 }
 

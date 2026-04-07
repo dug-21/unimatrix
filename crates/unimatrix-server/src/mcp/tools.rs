@@ -3421,8 +3421,10 @@ fn extract_agent_name(obs: &unimatrix_observe::ObservationRecord) -> Option<Stri
 ///
 /// Replicates the classify_tool mapping from unimatrix-observe/session_metrics.rs
 /// for consistency across session summaries and phase stats.
+/// Normalizes MCP-prefixed tool names (e.g. `mcp__unimatrix__context_search`) before matching.
 fn categorize_tool_for_phase(tool: Option<&str>) -> &'static str {
-    match tool {
+    let normalized = tool.map(unimatrix_observe::normalize_tool_name);
+    match normalized {
         Some("Read") | Some("Glob") | Some("Grep") => "read",
         Some("Edit") | Some("Write") => "write",
         Some("Bash") => "execute",
@@ -3607,22 +3609,31 @@ fn compute_phase_stats(
         }
 
         // Knowledge served: PreToolUse where tool is context_search / context_lookup / context_get
+        // Uses normalize_tool_name to handle mcp__unimatrix__-prefixed names from production hooks.
         let knowledge_served = filtered
             .iter()
             .filter(|o| o.event_type == "PreToolUse")
             .filter(|o| {
-                matches!(
-                    o.tool.as_deref(),
-                    Some("context_search") | Some("context_lookup") | Some("context_get")
-                )
+                o.tool
+                    .as_deref()
+                    .map(unimatrix_observe::normalize_tool_name)
+                    .map_or(false, |t| {
+                        matches!(t, "context_search" | "context_lookup" | "context_get")
+                    })
             })
             .count() as u64;
 
         // Knowledge stored: PreToolUse where tool is context_store
+        // Uses normalize_tool_name to handle mcp__unimatrix__-prefixed names from production hooks.
         let knowledge_stored = filtered
             .iter()
             .filter(|o| o.event_type == "PreToolUse")
-            .filter(|o| o.tool.as_deref() == Some("context_store"))
+            .filter(|o| {
+                o.tool
+                    .as_deref()
+                    .map(unimatrix_observe::normalize_tool_name)
+                    .map_or(false, |t| t == "context_store")
+            })
             .count() as u64;
 
         // Gate result from end_event_outcome
@@ -5438,6 +5449,17 @@ mod phase_stats_tests {
         }
     }
 
+    /// Helper that builds a PreToolUse ObservationRecord for an MCP tool using the production
+    /// prefix format (`mcp__unimatrix__{tool}`). Use this for all MCP tool names (context_*)
+    /// to match what production hooks actually emit.
+    fn make_mcp_obs_at(
+        session_id: &str,
+        ts_ms: u64,
+        tool: &str,
+    ) -> unimatrix_observe::ObservationRecord {
+        make_obs_at(session_id, ts_ms, &format!("mcp__unimatrix__{tool}"))
+    }
+
     /// T-PS / R-12: Empty events → empty vec (handler sets phase_stats = None).
     #[test]
     fn test_phase_stats_empty_events_produces_empty_vec() {
@@ -5732,10 +5754,10 @@ mod phase_stats_tests {
         ];
         let mid_ms = cycle_ts_to_obs_millis(1_700_000_000) + 500;
         let obs = vec![
-            make_obs_at("sess-1", mid_ms as u64, "context_search"),
-            make_obs_at("sess-1", mid_ms as u64, "context_search"),
-            make_obs_at("sess-1", mid_ms as u64, "context_lookup"),
-            make_obs_at("sess-1", mid_ms as u64, "context_store"),
+            make_mcp_obs_at("sess-1", mid_ms as u64, "context_search"),
+            make_mcp_obs_at("sess-1", mid_ms as u64, "context_search"),
+            make_mcp_obs_at("sess-1", mid_ms as u64, "context_lookup"),
+            make_mcp_obs_at("sess-1", mid_ms as u64, "context_store"),
             make_obs_at("sess-1", mid_ms as u64, "Read"),
         ];
         let result = compute_phase_stats(&events, &obs);
@@ -5758,7 +5780,7 @@ mod phase_stats_tests {
             make_obs_at("sess-1", mid_ms as u64, "Glob"),
             make_obs_at("sess-1", mid_ms as u64, "Bash"),
             make_obs_at("sess-1", mid_ms as u64, "Edit"),
-            make_obs_at("sess-1", mid_ms as u64, "context_search"),
+            make_mcp_obs_at("sess-1", mid_ms as u64, "context_search"),
         ];
         let result = compute_phase_stats(&events, &obs);
         assert_eq!(result.len(), 1);
@@ -5767,6 +5789,51 @@ mod phase_stats_tests {
         assert_eq!(dist.execute, 1);
         assert_eq!(dist.write, 1);
         assert_eq!(dist.search, 1);
+    }
+
+    /// T-PS / AC-06b: Prefixed MCP tool names are correctly categorized and counted.
+    ///
+    /// Production hooks always emit `mcp__unimatrix__context_search` (prefixed).
+    /// This test documents that `categorize_tool_for_phase` and `compute_phase_stats`
+    /// handle the prefix correctly via `normalize_tool_name`.
+    #[test]
+    fn test_phase_stats_mcp_prefix_normalized_correctly() {
+        use crate::services::observation::cycle_ts_to_obs_millis;
+        let events = vec![
+            make_cycle_event("cycle_start", None, None, None, 1_700_000_000),
+            make_cycle_event("cycle_stop", None, None, None, 1_700_001_000),
+        ];
+        let mid_ms = cycle_ts_to_obs_millis(1_700_000_000) + 500;
+        let obs = vec![
+            // All three MCP search tools with production prefix
+            make_mcp_obs_at("sess-1", mid_ms as u64, "context_search"),
+            make_mcp_obs_at("sess-1", mid_ms as u64, "context_lookup"),
+            make_mcp_obs_at("sess-1", mid_ms as u64, "context_get"),
+            // Store tool with prefix
+            make_mcp_obs_at("sess-1", mid_ms as u64, "context_store"),
+            // Claude-native tools unchanged
+            make_obs_at("sess-1", mid_ms as u64, "Read"),
+            make_obs_at("sess-1", mid_ms as u64, "Bash"),
+        ];
+        let result = compute_phase_stats(&events, &obs);
+        assert_eq!(result.len(), 1);
+        // knowledge_served counts prefixed search tools
+        assert_eq!(
+            result[0].knowledge_served, 3,
+            "context_search+lookup+get must be counted with mcp prefix"
+        );
+        // knowledge_stored counts prefixed store tool
+        assert_eq!(
+            result[0].knowledge_stored, 1,
+            "context_store must be counted with mcp prefix"
+        );
+        // tool_distribution.search counts prefixed tools via categorize_tool_for_phase
+        assert_eq!(
+            result[0].tool_distribution.search, 3,
+            "tool distribution search bucket must include mcp-prefixed tools"
+        );
+        assert_eq!(result[0].tool_distribution.read, 1);
+        assert_eq!(result[0].tool_distribution.execute, 1);
     }
 
     /// T-PS / AC-06: Session count from distinct session_ids.
