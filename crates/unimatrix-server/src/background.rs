@@ -620,10 +620,13 @@ async fn run_single_tick(
     {
         let store_clone = Arc::clone(store);
         let lookback_days = inference_config.phase_freq_lookback_days;
+        let min_pairs = inference_config.min_phase_session_pairs;
 
         match tokio::time::timeout(
             TICK_TIMEOUT,
-            tokio::spawn(async move { PhaseFreqTable::rebuild(&store_clone, lookback_days).await }),
+            tokio::spawn(async move {
+                PhaseFreqTable::rebuild(&store_clone, lookback_days, min_pairs).await
+            }),
         )
         .await
         {

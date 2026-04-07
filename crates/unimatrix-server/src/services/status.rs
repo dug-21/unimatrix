@@ -1408,6 +1408,26 @@ impl StatusService {
                 retention_config.activity_detail_retention_cycles,
             );
 
+            // Observations coverage diagnostic (crt-050, AC-11): advisory only.
+            // Emits tracing::warn! when distinct (phase, session_id) pair count falls below
+            // min_phase_session_pairs threshold. Does not block rebuild or alter state.
+            let coverage_count = match self
+                .store
+                .count_phase_session_pairs(inference_config.phase_freq_lookback_days)
+                .await
+            {
+                Ok(n) => n.max(0) as u64,
+                Err(e) => {
+                    tracing::warn!(error = %e, "observations coverage check: count_phase_session_pairs failed; skipping advisory check");
+                    0
+                }
+            };
+            run_observations_coverage_check(
+                coverage_count,
+                inference_config.min_phase_session_pairs,
+                inference_config.phase_freq_lookback_days,
+            );
+
             let purgeable_count = purgeable_cycles.len();
             tracing::info!(
                 k = k,
@@ -1630,20 +1650,25 @@ impl StatusService {
 }
 
 // ---------------------------------------------------------------------------
-// PhaseFreqTable alignment guard (crt-036, FR-10, ADR-003)
+// PhaseFreqTable alignment guard (crt-036, FR-10, ADR-003; updated crt-050)
 // ---------------------------------------------------------------------------
 
-/// Emit `tracing::warn!` when `query_log_lookback_days` implies a data window
+/// Emit `tracing::warn!` when `phase_freq_lookback_days` implies a data window
 /// older than the oldest retained cycle's `computed_at`.
 ///
+/// This check applies to the `observations` source (crt-050): observations linked
+/// to sessions that belong to pruned cycles are still counted in freq (by Query A)
+/// but contribute no outcome weight (Query B sees no live cycle_events rows for
+/// pruned cycles). The diagnostic remains an advisory signal for the operator.
+///
 /// Advisory only — does not block GC or alter config. Called at the start of
-/// step 4 after `list_purgeable_cycles()` resolves the retain set.
+/// the cycle-based GC block each tick (crt-036 ADR-003, updated crt-050).
 ///
 /// Skipped (no warning, no error) when `oldest_retained_computed_at` is `None`,
 /// which means fewer than K cycles have been reviewed and no pruning has occurred.
 fn run_phase_freq_table_alignment_check(
     oldest_retained_computed_at: &Option<i64>,
-    query_log_lookback_days: u32,
+    phase_freq_lookback_days: u32,
     activity_detail_retention_cycles: u32,
 ) {
     let oldest = match oldest_retained_computed_at {
@@ -1656,27 +1681,61 @@ fn run_phase_freq_table_alignment_check(
         .unwrap_or_default()
         .as_secs() as i64;
 
-    let lookback_cutoff_secs = now_secs - (query_log_lookback_days as i64) * 86_400;
+    let lookback_cutoff_secs = now_secs - (phase_freq_lookback_days as i64) * 86_400;
 
     // If oldest_retained_computed_at <= lookback_cutoff_secs:
     // The oldest retained cycle was reviewed BEFORE the lookback window started.
     // PhaseFreqTable may query for data that has been pruned. Emit warn (AC-17).
     if oldest <= lookback_cutoff_secs {
         tracing::warn!(
-            query_log_lookback_days = query_log_lookback_days,
+            phase_freq_lookback_days = phase_freq_lookback_days,
             activity_detail_retention_cycles = activity_detail_retention_cycles,
             oldest_retained_cycle_computed_at = oldest,
             lookback_cutoff_secs = lookback_cutoff_secs,
             "PhaseFreqTable lookback window ({} days) extends beyond retention window; \
              oldest retained cycle reviewed at {}, lookback cutoff is {}. \
-             Consider reducing query_log_lookback_days or increasing \
+             Consider reducing phase_freq_lookback_days or increasing \
              activity_detail_retention_cycles.",
-            query_log_lookback_days,
+            phase_freq_lookback_days,
             oldest,
             lookback_cutoff_secs,
         );
     }
     // If oldest > lookback_cutoff_secs: no action. Correct coverage.
+}
+
+// ---------------------------------------------------------------------------
+// Observations coverage diagnostic (crt-050, AC-11)
+// ---------------------------------------------------------------------------
+
+/// Emit advisory `tracing::warn!` when the distinct `(phase, session_id)` pair
+/// count in `observations` falls below the configured minimum threshold.
+///
+/// This is a DIAGNOSTIC WARNING ONLY — it does not gate any operation or modify
+/// any state. The actual coverage gate that sets `use_fallback = true` lives in
+/// `PhaseFreqTable::rebuild()` (FR-17). This function is the tick-time advisory
+/// diagnostic described in AC-11 and the ARCHITECTURE.md coverage section.
+///
+/// Called during `run_maintenance` step 4 (alongside the alignment check).
+/// Uses the same SQL window as Query A in `rebuild()` to ensure consistency.
+fn run_observations_coverage_check(
+    coverage_count: u64,
+    min_phase_session_pairs: u32,
+    phase_freq_lookback_days: u32,
+) {
+    if coverage_count < min_phase_session_pairs as u64 {
+        tracing::warn!(
+            observations_phase_session_pairs = coverage_count,
+            min_phase_session_pairs = min_phase_session_pairs,
+            phase_freq_lookback_days = phase_freq_lookback_days,
+            "observations coverage below threshold: {} distinct (phase, session_id) \
+             pairs in {} day window (min_phase_session_pairs={}); phase affinity scoring may be sparse.",
+            coverage_count,
+            phase_freq_lookback_days,
+            min_phase_session_pairs,
+        );
+    }
+    // If coverage_count >= threshold: no action.
 }
 
 #[cfg(test)]
@@ -2990,8 +3049,8 @@ mod crt_036_phase_freq_table_guard_tests {
         run_phase_freq_table_alignment_check(&oldest_retained, 365, 5);
 
         assert!(
-            logs_contain("query_log_lookback_days"),
-            "WARN must mention query_log_lookback_days (AC-17)"
+            logs_contain("phase_freq_lookback_days"),
+            "WARN must mention phase_freq_lookback_days (AC-17)"
         );
         assert!(
             logs_contain("retention window"),
@@ -3052,6 +3111,97 @@ mod crt_036_phase_freq_table_guard_tests {
         assert!(
             logs_contain("retention window"),
             "warn must fire: K-th cycle (30 days old) beyond lookback (20 days)"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// crt-050: observations coverage diagnostic unit tests
+// ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod crt_050_observations_coverage_tests {
+    use super::run_observations_coverage_check;
+
+    /// T-SD-04: Warning fires when coverage count is below threshold.
+    ///
+    /// coverage_count=3 < min_phase_session_pairs=5 → warn must fire.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_observations_coverage_warn_below_threshold() {
+        run_observations_coverage_check(3, 5, 30);
+
+        assert!(
+            logs_contain("phase affinity scoring may be sparse"),
+            "WARN must fire when coverage < threshold (T-SD-04)"
+        );
+        assert!(
+            logs_contain("3"),
+            "WARN must include the actual count (T-SD-04)"
+        );
+        assert!(
+            logs_contain("5"),
+            "WARN must include the threshold (T-SD-04)"
+        );
+        assert!(
+            logs_contain("30"),
+            "WARN must include the lookback_days (T-SD-04)"
+        );
+    }
+
+    /// T-SD-05: No warning when coverage count is above threshold.
+    ///
+    /// coverage_count=10 >= min_phase_session_pairs=5 → no warn.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_observations_coverage_no_warn_above_threshold() {
+        run_observations_coverage_check(10, 5, 30);
+
+        assert!(
+            !logs_contain("phase affinity scoring may be sparse"),
+            "WARN must NOT fire when coverage >= threshold (T-SD-05)"
+        );
+    }
+
+    /// T-SD-06: No warning when count equals the threshold (strict less-than gate).
+    ///
+    /// coverage_count=5 == min_phase_session_pairs=5 → no warn (boundary is exclusive).
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_observations_coverage_no_warn_at_threshold_boundary() {
+        run_observations_coverage_check(5, 5, 30);
+
+        assert!(
+            !logs_contain("phase affinity scoring may be sparse"),
+            "WARN must NOT fire when coverage == threshold (T-SD-06, strict less-than)"
+        );
+    }
+
+    /// T-SD: Threshold of 1 with exactly 1 pair does not trigger fallback warning.
+    ///
+    /// coverage_count=1 == min_phase_session_pairs=1 → no warn.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_observations_coverage_threshold_one_with_one_pair_no_warn() {
+        run_observations_coverage_check(1, 1, 30);
+
+        assert!(
+            !logs_contain("phase affinity scoring may be sparse"),
+            "WARN must NOT fire: 1 pair meets threshold=1 (T-SD edge case)"
+        );
+    }
+
+    /// T-SD: Zero coverage below any threshold always fires.
+    ///
+    /// coverage_count=0 < min_phase_session_pairs=1 → warn fires.
+    #[tracing_test::traced_test]
+    #[test]
+    fn test_observations_coverage_zero_count_fires_warn() {
+        run_observations_coverage_check(0, 1, 30);
+
+        assert!(
+            logs_contain("phase affinity scoring may be sparse"),
+            "WARN must fire: 0 pairs below threshold=1"
         );
     }
 }
