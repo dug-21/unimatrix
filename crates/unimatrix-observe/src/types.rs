@@ -281,17 +281,32 @@ pub struct EntryRef {
 /// Feature-scoped knowledge delivery measurement (col-020b).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FeatureKnowledgeReuse {
-    /// Total unique entry IDs delivered to agents for this feature.
+    /// Count of distinct entry IDs returned in query result sets during the cycle.
+    /// Renamed from `delivery_count` (crt-049). Does NOT imply the agent consumed the entry.
+    /// Serde aliases retain round-trip compatibility with pre-crt-049 stored rows
+    /// ("delivery_count") and pre-col-020b stored rows ("tier1_reuse_count").
+    /// BOTH aliases are required — dropping either silently produces zero on re-review.
+    #[serde(alias = "delivery_count")]
     #[serde(alias = "tier1_reuse_count")]
-    pub delivery_count: u64,
-    /// Entries appearing in 2+ distinct sessions (sub-metric of delivery_count).
+    pub search_exposure_count: u64,
+    /// Count of distinct entry IDs explicitly retrieved by agents via context_get
+    /// or single-ID context_lookup. Unambiguous consumption signal.
+    /// Defaults to 0 when absent in stored JSON (pre-crt-049 rows).
+    #[serde(default)]
+    pub explicit_read_count: u64,
+    /// Cycle-level category breakdown of explicit reads. NOT the Group 10 training input
+    /// — Group 10 requires phase-stratified (phase, category) aggregates. [GATE contract AC-13]
+    /// Defaults to empty map when absent in stored JSON (pre-crt-049 rows).
+    #[serde(default)]
+    pub explicit_read_by_category: HashMap<String, u64>,
+    /// Entries appearing in 2+ distinct sessions (sub-metric of search_exposure_count).
     #[serde(default)]
     pub cross_session_count: u64,
     /// Delivery counts grouped by entry category.
     pub by_category: HashMap<String, u64>,
     /// Categories with active entries but zero delivery.
     pub category_gaps: Vec<String>,
-    /// All distinct entry IDs served across sessions (alias of delivery_count for display).
+    /// |explicit_read_ids ∪ injection_ids| (deduplicated). Search exposures excluded. (crt-049)
     #[serde(default)]
     pub total_served: u64,
     /// Knowledge entries created during this cycle.
@@ -686,7 +701,9 @@ mod tests {
         by_cat.insert("pattern".to_string(), 2);
 
         let reuse = FeatureKnowledgeReuse {
-            delivery_count: 5,
+            search_exposure_count: 5,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 2,
             by_category: by_cat,
             category_gaps: vec!["procedure".to_string()],
@@ -700,7 +717,7 @@ mod tests {
         let json = serde_json::to_string(&reuse).expect("serialize");
         let back: FeatureKnowledgeReuse = serde_json::from_str(&json).expect("deserialize");
 
-        assert_eq!(back.delivery_count, 5);
+        assert_eq!(back.search_exposure_count, 5);
         assert_eq!(back.cross_session_count, 2);
         assert_eq!(back.by_category.get("convention"), Some(&3));
         assert_eq!(back.by_category.get("pattern"), Some(&2));
@@ -824,7 +841,9 @@ mod tests {
                 outcome: None,
             }]),
             feature_knowledge_reuse: Some(FeatureKnowledgeReuse {
-                delivery_count: 3,
+                search_exposure_count: 3,
+                explicit_read_count: 0,
+                explicit_read_by_category: HashMap::new(),
                 cross_session_count: 0,
                 by_category: by_cat,
                 category_gaps: vec!["procedure".to_string()],
@@ -862,8 +881,8 @@ mod tests {
             "serialized JSON should use new field name"
         );
         assert!(
-            json_str.contains("delivery_count"),
-            "serialized JSON should use new field name"
+            json_str.contains("search_exposure_count"),
+            "serialized JSON should use canonical field name search_exposure_count"
         );
         assert!(
             json_str.contains("knowledge_served"),
@@ -873,7 +892,7 @@ mod tests {
         let reuse = back
             .feature_knowledge_reuse
             .expect("feature_knowledge_reuse present");
-        assert_eq!(reuse.delivery_count, 3);
+        assert_eq!(reuse.search_exposure_count, 3);
         assert_eq!(reuse.by_category.get("convention"), Some(&2));
         assert_eq!(reuse.category_gaps, vec!["procedure"]);
 
@@ -999,7 +1018,7 @@ mod tests {
         let result: FeatureKnowledgeReuse =
             serde_json::from_str(json).expect("old tier1_reuse_count should deserialize via alias");
 
-        assert_eq!(result.delivery_count, 7);
+        assert_eq!(result.search_exposure_count, 7);
         assert_eq!(result.cross_session_count, 0);
         assert_eq!(result.by_category.get("convention"), Some(&4));
         assert_eq!(result.category_gaps, vec!["procedure"]);
@@ -1027,7 +1046,7 @@ mod tests {
         let reuse = report
             .feature_knowledge_reuse
             .expect("should be Some via alias");
-        assert_eq!(reuse.delivery_count, 3);
+        assert_eq!(reuse.search_exposure_count, 3);
         assert_eq!(reuse.cross_session_count, 0);
     }
 
@@ -1381,6 +1400,163 @@ mod tests {
         assert_eq!(reuse.total_stored, 0);
         assert_eq!(reuse.total_served, 0);
         assert!(reuse.top_cross_feature_entries.is_empty());
+    }
+
+    // ── AC-02 [GATE]: triple-alias serde chain (crt-049) ─────────────────────
+
+    #[test]
+    fn test_search_exposure_count_deserializes_from_canonical_key() {
+        // AC-02 sub-case (a): canonical key "search_exposure_count"
+        let json = r#"{"search_exposure_count":42,"by_category":{},"category_gaps":[]}"#;
+        let r: FeatureKnowledgeReuse =
+            serde_json::from_str(json).expect("canonical key must deserialize");
+        assert_eq!(r.search_exposure_count, 42);
+    }
+
+    #[test]
+    fn test_search_exposure_count_deserializes_from_delivery_count_alias() {
+        // AC-02 sub-case (b): alias "delivery_count" (pre-crt-049 stored rows)
+        let json = r#"{"delivery_count":42,"by_category":{},"category_gaps":[]}"#;
+        let r: FeatureKnowledgeReuse =
+            serde_json::from_str(json).expect("delivery_count alias must deserialize");
+        assert_eq!(
+            r.search_exposure_count, 42,
+            "alias delivery_count must resolve to search_exposure_count — not 0"
+        );
+    }
+
+    #[test]
+    fn test_search_exposure_count_deserializes_from_tier1_reuse_count_alias() {
+        // AC-02 sub-case (c): alias "tier1_reuse_count" (pre-col-020b stored rows)
+        let json = r#"{"tier1_reuse_count":42,"by_category":{},"category_gaps":[]}"#;
+        let r: FeatureKnowledgeReuse =
+            serde_json::from_str(json).expect("tier1_reuse_count alias must deserialize");
+        assert_eq!(
+            r.search_exposure_count, 42,
+            "alias tier1_reuse_count must resolve to search_exposure_count — not 0"
+        );
+    }
+
+    #[test]
+    fn test_search_exposure_count_serializes_to_canonical_key() {
+        // AC-02 sub-case (d): canonical serialization key is "search_exposure_count"
+        let r = FeatureKnowledgeReuse {
+            search_exposure_count: 99,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
+            cross_session_count: 0,
+            by_category: HashMap::new(),
+            category_gaps: vec![],
+            total_served: 0,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
+        };
+        let json = serde_json::to_string(&r).expect("serialize");
+        assert!(
+            json.contains("\"search_exposure_count\""),
+            "canonical key must be search_exposure_count in serialized output"
+        );
+        assert!(
+            !json.contains("\"delivery_count\""),
+            "old key delivery_count must NOT appear in serialized output"
+        );
+        assert!(
+            !json.contains("\"tier1_reuse_count\""),
+            "old key tier1_reuse_count must NOT appear in serialized output"
+        );
+    }
+
+    #[test]
+    fn test_search_exposure_count_round_trip_all_alias_forms() {
+        // AC-02 sub-case (e): deserialize each alias form → serialize → deserialize
+        // Final value must be 42 and canonical key must be used
+        let alias_forms = [
+            r#"{"search_exposure_count":42,"by_category":{},"category_gaps":[]}"#,
+            r#"{"delivery_count":42,"by_category":{},"category_gaps":[]}"#,
+            r#"{"tier1_reuse_count":42,"by_category":{},"category_gaps":[]}"#,
+        ];
+        for json in &alias_forms {
+            let first: FeatureKnowledgeReuse =
+                serde_json::from_str(json).expect("first deserialize must succeed");
+            assert_eq!(first.search_exposure_count, 42, "input: {json}");
+            let serialized = serde_json::to_string(&first).expect("serialize");
+            assert!(
+                serialized.contains("\"search_exposure_count\""),
+                "re-serialized must use canonical key; input: {json}"
+            );
+            let back: FeatureKnowledgeReuse =
+                serde_json::from_str(&serialized).expect("second deserialize must succeed");
+            assert_eq!(
+                back.search_exposure_count, 42,
+                "round-trip value mismatch; input: {json}"
+            );
+        }
+    }
+
+    // ── AC-01 / AC-13 [GATE partial]: new field definitions (crt-049) ─────────
+
+    #[test]
+    fn test_explicit_read_count_defaults_to_zero_when_absent() {
+        // AC-01: #[serde(default)] must apply when field absent from stored JSON
+        let json = r#"{"search_exposure_count":0,"by_category":{},"category_gaps":[]}"#;
+        let r: FeatureKnowledgeReuse =
+            serde_json::from_str(json).expect("deserialize without explicit_read_count");
+        assert_eq!(
+            r.explicit_read_count, 0,
+            "explicit_read_count must default to 0"
+        );
+        assert!(
+            r.explicit_read_by_category.is_empty(),
+            "explicit_read_by_category must default to empty map"
+        );
+    }
+
+    #[test]
+    fn test_explicit_read_by_category_defaults_to_empty_map_when_absent() {
+        // AC-13 partial: field absent in stored JSON → empty map via #[serde(default)]
+        let json = r#"{"search_exposure_count":0,"by_category":{},"category_gaps":[]}"#;
+        let r: FeatureKnowledgeReuse =
+            serde_json::from_str(json).expect("deserialize without explicit_read_by_category");
+        assert!(
+            r.explicit_read_by_category.is_empty(),
+            "explicit_read_by_category must be empty map when absent"
+        );
+    }
+
+    #[test]
+    fn test_explicit_read_by_category_serde_round_trip() {
+        // AC-13 partial: category map survives serde round-trip
+        let mut cats = HashMap::new();
+        cats.insert("decision".to_string(), 2u64);
+        cats.insert("pattern".to_string(), 1u64);
+        let r = FeatureKnowledgeReuse {
+            search_exposure_count: 0,
+            explicit_read_count: 3,
+            explicit_read_by_category: cats,
+            cross_session_count: 0,
+            by_category: HashMap::new(),
+            category_gaps: vec![],
+            total_served: 3,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
+        };
+        let json = serde_json::to_string(&r).expect("serialize");
+        let back: FeatureKnowledgeReuse = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(
+            back.explicit_read_by_category.get("decision"),
+            Some(&2),
+            "decision category must survive round-trip"
+        );
+        assert_eq!(
+            back.explicit_read_by_category.get("pattern"),
+            Some(&1),
+            "pattern category must survive round-trip"
+        );
+        assert_eq!(back.explicit_read_count, 3);
     }
 
     #[test]

@@ -113,7 +113,9 @@ where
     let has_any_refs = !query_log_entry_ids.is_empty() || !injection_entry_ids.is_empty();
     if !has_any_refs {
         return FeatureKnowledgeReuse {
-            delivery_count: 0,
+            search_exposure_count: 0,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 0,
             by_category: HashMap::new(),
             category_gaps: compute_gaps(active_category_counts, &HashSet::new()),
@@ -160,7 +162,9 @@ where
     if all_entry_ids.is_empty() {
         // entry_meta_lookup is NOT called when ID set is empty (ADR-003)
         return FeatureKnowledgeReuse {
-            delivery_count: 0,
+            search_exposure_count: 0,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 0,
             by_category: HashMap::new(),
             category_gaps: compute_gaps(active_category_counts, &HashSet::new()),
@@ -181,7 +185,7 @@ where
         // Entries that fail lookup (deleted) are silently skipped
     }
 
-    let delivery_count = resolved_entries.len() as u64;
+    let search_exposure_count = resolved_entries.len() as u64;
 
     let mut by_category: HashMap<String, u64> = HashMap::new();
     for category in resolved_entries.values() {
@@ -226,13 +230,13 @@ where
             },
             None => {
                 // Entry absent from meta_map (quarantined/deleted after being served).
-                // Excluded from both buckets; cross + intra <= delivery_count (R-04).
+                // Excluded from both buckets; cross + intra <= search_exposure_count (R-04).
             }
         }
     }
 
-    // Step 7c: total_served — same value as delivery_count, distinct semantic name.
-    let total_served = delivery_count;
+    // Step 7c: total_served — same value as search_exposure_count for now; crt-049 redefines this.
+    let total_served = search_exposure_count;
 
     // Step 7d: Top cross-feature entries by serve_count (top 5, sorted descending).
     // serve_count = number of distinct sessions the entry appeared in.
@@ -272,7 +276,9 @@ where
     let top_cross_feature_entries = cross_feature_candidates;
 
     FeatureKnowledgeReuse {
-        delivery_count,
+        search_exposure_count,
+        explicit_read_count: 0,
+        explicit_read_by_category: HashMap::new(),
         cross_session_count,
         by_category,
         category_gaps,
@@ -377,7 +383,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
         assert_eq!(result.by_category.get("convention"), Some(&1));
     }
@@ -399,7 +405,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -422,7 +428,7 @@ mod tests {
         );
 
         // Delivered to 1 session, but NOT cross-session
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -444,7 +450,7 @@ mod tests {
         );
 
         // Deduplicated: 1 entry, not 2
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -466,7 +472,7 @@ mod tests {
         );
 
         // Still just 1 distinct entry
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -498,7 +504,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 3);
+        assert_eq!(result.search_exposure_count, 3);
         assert_eq!(result.cross_session_count, 3);
         assert_eq!(result.by_category.get("convention"), Some(&2));
         assert_eq!(result.by_category.get("pattern"), Some(&1));
@@ -529,7 +535,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
         assert_eq!(result.category_gaps.len(), 2);
         assert!(result.category_gaps.contains(&"pattern".to_string()));
@@ -565,7 +571,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 2);
+        assert_eq!(result.search_exposure_count, 2);
         assert_eq!(result.cross_session_count, 2);
         assert!(result.category_gaps.is_empty());
     }
@@ -589,7 +595,7 @@ mod tests {
         );
 
         // No panic, computation completes, zero delivery
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -609,7 +615,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -629,7 +635,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -657,7 +663,7 @@ mod tests {
         );
 
         // 2 distinct entries, not 4+2
-        assert_eq!(result.delivery_count, 2);
+        assert_eq!(result.search_exposure_count, 2);
         assert_eq!(result.cross_session_count, 2);
     }
 
@@ -680,7 +686,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -701,7 +707,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -724,7 +730,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
         assert!(result.by_category.is_empty());
         // All active categories should be gaps
@@ -750,7 +756,7 @@ mod tests {
         );
 
         // Entry skipped, count reduced to 0
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
         assert!(result.by_category.is_empty());
     }
@@ -767,7 +773,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
         assert!(result.by_category.is_empty());
         assert!(result.category_gaps.is_empty());
@@ -798,7 +804,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 3);
+        assert_eq!(result.search_exposure_count, 3);
         assert_eq!(result.cross_session_count, 0);
         assert_eq!(result.by_category.get("convention"), Some(&2));
         assert_eq!(result.by_category.get("pattern"), Some(&1));
@@ -830,9 +836,9 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 3);
+        assert_eq!(result.search_exposure_count, 3);
         assert_eq!(result.cross_session_count, 1); // only E10
-        assert!(result.delivery_count > result.cross_session_count);
+        assert!(result.search_exposure_count > result.cross_session_count);
     }
 
     #[test]
@@ -861,7 +867,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 2);
+        assert_eq!(result.search_exposure_count, 2);
         assert_eq!(result.cross_session_count, 0);
         assert_eq!(result.by_category.len(), 2);
         assert_eq!(result.by_category.get("convention"), Some(&1));
@@ -917,7 +923,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 1); // deduplicated
+        assert_eq!(result.search_exposure_count, 1); // deduplicated
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -1009,7 +1015,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
         assert_eq!(result.by_category.get("convention"), Some(&1));
     }
@@ -1042,7 +1048,7 @@ mod tests {
 
         // 2 distinct IDs: 10 and 20
         assert_eq!(result.total_served, 2);
-        assert_eq!(result.total_served, result.delivery_count);
+        assert_eq!(result.total_served, result.search_exposure_count);
     }
 
     #[test]
@@ -1085,7 +1091,7 @@ mod tests {
         assert_eq!(result.intra_cycle_reuse, 2);
         assert_eq!(
             result.cross_feature_reuse + result.intra_cycle_reuse,
-            result.delivery_count
+            result.search_exposure_count
         );
     }
 
@@ -1143,7 +1149,7 @@ mod tests {
         let result =
             compute_knowledge_reuse(&[], &[], &HashMap::new(), "col-026", |_| None, panic_lookup);
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_feature_reuse, 0);
     }
 
@@ -1246,9 +1252,11 @@ mod tests {
         );
 
         // No panic
-        assert_eq!(result.delivery_count, 5);
+        assert_eq!(result.search_exposure_count, 5);
         // cross + intra <= delivery_count (IDs 40, 50 excluded from both buckets)
-        assert!(result.cross_feature_reuse + result.intra_cycle_reuse <= result.delivery_count);
+        assert!(
+            result.cross_feature_reuse + result.intra_cycle_reuse <= result.search_exposure_count
+        );
         assert_eq!(result.cross_feature_reuse, 2); // IDs 10, 20 from "prior"
         assert_eq!(result.intra_cycle_reuse, 1); // ID 30 from "col-026"
     }
@@ -1282,7 +1290,7 @@ mod tests {
         assert_eq!(result.intra_cycle_reuse, 0);
         assert!(result.top_cross_feature_entries.is_empty());
         // No panic; delivery_count unchanged
-        assert_eq!(result.delivery_count, 2);
+        assert_eq!(result.search_exposure_count, 2);
     }
 
     #[test]
@@ -1318,7 +1326,7 @@ mod tests {
         );
 
         assert_eq!(result.intra_cycle_reuse, 0);
-        assert_eq!(result.cross_feature_reuse, result.delivery_count);
+        assert_eq!(result.cross_feature_reuse, result.search_exposure_count);
     }
 
     #[test]
@@ -1354,7 +1362,7 @@ mod tests {
         );
 
         assert_eq!(result.cross_feature_reuse, 0);
-        assert_eq!(result.intra_cycle_reuse, result.delivery_count);
+        assert_eq!(result.intra_cycle_reuse, result.search_exposure_count);
         assert!(result.top_cross_feature_entries.is_empty());
     }
 
@@ -1445,7 +1453,7 @@ mod tests {
             empty_meta_lookup(),
         );
 
-        assert_eq!(result.total_served, result.delivery_count);
+        assert_eq!(result.total_served, result.search_exposure_count);
     }
 
     #[test]

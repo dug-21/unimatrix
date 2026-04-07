@@ -993,7 +993,7 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse, feature_cycle: &str) ->
     let mut out = String::new();
     out.push_str("## Knowledge Reuse\n\n");
 
-    if reuse.delivery_count == 0 {
+    if reuse.search_exposure_count == 0 {
         out.push_str("No knowledge entries served.\n\n");
         return out;
     }
@@ -1002,7 +1002,7 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse, feature_cycle: &str) ->
     let _ = writeln!(
         out,
         "**Distinct entries served**: {}  |  **Stored this cycle**: {}",
-        reuse.delivery_count, reuse.total_stored
+        reuse.search_exposure_count, reuse.total_stored
     );
     out.push('\n');
 
@@ -1033,7 +1033,7 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse, feature_cycle: &str) ->
         let _ = writeln!(
             out,
             "**By category (all {} served)**: {}",
-            reuse.delivery_count,
+            reuse.search_exposure_count,
             cat_parts.join(", ")
         );
         out.push('\n');
@@ -1518,7 +1518,9 @@ mod tests {
     fn test_single_optional_feature_knowledge_reuse() {
         let mut report = make_report();
         report.feature_knowledge_reuse = Some(FeatureKnowledgeReuse {
-            delivery_count: 10,
+            search_exposure_count: 10,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 3,
             by_category: HashMap::new(),
             category_gaps: vec![],
@@ -1597,7 +1599,9 @@ mod tests {
         ]);
         report.hotspots = vec![make_finding("retry_storms", Severity::Warning, 5.0, 2)];
         report.feature_knowledge_reuse = Some(FeatureKnowledgeReuse {
-            delivery_count: 15,
+            search_exposure_count: 15,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 8,
             by_category: HashMap::new(),
             category_gaps: vec!["procedure".to_string()],
@@ -2190,7 +2194,9 @@ mod tests {
     fn test_knowledge_reuse_full() {
         // AC-17: updated for new Knowledge Reuse format (col-026 FR-13)
         let reuse = FeatureKnowledgeReuse {
-            delivery_count: 15,
+            search_exposure_count: 15,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 8,
             by_category: HashMap::new(),
             category_gaps: vec!["procedure".to_string()],
@@ -2212,7 +2218,9 @@ mod tests {
     #[test]
     fn test_knowledge_reuse_no_gaps() {
         let reuse = FeatureKnowledgeReuse {
-            delivery_count: 5,
+            search_exposure_count: 5,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 2,
             by_category: HashMap::new(),
             category_gaps: vec![],
@@ -3362,7 +3370,9 @@ mod tests {
         use unimatrix_observe::EntryRef;
         let mut report = make_report();
         report.feature_knowledge_reuse = Some(FeatureKnowledgeReuse {
-            delivery_count: 10,
+            search_exposure_count: 10,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 2,
             by_category: {
                 let mut m = HashMap::new();
@@ -3402,7 +3412,9 @@ mod tests {
     fn test_knowledge_reuse_zero_delivery() {
         let mut report = make_report();
         report.feature_knowledge_reuse = Some(FeatureKnowledgeReuse {
-            delivery_count: 0,
+            search_exposure_count: 0,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 0,
             by_category: HashMap::new(),
             category_gaps: vec![],
@@ -3420,7 +3432,9 @@ mod tests {
     fn test_knowledge_reuse_no_cross_feature_omits_table() {
         let mut report = make_report();
         report.feature_knowledge_reuse = Some(FeatureKnowledgeReuse {
-            delivery_count: 5,
+            search_exposure_count: 5,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 0,
             by_category: HashMap::new(),
             category_gaps: vec![],
@@ -3655,7 +3669,9 @@ mod tests {
         )]);
         report.hotspots = vec![make_finding("compile_cycles", Severity::Warning, 50.0, 2)];
         report.feature_knowledge_reuse = Some(FeatureKnowledgeReuse {
-            delivery_count: 5,
+            search_exposure_count: 5,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 1,
             by_category: HashMap::new(),
             category_gaps: vec![],
@@ -4006,7 +4022,9 @@ mod tests {
         use unimatrix_observe::EntryRef;
         let mut report = make_report();
         report.feature_knowledge_reuse = Some(FeatureKnowledgeReuse {
-            delivery_count: 3,
+            search_exposure_count: 3,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 0,
             by_category: HashMap::new(),
             category_gaps: vec![],

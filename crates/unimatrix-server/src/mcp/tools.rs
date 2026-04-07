@@ -3292,8 +3292,8 @@ async fn compute_knowledge_reuse_for_sessions(
     );
 
     tracing::debug!(
-        "col-020b: knowledge reuse result: delivery_count={}, cross_session_count={}, cross_feature={}, intra_cycle={}",
-        reuse.delivery_count,
+        "col-020b: knowledge reuse result: search_exposure_count={}, cross_session_count={}, cross_feature={}, intra_cycle={}",
+        reuse.search_exposure_count,
         reuse.cross_session_count,
         reuse.cross_feature_reuse,
         reuse.intra_cycle_reuse,
@@ -4756,7 +4756,7 @@ mod tests {
 
         assert!(result.is_ok(), "expected Ok, got {:?}", result.err());
         let reuse = result.unwrap();
-        assert_eq!(reuse.delivery_count, 0);
+        assert_eq!(reuse.search_exposure_count, 0);
         assert_eq!(reuse.cross_session_count, 0);
     }
 
