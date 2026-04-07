@@ -993,16 +993,30 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse, feature_cycle: &str) ->
     let mut out = String::new();
     out.push_str("## Knowledge Reuse\n\n");
 
-    if reuse.search_exposure_count == 0 {
+    // [GATE: AC-17] Guard fires ONLY when nothing was served AND nothing was exposed via search.
+    // An injection-only or explicit-read-only cycle has total_served > 0 — must NOT be suppressed.
+    if reuse.total_served == 0 && reuse.search_exposure_count == 0 {
         out.push_str("No knowledge entries served.\n\n");
         return out;
     }
 
-    // Summary line (FR-13)
+    // Summary: entries served (reads + injections), followed by sub-metric lines (FR-09, crt-049)
     let _ = writeln!(
         out,
-        "**Distinct entries served**: {}  |  **Stored this cycle**: {}",
-        reuse.search_exposure_count, reuse.total_stored
+        "**Entries served to agents (reads + injections)**: {}  |  **Stored this cycle**: {}",
+        reuse.total_served, reuse.total_stored
+    );
+    out.push('\n');
+
+    let _ = writeln!(
+        out,
+        "- Search exposures (distinct): {}",
+        reuse.search_exposure_count
+    );
+    let _ = writeln!(
+        out,
+        "- Explicit reads (distinct): {}",
+        reuse.explicit_read_count
     );
     out.push('\n');
 
@@ -1022,7 +1036,7 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse, feature_cycle: &str) ->
     );
     out.push('\n');
 
-    // By category line
+    // Search exposure categories (by_category is search-exposure sourced — crt-049 relabeled)
     if !reuse.by_category.is_empty() {
         let mut cats: Vec<(&String, &u64)> = reuse.by_category.iter().collect();
         cats.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
@@ -1032,8 +1046,25 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse, feature_cycle: &str) ->
             .collect();
         let _ = writeln!(
             out,
-            "**By category (all {} served)**: {}",
+            "**Search exposure categories (all {} exposed)**: {}",
             reuse.search_exposure_count,
+            cat_parts.join(", ")
+        );
+        out.push('\n');
+    }
+
+    // Explicit read categories breakdown (crt-049)
+    if !reuse.explicit_read_by_category.is_empty() {
+        let mut explicit_cats: Vec<(&String, &u64)> =
+            reuse.explicit_read_by_category.iter().collect();
+        explicit_cats.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
+        let cat_parts: Vec<String> = explicit_cats
+            .iter()
+            .map(|(cat, count)| format!("{}×{}", cat, count))
+            .collect();
+        let _ = writeln!(
+            out,
+            "**Explicit read categories**: {}",
             cat_parts.join(", ")
         );
         out.push('\n');
@@ -2192,7 +2223,7 @@ mod tests {
 
     #[test]
     fn test_knowledge_reuse_full() {
-        // AC-17: updated for new Knowledge Reuse format (col-026 FR-13)
+        // Updated for crt-049: new label and guard semantics
         let reuse = FeatureKnowledgeReuse {
             search_exposure_count: 15,
             explicit_read_count: 0,
@@ -2200,16 +2231,18 @@ mod tests {
             cross_session_count: 8,
             by_category: HashMap::new(),
             category_gaps: vec!["procedure".to_string()],
-            total_served: 0,
+            total_served: 15,
             total_stored: 5,
             cross_feature_reuse: 3,
             intra_cycle_reuse: 2,
             top_cross_feature_entries: vec![],
         };
         let out = render_knowledge_reuse(&reuse, "test-001");
-        // New format: Distinct entries served / Stored this cycle
-        assert!(out.contains("**Distinct entries served**: 15"));
+        // crt-049: new label replaces "Distinct entries served"
+        assert!(out.contains("Entries served to agents (reads + injections)"));
         assert!(out.contains("**Stored this cycle**: 5"));
+        assert!(out.contains("Search exposures (distinct): 15"));
+        assert!(out.contains("Explicit reads (distinct): 0"));
         // category_gaps NOT rendered (AC-12)
         assert!(!out.contains("Gaps:"));
         assert!(!out.contains("cross-session"));
@@ -3394,8 +3427,11 @@ mod tests {
             }],
         });
         let text = extract_text(&format_retrospective_markdown(&report));
-        assert!(text.contains("**Distinct entries served**: 10"));
+        // crt-049: new label replaces "Distinct entries served"
+        assert!(text.contains("Entries served to agents (reads + injections)"));
         assert!(text.contains("**Stored this cycle**: 3"));
+        assert!(text.contains("Search exposures (distinct): 10"));
+        assert!(text.contains("Explicit reads (distinct): 0"));
         assert!(text.contains("Cross-feature (prior cycles)"));
         assert!(text.contains("6"));
         assert!(text.contains("Intra-cycle"));
@@ -4073,6 +4109,218 @@ mod tests {
             text.contains("\\## Implement feature"),
             "escaped heading must appear in output, got text snippet: {:?}",
             text.get(0..200)
+        );
+    }
+
+    // ── render_knowledge_reuse (crt-049) ─────────────────────────────
+
+    /// AC-07 golden render assertion: cycle with both search exposures and explicit reads
+    /// renders all three labeled lines correctly in the correct order.
+    #[test]
+    fn test_render_knowledge_reuse_golden_output_all_sections() {
+        let reuse = FeatureKnowledgeReuse {
+            search_exposure_count: 10,
+            explicit_read_count: 3,
+            explicit_read_by_category: HashMap::from([
+                ("decision".to_string(), 2u64),
+                ("pattern".to_string(), 1u64),
+            ]),
+            cross_session_count: 0,
+            by_category: HashMap::new(),
+            category_gaps: vec![],
+            total_served: 5,
+            total_stored: 20,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
+        };
+        let rendered = render_knowledge_reuse(&reuse, "crt-049");
+
+        // Assert (a): summary label with total_served value
+        assert!(
+            rendered.contains("Entries served to agents (reads + injections)"),
+            "summary label missing"
+        );
+        assert!(rendered.contains("5"), "total_served value 5 missing");
+
+        // Assert (b): search exposures line with value 10
+        assert!(
+            rendered.contains("Search exposures (distinct): 10"),
+            "search exposures line missing or wrong value"
+        );
+
+        // Assert (c): explicit reads line with value 3
+        assert!(
+            rendered.contains("Explicit reads (distinct): 3"),
+            "explicit reads line missing or wrong value"
+        );
+
+        // Assert (d): legacy label must NOT appear
+        assert!(
+            !rendered.contains("Distinct entries served"),
+            "legacy label 'Distinct entries served' must not appear"
+        );
+
+        // Assert (e): section order
+        let entries_pos = rendered.find("Entries served to agents").unwrap();
+        let search_pos = rendered.find("Search exposures (distinct)").unwrap();
+        let reads_pos = rendered.find("Explicit reads (distinct)").unwrap();
+        assert!(
+            entries_pos < search_pos,
+            "summary must precede search exposures line"
+        );
+        assert!(
+            entries_pos < reads_pos,
+            "summary must precede explicit reads line"
+        );
+        assert!(
+            search_pos < reads_pos,
+            "search exposures must precede explicit reads line"
+        );
+    }
+
+    /// AC-07 explicit read categories section renders correctly.
+    #[test]
+    fn test_render_knowledge_reuse_explicit_read_categories_section() {
+        let reuse = FeatureKnowledgeReuse {
+            search_exposure_count: 10,
+            explicit_read_count: 3,
+            explicit_read_by_category: HashMap::from([
+                ("decision".to_string(), 2u64),
+                ("pattern".to_string(), 1u64),
+            ]),
+            cross_session_count: 0,
+            by_category: HashMap::new(),
+            category_gaps: vec![],
+            total_served: 5,
+            total_stored: 20,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
+        };
+        let rendered = render_knowledge_reuse(&reuse, "crt-049");
+        assert!(
+            rendered.contains("Explicit read categories"),
+            "explicit read categories section missing"
+        );
+        assert!(
+            rendered.contains("decision"),
+            "decision category missing from explicit categories"
+        );
+        assert!(
+            rendered.contains("pattern"),
+            "pattern category missing from explicit categories"
+        );
+    }
+
+    /// Explicit read categories section is omitted when the map is empty.
+    #[test]
+    fn test_render_knowledge_reuse_no_explicit_read_categories_when_empty() {
+        let reuse = FeatureKnowledgeReuse {
+            search_exposure_count: 5,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
+            cross_session_count: 0,
+            by_category: HashMap::new(),
+            category_gaps: vec![],
+            total_served: 0,
+            total_stored: 10,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
+        };
+        let rendered = render_knowledge_reuse(&reuse, "crt-049");
+        assert!(
+            !rendered.contains("Explicit read categories"),
+            "explicit read categories section must be omitted when map is empty"
+        );
+    }
+
+    /// AC-17 [GATE]: injection-only cycle (total_served > 0, both sub-counts = 0)
+    /// must NOT trigger the early-return guard.
+    #[test]
+    fn test_render_knowledge_reuse_injection_only_cycle_not_suppressed() {
+        let reuse = FeatureKnowledgeReuse {
+            search_exposure_count: 0,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
+            cross_session_count: 0,
+            by_category: HashMap::new(),
+            category_gaps: vec![],
+            total_served: 3,
+            total_stored: 10,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
+        };
+        let rendered = render_knowledge_reuse(&reuse, "crt-049");
+
+        // Guard must NOT have fired
+        assert!(
+            !rendered.contains("No knowledge entries served"),
+            "early-return guard must not fire for injection-only cycle (total_served=3)"
+        );
+        assert!(
+            rendered.contains("Entries served to agents (reads + injections)"),
+            "summary label missing for injection-only cycle"
+        );
+        assert!(
+            rendered.contains("3"),
+            "total_served value 3 must appear in output"
+        );
+        assert!(
+            rendered.contains("Search exposures (distinct): 0"),
+            "search exposures line missing"
+        );
+        assert!(
+            rendered.contains("Explicit reads (distinct): 0"),
+            "explicit reads line missing"
+        );
+    }
+
+    /// Both conditions zero — early-return fires correctly.
+    #[test]
+    fn test_render_knowledge_reuse_zero_guard_both_zero() {
+        let reuse = FeatureKnowledgeReuse {
+            search_exposure_count: 0,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
+            cross_session_count: 0,
+            by_category: HashMap::new(),
+            category_gaps: vec![],
+            total_served: 0,
+            total_stored: 0,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
+        };
+        let rendered = render_knowledge_reuse(&reuse, "crt-049");
+        assert!(
+            rendered.contains("No knowledge entries served."),
+            "early-return must fire when both total_served and search_exposure_count are zero"
+        );
+    }
+
+    /// Regression: legacy label "Distinct entries served" must never appear in rendered output.
+    #[test]
+    fn test_render_knowledge_reuse_no_legacy_distinct_entries_served_label() {
+        let reuse = FeatureKnowledgeReuse {
+            search_exposure_count: 7,
+            explicit_read_count: 1,
+            explicit_read_by_category: HashMap::new(),
+            cross_session_count: 0,
+            by_category: HashMap::new(),
+            category_gaps: vec![],
+            total_served: 5,
+            total_stored: 30,
+            cross_feature_reuse: 0,
+            intra_cycle_reuse: 0,
+            top_cross_feature_entries: vec![],
+        };
+        let rendered = render_knowledge_reuse(&reuse, "crt-049");
+        assert!(
+            !rendered.contains("Distinct entries served"),
+            "legacy label 'Distinct entries served' must not appear in any rendered output"
         );
     }
 }

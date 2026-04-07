@@ -3266,6 +3266,13 @@ async fn compute_knowledge_reuse_for_sessions(
 
     // Delegate to C3 knowledge_reuse module for computation.
     // entry_meta_lookup closure returns a filtered view of meta_map_owned for requested IDs.
+    // explicit_read_ids / explicit_read_meta are populated by the crt-049 attributed path
+    // (compute_knowledge_reuse_for_sessions signature extension — see tools.rs agent).
+    // Temporarily empty until that plumbing is complete; no behavioral regression for existing
+    // code paths since the new fields default to zero / empty.
+    let explicit_read_ids_empty = std::collections::HashSet::<u64>::new();
+    let explicit_read_meta_empty =
+        std::collections::HashMap::<u64, crate::mcp::knowledge_reuse::EntryMeta>::new();
     let reuse = crate::mcp::knowledge_reuse::compute_knowledge_reuse(
         &query_logs,
         &injection_logs,
@@ -3289,6 +3296,8 @@ async fn compute_knowledge_reuse_for_sessions(
                 })
                 .collect()
         },
+        &explicit_read_ids_empty,
+        &explicit_read_meta_empty,
     );
 
     tracing::debug!(
