@@ -158,12 +158,9 @@ fn build_session_summary(
         .iter()
         .filter(|r| {
             r.event_type == "PreToolUse"
-                && r.tool
-                    .as_deref()
-                    .map(normalize_tool_name)
-                    .is_some_and(|t| {
-                        matches!(t, "context_search" | "context_lookup" | "context_get")
-                    })
+                && r.tool.as_deref().map(normalize_tool_name).is_some_and(|t| {
+                    matches!(t, "context_search" | "context_lookup" | "context_get")
+                })
         })
         .count() as u64;
 
@@ -182,15 +179,12 @@ fn build_session_summary(
         .iter()
         .filter(|r| {
             r.event_type == "PreToolUse"
-                && r.tool
-                    .as_deref()
-                    .map(normalize_tool_name)
-                    .is_some_and(|t| {
-                        matches!(
-                            t,
-                            "context_correct" | "context_deprecate" | "context_quarantine"
-                        )
-                    })
+                && r.tool.as_deref().map(normalize_tool_name).is_some_and(|t| {
+                    matches!(
+                        t,
+                        "context_correct" | "context_deprecate" | "context_quarantine"
+                    )
+                })
         })
         .count() as u64;
 
