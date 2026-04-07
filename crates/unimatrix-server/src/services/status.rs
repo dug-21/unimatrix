@@ -3914,4 +3914,40 @@ mod tests_crt047 {
             "CURATION_BASELINE_WINDOW must be 10 (FR-10, FR-18)"
         );
     }
+
+    // -----------------------------------------------------------------------
+    // AC-13 / R-06: coherence_by_source loop uses 3-dimension compute_lambda
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn coherence_by_source_uses_three_dim_lambda() {
+        use crate::infra::coherence::{compute_lambda, DEFAULT_WEIGHTS};
+
+        // Source A: strong graph (0.9), weak contradiction (0.3), embedding absent.
+        // With DEFAULT_WEIGHTS (graph=0.46, contradiction=0.31, embedding=0.23),
+        // renormalized over 2 active dims (0.46+0.31=0.77):
+        //   lambda_a = 0.9*(0.46/0.77) + 0.3*(0.31/0.77) ≈ 0.538 + 0.121 = 0.659
+        let lambda_a = compute_lambda(0.9, None, 0.3, &DEFAULT_WEIGHTS);
+
+        // Source B: weak graph (0.3), strong contradiction (0.9), embedding absent.
+        //   lambda_b = 0.3*(0.46/0.77) + 0.9*(0.31/0.77) ≈ 0.179 + 0.362 = 0.541
+        let lambda_b = compute_lambda(0.3, None, 0.9, &DEFAULT_WEIGHTS);
+
+        assert!(
+            lambda_a > lambda_b,
+            "source A (strong graph) should have higher lambda than source B (strong contradiction): {} vs {}",
+            lambda_a,
+            lambda_b
+        );
+        assert!(
+            (0.0..=1.0).contains(&lambda_a),
+            "lambda_a must be in [0.0, 1.0], got {}",
+            lambda_a
+        );
+        assert!(
+            (0.0..=1.0).contains(&lambda_b),
+            "lambda_b must be in [0.0, 1.0], got {}",
+            lambda_b
+        );
+    }
 }
