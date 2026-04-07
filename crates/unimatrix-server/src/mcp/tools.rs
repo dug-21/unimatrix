@@ -2716,7 +2716,9 @@ fn check_stored_review(
 ) -> Result<(unimatrix_observe::RetrospectiveReport, Option<String>), serde_json::Error> {
     let advisory = if record.schema_version != current_version {
         Some(format!(
-            "computed with schema_version {}, current is {} — use force=true to recompute.",
+            "Stored review has schema_version {} (current: {}). \
+             schema_version 2 predates the explicit read signal and total_served redefinition \
+             (search exposures no longer contribute to total_served); use force=true to recompute.",
             record.schema_version, current_version
         ))
     } else {
