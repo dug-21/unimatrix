@@ -1,7 +1,7 @@
 //! Knowledge reuse computation for feature-scoped analysis (col-020 C3, col-020b C5, col-026 C3).
 //!
 //! Computes feature knowledge delivery and cross-session reuse by joining
-//! query_log and injection_log entry references. `delivery_count` is the total
+//! query_log and injection_log entry references. `search_exposure_count` is the total
 //! distinct entries delivered across all sessions. `cross_session_count` is the
 //! subset appearing in 2+ distinct sessions.
 //!
@@ -9,12 +9,18 @@
 //! closure (ADR-003). The closure is called exactly once per invocation with all
 //! distinct entry IDs collected from query_log + injection_log.
 //!
+//! crt-049 adds explicit read signal: extract_explicit_read_ids filters the attributed
+//! observation slice for context_get and single-ID context_lookup PreToolUse events.
+//! explicit_read_count and explicit_read_by_category are derived from the pre-fetched
+//! explicit_read_meta map. total_served is redefined as |explicit_reads ∪ injections|.
+//!
 //! Lives server-side per ADR-001: requires multi-table Store joins that
 //! would bloat the ObservationSource trait for a single consumer.
 
 use std::collections::{HashMap, HashSet};
 
-use unimatrix_observe::{EntryRef, FeatureKnowledgeReuse};
+use unimatrix_core::observation::ObservationRecord;
+use unimatrix_observe::{EntryRef, FeatureKnowledgeReuse, normalize_tool_name};
 use unimatrix_store::InjectionLogRecord;
 use unimatrix_store::QueryLogRecord;
 
@@ -61,6 +67,63 @@ fn compute_gaps(
     gaps
 }
 
+/// Extract the set of distinct entry IDs explicitly read by agents during a cycle.
+///
+/// Filters `attributed` for `PreToolUse` events where the normalized tool name is
+/// `"context_get"` or `"context_lookup"` and the input contains a parseable `id` field.
+///
+/// Two-branch input parse (ADR-001 correction): hook-listener path delivers
+/// `input` as `Value::String(raw_json)`, not `Value::Object`. Direct MCP calls
+/// deliver `Value::Object`. Both branches are handled here; any other form is skipped.
+///
+/// Both integer-form (`{"id": 42}`) and string-form (`{"id": "42"}`) IDs are accepted
+/// (AC-16 GATE). Filter-based `context_lookup` calls (no `id` field) are excluded
+/// naturally because `obj["id"]` returns `Value::Null` for missing fields.
+pub(crate) fn extract_explicit_read_ids(attributed: &[ObservationRecord]) -> HashSet<u64> {
+    let mut result: HashSet<u64> = HashSet::new();
+
+    for record in attributed {
+        // Condition 1: must be a PreToolUse event
+        if record.event_type != "PreToolUse" {
+            continue;
+        }
+
+        // Condition 2: normalized tool name must be "context_get" or "context_lookup"
+        let raw_tool = record.tool.as_deref().unwrap_or("");
+        let normalized = normalize_tool_name(raw_tool);
+        if normalized != "context_get" && normalized != "context_lookup" {
+            continue;
+        }
+
+        // Condition 3+4: parse input into a JSON object via two-branch parse.
+        // Hook listener path: Some(Value::String(raw_json)) — must call from_str.
+        // Direct MCP path: Some(Value::Object(_)) — use as-is.
+        let obj: Option<serde_json::Value> = match &record.input {
+            Some(serde_json::Value::Object(_)) => record.input.clone(),
+            Some(serde_json::Value::String(s)) => serde_json::from_str(s).ok(),
+            _ => None,
+        };
+
+        let obj = match obj {
+            Some(v) => v,
+            None => continue,
+        };
+
+        // Condition 5: extract id as u64.
+        // Try integer form first: {"id": 42}
+        // Fall back to string form: {"id": "42"}
+        let id_val = &obj["id"];
+        if let Some(n) = id_val
+            .as_u64()
+            .or_else(|| id_val.as_str().and_then(|s| s.parse::<u64>().ok()))
+        {
+            result.insert(n);
+        }
+    }
+
+    result
+}
+
 /// Compute feature-scoped knowledge delivery and cross-session reuse.
 ///
 /// `delivery_count` counts ALL distinct entries delivered to agents across
@@ -85,6 +148,8 @@ pub fn compute_knowledge_reuse<F, G>(
     current_feature_cycle: &str,
     entry_category_lookup: F,
     entry_meta_lookup: G,
+    explicit_read_ids: &HashSet<u64>,
+    explicit_read_meta: &HashMap<u64, EntryMeta>,
 ) -> FeatureKnowledgeReuse
 where
     F: Fn(u64) -> Option<String>,
@@ -109,11 +174,16 @@ where
             .insert(record.entry_id);
     }
 
-    // Step 3: Check if any referenced entries exist
-    let has_any_refs = !query_log_entry_ids.is_empty() || !injection_entry_ids.is_empty();
+    // Step 3: Check if any referenced entries exist from any source
+    // (query_log, injection_log, or explicit reads via context_get/context_lookup).
+    let has_any_refs = !query_log_entry_ids.is_empty()
+        || !injection_entry_ids.is_empty()
+        || !explicit_read_ids.is_empty();
     if !has_any_refs {
         return FeatureKnowledgeReuse {
-            delivery_count: 0,
+            search_exposure_count: 0,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 0,
             by_category: HashMap::new(),
             category_gaps: compute_gaps(active_category_counts, &HashSet::new()),
@@ -157,10 +227,14 @@ where
         .map(|(&entry_id, _)| entry_id)
         .collect();
 
-    if all_entry_ids.is_empty() {
+    // Only trigger this early return if BOTH the query/injection ID set AND explicit reads
+    // are empty. If explicit reads exist, we must continue to compute their metrics.
+    if all_entry_ids.is_empty() && explicit_read_ids.is_empty() {
         // entry_meta_lookup is NOT called when ID set is empty (ADR-003)
         return FeatureKnowledgeReuse {
-            delivery_count: 0,
+            search_exposure_count: 0,
+            explicit_read_count: 0,
+            explicit_read_by_category: HashMap::new(),
             cross_session_count: 0,
             by_category: HashMap::new(),
             category_gaps: compute_gaps(active_category_counts, &HashSet::new()),
@@ -181,7 +255,7 @@ where
         // Entries that fail lookup (deleted) are silently skipped
     }
 
-    let delivery_count = resolved_entries.len() as u64;
+    let search_exposure_count = resolved_entries.len() as u64;
 
     let mut by_category: HashMap<String, u64> = HashMap::new();
     for category in resolved_entries.values() {
@@ -226,13 +300,36 @@ where
             },
             None => {
                 // Entry absent from meta_map (quarantined/deleted after being served).
-                // Excluded from both buckets; cross + intra <= delivery_count (R-04).
+                // Excluded from both buckets; cross + intra <= search_exposure_count (R-04).
             }
         }
     }
 
-    // Step 7c: total_served — same value as delivery_count, distinct semantic name.
-    let total_served = delivery_count;
+    // Step 8: Compute explicit_read_count from the full (uncapped) explicit_read_ids set.
+    // The cap (500) was applied to lookup_ids in tools.rs, not to explicit_read_ids.
+    // explicit_read_count therefore always reflects the true distinct count.
+    let explicit_read_count: u64 = explicit_read_ids.len() as u64;
+
+    // Step 9: Compute explicit_read_by_category from explicit_read_meta.
+    // Tally category strings for IDs present in explicit_read_meta.
+    // IDs absent from meta (deleted/quarantined entries, or capped above 500) are silently
+    // skipped — explicit_read_count remains accurate, category map may be partial.
+    let mut explicit_read_by_category: HashMap<String, u64> = HashMap::new();
+    for id in explicit_read_ids {
+        if let Some(meta) = explicit_read_meta.get(id) {
+            *explicit_read_by_category
+                .entry(meta.category.clone())
+                .or_insert(0) += 1;
+        }
+    }
+
+    // Step 10: Compute total_served — redefined as |explicit_reads ∪ injection_ids| (ADR-003).
+    // Search exposures (query_log) are intentionally excluded: appearing in results ≠ consumed.
+    let all_injection_ids: HashSet<u64> = injection_entry_ids
+        .values()
+        .flat_map(|set| set.iter().copied())
+        .collect();
+    let total_served: u64 = explicit_read_ids.union(&all_injection_ids).count() as u64;
 
     // Step 7d: Top cross-feature entries by serve_count (top 5, sorted descending).
     // serve_count = number of distinct sessions the entry appeared in.
@@ -272,7 +369,9 @@ where
     let top_cross_feature_entries = cross_feature_candidates;
 
     FeatureKnowledgeReuse {
-        delivery_count,
+        search_exposure_count,
+        explicit_read_count,
+        explicit_read_by_category,
         cross_session_count,
         by_category,
         category_gaps,
@@ -375,9 +474,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
         assert_eq!(result.by_category.get("convention"), Some(&1));
     }
@@ -397,9 +498,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -419,10 +522,12 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         // Delivered to 1 session, but NOT cross-session
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -441,10 +546,12 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         // Deduplicated: 1 entry, not 2
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -463,10 +570,12 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         // Still just 1 distinct entry
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -496,9 +605,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 3);
+        assert_eq!(result.search_exposure_count, 3);
         assert_eq!(result.cross_session_count, 3);
         assert_eq!(result.by_category.get("convention"), Some(&2));
         assert_eq!(result.by_category.get("pattern"), Some(&1));
@@ -527,9 +638,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
         assert_eq!(result.category_gaps.len(), 2);
         assert!(result.category_gaps.contains(&"pattern".to_string()));
@@ -563,9 +676,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 2);
+        assert_eq!(result.search_exposure_count, 2);
         assert_eq!(result.cross_session_count, 2);
         assert!(result.category_gaps.is_empty());
     }
@@ -586,10 +701,12 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         // No panic, computation completes, zero delivery
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -607,9 +724,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -627,9 +746,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -654,10 +775,12 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         // 2 distinct entries, not 4+2
-        assert_eq!(result.delivery_count, 2);
+        assert_eq!(result.search_exposure_count, 2);
         assert_eq!(result.cross_session_count, 2);
     }
 
@@ -678,9 +801,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -699,9 +824,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
     }
 
@@ -722,9 +849,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
         assert!(result.by_category.is_empty());
         // All active categories should be gaps
@@ -747,10 +876,12 @@ mod tests {
             "test-cycle",
             |_| None, // all lookups fail
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         // Entry skipped, count reduced to 0
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
         assert!(result.by_category.is_empty());
     }
@@ -765,9 +896,11 @@ mod tests {
             "test-cycle",
             |_| None,
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_session_count, 0);
         assert!(result.by_category.is_empty());
         assert!(result.category_gaps.is_empty());
@@ -796,9 +929,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 3);
+        assert_eq!(result.search_exposure_count, 3);
         assert_eq!(result.cross_session_count, 0);
         assert_eq!(result.by_category.get("convention"), Some(&2));
         assert_eq!(result.by_category.get("pattern"), Some(&1));
@@ -828,11 +963,13 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 3);
+        assert_eq!(result.search_exposure_count, 3);
         assert_eq!(result.cross_session_count, 1); // only E10
-        assert!(result.delivery_count > result.cross_session_count);
+        assert!(result.search_exposure_count > result.cross_session_count);
     }
 
     #[test]
@@ -859,9 +996,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 2);
+        assert_eq!(result.search_exposure_count, 2);
         assert_eq!(result.cross_session_count, 0);
         assert_eq!(result.by_category.len(), 2);
         assert_eq!(result.by_category.get("convention"), Some(&1));
@@ -892,6 +1031,8 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         // Convention has delivery even in single session, so NOT a gap
@@ -915,9 +1056,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 1); // deduplicated
+        assert_eq!(result.search_exposure_count, 1); // deduplicated
         assert_eq!(result.cross_session_count, 0);
     }
 
@@ -1007,9 +1150,11 @@ mod tests {
             "test-cycle",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.delivery_count, 1);
+        assert_eq!(result.search_exposure_count, 1);
         assert_eq!(result.cross_session_count, 1);
         assert_eq!(result.by_category.get("convention"), Some(&1));
     }
@@ -1038,11 +1183,16 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        // 2 distinct IDs: 10 and 20
-        assert_eq!(result.total_served, 2);
-        assert_eq!(result.total_served, result.delivery_count);
+        // search_exposure_count = 2 distinct IDs in query_log (10 and 20)
+        assert_eq!(result.search_exposure_count, 2);
+        // total_served = |explicit_reads ∪ injections| = |{} ∪ {}| = 0
+        // search exposures are NOT included in total_served (crt-049 redefinition)
+        assert_eq!(result.total_served, 0);
+        assert_eq!(result.explicit_read_count, 0);
     }
 
     #[test]
@@ -1079,13 +1229,15 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             meta_lookup_from(meta),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         assert_eq!(result.cross_feature_reuse, 2);
         assert_eq!(result.intra_cycle_reuse, 2);
         assert_eq!(
             result.cross_feature_reuse + result.intra_cycle_reuse,
-            result.delivery_count
+            result.search_exposure_count
         );
     }
 
@@ -1124,6 +1276,8 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             meta_lookup,
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         assert_eq!(
@@ -1140,10 +1294,18 @@ mod tests {
             panic!("entry_meta_lookup must not be called when ID set is empty")
         };
 
-        let result =
-            compute_knowledge_reuse(&[], &[], &HashMap::new(), "col-026", |_| None, panic_lookup);
+        let result = compute_knowledge_reuse(
+            &[],
+            &[],
+            &HashMap::new(),
+            "col-026",
+            |_| None,
+            panic_lookup,
+            &HashSet::new(),
+            &HashMap::new(),
+        );
 
-        assert_eq!(result.delivery_count, 0);
+        assert_eq!(result.search_exposure_count, 0);
         assert_eq!(result.cross_feature_reuse, 0);
     }
 
@@ -1196,6 +1358,8 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             meta_lookup_from(meta),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         assert_eq!(result.top_cross_feature_entries.len(), 5, "capped at 5");
@@ -1243,12 +1407,16 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             meta_lookup_from(meta),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         // No panic
-        assert_eq!(result.delivery_count, 5);
+        assert_eq!(result.search_exposure_count, 5);
         // cross + intra <= delivery_count (IDs 40, 50 excluded from both buckets)
-        assert!(result.cross_feature_reuse + result.intra_cycle_reuse <= result.delivery_count);
+        assert!(
+            result.cross_feature_reuse + result.intra_cycle_reuse <= result.search_exposure_count
+        );
         assert_eq!(result.cross_feature_reuse, 2); // IDs 10, 20 from "prior"
         assert_eq!(result.intra_cycle_reuse, 1); // ID 30 from "col-026"
     }
@@ -1276,13 +1444,15 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         assert_eq!(result.cross_feature_reuse, 0);
         assert_eq!(result.intra_cycle_reuse, 0);
         assert!(result.top_cross_feature_entries.is_empty());
         // No panic; delivery_count unchanged
-        assert_eq!(result.delivery_count, 2);
+        assert_eq!(result.search_exposure_count, 2);
     }
 
     #[test]
@@ -1315,10 +1485,12 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             meta_lookup_from(meta),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         assert_eq!(result.intra_cycle_reuse, 0);
-        assert_eq!(result.cross_feature_reuse, result.delivery_count);
+        assert_eq!(result.cross_feature_reuse, result.search_exposure_count);
     }
 
     #[test]
@@ -1351,10 +1523,12 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             meta_lookup_from(meta),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         assert_eq!(result.cross_feature_reuse, 0);
-        assert_eq!(result.intra_cycle_reuse, result.delivery_count);
+        assert_eq!(result.intra_cycle_reuse, result.search_exposure_count);
         assert!(result.top_cross_feature_entries.is_empty());
     }
 
@@ -1388,6 +1562,8 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             meta_lookup_from(meta),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         assert_eq!(result.top_cross_feature_entries.len(), 2);
@@ -1413,14 +1589,17 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             meta_lookup_from(meta),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
         assert!(result.top_cross_feature_entries.is_empty());
     }
 
     #[test]
-    fn test_total_served_equals_delivery_count() {
-        // total_served and delivery_count must be identical.
+    fn test_total_served_injection_only_no_explicit_reads() {
+        // total_served = |explicit_reads ∪ injections| when no explicit reads.
+        // crt-049: total_served no longer equals search_exposure_count.
         let query_logs = vec![
             make_query_log("s1", "[10, 20, 30]"),
             make_query_log("s2", "[10, 20]"),
@@ -1443,9 +1622,15 @@ mod tests {
             "col-026",
             category_lookup(&cats),
             empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
         );
 
-        assert_eq!(result.total_served, result.delivery_count);
+        // search_exposure_count = 4 (IDs 10, 20, 30, 40 from query_log + injection_log via category lookup)
+        // total_served = |{} ∪ {40}| = 1 (only the injected entry; search exposures excluded)
+        assert_eq!(result.total_served, 1);
+        assert_eq!(result.search_exposure_count, 4);
+        assert_eq!(result.explicit_read_count, 0);
     }
 
     #[test]
@@ -1460,5 +1645,413 @@ mod tests {
         assert_eq!(reuse.total_served, 0);
         assert_eq!(reuse.total_stored, 0);
         assert!(reuse.top_cross_feature_entries.is_empty());
+    }
+
+    // ── extract_explicit_read_ids tests (crt-049) ────────────────────────────
+
+    /// Build a synthetic ObservationRecord for tests.
+    fn make_obs(
+        event_type: &str,
+        tool: Option<&str>,
+        input: Option<serde_json::Value>,
+    ) -> ObservationRecord {
+        ObservationRecord {
+            ts: 1000,
+            event_type: event_type.to_string(),
+            source_domain: "claude-code".to_string(),
+            session_id: "test-session".to_string(),
+            tool: tool.map(str::to_string),
+            input,
+            response_size: None,
+            response_snippet: None,
+        }
+    }
+
+    /// Build a HashMap<u64, EntryMeta> from (id, category) pairs for tests.
+    fn make_explicit_read_meta(entries: &[(u64, &str)]) -> HashMap<u64, EntryMeta> {
+        entries
+            .iter()
+            .map(|(id, cat)| {
+                (
+                    *id,
+                    EntryMeta {
+                        title: format!("Entry {id}"),
+                        feature_cycle: Some("test-cycle".to_string()),
+                        category: cat.to_string(),
+                    },
+                )
+            })
+            .collect()
+    }
+
+    // AC-12(a): context_get with integer id — included
+    #[test]
+    fn test_extract_explicit_read_ids_context_get_included() {
+        let obs = make_obs(
+            "PreToolUse",
+            Some("context_get"),
+            Some(serde_json::json!({"id": 42})),
+        );
+        let result = extract_explicit_read_ids(&[obs]);
+        assert!(result.contains(&42u64));
+        assert_eq!(result.len(), 1);
+    }
+
+    // AC-12(b): filter-based context_lookup (no id field) — excluded
+    #[test]
+    fn test_extract_explicit_read_ids_filter_lookup_excluded() {
+        let obs = make_obs(
+            "PreToolUse",
+            Some("context_lookup"),
+            Some(serde_json::json!({"query": "some text"})),
+        );
+        let result = extract_explicit_read_ids(&[obs]);
+        assert!(result.is_empty());
+    }
+
+    // AC-12(b) variant: null id also excluded
+    #[test]
+    fn test_extract_explicit_read_ids_null_id_excluded() {
+        let obs = make_obs(
+            "PreToolUse",
+            Some("context_lookup"),
+            Some(serde_json::json!({"id": null})),
+        );
+        let result = extract_explicit_read_ids(&[obs]);
+        assert!(result.is_empty());
+    }
+
+    // AC-12(c): single-ID context_lookup (with id) — included
+    #[test]
+    fn test_extract_explicit_read_ids_single_id_lookup_included() {
+        let obs = make_obs(
+            "PreToolUse",
+            Some("context_lookup"),
+            Some(serde_json::json!({"id": 99})),
+        );
+        let result = extract_explicit_read_ids(&[obs]);
+        assert!(result.contains(&99u64));
+        assert_eq!(result.len(), 1);
+    }
+
+    // AC-12(d) [GATE]: prefixed tool name normalized correctly
+    #[test]
+    fn test_extract_explicit_read_ids_prefixed_context_get_matched() {
+        let raw = r#"{"id": 7}"#.to_string();
+        let obs = make_obs(
+            "PreToolUse",
+            Some("mcp__unimatrix__context_get"),
+            Some(serde_json::Value::String(raw)),
+        );
+        let result = extract_explicit_read_ids(&[obs]);
+        assert!(result.contains(&7u64));
+        assert_eq!(result.len(), 1);
+    }
+
+    // AC-12(d) variant: prefixed context_lookup also matched
+    #[test]
+    fn test_extract_explicit_read_ids_prefixed_context_lookup_matched() {
+        let raw = r#"{"id": 8}"#.to_string();
+        let obs = make_obs(
+            "PreToolUse",
+            Some("mcp__unimatrix__context_lookup"),
+            Some(serde_json::Value::String(raw)),
+        );
+        let result = extract_explicit_read_ids(&[obs]);
+        assert!(result.contains(&8u64));
+        assert_eq!(result.len(), 1);
+    }
+
+    // AC-12(e): empty slice returns empty set
+    #[test]
+    fn test_extract_explicit_read_ids_empty_slice_returns_empty() {
+        let result = extract_explicit_read_ids(&[]);
+        assert!(result.is_empty());
+    }
+
+    // AC-16 [GATE]: string-form ID {"id": "42"} handled correctly
+    #[test]
+    fn test_extract_explicit_read_ids_string_form_id_handled() {
+        let obs_int = make_obs(
+            "PreToolUse",
+            Some("context_get"),
+            Some(serde_json::json!({"id": 42})),
+        );
+        let obs_str = make_obs(
+            "PreToolUse",
+            Some("context_get"),
+            Some(serde_json::json!({"id": "99"})),
+        );
+        let result = extract_explicit_read_ids(&[obs_int, obs_str]);
+        assert!(result.contains(&42u64));
+        assert!(result.contains(&99u64));
+        assert_eq!(result.len(), 2);
+    }
+
+    // AC-04: non-PreToolUse events excluded
+    #[test]
+    fn test_extract_explicit_read_ids_non_pretooluse_excluded() {
+        let post = make_obs(
+            "PostToolUse",
+            Some("context_get"),
+            Some(serde_json::json!({"id": 5})),
+        );
+        let pre = make_obs(
+            "PreToolUse",
+            Some("context_get"),
+            Some(serde_json::json!({"id": 6})),
+        );
+        let result = extract_explicit_read_ids(&[post, pre]);
+        assert!(result.contains(&6u64));
+        assert_eq!(result.len(), 1);
+    }
+
+    // AC-03: context_search excluded even if input has "id"
+    #[test]
+    fn test_extract_explicit_read_ids_search_tool_excluded() {
+        let obs1 = make_obs(
+            "PreToolUse",
+            Some("context_search"),
+            Some(serde_json::json!({"id": 5})),
+        );
+        let obs2 = make_obs(
+            "PreToolUse",
+            Some("mcp__unimatrix__context_search"),
+            Some(serde_json::json!({"id": 6})),
+        );
+        let result = extract_explicit_read_ids(&[obs1, obs2]);
+        assert!(result.is_empty());
+    }
+
+    // E-02: duplicate calls for same entry deduplicated
+    #[test]
+    fn test_extract_explicit_read_ids_deduplication() {
+        let obs1 = make_obs(
+            "PreToolUse",
+            Some("context_get"),
+            Some(serde_json::json!({"id": 42})),
+        );
+        let obs2 = make_obs(
+            "PreToolUse",
+            Some("context_get"),
+            Some(serde_json::json!({"id": 42})),
+        );
+        let result = extract_explicit_read_ids(&[obs1, obs2]);
+        assert_eq!(result.len(), 1);
+        assert!(result.contains(&42u64));
+    }
+
+    // I-04: None tool field skipped without panic
+    #[test]
+    fn test_extract_explicit_read_ids_none_tool_skipped() {
+        let obs = make_obs("PreToolUse", None, Some(serde_json::json!({"id": 10})));
+        let result = extract_explicit_read_ids(&[obs]);
+        assert!(result.is_empty());
+    }
+
+    // Hook listener path: input as Value::String (not Value::Object)
+    #[test]
+    fn test_extract_explicit_read_ids_hook_path_string_input() {
+        let raw = r#"{"id": 55}"#.to_string();
+        let obs = make_obs(
+            "PreToolUse",
+            Some("mcp__unimatrix__context_get"),
+            Some(serde_json::Value::String(raw)),
+        );
+        let result = extract_explicit_read_ids(&[obs]);
+        assert!(result.contains(&55u64));
+        assert_eq!(result.len(), 1);
+    }
+
+    // ── compute_knowledge_reuse new field tests (crt-049) ────────────────────
+
+    // AC-13 [GATE]: explicit_read_by_category populated correctly
+    #[test]
+    fn test_compute_knowledge_reuse_explicit_read_by_category_populated() {
+        let explicit_read_ids: HashSet<u64> = [10u64, 11u64, 12u64].into_iter().collect();
+        let explicit_read_meta =
+            make_explicit_read_meta(&[(10, "decision"), (11, "decision"), (12, "pattern")]);
+
+        let result = compute_knowledge_reuse(
+            &[],
+            &[],
+            &HashMap::new(),
+            "test-cycle",
+            |_| None,
+            empty_meta_lookup(),
+            &explicit_read_ids,
+            &explicit_read_meta,
+        );
+
+        assert_eq!(result.explicit_read_by_category.get("decision"), Some(&2));
+        assert_eq!(result.explicit_read_by_category.get("pattern"), Some(&1));
+        assert_eq!(result.explicit_read_count, 3);
+    }
+
+    // AC-13 variant: empty explicit_read_ids produces empty by_category map
+    #[test]
+    fn test_compute_knowledge_reuse_explicit_read_by_category_empty_when_no_reads() {
+        let result = compute_knowledge_reuse(
+            &[],
+            &[],
+            &HashMap::new(),
+            "test-cycle",
+            |_| None,
+            empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
+        );
+
+        assert!(result.explicit_read_by_category.is_empty());
+        assert_eq!(result.explicit_read_count, 0);
+    }
+
+    // AC-14 [GATE] + AC-15 [GATE]: total_served = |explicit_reads ∪ injections|,
+    // search exposures excluded
+    #[test]
+    fn test_compute_knowledge_reuse_total_served_union_of_reads_and_injections() {
+        // explicit_reads = {1, 2}, injections = {2, 3}, search exposures = {4, 5, 6}
+        let query_logs = vec![make_query_log("s1", "[4, 5, 6]")];
+        let injection_logs = vec![make_injection_log("s1", 2), make_injection_log("s1", 3)];
+        let explicit_read_ids: HashSet<u64> = [1u64, 2u64].into_iter().collect();
+        let explicit_read_meta = make_explicit_read_meta(&[(1, "decision"), (2, "pattern")]);
+        let cats: HashMap<u64, String> = [
+            (4u64, "decision".to_string()),
+            (5, "decision".to_string()),
+            (6, "decision".to_string()),
+        ]
+        .into_iter()
+        .collect();
+
+        let result = compute_knowledge_reuse(
+            &query_logs,
+            &injection_logs,
+            &HashMap::new(),
+            "test-cycle",
+            category_lookup(&cats),
+            empty_meta_lookup(),
+            &explicit_read_ids,
+            &explicit_read_meta,
+        );
+
+        // |{1,2} ∪ {2,3}| = |{1,2,3}| = 3
+        assert_eq!(result.total_served, 3);
+        // search exposures still counted separately
+        assert_eq!(result.search_exposure_count, 3); // {4,5,6} resolved
+        // total_served must NOT be 6 (would mean search exposures included)
+        assert!(result.total_served < result.search_exposure_count + 4);
+    }
+
+    // AC-15 [GATE]: search-only cycle has total_served == 0
+    #[test]
+    fn test_compute_knowledge_reuse_total_served_excludes_search_exposures() {
+        let query_logs = vec![make_query_log("s1", "[1, 2, 3]")];
+        let cats: HashMap<u64, String> = [
+            (1u64, "decision".to_string()),
+            (2, "decision".to_string()),
+            (3, "pattern".to_string()),
+        ]
+        .into_iter()
+        .collect();
+
+        let result = compute_knowledge_reuse(
+            &query_logs,
+            &[],
+            &HashMap::new(),
+            "test-cycle",
+            category_lookup(&cats),
+            empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
+        );
+
+        assert_eq!(result.total_served, 0);
+        assert_eq!(result.search_exposure_count, 3);
+    }
+
+    // AC-15 [GATE]: overlapping explicit read and injection deduplicated
+    #[test]
+    fn test_compute_knowledge_reuse_total_served_deduplication_overlap() {
+        let explicit_read_ids: HashSet<u64> = [1u64].into_iter().collect();
+        let injection_logs = vec![make_injection_log("s1", 1)];
+        let explicit_read_meta = make_explicit_read_meta(&[(1, "decision")]);
+
+        let result = compute_knowledge_reuse(
+            &[],
+            &injection_logs,
+            &HashMap::new(),
+            "test-cycle",
+            |_| None,
+            empty_meta_lookup(),
+            &explicit_read_ids,
+            &explicit_read_meta,
+        );
+
+        assert_eq!(result.total_served, 1); // not 2
+    }
+
+    // Disjoint explicit reads and injections
+    #[test]
+    fn test_compute_knowledge_reuse_total_served_disjoint_sets() {
+        let explicit_read_ids: HashSet<u64> = [1u64, 2u64].into_iter().collect();
+        let injection_logs = vec![make_injection_log("s1", 3)];
+        let explicit_read_meta = make_explicit_read_meta(&[(1, "decision"), (2, "pattern")]);
+
+        let result = compute_knowledge_reuse(
+            &[],
+            &injection_logs,
+            &HashMap::new(),
+            "test-cycle",
+            |_| None,
+            empty_meta_lookup(),
+            &explicit_read_ids,
+            &explicit_read_meta,
+        );
+
+        assert_eq!(result.total_served, 3);
+    }
+
+    // AC-09: explicit-read-only cycle does not trigger early-return
+    #[test]
+    fn test_compute_knowledge_reuse_no_early_return_for_explicit_read_only_cycle() {
+        let explicit_read_ids: HashSet<u64> = [5u64].into_iter().collect();
+        let explicit_read_meta = make_explicit_read_meta(&[(5, "pattern")]);
+
+        let result = compute_knowledge_reuse(
+            &[],
+            &[],
+            &HashMap::new(),
+            "test-cycle",
+            |_| None,
+            empty_meta_lookup(),
+            &explicit_read_ids,
+            &explicit_read_meta,
+        );
+
+        assert_eq!(result.explicit_read_count, 1);
+        assert_eq!(result.explicit_read_by_category.get("pattern"), Some(&1));
+        assert_eq!(result.total_served, 1);
+        assert_eq!(result.search_exposure_count, 0);
+    }
+
+    // AC-17 (partial): injection-only cycle has non-zero total_served
+    #[test]
+    fn test_compute_knowledge_reuse_injection_only_cycle_has_nonzero_total_served() {
+        let injection_logs = vec![make_injection_log("s1", 7), make_injection_log("s1", 8)];
+
+        let result = compute_knowledge_reuse(
+            &[],
+            &injection_logs,
+            &HashMap::new(),
+            "test-cycle",
+            |_| None,
+            empty_meta_lookup(),
+            &HashSet::new(),
+            &HashMap::new(),
+        );
+
+        assert_eq!(result.total_served, 2);
+        assert_eq!(result.search_exposure_count, 0);
+        assert_eq!(result.explicit_read_count, 0);
     }
 }

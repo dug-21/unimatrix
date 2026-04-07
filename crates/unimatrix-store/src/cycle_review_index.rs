@@ -30,7 +30,9 @@ use crate::error::{Result, StoreError};
 ///   - Do NOT bump for threshold-only changes that leave stored results valid.
 ///   - crt-047: bumped 1 → 2 to trigger stale-record advisory for all rows
 ///     written before curation health columns were added.
-pub const SUMMARY_SCHEMA_VERSION: u32 = 2;
+///   - crt-049: bumped 2 → 3; adding explicit_read_count, explicit_read_by_category,
+///     and redefining total_served (search exposures no longer contribute).
+pub const SUMMARY_SCHEMA_VERSION: u32 = 3;
 
 /// 4MB ceiling for stored `summary_json` (NFR-03).
 const SUMMARY_JSON_MAX_BYTES: usize = 4 * 1024 * 1024;
@@ -431,14 +433,16 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
-    // CRS-V24-U-01 (replaces CRS-U-02): SUMMARY_SCHEMA_VERSION is 2
+    // CRS-V24-U-01 (replaces CRS-U-02): SUMMARY_SCHEMA_VERSION is 3
     // -----------------------------------------------------------------------
 
     #[test]
-    fn test_summary_schema_version_is_two() {
+    fn test_summary_schema_version_is_three() {
         assert_eq!(
-            SUMMARY_SCHEMA_VERSION, 2u32,
-            "SUMMARY_SCHEMA_VERSION must be 2 (bumped in crt-047)"
+            SUMMARY_SCHEMA_VERSION, 3u32,
+            "SUMMARY_SCHEMA_VERSION must be 3 (bumped in crt-049: \
+             added explicit_read_count, explicit_read_by_category, \
+             redefined total_served)"
         );
     }
 
