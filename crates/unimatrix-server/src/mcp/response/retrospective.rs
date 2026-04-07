@@ -1001,7 +1001,7 @@ fn render_knowledge_reuse(reuse: &FeatureKnowledgeReuse, feature_cycle: &str) ->
     // Summary line (FR-13)
     let _ = writeln!(
         out,
-        "**Total served**: {}  |  **Stored this cycle**: {}",
+        "**Distinct entries served**: {}  |  **Stored this cycle**: {}",
         reuse.delivery_count, reuse.total_stored
     );
     out.push('\n');
@@ -2201,8 +2201,8 @@ mod tests {
             top_cross_feature_entries: vec![],
         };
         let out = render_knowledge_reuse(&reuse, "test-001");
-        // New format: Total served / Stored this cycle
-        assert!(out.contains("**Total served**: 15"));
+        // New format: Distinct entries served / Stored this cycle
+        assert!(out.contains("**Distinct entries served**: 15"));
         assert!(out.contains("**Stored this cycle**: 5"));
         // category_gaps NOT rendered (AC-12)
         assert!(!out.contains("Gaps:"));
@@ -3384,7 +3384,7 @@ mod tests {
             }],
         });
         let text = extract_text(&format_retrospective_markdown(&report));
-        assert!(text.contains("**Total served**: 10"));
+        assert!(text.contains("**Distinct entries served**: 10"));
         assert!(text.contains("**Stored this cycle**: 3"));
         assert!(text.contains("Cross-feature (prior cycles)"));
         assert!(text.contains("6"));

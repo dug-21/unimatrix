@@ -27,7 +27,9 @@ pub use error::{ObserveError, Result};
 pub use metrics::compute_metric_vector;
 pub use phase_narrative::build_phase_narrative;
 pub use report::{build_report, recommendations_for_hotspots};
-pub use session_metrics::{compute_context_reload_pct, compute_session_summaries};
+pub use session_metrics::{
+    compute_context_reload_pct, compute_session_summaries, normalize_tool_name,
+};
 pub use source::ObservationSource;
 pub use synthesis::synthesize_narratives;
 pub use types::{

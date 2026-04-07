@@ -3921,7 +3921,7 @@ mod tests_crt047 {
 
     #[test]
     fn coherence_by_source_uses_three_dim_lambda() {
-        use crate::infra::coherence::{compute_lambda, DEFAULT_WEIGHTS};
+        use crate::infra::coherence::{DEFAULT_WEIGHTS, compute_lambda};
 
         // Source A: strong graph (0.9), weak contradiction (0.3), embedding absent.
         // With DEFAULT_WEIGHTS (graph=0.46, contradiction=0.31, embedding=0.23),

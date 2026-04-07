@@ -1448,7 +1448,7 @@ mod tests {
             supports_edge_count: 0,
             mean_entry_degree: 0.0,
             inferred_edge_count: 0,
-            category_lifecycle: Vec::new(), // crt-031
+            category_lifecycle: Vec::new(),    // crt-031
             pending_cycle_reviews: Vec::new(), // crt-033
             curation_health: None,             // crt-047
         }
