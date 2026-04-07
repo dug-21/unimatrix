@@ -2720,11 +2720,22 @@ fn check_stored_review(
     current_version: u32,
 ) -> Result<(unimatrix_observe::RetrospectiveReport, Option<String>), serde_json::Error> {
     let advisory = if record.schema_version != current_version {
+        let context = match record.schema_version {
+            2 => " (schema_version 2 predates the explicit read signal and total_served \
+                  redefinition — search exposures no longer contribute to total_served)"
+                .to_string(),
+            v if v < 2 => format!(
+                " (schema_version {} predates curation health metrics and the explicit read signal)",
+                v
+            ),
+            v => format!(
+                " (schema_version {} is newer than current version {}; downgrade not supported)",
+                v, current_version
+            ),
+        };
         Some(format!(
-            "Stored review has schema_version {} (current: {}). \
-             schema_version 2 predates the explicit read signal and total_served redefinition \
-             (search exposures no longer contribute to total_served); use force=true to recompute.",
-            record.schema_version, current_version
+            "Stored review has schema_version {} (current: {}).{} use force=true to recompute.",
+            record.schema_version, current_version, context
         ))
     } else {
         None
