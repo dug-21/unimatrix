@@ -619,7 +619,7 @@ async fn run_single_tick(
     // The search path sees use_fallback=false on the next query after this tick.
     {
         let store_clone = Arc::clone(store);
-        let lookback_days = inference_config.query_log_lookback_days;
+        let lookback_days = inference_config.phase_freq_lookback_days;
 
         match tokio::time::timeout(
             TICK_TIMEOUT,

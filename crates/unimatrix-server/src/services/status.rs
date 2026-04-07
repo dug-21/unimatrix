@@ -1399,12 +1399,12 @@ impl StatusService {
             };
 
             // PhaseFreqTable alignment guard (FR-10, ADR-003): advisory only — does not block GC.
-            // Emits tracing::warn! if query_log_lookback_days implies a window older than the
+            // Emits tracing::warn! if phase_freq_lookback_days implies a window older than the
             // oldest retained cycle's computed_at. Skipped when oldest_retained is None
             // (fewer than K cycles reviewed; no pruning has occurred, no gap is possible).
             run_phase_freq_table_alignment_check(
                 &oldest_retained_computed_at,
-                inference_config.query_log_lookback_days,
+                inference_config.phase_freq_lookback_days,
                 retention_config.activity_detail_retention_cycles,
             );
 

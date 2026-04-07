@@ -116,7 +116,7 @@ impl PhaseFreqTable {
     /// `tracing::error!` (retain-on-error semantics, R-09).
     pub async fn rebuild(store: &Store, lookback_days: u32) -> Result<Self, StoreError> {
         // Step 1: query store
-        let rows: Vec<PhaseFreqRow> = store.query_phase_freq_table(lookback_days).await?;
+        let rows: Vec<PhaseFreqRow> = store.query_phase_freq_observations(lookback_days).await?;
 
         // Step 2: empty result -> cold-start table
         if rows.is_empty() {
