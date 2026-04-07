@@ -2,9 +2,13 @@
 //! frequency data.
 //!
 //! Rebuilt each background tick by `PhaseFreqTable::rebuild()` from the
-//! `query_log` table. The search hot path acquires a short read lock,
-//! extracts a snapshot, and releases before scoring — it never rebuilds
-//! per query.
+//! `observations` table (explicit agent reads via `context_get` /
+//! `context_lookup` `PreToolUse` events) with outcome weighting applied from
+//! `cycle_events`. Replaces the former `query_log` search-exposure source
+//! (crt-050 ADR-001).
+//!
+//! The search hot path acquires a short read lock, extracts a snapshot, and
+//! releases before scoring — it never rebuilds per query.
 //!
 //! Cold-start: empty table, `use_fallback = true` until first successful tick.
 //!
@@ -28,6 +32,11 @@ use unimatrix_store::StoreError;
 // PhaseFreqRow is declared in unimatrix-store/src/query_log.rs and re-exported
 // from the crate root.
 use unimatrix_store::PhaseFreqRow;
+
+// PhaseOutcomeRow is re-exported from the store crate root with #[doc(hidden)]
+// to keep it an implementation detail while allowing cross-crate passing
+// (Option A from pseudocode visibility note — weighting logic stays in server).
+use unimatrix_store::PhaseOutcomeRow;
 
 // ---------------------------------------------------------------------------
 // PhaseFreqTable
@@ -97,47 +106,84 @@ impl PhaseFreqTable {
         Arc::new(RwLock::new(PhaseFreqTable::new()))
     }
 
-    /// Rebuild `PhaseFreqTable` from the store.
+    /// Rebuild `PhaseFreqTable` from explicit-read observations with outcome weighting.
     ///
-    /// Steps:
-    /// 1. Call `store.query_phase_freq_table(lookback_days)` → `Vec<PhaseFreqRow>`.
-    /// 2. If result is empty, return `Ok(PhaseFreqTable { use_fallback: true, table: empty })`.
-    /// 3. Group rows by `(phase, category)` key.
-    /// 4. Within each group, the rows are already sorted by `freq DESC` (SQL ORDER BY).
-    ///    Apply rank-based normalization: for rank `1..=N` (1-indexed):
-    ///      `score = 1.0 - ((rank - 1) as f32 / N as f32)`
-    ///    - Rank 1 (most frequent): score = `1.0`
-    ///    - Rank N (least frequent): score = `(N-1)/N`
-    ///    - N=1 (single entry): score = `1.0` (NOT `1 - 1/1 = 0.0` — use the `(rank-1)/N` form)
-    /// 5. Store computed `(entry_id, score)` pairs per bucket in descending-score order.
-    /// 6. Return `Ok(PhaseFreqTable { table, use_fallback: false })`.
+    /// Two-query path (crt-050 ADR-001):
     ///
-    /// On store error: return `Err(e)`. Caller retains existing state and emits
-    /// `tracing::error!` (retain-on-error semantics, R-09).
-    pub async fn rebuild(store: &Store, lookback_days: u32) -> Result<Self, StoreError> {
-        // Step 1: query store
-        let rows: Vec<PhaseFreqRow> = store.query_phase_freq_observations(lookback_days).await?;
+    /// **Query A** — `store.query_phase_freq_observations(lookback_days)`:
+    ///   Aggregates `(phase, category, entry_id, freq)` from deliberate agent reads
+    ///   (`context_get` / `context_lookup` `PreToolUse` events) in `observations`.
+    ///
+    /// **Coverage gate** — `store.count_phase_session_pairs(lookback_days)`:
+    ///   Counts distinct `(phase, session_id)` pairs. If below
+    ///   `min_phase_session_pairs`, returns cold-start table with `use_fallback=true`
+    ///   and emits `tracing::warn!` (AC-14).
+    ///
+    /// **Query B** — `store.query_phase_outcome_map()`:
+    ///   Fetches `(phase, feature_cycle, outcome)` triples from `cycle_events` joined
+    ///   to `sessions`. Error MUST propagate — never silently ignored (constraint C-7).
+    ///
+    /// **Rust post-process** — `apply_outcome_weights(rows_a, rows_b)`:
+    ///   Applies per-phase MEAN outcome weight to each row's `freq` (ADR-001, R-03).
+    ///
+    /// **Rank normalization** (unchanged col-031 ADR-001 formula):
+    ///   Groups by `(phase, category)`, applies `score = 1.0 - ((rank-1)/N)` per bucket.
+    ///
+    /// On store error: return `Err(e)`. Caller retains existing state (retain-on-error, R-09).
+    pub async fn rebuild(
+        store: &Store,
+        lookback_days: u32,
+        min_phase_session_pairs: u32,
+    ) -> Result<Self, StoreError> {
+        // Step 1: Query A — explicit-read aggregates from observations
+        let rows_a: Vec<PhaseFreqRow> = store.query_phase_freq_observations(lookback_days).await?;
 
-        // Step 2: empty result -> cold-start table
-        if rows.is_empty() {
+        // Step 2: Empty result → cold-start table (unchanged behavior)
+        if rows_a.is_empty() {
             return Ok(PhaseFreqTable {
                 table: HashMap::new(),
                 use_fallback: true,
             });
         }
 
-        // Step 3: group rows by (phase, category).
+        // Step 3: Coverage gate — count distinct (phase, session_id) pairs.
+        // rows_a does not carry session_id (aggregated away by GROUP BY), so a
+        // separate COUNT query is required (pseudocode Option a).
+        let coverage_count: i64 = store.count_phase_session_pairs(lookback_days).await?;
+        if coverage_count < min_phase_session_pairs as i64 {
+            tracing::warn!(
+                coverage_count = coverage_count,
+                threshold = min_phase_session_pairs,
+                "PhaseFreqTable: distinct (phase, session_id) pairs ({}) below minimum \
+                 threshold ({}); falling back to neutral scoring",
+                coverage_count,
+                min_phase_session_pairs,
+            );
+            return Ok(PhaseFreqTable {
+                table: HashMap::new(),
+                use_fallback: true,
+            });
+        }
+
+        // Step 4: Query B — outcome map from cycle_events + sessions.
+        // ERROR MUST PROPAGATE — do not catch and return empty (constraint C-7).
+        let rows_b: Vec<PhaseOutcomeRow> = store.query_phase_outcome_map().await?;
+
+        // Step 5: Apply per-phase mean outcome weights (Rust post-process, ADR-001)
+        let weighted_rows = apply_outcome_weights(rows_a, rows_b);
+
+        // Step 6: Group rows by (phase, category).
         // Rows are pre-sorted by (phase, category, freq DESC) from SQL ORDER BY.
         // We accumulate into a HashMap, preserving the SQL sort order within each group.
         let mut grouped: HashMap<(String, String), Vec<PhaseFreqRow>> = HashMap::new();
-        for row in rows {
+        for row in weighted_rows {
             grouped
                 .entry((row.phase.clone(), row.category.clone()))
                 .or_default()
                 .push(row);
         }
 
-        // Step 4+5: rank-normalize each bucket.
+        // Step 7: Rank-normalize each bucket (unchanged col-031 ADR-001 formula).
         let mut table: HashMap<(String, String), Vec<(u64, f32)>> =
             HashMap::with_capacity(grouped.len());
 
@@ -162,11 +208,51 @@ impl PhaseFreqTable {
             table.insert(key, bucket);
         }
 
-        // Step 6: return populated table
+        // Step 8: Return populated table
         Ok(PhaseFreqTable {
             table,
             use_fallback: false,
         })
+    }
+
+    /// Return a learned `(phase, category)` weight map for W3-1 GNN cold-start.
+    ///
+    /// Weight = fraction of total explicit-read entries for the phase attributable
+    /// to the category. Formula: `bucket.len() / total_entries_for_phase` — this is
+    /// categorical **breadth** (distinct entries accessed per category), NOT categorical
+    /// depth (how often entries were accessed). The distribution sums to 1.0 per phase
+    /// (up to f32 rounding) — ADR-008 constraint #9.
+    ///
+    /// W3-1 implementers: if you need a weighted-sum (freq-based) projection, access
+    /// `self.table` directly. This method is breadth-only by design.
+    ///
+    /// Returns an empty map when `use_fallback = true` (no signal available, AC-08).
+    ///
+    /// NOT called on the search hot path — GNN initialization only (NFR-07).
+    pub fn phase_category_weights(&self) -> HashMap<(String, String), f32> {
+        // Cold-start: no data, return empty map (AC-08)
+        if self.use_fallback {
+            return HashMap::new();
+        }
+
+        // Step 1: Compute total distinct-entry count per phase
+        // total_entries_for_phase[phase] = sum of bucket.len() across all categories
+        let mut phase_totals: HashMap<String, usize> = HashMap::new();
+        for ((phase, _category), bucket) in &self.table {
+            *phase_totals.entry(phase.clone()).or_insert(0) += bucket.len();
+        }
+
+        // Step 2: For each (phase, category) bucket, weight = bucket.len() / phase_total
+        let mut result: HashMap<(String, String), f32> = HashMap::with_capacity(self.table.len());
+        for ((phase, category), bucket) in &self.table {
+            // unwrap_or(1) guards zero-divide; in practice impossible — a phase key
+            // exists only if it has at least one bucket (defensive coding required).
+            let total = *phase_totals.get(phase).unwrap_or(&1);
+            let weight = bucket.len() as f32 / total as f32;
+            result.insert((phase.clone(), category.clone()), weight);
+        }
+
+        result
     }
 
     /// Return rank-based affinity score for an entry in a given phase, in `[0.0, 1.0]`.
@@ -220,6 +306,83 @@ impl Default for PhaseFreqTable {
     fn default() -> Self {
         Self::new()
     }
+}
+
+// ---------------------------------------------------------------------------
+// Private free functions
+// ---------------------------------------------------------------------------
+
+/// Map a cycle outcome string to a weighting factor.
+///
+/// Priority order: "rework" checked before "fail" (ADR-003 constraint #7, crt-050).
+/// This mirrors the priority ordering in `infer_gate_result()` in `mcp/tools.rs`
+/// (col-026 R-03). Any future change to the canonical outcome vocabulary must
+/// update BOTH this function and `infer_gate_result()`.
+///
+/// Mapping (case-insensitive substring match):
+///   contains "rework" → 0.5  (checked FIRST)
+///   contains "fail"   → 0.5
+///   contains "pass"   → 1.0
+///   anything else (including "unknown", "") → 1.0 (graceful degradation, AC-05)
+fn outcome_weight(outcome: &str) -> f32 {
+    let lower = outcome.to_lowercase();
+    // rework checked BEFORE fail — priority order (ADR-003 constraint #7)
+    if lower.contains("rework") {
+        return 0.5;
+    }
+    if lower.contains("fail") {
+        return 0.5;
+    }
+    if lower.contains("pass") {
+        return 1.0;
+    }
+    // All other strings (unknown, empty, unrecognized): graceful degradation = 1.0
+    // AC-05 contract: missing outcome = unweighted = weight 1.0
+    1.0
+}
+
+/// Apply per-phase mean outcome weights to explicit-read frequency rows.
+///
+/// Builds a per-phase weight by averaging `outcome_weight()` across all
+/// `cycle_phase_end` rows for each phase (per-phase MEAN, not per-cycle —
+/// ADR-001 constraint #6, R-03). This preserves rank ordering invariant
+/// within buckets: all rows for the same phase share the same multiplier,
+/// so relative ordering is unchanged before rank normalization.
+///
+/// When no outcome rows exist for a phase, the default weight `1.0` is used
+/// (AC-05 contract: missing outcome = unweighted).
+///
+/// The weighted `freq` is stored back as `i64` (truncating via `as i64` cast).
+/// Rank normalization uses only ordering, not absolute magnitude — the cast is
+/// invariant to the normalization formula (col-031 ADR-001).
+fn apply_outcome_weights(
+    rows: Vec<PhaseFreqRow>,
+    outcome_rows: Vec<PhaseOutcomeRow>,
+) -> Vec<PhaseFreqRow> {
+    // Step 1: Collect outcome weights per phase
+    let mut raw_weights: HashMap<String, Vec<f32>> = HashMap::new();
+    for outcome_row in outcome_rows {
+        let w = outcome_weight(&outcome_row.outcome);
+        raw_weights.entry(outcome_row.phase).or_default().push(w);
+    }
+
+    // Step 2: Compute per-phase MEAN weight (ADR-001 OQ-1, constraint #6)
+    let phase_weights: HashMap<String, f32> = raw_weights
+        .into_iter()
+        .map(|(phase, weight_vec)| {
+            let mean = weight_vec.iter().sum::<f32>() / weight_vec.len() as f32;
+            (phase, mean)
+        })
+        .collect();
+
+    // Step 3: Apply per-phase mean weight to each row's freq
+    rows.into_iter()
+        .map(|mut row| {
+            let weight = phase_weights.get(&row.phase).copied().unwrap_or(1.0_f32);
+            row.freq = (row.freq as f32 * weight) as i64;
+            row
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -407,5 +570,295 @@ mod tests {
     fn test_phase_affinity_score_unknown_phase_returns_one() {
         let t = table_with("delivery", "decision", vec![(42, 1.0)]);
         assert_eq!(t.phase_affinity_score(42, "decision", "implement"), 1.0_f32);
+    }
+
+    // -----------------------------------------------------------------------
+    // New tests: outcome_weight() — R-02, AC-13b/c/d/e
+    // -----------------------------------------------------------------------
+
+    // Build PhaseFreqRow test helper
+    fn make_freq_row(phase: &str, category: &str, entry_id: u64, freq: i64) -> PhaseFreqRow {
+        PhaseFreqRow {
+            phase: phase.to_string(),
+            category: category.to_string(),
+            entry_id,
+            freq,
+        }
+    }
+
+    // Build PhaseOutcomeRow test helper
+    fn make_outcome_row(phase: &str, feature_cycle: &str, outcome: &str) -> PhaseOutcomeRow {
+        PhaseOutcomeRow {
+            phase: phase.to_string(),
+            feature_cycle: feature_cycle.to_string(),
+            outcome: outcome.to_string(),
+        }
+    }
+
+    // T-PFT-14 / R-02 scenario 1: pass variants return 1.0
+    #[test]
+    fn test_outcome_weight_pass_variants_return_1_0() {
+        assert_eq!(outcome_weight("pass"), 1.0_f32);
+        assert_eq!(outcome_weight("PASS"), 1.0_f32);
+        assert_eq!(outcome_weight("Pass"), 1.0_f32);
+    }
+
+    // T-PFT-14 / R-02 scenario 1: rework variants return 0.5
+    #[test]
+    fn test_outcome_weight_rework_variants_return_0_5() {
+        assert_eq!(outcome_weight("rework"), 0.5_f32);
+        assert_eq!(outcome_weight("REWORK"), 0.5_f32);
+        assert_eq!(outcome_weight("Rework"), 0.5_f32);
+    }
+
+    // T-PFT-14 / R-02 scenario 1: fail variants return 0.5
+    #[test]
+    fn test_outcome_weight_fail_variants_return_0_5() {
+        assert_eq!(outcome_weight("fail"), 0.5_f32);
+        assert_eq!(outcome_weight("FAIL"), 0.5_f32);
+        assert_eq!(outcome_weight("FAILED"), 0.5_f32);
+    }
+
+    // T-PFT-14 / R-02 scenario 1: unknown/empty return 1.0 (graceful degradation)
+    #[test]
+    fn test_outcome_weight_unknown_and_empty_return_1_0() {
+        assert_eq!(outcome_weight("unknown"), 1.0_f32);
+        assert_eq!(outcome_weight("abandoned"), 1.0_f32);
+        assert_eq!(outcome_weight(""), 1.0_f32);
+    }
+
+    // T-PFT-15 / R-02 scenario 2+3: rework checked before fail (priority order, ADR-003)
+    #[test]
+    fn test_outcome_weight_rework_checked_before_fail() {
+        // "rework-and-fail" contains both "rework" and "fail"
+        // rework branch must fire first → returns 0.5 (not double-penalized)
+        assert_eq!(outcome_weight("rework-and-fail"), 0.5_f32);
+        assert_eq!(outcome_weight("rework_fail"), 0.5_f32);
+        // "fail_rework" — rework check (via contains) fires first too
+        assert_eq!(outcome_weight("fail_rework"), 0.5_f32);
+    }
+
+    // -----------------------------------------------------------------------
+    // New tests: apply_outcome_weights() — R-03 / AC-04
+    // -----------------------------------------------------------------------
+
+    // T-PFT (AC-13b): single cycle pass → weight 1.0, freq unchanged
+    #[test]
+    fn test_apply_outcome_weights_single_cycle_pass_weights_1_0() {
+        let freq_rows = vec![make_freq_row("delivery", "decision", 1, 10)];
+        let outcome_rows = vec![make_outcome_row("delivery", "c-1", "PASS")];
+        let result = apply_outcome_weights(freq_rows, outcome_rows);
+        assert_eq!(result[0].freq, 10); // 10 * 1.0 = 10
+    }
+
+    // T-PFT (AC-13c): single cycle rework → weight 0.5
+    #[test]
+    fn test_apply_outcome_weights_single_cycle_rework_weights_0_5() {
+        let freq_rows = vec![make_freq_row("delivery", "decision", 1, 10)];
+        let outcome_rows = vec![make_outcome_row("delivery", "c-1", "REWORK")];
+        let result = apply_outcome_weights(freq_rows, outcome_rows);
+        assert_eq!(result[0].freq, 5); // 10 * 0.5 = 5
+    }
+
+    // T-PFT (AC-05): no outcome rows → default weight 1.0, freq unchanged
+    #[test]
+    fn test_apply_outcome_weights_no_outcome_rows_defaults_to_1_0() {
+        let freq_rows = vec![make_freq_row("delivery", "decision", 1, 8)];
+        let result = apply_outcome_weights(freq_rows, vec![]);
+        assert_eq!(result[0].freq, 8); // default weight 1.0
+    }
+
+    // T-PFT (AC-13e): phase not in outcome rows → default weight 1.0
+    #[test]
+    fn test_apply_outcome_weights_missing_phase_defaults_to_1_0() {
+        let freq_rows = vec![make_freq_row("delivery", "decision", 1, 6)];
+        // outcome row is for "scope", not "delivery"
+        let outcome_rows = vec![make_outcome_row("scope", "c-1", "REWORK")];
+        let result = apply_outcome_weights(freq_rows, outcome_rows);
+        assert_eq!(result[0].freq, 6); // default 1.0 for unmatched phase
+    }
+
+    // T-PFT-06 (R-03 key test): per-phase MEAN not per-cycle
+    // Phase "delivery": cycle-A (pass=1.0), cycle-B (rework=0.5) → mean=0.75
+    #[test]
+    fn test_apply_outcome_weights_mixed_cycles_uses_per_phase_mean() {
+        let freq_rows = vec![
+            make_freq_row("delivery", "decision", 10, 18),
+            make_freq_row("delivery", "decision", 20, 15),
+        ];
+        let outcome_rows = vec![
+            make_outcome_row("delivery", "cycle-A", "PASS"),
+            make_outcome_row("delivery", "cycle-B", "REWORK"),
+        ];
+        let result = apply_outcome_weights(freq_rows, outcome_rows);
+        // per-phase mean = (1.0 + 0.5) / 2 = 0.75
+        // 18 * 0.75 = 13.5 → as i64 = 13
+        // 15 * 0.75 = 11.25 → as i64 = 11
+        assert!(
+            result[0].freq == 13 || result[0].freq == 14,
+            "got {}",
+            result[0].freq
+        );
+        assert_eq!(result[1].freq, 11);
+        // rank ordering preserved: entry 10 still above entry 20
+        assert!(result[0].freq > result[1].freq);
+    }
+
+    // T-PFT-07 (R-03 ordering invariant): per-phase mean preserves relative ordering
+    #[test]
+    fn test_apply_outcome_weights_per_phase_mean_not_per_cycle() {
+        let freq_rows = vec![
+            make_freq_row("scope", "decision", 1, 10),
+            make_freq_row("scope", "decision", 2, 8),
+        ];
+        let outcome_rows = vec![
+            make_outcome_row("scope", "ca", "PASS"),   // weight 1.0
+            make_outcome_row("scope", "cb", "REWORK"), // weight 0.5
+        ];
+        let result = apply_outcome_weights(freq_rows, outcome_rows);
+        // mean = 0.75; entry 1 gets 10*0.75=7, entry 2 gets 8*0.75=6
+        assert_eq!(result[0].entry_id, 1, "entry 1 must remain first");
+        assert!(
+            result[0].freq > result[1].freq,
+            "relative ordering must be preserved"
+        );
+        // weight was applied: 10*1.0=10 would indicate no weighting
+        assert!(result[0].freq < 10, "weight must be applied (not 1.0 path)");
+    }
+
+    // -----------------------------------------------------------------------
+    // New tests: phase_category_weights() — AC-08, R-07
+    // -----------------------------------------------------------------------
+
+    // Build a table with multiple buckets for testing phase_category_weights
+    fn table_with_buckets(buckets: Vec<(&str, &str, Vec<(u64, f32)>)>) -> PhaseFreqTable {
+        let mut m = HashMap::new();
+        for (phase, cat, bucket) in buckets {
+            m.insert((phase.to_string(), cat.to_string()), bucket);
+        }
+        PhaseFreqTable {
+            table: m,
+            use_fallback: false,
+        }
+    }
+
+    // T-PFT-11: cold-start → empty map (AC-08a)
+    #[test]
+    fn test_phase_category_weights_cold_start_returns_empty_map() {
+        let t = PhaseFreqTable::new(); // use_fallback = true
+        assert!(t.phase_category_weights().is_empty());
+    }
+
+    // T-PFT-13: single category → weight 1.0 (R-07 edge)
+    #[test]
+    fn test_phase_category_weights_single_category_returns_1_0() {
+        let t = table_with("delivery", "decision", vec![(1, 1.0)]);
+        let weights = t.phase_category_weights();
+        let w = weights
+            .get(&("delivery".to_string(), "decision".to_string()))
+            .copied()
+            .unwrap_or(0.0);
+        assert!(
+            (w - 1.0_f32).abs() < 1e-6,
+            "single category must be 1.0, got {w}"
+        );
+    }
+
+    // T-PFT-12: two categories — correct distribution and sum=1.0 (AC-08b, R-07)
+    #[test]
+    fn test_phase_category_weights_two_categories_sums_to_1_0() {
+        // "decision": 2 entries, "pattern": 1 entry → total 3
+        let t = table_with_buckets(vec![
+            ("delivery", "decision", vec![(1, 1.0), (2, 0.5)]),
+            ("delivery", "pattern", vec![(3, 1.0)]),
+        ]);
+        let weights = t.phase_category_weights();
+
+        let w_decision = weights
+            .get(&("delivery".to_string(), "decision".to_string()))
+            .copied()
+            .unwrap_or(0.0);
+        let w_pattern = weights
+            .get(&("delivery".to_string(), "pattern".to_string()))
+            .copied()
+            .unwrap_or(0.0);
+
+        assert!(
+            (w_decision - 2.0_f32 / 3.0_f32).abs() < 1e-6,
+            "decision={w_decision}"
+        );
+        assert!(
+            (w_pattern - 1.0_f32 / 3.0_f32).abs() < 1e-6,
+            "pattern={w_pattern}"
+        );
+        assert!(
+            (w_decision + w_pattern - 1.0_f32).abs() < 1e-6,
+            "sum must be 1.0"
+        );
+    }
+
+    // R-07 explicit test: breadth-based (entry count), NOT frequency-weighted
+    #[test]
+    fn test_phase_category_weights_breadth_not_freq_sum() {
+        // 1 entry in "decision" (freq=10), 10 entries in "pattern" (freq=1 each)
+        // breadth: decision=1/11, pattern=10/11
+        // (NOT frequency-weighted: which would give decision=10/20, pattern=10/20)
+        let pattern_bucket: Vec<(u64, f32)> = (1u64..=10).map(|i| (i, 1.0)).collect();
+        let t = table_with_buckets(vec![
+            ("scope", "decision", vec![(100, 1.0)]),
+            ("scope", "pattern", pattern_bucket),
+        ]);
+        let weights = t.phase_category_weights();
+
+        let w_decision = weights
+            .get(&("scope".to_string(), "decision".to_string()))
+            .copied()
+            .unwrap_or(0.0);
+        let w_pattern = weights
+            .get(&("scope".to_string(), "pattern".to_string()))
+            .copied()
+            .unwrap_or(0.0);
+
+        assert!(
+            (w_decision - 1.0_f32 / 11.0_f32).abs() < 1e-5,
+            "decision={w_decision}"
+        );
+        assert!(
+            (w_pattern - 10.0_f32 / 11.0_f32).abs() < 1e-5,
+            "pattern={w_pattern}"
+        );
+    }
+
+    // T-PFT-12 variant: multiple phases are independent (each sums to 1.0)
+    #[test]
+    fn test_phase_category_weights_multiple_phases_independent() {
+        // "delivery": "decision"=2 entries, "pattern"=1 entry (total 3)
+        // "scope":    "decision"=1 entry, "lesson-learned"=1 entry (total 2)
+        let t = table_with_buckets(vec![
+            ("delivery", "decision", vec![(1, 1.0), (2, 0.5)]),
+            ("delivery", "pattern", vec![(3, 1.0)]),
+            ("scope", "decision", vec![(4, 1.0)]),
+            ("scope", "lesson-learned", vec![(5, 1.0)]),
+        ]);
+        let weights = t.phase_category_weights();
+
+        // delivery sum
+        let delivery_sum: f32 = weights
+            .iter()
+            .filter(|((p, _), _)| p == "delivery")
+            .map(|(_, &w)| w)
+            .sum();
+        // scope sum
+        let scope_sum: f32 = weights
+            .iter()
+            .filter(|((p, _), _)| p == "scope")
+            .map(|(_, &w)| w)
+            .sum();
+
+        assert!(
+            (delivery_sum - 1.0_f32).abs() < 1e-6,
+            "delivery sum={delivery_sum}"
+        );
+        assert!((scope_sum - 1.0_f32).abs() < 1e-6, "scope sum={scope_sum}");
     }
 }

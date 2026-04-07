@@ -41,6 +41,8 @@ pub use error::{PoolKind, Result, StoreError};
 pub use hash::compute_content_hash;
 pub use injection_log::InjectionLogRecord;
 pub use metrics::{MetricVector, PhaseMetrics, UNIVERSAL_METRICS_FIELDS, UniversalMetrics};
+#[doc(hidden)]
+pub use query_log::PhaseOutcomeRow;
 pub use query_log::{PhaseFreqRow, QueryLogRecord};
 pub use read::{
     CO_ACCESS_GRAPH_MIN_COUNT, ContradictEdgeRow, EDGE_SOURCE_CO_ACCESS,
