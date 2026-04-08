@@ -114,7 +114,7 @@ def build_scenarios(db_path: str) -> tuple[list[dict], str]:
         feature_cycle = session_info.get("feature_cycle") or topic
         agent_role = session_info.get("agent_role") or "eval"
 
-        query_hash = hashlib.md5(query.encode()).hexdigest()[:6]  # Short hash for disambiguation only — not cryptographic
+        query_hash = hashlib.md5(query.encode()).hexdigest()[:12]  # Short hash for disambiguation only — not cryptographic
         scenario_id = f"obs-{sid[:8]}-{ts}-{query_hash}"
         scenarios.append({
             "id": scenario_id,
@@ -147,6 +147,7 @@ def build_scenarios(db_path: str) -> tuple[list[dict], str]:
     """)
     briefings = cur.fetchall()
     briefing_scenarios = []
+    seen_briefing_keys: set[tuple] = set()  # deduplicate on (sid, ts, query_str) — feature vs topic_signal can differ while producing same query_str
     for row in briefings:
         sid = row["session_id"]
         ts = row["ts_millis"]
@@ -165,11 +166,16 @@ def build_scenarios(db_path: str) -> tuple[list[dict], str]:
 
         query_str = f"briefing:{feature or topic}:{phase}" if (feature or topic) else "briefing:unknown:unknown"
 
+        briefing_key = (sid, ts, query_str)
+        if briefing_key in seen_briefing_keys:
+            continue  # feature_val vs topic_signal can differ but produce same query_str — keep first occurrence
+        seen_briefing_keys.add(briefing_key)
+
         session_info = sessions_map.get(sid, {})
         feature_cycle = session_info.get("feature_cycle") or feature or topic
         agent_role = session_info.get("agent_role") or "eval"
 
-        query_hash = hashlib.md5(query_str.encode()).hexdigest()[:6]  # Short hash for disambiguation only — not cryptographic
+        query_hash = hashlib.md5(query_str.encode()).hexdigest()[:12]  # Short hash for disambiguation only — not cryptographic
         scenario_id = f"obs-briefing-{sid[:8]}-{ts}-{query_hash}"
         briefing_scenarios.append({
             "id": scenario_id,

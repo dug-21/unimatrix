@@ -227,7 +227,41 @@ by the crt-043 composite index already in place).
 | Issue | Title | Notes |
 |-------|-------|-------|
 | ✅ #415 | co_access direct boost → PPR deprecation plan | COMPLETE (PR #449). `w_coac` reduced to 0.0; co_access boost moved entirely to PPR graph topology. |
-| #409 | Intelligence-driven retention for analytic tables | Unblocked. Entry auto-deprecation for adaptive categories. `K` configurable parameter governing learning-signal retention across co_access, query_log, audit_log. |
+| ✅ #409 | Intelligence-driven retention for analytic tables | COMPLETE (crt-036). Entry auto-deprecation for adaptive categories. `K` configurable parameter governing learning-signal retention across co_access, query_log, audit_log. |
+
+---
+
+### Group 9 — Learning Signal Hardening ✅ COMPLETE (`crt-049`, PR #543, GH #539)
+
+**Prerequisite for any phase-conditioned learning (PhaseFreqTable extension or W3-1 GNN).**
+
+The current `PhaseFreqTable` is rebuilt from `query_log` — search exposures per phase. This is a noisy signal: entries returned in a search result set were not necessarily opened or used. Phase-conditioned category affinity learning requires explicit read signal: entries an agent deliberately fetched by ID during a phase.
+
+The signal chain: `context_get(id=X)` during `phase=P` → join entry X → `category=C` → record `(P, C) += 1`. **The entry ID is the lookup key to derive category; it is not a training target.** The training target is `(phase, category)` aggregates only.
+
+All raw material already exists: `observations.phase` (crt-043), `observations.input` (entry ID as JSON), `entries.category` (join target). This group makes that signal reliably queryable.
+
+| Issue | Title | Notes |
+|-------|-------|-------|
+| #539 | Explicit read logging: surface `context_get` + single-target `context_lookup` from observations | Extracts entry IDs from `observations.input` where `json_extract(input, '$.id') IS NOT NULL` for `context_get` and `context_lookup` tools. `$.id IS NOT NULL` predicate naturally excludes filter-based lookups (no entry-level attribution possible). Fixes knowledge reuse metric label (`delivery_count` → `search_exposure_count`, adds `explicit_read_count`). Provides the `(phase, category)` signal source for Group 10. No schema migration — observations table already has phase. |
+
+---
+
+### Group 10 — Phase-Conditioned Category Affinity (Learning Signal Consumer) ✅ COMPLETE (`crt-050`, PR #544, GH #542)
+
+**Depends on Group 9 (#539 shipped and accumulating data).**
+
+**Dual purpose — standalone value AND GNN prerequisite.**
+
+**Immediate value**: Rebuild `PhaseFreqTable` from explicit reads instead of `query_log` search exposures. Agents in scope/design phases see cross-feature patterns surface higher; agents in implementation phases see conventions and procedures surface higher. Interpretable, debuggable, ships before GNN exists.
+
+**GNN prerequisite**: The learned `(phase, category)` weights become W3-1's cold-start initialization, replacing hand-tuned WA-2 constants. Running Group 10 in production validates that the explicit read signal is clean and dense enough to train on before committing to the full GNN build. Without this, W3-1 starts cold and cannot confirm signal quality.
+
+Signal target: `(phase, category)` aggregates only — entry IDs are the lookup key to derive category, never the training target.
+
+| Issue | Title | Notes |
+|-------|-------|-------|
+| #542 | Phase-conditioned category affinity — rebuild PhaseFreqTable from explicit reads | Replace `query_log` source with `(phase, category)` aggregates from Group 9 explicit read signal. Outcome-weighted from `cycle_events`: successful phase completion → 1.0, rework → 0.5. Cold-start degrades to unweighted frequency counts when phase outcome history is insufficient. Learned weights exposed as W3-1 GNN cold-start initialization vector. |
 
 ---
 
@@ -257,8 +291,16 @@ Group 7 (Data hygiene)          ─── no deps ─── ship independently
   └── phantom entry purge improves eval quality and snapshot cleanliness
 
 Group 8 (Carry-forward)
-  └── #415: re-baseline after Group 1 ships (conf-boost-c changes the measurement context)
-  └── #409: no blocking deps
+  └── #415: COMPLETE
+  └── #409: COMPLETE (crt-036)
+
+Group 9 (Learning signal hardening) ✅ COMPLETE (#539 / crt-049)
+  └── prerequisite for: Group 10 (phase-conditioned affinity) ✅ COMPLETE
+  └── prerequisite for: W3-1 GNN (entry-level training labels)
+
+Group 10 (Phase-conditioned category affinity) ✅ COMPLETE (#542 / crt-050)
+  └── prerequisite for: W3-1 GNN (provides cold-start initialization + validates signal)
+  └── directly addresses research/design vs. delivery content-type retrieval problem
 ```
 
 ---
@@ -274,7 +316,8 @@ features. Reference: `product/research/ass-039/harness/scenarios.jsonl`.
 | Cosine Supports detection | ✅ PASSED — No MRR regression (crt-040 touches no scoring code; 0.2651 stable on expanded scenario set). write_graph_edge prerequisite delivered. |
 | S1/S2/S8 edge generation | Graph cohesion: `cross_category_edge_count` increase, `isolated_entry_count` decrease. No MRR regression vs 0.2651 baseline. |
 | PPR expander | ✅ PASSED (R-09, 2026-04-04) — baseline MRR=0.2666, expander MRR=0.2788 (+0.0122). P@5 flat (0.1069 vs 0.1072) — MRR improvement confirms cross-category entries entering pool; P@5 plateau is edge density, not correctness. Flag enabled in prod. |
-| Goal-conditioned briefing | **Forward-looking — data-gated.** Cannot be measured until goal_clusters is populated from real usage. Trigger: ≥20 cycles with goals complete and context_cycle_review called. Then: snapshot DB, run briefing-blend profile vs. semantic-only profile on briefing-sourced scenarios (149 scenarios in scenarios.jsonl). Verify those scenarios have goal embeddings in the snapshot before running. **Run now (regression only)**: `run_eval.py` with default profile — confirms crt-046 code changes don't regress MRR below 0.2788 baseline. |
+| Goal-conditioned briefing | **Forward-looking — data-gated.** Cannot be measured until goal_clusters is populated from real usage. Trigger: ≥20 cycles with goals complete and context_cycle_review called. Then: snapshot DB, run briefing-blend profile vs. semantic-only profile on briefing-sourced scenarios (149 scenarios in scenarios.jsonl). Verify those scenarios have goal embeddings in the snapshot before running. **Run now (regression only)**: `run_eval.py` with default profile — confirms crt-046 code changes don't regress MRR below 0.2558 baseline. |
+| Phase-conditioned category affinity (crt-050) | ✅ PASSED (2026-04-08) — Profile A (neutral, w_phase_explicit=0.0) vs Profile B (active, 105 obs, 24 pairs, 6 phases): both MRR=0.2558, P@K=0.1064, delta=0.0000. No regression confirmed. Delta=0.0000 is expected: offline harness replays scenarios without session context; phase affinity only fires when current_phase is non-null (set by live context_cycle). Session-conditioned signal contribution measures via live retrospectives, not offline eval. Lesson stored #4244. New baseline: MRR=0.2558, 2096 scenarios, snapshot a03bdd8f1fcb. |
 
 ---
 
@@ -282,7 +325,7 @@ features. Reference: `product/research/ass-039/harness/scenarios.jsonl`.
 
 | Item | Trigger condition |
 |------|------------------|
-| W3-1 GNN | After PPR expander ships + behavioral edges accumulate. Labeled edge set (ASS-038) is the training data spec. GNN replaces hand-tuned signal weights. |
+| W3-1 GNN | Groups 9 (#539 / crt-049) and 10 (#542 / crt-050) are COMPLETE. Prerequisites met: explicit read signal live, phase_category_weights() accessor available as cold-start initialization vector. Remaining gate: ASS-029 architecture spike (GNN forward pass, session context vector spec, training batch structure, tick scheduling). Signal must accumulate in production before training labels are dense enough to train on. |
 | H2 re-test (outcome correlation) | When corpus has ≥10 rework cycles with entry access data. Consider gate-failure tagging at context_cycle stop. |
 | H3 cluster test (phase stratification) | When agent_role is populated on ≥50 sessions AND ≥20 cycles cover similar goal domains. |
 | H1 embedding validation | When goal embedding (Group 5) is live — re-run H1 with proper cosine on embeddings vs. keyword Jaccard proxy. |
