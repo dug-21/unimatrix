@@ -744,8 +744,10 @@ impl StatusService {
         };
         report.embedding_consistency_score = embed_dim.unwrap_or(1.0);
 
+        // report.contradiction_count is populated in Phase 2 (contradiction cache read);
+        // Phase 5 must not be reordered above Phase 2. See crt-051 ADR-001.
         report.contradiction_density_score =
-            coherence::contradiction_density_score(report.total_quarantined, report.total_active);
+            coherence::contradiction_density_score(report.contradiction_count, report.total_active);
 
         // Lambda computation + recommendations
         report.coherence = coherence::compute_lambda(
