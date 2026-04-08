@@ -61,15 +61,25 @@ pub fn embedding_consistency_score(inconsistent_count: usize, total_checked: usi
     score.clamp(0.0, 1.0)
 }
 
-/// Contradiction density dimension: complement of quarantined-to-active ratio.
+/// Contradiction density dimension: complement of contradiction pair ratio.
 ///
-/// Returns 1.0 if `total_active` is zero.
-/// Score is `1.0 - total_quarantined / total_active`, clamped to [0.0, 1.0].
-pub fn contradiction_density_score(total_quarantined: u64, total_active: u64) -> f64 {
+/// Returns 1.0 if `total_active` is zero (empty database guard).
+/// Returns 1.0 if `contradiction_pair_count` is zero (cold-start or no contradictions
+/// detected — optimistic default until the scan produces evidence).
+/// Score is `1.0 - contradiction_pair_count / total_active`, clamped to [0.0, 1.0].
+/// When `contradiction_pair_count > total_active` (degenerate: many pairs from a
+/// small active set), the clamp produces 0.0.
+///
+/// `contradiction_pair_count` comes from `ContradictionScanCacheHandle` read in Phase 2
+/// of `compute_report()`. It reflects detected contradiction pairs from the background
+/// heuristic scan (HNSW nearest-neighbour + negation/directive/sentiment signals).
+/// The cache is rebuilt approximately every 60 minutes. A stale cache is a known
+/// limitation (SR-07); this function is not responsible for cache freshness.
+pub fn contradiction_density_score(contradiction_pair_count: usize, total_active: u64) -> f64 {
     if total_active == 0 {
         return 1.0;
     }
-    let score = 1.0 - (total_quarantined as f64 / total_active as f64);
+    let score = 1.0 - (contradiction_pair_count as f64 / total_active as f64);
     score.clamp(0.0, 1.0)
 }
 
@@ -194,17 +204,47 @@ mod tests {
 
     #[test]
     fn contradiction_density_zero_active() {
-        assert_eq!(contradiction_density_score(0, 0), 1.0);
+        // Empty database: any pair count with zero active entries returns 1.0.
+        assert_eq!(contradiction_density_score(0_usize, 0_u64), 1.0);
     }
 
     #[test]
-    fn contradiction_density_quarantined_exceeds_active() {
-        assert_eq!(contradiction_density_score(200, 100), 0.0);
+    fn contradiction_density_pairs_exceed_active() {
+        // Degenerate: more detected pairs than active entries — clamped to 0.0.
+        assert_eq!(contradiction_density_score(200_usize, 100_u64), 0.0);
     }
 
     #[test]
-    fn contradiction_density_no_quarantined() {
-        assert_eq!(contradiction_density_score(0, 100), 1.0);
+    fn contradiction_density_no_pairs() {
+        // No detected pairs with active entries: maximum health score.
+        assert_eq!(contradiction_density_score(0_usize, 100_u64), 1.0);
+    }
+
+    #[test]
+    fn contradiction_density_cold_start_cache_absent() {
+        // Simulates cold-start: scan cache is None, contradiction_count defaults to 0.
+        // Active entries exist but no pairs detected. Optimistic default: score 1.0.
+        let result = contradiction_density_score(0_usize, 50_u64);
+        assert!((result - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn contradiction_density_cold_start_no_pairs_found() {
+        // Simulates warm cache with zero pairs found
+        // (contradiction_scan_performed: true, contradiction_count: 0).
+        // Active entries exist but scan returned Some([]). Optimistic default: score 1.0.
+        let result = contradiction_density_score(0_usize, 50_u64);
+        assert!((result - 1.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn contradiction_density_partial() {
+        // Mid-range: 5 pairs in a 100-entry database.
+        // Expected: 1.0 - 5/100 = 0.95
+        let result = contradiction_density_score(5_usize, 100_u64);
+        assert!(result > 0.0);
+        assert!(result < 1.0);
+        assert!((result - 0.95).abs() < 1e-10);
     }
 
     // -- compute_lambda tests --
