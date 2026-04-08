@@ -2674,3 +2674,68 @@ def test_context_cycle_review_curation_snapshot_fields(server):
             )
     except _json.JSONDecodeError:
         pass  # Text format — structural test not applicable
+
+
+# === crt-050: Phase-Conditioned Category Affinity ============================
+
+
+def test_phase_freq_rebuild_null_feature_cycle(server):
+    """L-C050: NULL feature_cycle sessions degrade to weight 1.0 without error (AC-15, FR-10, R-08).
+
+    Sessions created through normal server operation before col-022 have NULL
+    feature_cycle.  Query B (query_phase_outcome_map) filters these out via
+    s.feature_cycle IS NOT NULL, so they contribute no outcome weight (default
+    1.0).  This test verifies that the server remains responsive and search
+    returns results when the observations table has entries but all sessions
+    have NULL feature_cycle (i.e., no outcome weighting, but no error either).
+
+    Steps:
+    1. Store several entries (to populate `entries` table)
+    2. Issue context_get calls to write observations rows; the server creates
+       sessions without feature_cycle (pre-col-022 style via normal invocation
+       without a cycle set)
+    3. Call context_status — must succeed with no error
+    4. Call context_search — must return results (scoring path unblocked)
+
+    Note: The background tick is not directly triggered in integration tests
+    (tick fires every ~15 min). This test validates the server path at cold-start
+    PhaseFreqTable state (use_fallback=true) with observations present but no
+    cycle context — graceful degradation must not break search.
+    """
+    # Step 1: Store several entries
+    ids = []
+    for i in range(3):
+        resp = server.context_store(
+            f"phase freq rebuild null cycle test entry {i} unique crt050x",
+            "testing",
+            "convention",
+            agent_id="human",
+            format="json",
+        )
+        assert_tool_success(resp)
+        ids.append(extract_entry_id(resp))
+
+    # Step 2: Issue context_get calls — produces observations rows with session
+    # created outside any cycle context (feature_cycle = NULL in sessions table)
+    for eid in ids:
+        get_resp = server.context_get(eid, agent_id="test-agent-crt050", format="json")
+        assert_tool_success(get_resp)
+
+    # Step 3: context_status must complete without error
+    status_resp = server.context_status(agent_id="human", format="json")
+    assert_tool_success(status_resp)
+
+    # Step 4: context_search must return results — scoring path unblocked
+    # Cold-start PhaseFreqTable (use_fallback=true) degrades gracefully:
+    # phase_affinity_score returns 1.0 (neutral) for all entries.
+    search_resp = server.context_search(
+        "phase freq rebuild null cycle test entry unique crt050x",
+        format="json",
+        agent_id="human",
+    )
+    assert_tool_success(search_resp)
+    entries = parse_entries(search_resp)
+    assert len(entries) > 0, (
+        "context_search must return results even when PhaseFreqTable is cold-start. "
+        "AC-15: NULL feature_cycle sessions must not break search path."
+    )
