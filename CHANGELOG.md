@@ -3,6 +3,49 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.0] - 2026-04-08
+
+### Features
+- daemon mode — persistent background server via UDS MCP transport (#295)
+
+### Fixes
+- tools: normalize mcp__unimatrix__ prefix in categorize_tool_for_phase and compute_phase_stats (#536)
+- contradiction_density_score: replace quarantine proxy with scan pair count (#545)
+- co_access_promotion_tick: use allowlist (status = Active) to stop deprecated/proposed endpoint oscillation (#528)
+- uds: re-register evicted sessions on cycle_start to restore topic_signal attribution (#519)
+- entry-tags-index: add compound (tag, entry_id) index to fix S1 co-occurrence O(K) scan (#509)
+- crt-046: InferenceConfig validate missing range checks + briefing cluster ID cap (#515)
+- eval: harness scenario ID collision + snapshot pairing validation (#501 #502)
+- co_access_promotion_tick: exclude quarantined endpoints from promotion SELECT (#476)
+- compaction: use allowlist WHERE status = Active so deprecated-endpoint edges are deleted (#471)
+- nli_detection_tick: give Informs independent budget MAX_INFORMS_PER_TICK=25 (#473)
+- get_cycle_start_goal: first-written-goal-wins; NULL row no longer shadows original goal (#468)
+- background: exclude quarantined entries from GRAPH_EDGES compaction (#458)
+- security: enforce heal_pass_batch_size range and typed SQL status bindings (#444)
+- maintenance: enforce index-active-set invariant (#444)
+- categories: retire duties and reference from INITIAL_CATEGORIES (#436 #440)
+- observe: remove RecurringFrictionRule from extraction pipeline (#437 #438)
+- config: lower supports_edge_threshold 0.7 → 0.6 (#434)
+- freshness: half-life 168h → 8760h (1 year), recalibrate tests (#426)
+- nli: prevent tick stall — shuffle candidates, exclude no-embedding entries (#421)
+- coaccess: increase CO_ACCESS_STALENESS_SECONDS from 30 to 365 days (#408)
+- col-025: persist context_cycle goal through hook payload (#389)
+- skills: replace pseudo-code MCP calls with proper JSON format in all uni-* skills
+- retrospective: render goal as dedicated section, never silently omit (#384)
+- background: remove dead-knowledge auto-deprecation pass (#369 #371)
+- hook: fix SubagentStart query derivation and lower similarity floor
+- briefing: make BriefingParams.role optional (#364)
+- contradiction: pre-fetch entries in Tokio context before quality-gate rayon dispatch (#360)
+- background,observe: replace unbounded observation scan and full-topic query (#351)
+- confidence: propagate Arc<ConfidenceParams> to all serving-path call sites (#311 #347)
+- validation: reject control chars in outcome and non-ASCII in phase fields (#343)
+- 6 hardening fixes — merge validation, saturating counters, session sanitization, markdown escaping, u64 cast (#337 #345 #346 #378 #379 #380)
+- open_readonly must not set journal_mode=WAL pragma
+- context_cycle_review: pre-fetch entry categories async to avoid block_on panic (#313)
+- server: replace blocking log_event() with fire-and-forget async at 5 call sites (#308)
+- store: convert synchronous audit writes to fire-and-forget (#302)
+- daemon: move --project-dir before subcommand in child args (#295)
+
 ## [0.5.9] - 2026-03-16
 
 ### Fixes

@@ -1,6 +1,6 @@
 {
   "name": "@dug-21/unimatrix-linux-x64",
-  "version": "0.5.9",
+  "version": "0.6.0",
   "description": "Unimatrix linux-x64 platform binary",
   "os": [
     "linux"
