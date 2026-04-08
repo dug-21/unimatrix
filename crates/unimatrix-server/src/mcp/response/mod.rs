@@ -1408,7 +1408,7 @@ mod tests {
             trust_source_distribution: vec![("agent".to_string(), 50)],
             entries_without_attribution: 2,
             contradictions: Vec::new(),
-            contradiction_count: 0,
+            contradiction_count: 15,
             embedding_inconsistencies: Vec::new(),
             contradiction_scan_performed: false,
             embedding_check_performed: false,
