@@ -20,6 +20,20 @@ From the invoker:
 
 ---
 
+## When to Go Lightweight
+
+Not every feature needs a full retro:
+
+| Situation | Action |
+|---|---|
+| Zero gate failures, no rework, zero hotspots | Skip lesson extraction. Focus on patterns/procedures only. |
+| Minor enhancement (1-2 components) | Check for pattern drift only, skip procedure review. |
+| New infrastructure introduced | Full retro — high likelihood of new patterns and procedures. |
+| Multiple SCOPE FAILs or heavy rework | Full retro — prioritize lesson extraction. |
+| Many Warning hotspots or baseline outliers | Full retro — prioritize hotspot-driven lessons and procedure updates. |
+
+---
+
 ## Phase 1: Data Gathering & Retrospective Analysis
 
 Gather all evidence about the shipped feature:
@@ -78,38 +92,6 @@ Gather all evidence about the shipped feature:
 
 ---
 
-## Phase 1b: Stewardship Quality Review
-
-Before extracting new patterns, review the quality of entries agents stored during this feature cycle.
-
-1. **Query entries stored during the feature**:
-   ```
-   mcp__unimatrix__context_search({"query": "{feature-id}", "k": 20})
-   ```
-   Also search by feature_cycle tag if available. Use content/title matching as fallback — not all agents tag consistently.
-
-2. **Assess each entry against its category template**:
-   - **Patterns**: Has what/why/scope structure? Is "why" substantive (not "it works")?
-   - **Lessons**: Has what-happened/root-cause/takeaway? Is takeaway actionable?
-   - **Procedures**: Has numbered steps? Are steps specific (not generic)?
-
-3. **Curate**:
-   - Keep entries focused on the project and how the team delivers.  Your objective is ONLY enter knowledge if future agents will benefit from the knowledge.  More is not better.
-   - **Low-quality entries** (missing structure, no substantive "why", API docs disguised as patterns): identify.  If needs correction use `context_correct`, if it needs to be removed with no replacement, `context_deprecate`.
-   - **High-quality entries** confirmed by successful delivery: note for the architect to validate during pattern extraction.
-   - **Miscategorized entries** (lesson stored as pattern, or vice versa): note for correction.
-
-
-4. **Report** the stewardship review results before proceeding to Phase 2:
-   ```
-   Stewardship Quality Review:
-   - Entries found: {N}
-   - Quality: {N} good, {N} deprecated (low quality), {N} flagged for recategorization
-   - Details: {list each entry with assessment}
-   ```
-
----
-
 ## Phase 2: Pattern & Procedure Extraction (MUST be a subagent)
 
 **Before spawning the architect**, prepare a structured retrospective briefing from Phase 1. This replaces the vague "paste summary" — give the architect concrete data to work with.
@@ -160,12 +142,23 @@ Agent(uni-architect, "
 
   YOUR TASKS:
 
+  0. STEWARDSHIP REVIEW — Before extracting new knowledge, assess entries already stored during this cycle:
+     a. Query: `mcp__unimatrix__context_search({"query": "{feature-id}", "k": 20})`. Also try feature_cycle tag if available.
+     b. For each entry, assess against its category template:
+        - **Patterns**: Has what/why/scope? Is "why" substantive (not "it works")?
+        - **Lessons**: Has what-happened/root-cause/takeaway? Is takeaway actionable?
+        - **Procedures**: Has numbered steps? Are steps specific (not generic)?
+     c. Low-quality entries (missing structure, no substantive "why", API docs disguised as patterns):
+        correct via `context_correct` or remove via `context_deprecate` as appropriate.
+     d. Miscategorized entries: correct category via `context_correct`.
+     e. High-quality entries confirmed by delivery: carry forward into steps 1-4 as evidence.
+
   1. PATTERN EXTRACTION — For each component implemented:
      a. Use /uni-query-patterns to find existing patterns for the affected crate(s)
      b. If the component followed an existing pattern: verify it's still accurate.
         If the pattern drifted, use /uni-store-procedure or context_correct to update it.
      c. If the component established a NEW reusable structure (used in 2+ features
-        or clearly generic): store it via context_store(category: 'pattern').
+        or clearly generic): store it via mcp__unimatrix__context_store({"category": "pattern", ...}).
      d. If the component was one-off: skip — don't store patterns for unique work.
 
   2. PROCEDURE REVIEW — Check if any HOW-TO changed:
@@ -249,8 +242,8 @@ Retrospective summary:
 - Hotspots: {count} ({warning_count} warnings, {info_count} info)
 - Baseline outliers: {list metric names and status}
 
-Knowledged leveraged:
-- {Summary of knowledge items served by Unimatrix}
+Knowledge delivered:
+- {N} entries served across {N} sessions. Example: #{id} "{title}" retrieved in {phase} — {one sentence on how it shaped the work}.
 
 Knowledge curated:
 - Patterns: {count} new, {count} updated
@@ -262,17 +255,3 @@ Knowledge curated:
 Details:
 {list each entry with Unimatrix ID, title, and whether new or updated}
 ```
-
----
-
-## When to Go Lightweight
-
-Not every feature needs a full retro:
-
-| Situation | Action |
-|---|---|
-| Zero gate failures, no rework, zero hotspots | Skip lesson extraction. Focus on patterns/procedures only. |
-| Minor enhancement (1-2 components) | Check for pattern drift only, skip procedure review. |
-| New infrastructure introduced | Full retro — high likelihood of new patterns and procedures. |
-| Multiple SCOPE FAILs or heavy rework | Full retro — prioritize lesson extraction. |
-| Many Warning hotspots or baseline outliers | Full retro — prioritize hotspot-driven lessons and procedure updates. |

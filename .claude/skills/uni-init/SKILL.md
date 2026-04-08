@@ -10,7 +10,7 @@ description: "Initialize Unimatrix in a repository: append knowledge block to CL
 Before running this skill:
 
 1. **Skill files installed**: Both `uni-init/SKILL.md` and `uni-seed/SKILL.md` must be present in `.claude/skills/` in the target repository.
-2. **MCP server wired** (for `/uni-seed`): The Unimatrix MCP server (`unimatrix-server`) must be running and configured in your Claude Code `settings.json`. This skill (`/uni-init`) does not require MCP, but `/uni-seed` does.
+2. **MCP server wired** (for `/uni-seed`): The Unimatrix MCP server (`unimatrix`) must be running and configured in your Claude Code `settings.json`. This skill (`/uni-init`) does not require MCP, but `/uni-seed` does.
 
 If you need to install the Unimatrix server or wire MCP, consult the installation documentation.
 
@@ -128,8 +128,20 @@ Knowledge engine (MCP server). Makes agent expertise searchable, trustworthy, an
 
 | Skill | When to Use |
 |-------|-------------|
-| `/uni-init` | First-time setup: wire CLAUDE.md and get agent recommendations |
+| `/uni-init` | First-time setup: wire CLAUDE.md and get agent orientation |
 | `/uni-seed` | Populate Unimatrix with foundational repo knowledge |
+| `/uni-store-adr` | After each architectural decision — stores the ADR |
+| `/uni-store-lesson` | After failures and gate rejections — prevents recurrence |
+| `/uni-store-pattern` | When a reusable implementation pattern emerges |
+| `/uni-store-procedure` | When a step-by-step how-to technique evolves |
+| `/uni-knowledge-search` | Semantic search across knowledge before implementing |
+| `/uni-knowledge-lookup` | Deterministic lookup by feature, category, or ID |
+| `/uni-query-patterns` | Query component patterns before designing or coding |
+| `/uni-retro` | Post-merge retrospective — extract and store what was learned |
+| `/uni-review-pr` | PR security review and merge readiness check |
+| `/uni-release` | Version bump, changelog, tag, and push to release pipeline |
+| `/uni-git` | Git conventions reference for Unimatrix commits and PRs |
+| `/uni-zero` | Strategic advisor for product evolution and vision alignment |
 
 ### Knowledge Categories
 

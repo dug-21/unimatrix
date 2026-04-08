@@ -141,11 +141,56 @@ If this fails, stop with: **"Build check failed after version update. Review cha
 
 ---
 
+## Step 7a: Sync protocols/ Distribution Copy
+
+Copy the four protocol files from the internal `.claude/protocols/uni/` directory
+to the distributable `protocols/` directory at repo root:
+
+```bash
+cp .claude/protocols/uni/uni-design-protocol.md protocols/uni-design-protocol.md
+cp .claude/protocols/uni/uni-delivery-protocol.md protocols/uni-delivery-protocol.md
+cp .claude/protocols/uni/uni-bugfix-protocol.md protocols/uni-bugfix-protocol.md
+cp .claude/protocols/uni/uni-agent-routing.md protocols/uni-agent-routing.md
+```
+
+Verify each copy is identical to its source:
+
+```bash
+diff .claude/protocols/uni/uni-design-protocol.md protocols/uni-design-protocol.md
+diff .claude/protocols/uni/uni-delivery-protocol.md protocols/uni-delivery-protocol.md
+diff .claude/protocols/uni/uni-bugfix-protocol.md protocols/uni-bugfix-protocol.md
+diff .claude/protocols/uni/uni-agent-routing.md protocols/uni-agent-routing.md
+```
+
+All four diffs must produce zero output. If any diff shows differences, resolve them
+before proceeding. The `.claude/protocols/uni/` directory is the source of truth —
+apply any needed corrections there first, then re-copy.
+
+---
+
+## Step 7b: Sync uni-retro Distribution Copy
+
+Copy the uni-retro skill to the distributable `skills/` directory at repo root:
+
+```bash
+cp .claude/skills/uni-retro/SKILL.md skills/uni-retro/SKILL.md
+```
+
+Verify the copy is identical to its source:
+
+```bash
+diff .claude/skills/uni-retro/SKILL.md skills/uni-retro/SKILL.md
+```
+
+The diff must produce zero output.
+
+---
+
 ## Step 7: Create Release Commit
 
 Stage only the release-related files:
 ```bash
-git add Cargo.toml packages/unimatrix/package.json packages/unimatrix-linux-x64/package.json packages/unimatrix-linux-arm64/package.json CHANGELOG.md
+git add Cargo.toml packages/unimatrix/package.json packages/unimatrix-linux-x64/package.json packages/unimatrix-linux-arm64/package.json CHANGELOG.md protocols/ skills/uni-retro/
 ```
 
 Commit with the release message:
@@ -187,6 +232,8 @@ Files modified:
   - packages/unimatrix-linux-x64/package.json
   - packages/unimatrix-linux-arm64/package.json
   - CHANGELOG.md
+  - protocols/ (synced from .claude/protocols/uni/)
+  - skills/uni-retro/SKILL.md (synced from .claude/skills/uni-retro/)
 
 Git:
   - Commit: release: v{new_version}
