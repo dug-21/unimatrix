@@ -28,3 +28,9 @@
 ## Open Questions
 
 None — all design questions were resolved before handoff.
+
+## Knowledge Stewardship
+
+- Queried: context_search(query: "coherence scoring Lambda contradiction patterns", category: "pattern")
+- Queried: context_search(query: "crt-051 architectural decisions", category: "decision", topic: "crt-051")
+- Stored: entry #4259 "ADR-001 contradiction_density_score input source" via context_store (category: decision, tags: ["adr", "crt-051"])

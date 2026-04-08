@@ -50,3 +50,4 @@ None. All open questions from SCOPE.md are resolved.
 - Queried: mcp__unimatrix__context_briefing — 14 results returned. Entries #4258 and #4257
   (patterns for scoring function semantic changes and Lambda dimension input audits) applied
   directly to test site enumeration and fixture discovery.
+- Stored: nothing novel to store — the AC vs FR body precedence resolution is feature-specific (VARIANCE-01 in ALIGNMENT-REPORT.md). The underlying pattern (AC binding over FR prose when internally inconsistent) is a general spec authoring rule, not a Unimatrix-specific finding worth persisting.
