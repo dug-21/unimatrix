@@ -452,20 +452,30 @@ pub struct InferenceConfig {
     // -----------------------------------------------------------------------
     // Phase frequency table fields (col-031)
     // -----------------------------------------------------------------------
-    /// col-031: Lookback window in days for PhaseFreqTable rebuild SQL.
+    /// Lookback window (days) for observations-sourced PhaseFreqTable rebuild.
     ///
-    /// Controls the `WHERE ts > strftime('%s','now') - lookback_days * 86400`
-    /// filter in `query_phase_freq_table`. Larger values include more history
-    /// at the cost of including older access patterns. Smaller values are more
-    /// reactive but may miss low-frequency entries.
+    /// Governs the time window of observations.ts_millis queried by
+    /// query_phase_freq_observations. This field was formerly named
+    /// `query_log_lookback_days` (col-031 ADR-002); the serde alias preserves
+    /// backward compatibility for TOML configs using the old name (ADR-004).
     ///
-    /// This governs the rebuild SQL window only — not data deletion. Data GC
-    /// belongs to #409 (cycle-aligned GC).
+    /// Range: [1, 3650]. Default: 30.
+    #[serde(alias = "query_log_lookback_days")]
+    #[serde(default = "default_phase_freq_lookback_days")]
+    pub phase_freq_lookback_days: u32,
+
+    /// Minimum distinct (phase, session_id) pair count required for a valid
+    /// PhaseFreqTable rebuild.
     ///
-    /// Range: [1, 3650] (1 day to 10 years). Enforced by validate().
-    /// Default: 30 (two typical delivery cycles at session frequency).
-    #[serde(default = "default_query_log_lookback_days")]
-    pub query_log_lookback_days: u32,
+    /// When the count of distinct (phase, session_id) observation pairs within the
+    /// lookback window falls below this threshold, PhaseFreqTable::rebuild() sets
+    /// use_fallback = true and emits tracing::warn! (FR-17, AC-14).
+    ///
+    /// Default: 5. Range: [1, 1000].
+    /// Conservative default — low enough to not trigger spuriously in dev/test
+    /// environments while providing a non-zero signal-quality floor (ADR-003 OQ-3).
+    #[serde(default = "default_min_phase_session_pairs")]
+    pub min_phase_session_pairs: u32,
 
     // -----------------------------------------------------------------------
     // Personalized PageRank fields (crt-030)
@@ -716,8 +726,9 @@ impl Default for InferenceConfig {
             max_co_access_promotion_per_tick: 200,
             // bugfix-444: heal pass batch size
             heal_pass_batch_size: default_heal_pass_batch_size(),
-            // col-031: phase frequency table fields
-            query_log_lookback_days: default_query_log_lookback_days(),
+            // crt-050: phase frequency table fields
+            phase_freq_lookback_days: default_phase_freq_lookback_days(),
+            min_phase_session_pairs: default_min_phase_session_pairs(),
             // crt-030: Personalized PageRank fields
             ppr_alpha: default_ppr_alpha(),
             ppr_iterations: default_ppr_iterations(),
@@ -817,12 +828,19 @@ fn default_w_phase_explicit() -> f64 {
     0.05
 }
 
-// col-031: default lookback window for PhaseFreqTable rebuild (ADR-002).
+// crt-050: default lookback window for observations-sourced PhaseFreqTable rebuild (ADR-004).
 // 30 days covers approximately 2 delivery cycles at typical session frequency.
-// Range [1, 3650] enforced by validate(). #409 owns cycle-aligned GC as the
-// long-term successor to this time-based approximation.
-fn default_query_log_lookback_days() -> u32 {
+// Range [1, 3650] enforced by validate(). Formerly named default_query_log_lookback_days
+// (col-031 ADR-002); renamed in crt-050 ADR-004.
+fn default_phase_freq_lookback_days() -> u32 {
     30
+}
+
+// crt-050: minimum distinct (phase, session_id) pairs for a valid PhaseFreqTable rebuild.
+// Default 5: low enough to not trigger spuriously in dev/test environments.
+// Range [1, 1000] enforced by validate().
+fn default_min_phase_session_pairs() -> u32 {
+    5
 }
 
 // ---------------------------------------------------------------------------
@@ -1208,15 +1226,27 @@ impl InferenceConfig {
             });
         }
 
-        // -- col-031: query_log_lookback_days range check [1, 3650] (R-08, ADR-002). --
+        // -- crt-050: phase_freq_lookback_days range check [1, 3650] (R-08, ADR-004). --
         // 0 would make the WHERE clause include no rows (empty window -> use_fallback=true).
         // >3650 is effectively unbounded and likely an operator misconfiguration.
-        if self.query_log_lookback_days < 1 || self.query_log_lookback_days > 3650 {
+        if self.phase_freq_lookback_days < 1 || self.phase_freq_lookback_days > 3650 {
             return Err(ConfigError::NliFieldOutOfRange {
                 path: path.to_path_buf(),
-                field: "query_log_lookback_days",
-                value: self.query_log_lookback_days.to_string(),
+                field: "phase_freq_lookback_days",
+                value: self.phase_freq_lookback_days.to_string(),
                 reason: "must be in range [1, 3650]",
+            });
+        }
+
+        // -- crt-050: min_phase_session_pairs range check [1, 1000]. --
+        // 0 would allow any observation count (meaningless floor).
+        // >1000 is implausibly high for any production workload.
+        if self.min_phase_session_pairs < 1 || self.min_phase_session_pairs > 1000 {
+            return Err(ConfigError::NliFieldOutOfRange {
+                path: path.to_path_buf(),
+                field: "min_phase_session_pairs",
+                value: self.min_phase_session_pairs.to_string(),
+                reason: "must be in range [1, 1000]",
             });
         }
 
@@ -1444,9 +1474,11 @@ pub struct RetentionConfig {
     /// available to PhaseFreqTable::rebuild. Cycles outside this window are
     /// eligible for GC after their cycle_review_index row is confirmed present.
     ///
-    /// Cross-reference: inference_config.query_log_lookback_days. When
-    /// query_log_lookback_days implies a window older than the oldest retained
-    /// cycle's computed_at, a tracing::warn! fires each tick (ADR-003 alignment guard).
+    /// Cross-reference: inference_config.phase_freq_lookback_days (formerly
+    /// query_log_lookback_days, renamed in crt-050 ADR-004). When
+    /// phase_freq_lookback_days implies a window older than the oldest retained
+    /// cycle's computed_at, a tracing::warn! fires each tick (crt-036 ADR-003
+    /// alignment guard, updated in crt-050 status-diagnostics component).
     ///
     /// Range: [1, 10000]. Default: 50.
     #[serde(default = "default_activity_detail_retention_cycles")]
@@ -2635,13 +2667,20 @@ fn merge_configs(global: UnimatrixConfig, project: UnimatrixConfig) -> Unimatrix
             } else {
                 global.inference.heal_pass_batch_size
             },
-            // col-031: phase frequency table fields
-            query_log_lookback_days: if project.inference.query_log_lookback_days
-                != default.inference.query_log_lookback_days
+            // crt-050: phase frequency table fields
+            phase_freq_lookback_days: if project.inference.phase_freq_lookback_days
+                != default.inference.phase_freq_lookback_days
             {
-                project.inference.query_log_lookback_days
+                project.inference.phase_freq_lookback_days
             } else {
-                global.inference.query_log_lookback_days
+                global.inference.phase_freq_lookback_days
+            },
+            min_phase_session_pairs: if project.inference.min_phase_session_pairs
+                != default.inference.min_phase_session_pairs
+            {
+                project.inference.min_phase_session_pairs
+            } else {
+                global.inference.min_phase_session_pairs
             },
             // crt-030: PPR fields
             ppr_alpha: if (project.inference.ppr_alpha - default.inference.ppr_alpha).abs()
@@ -5754,41 +5793,76 @@ categories = ["some-cat"]
         );
     }
 
-    // AC-10: query_log_lookback_days default from Default impl.
+    // AC-10 / crt-050: phase_freq_lookback_days default from Default impl.
     #[test]
-    fn test_inference_config_query_log_lookback_days_default() {
+    fn test_inference_config_phase_freq_lookback_days_default() {
         let cfg = InferenceConfig::default();
         assert_eq!(
-            cfg.query_log_lookback_days, 30u32,
-            "query_log_lookback_days default must be 30 (col-031, ADR-002)"
+            cfg.phase_freq_lookback_days, 30u32,
+            "phase_freq_lookback_days default must be 30 (crt-050, ADR-004)"
         );
     }
 
-    // AC-10: query_log_lookback_days deserialized from empty TOML must be 30.
+    // AC-10 / crt-050: phase_freq_lookback_days deserialized from empty TOML must be 30.
     #[test]
-    fn test_query_log_lookback_days_default_from_empty_toml() {
+    fn test_phase_freq_lookback_days_default_from_empty_toml() {
         let cfg: InferenceConfig = toml::from_str("").unwrap();
         assert_eq!(
-            cfg.query_log_lookback_days, 30u32,
-            "query_log_lookback_days must deserialize to 30 from empty TOML (col-031, ADR-002)"
+            cfg.phase_freq_lookback_days, 30u32,
+            "phase_freq_lookback_days must deserialize to 30 from empty TOML (crt-050, ADR-004)"
         );
     }
 
-    // AC-10: query_log_lookback_days reads explicit TOML value.
+    // T-CFG-02: phase_freq_lookback_days reads explicit TOML value (new name).
     #[test]
-    fn test_query_log_lookback_days_deserializes_from_toml() {
-        let cfg: InferenceConfig = toml::from_str("query_log_lookback_days = 7").unwrap();
+    fn test_inference_config_phase_freq_lookback_days_new_name_deserializes() {
+        let cfg: InferenceConfig = toml::from_str("phase_freq_lookback_days = 30").unwrap();
         assert_eq!(
-            cfg.query_log_lookback_days, 7u32,
-            "query_log_lookback_days must deserialize 7 from TOML"
+            cfg.phase_freq_lookback_days, 30u32,
+            "phase_freq_lookback_days must deserialize from new TOML key (crt-050, T-CFG-02)"
         );
     }
 
-    // R-08: validate() rejects query_log_lookback_days = 0 (below floor).
+    // T-CFG-01: query_log_lookback_days serde alias routes old TOML key to renamed field.
+    #[test]
+    fn test_inference_config_query_log_lookback_days_alias_deserializes() {
+        let cfg: InferenceConfig = toml::from_str("query_log_lookback_days = 45").unwrap();
+        assert_eq!(
+            cfg.phase_freq_lookback_days, 45u32,
+            "serde alias must route query_log_lookback_days to phase_freq_lookback_days (crt-050, ADR-004, T-CFG-01)"
+        );
+    }
+
+    // T-CFG-03: Default values correct (phase_freq_lookback_days and min_phase_session_pairs).
+    #[test]
+    fn test_inference_config_crt050_defaults() {
+        let cfg = InferenceConfig::default();
+        assert_eq!(
+            cfg.phase_freq_lookback_days, 30u32,
+            "phase_freq_lookback_days default must be 30"
+        );
+        assert_eq!(
+            cfg.min_phase_session_pairs, 5u32,
+            "min_phase_session_pairs default must be 5 (crt-050, ADR-007/NFR-04)"
+        );
+    }
+
+    // T-CFG-05: min_phase_session_pairs deserializes explicit value.
+    #[test]
+    fn test_inference_config_min_phase_session_pairs_deserializes() {
+        let cfg: InferenceConfig =
+            serde_json::from_str(r#"{"min_phase_session_pairs": 10}"#).unwrap();
+        assert_eq!(
+            cfg.min_phase_session_pairs, 10u32,
+            "min_phase_session_pairs must deserialize value 10 (crt-050, AC-14)"
+        );
+    }
+
+    // R-08: validate() rejects phase_freq_lookback_days = 0 (below floor).
     #[test]
     fn test_validate_lookback_days_zero_is_error() {
         let cfg = InferenceConfig {
-            query_log_lookback_days: 0,
+            phase_freq_lookback_days: 0,
             ..Default::default()
         };
         let err = cfg.validate(Path::new("/fake")).unwrap_err();
@@ -5796,19 +5870,19 @@ categories = ["some-cat"]
             matches!(
                 err,
                 ConfigError::NliFieldOutOfRange {
-                    field: "query_log_lookback_days",
+                    field: "phase_freq_lookback_days",
                     ..
                 }
             ),
-            "expected NliFieldOutOfRange for query_log_lookback_days=0, got: {err}"
+            "expected NliFieldOutOfRange for phase_freq_lookback_days=0, got: {err}"
         );
     }
 
-    // R-08: validate() rejects query_log_lookback_days = 3651 (above ceiling).
+    // R-08: validate() rejects phase_freq_lookback_days = 3651 (above ceiling).
     #[test]
     fn test_validate_lookback_days_3651_is_error() {
         let cfg = InferenceConfig {
-            query_log_lookback_days: 3651,
+            phase_freq_lookback_days: 3651,
             ..Default::default()
         };
         let err = cfg.validate(Path::new("/fake")).unwrap_err();
@@ -5816,11 +5890,11 @@ categories = ["some-cat"]
             matches!(
                 err,
                 ConfigError::NliFieldOutOfRange {
-                    field: "query_log_lookback_days",
+                    field: "phase_freq_lookback_days",
                     ..
                 }
             ),
-            "expected NliFieldOutOfRange for query_log_lookback_days=3651, got: {err}"
+            "expected NliFieldOutOfRange for phase_freq_lookback_days=3651, got: {err}"
         );
     }
 
@@ -5829,12 +5903,67 @@ categories = ["some-cat"]
     fn test_validate_lookback_days_boundary_values_pass() {
         for days in [1u32, 30, 3650] {
             let cfg = InferenceConfig {
-                query_log_lookback_days: days,
+                phase_freq_lookback_days: days,
                 ..Default::default()
             };
             assert!(
                 cfg.validate(Path::new("/fake")).is_ok(),
-                "query_log_lookback_days={days} must pass validate()"
+                "phase_freq_lookback_days={days} must pass validate()"
+            );
+        }
+    }
+
+    // T-CFG-07: validate() rejects min_phase_session_pairs = 0 (below floor).
+    #[test]
+    fn test_validate_min_phase_session_pairs_zero_is_error() {
+        let cfg = InferenceConfig {
+            min_phase_session_pairs: 0,
+            ..Default::default()
+        };
+        let err = cfg.validate(Path::new("/fake")).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ConfigError::NliFieldOutOfRange {
+                    field: "min_phase_session_pairs",
+                    ..
+                }
+            ),
+            "expected NliFieldOutOfRange for min_phase_session_pairs=0, got: {err}"
+        );
+    }
+
+    // T-CFG-08: validate() rejects min_phase_session_pairs = 1001 (above ceiling).
+    #[test]
+    fn test_validate_min_phase_session_pairs_1001_is_error() {
+        let cfg = InferenceConfig {
+            min_phase_session_pairs: 1001,
+            ..Default::default()
+        };
+        let err = cfg.validate(Path::new("/fake")).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                ConfigError::NliFieldOutOfRange {
+                    field: "min_phase_session_pairs",
+                    ..
+                }
+            ),
+            "expected NliFieldOutOfRange for min_phase_session_pairs=1001, got: {err}"
+        );
+    }
+
+    // T-CFG-09: validate() accepts boundary values 1 and 1000 for min_phase_session_pairs.
+    #[test]
+    fn test_validate_min_phase_session_pairs_boundary_values_pass() {
+        for pairs in [1u32, 5, 1000] {
+            let cfg = InferenceConfig {
+                min_phase_session_pairs: pairs,
+                ..Default::default()
+            };
+            assert!(
+                cfg.validate(Path::new("/fake")).is_ok(),
+                "min_phase_session_pairs={pairs} must pass validate()"
             );
         }
     }
