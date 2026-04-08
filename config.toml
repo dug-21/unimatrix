@@ -189,7 +189,7 @@ max_cycles_per_tick = 10
 # # Sum: 0.92 — required
 
 # =============================================================================
-# [inference] — ML inference thread pool, NLI cross-encoder, and retrieval tuning
+# [inference] — ML inference thread pool and retrieval tuning
 # =============================================================================
 
 [inference]
@@ -198,7 +198,6 @@ max_cycles_per_tick = 10
 # Floor of 4 ensures at least 3 threads are free for concurrent MCP embedding
 # calls when both the contradiction scan and quality-gate loop are active.
 # Valid range: [1, 64]. Override only to reduce parallelism in constrained containers.
-# When nli_enabled = true, a pool floor of 6 is applied at startup regardless.
 # rayon_pool_size = 4   # dynamic default shown; actual value depends on hardware
 
 # Lookback window (days) for observations-sourced PhaseFreqTable rebuild.
@@ -212,28 +211,6 @@ phase_freq_lookback_days = 30
 # sets use_fallback = true and phase affinity scoring is skipped for that cycle.
 # Range: [1, 1000]. Default: 5
 min_phase_session_pairs = 5
-
-# -----------------------------------------------------------------------------
-# NLI cross-encoder (opt-in)
-# Requires an external ONNX NLI cross-encoder model file. Not bundled with
-# Unimatrix. See documentation for model acquisition.
-# -----------------------------------------------------------------------------
-# nli_enabled = false
-# # Model variant. Accepted (case-insensitive): "minilm2", "minilm2-q8", "deberta", "deberta-q8"
-# # When absent, resolves to NliMiniLM2L6H768Q8 (recommended default) at startup.
-# # nli_model_name = "minilm2-q8"
-# # Explicit path to the ONNX model file.
-# # Accepts absolute paths or paths relative to the config file location.
-# # nli_model_path = "/path/to/model.onnx"
-# # SHA-256 hash of the model file (64-char lowercase hex). Verified before load.
-# # When absent, hash verification is skipped with a warn-level log.
-# # nli_model_sha256 = ""
-# # Candidate pool size for NLI search re-ranking. Range: [1, 100]. Default: 20
-# # nli_top_k = 20
-# # Entailment score threshold for writing Supports edges. Range: (0.0, 1.0). Default: 0.6
-# # nli_entailment_threshold = 0.6
-# # Contradiction score threshold for writing Contradicts edges. Range: (0.0, 1.0). Default: 0.6
-# # nli_contradiction_threshold = 0.6
 
 # -----------------------------------------------------------------------------
 # Internal tuning — do not change unless directed by a support issue.

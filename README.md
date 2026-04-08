@@ -72,7 +72,7 @@ Cycle outcomes recorded via `context_cycle` feed as graph edges, reinforcing co-
 
 ### Contradiction Detection
 
-After each `context_store`, a background scan checks the new entry against its top HNSW neighbors using cosine similarity. Pairs with similarity >= 0.65 are recorded as `Supports` edges in the knowledge graph. Contradiction density — the ratio of unresolved contradictions to active entries — is one dimension of the Lambda structural health metric, computed periodically and surfaced in `context_status` health reports. When contradictions are identified, `context_correct` is the resolution path: it deprecates the conflicting entry and links the replacement through a hash-chained supersession record. No NLI model is required for contradiction management.
+After each `context_store`, a background scan checks the new entry against its top HNSW neighbors using cosine similarity. Pairs with similarity >= 0.65 are recorded as `Supports` edges in the knowledge graph. Contradiction density — the ratio of unresolved contradictions to active entries — is one dimension of the Lambda structural health metric, computed periodically and surfaced in `context_status` health reports. When contradictions are identified, `context_correct` is the resolution path: it deprecates the conflicting entry and links the replacement through a hash-chained supersession record. No external model is required for contradiction management.
 
 ### Domain-Agnostic Observation Pipeline
 
@@ -226,11 +226,7 @@ context_briefing(topic: "crt-027", max_tokens: 1000)
 
 6. **Near-duplicate detection.** Entries with cosine similarity >= 0.92 to existing entries are rejected as duplicates. Rephrase if a legitimate distinct entry is rejected.
 
-7. **NLI model must be downloaded separately.** The optional NLI model is not bundled and is not downloaded automatically. Run `unimatrix model-download --nli` once after installation. The command prints the SHA-256 hash of the downloaded file — copy that hash into `nli_model_sha256` in your `[inference]` config. The server degrades gracefully to cosine-only search if the model is absent; no error is returned to callers.
-
-10. **Pin `nli_model_sha256` in production.** A replaced or tampered NLI model file is an undetectable model-poisoning attack. Setting `nli_model_sha256` in `[inference]` config causes the server to verify the model file at startup; a mismatch aborts NLI loading (falls back to cosine) and logs a security warning. Production deployments should always set this field. (NLI models are currently not used in production)
-
-11. **Run retrospectives to advance the retention window.** Activity data (observations, query_log, sessions) is retained indefinitely for any cycle that has not been reviewed with `context_cycle_review`. The retention K-window only advances past cycles that have a stored review. If retrospectives are skipped, the retention window stalls and raw signal data accumulates without bound. Call `context_cycle_review` after each cycle not only to learn what you can improve, but it also completes to allow the GC pass to prune older data. `context_status` shows `pending_cycle_reviews` — the list of cycles awaiting review.
+7. **Run retrospectives to advance the retention window.** Activity data (observations, query_log, sessions) is retained indefinitely for any cycle that has not been reviewed with `context_cycle_review`. The retention K-window only advances past cycles that have a stored review. If retrospectives are skipped, the retention window stalls and raw signal data accumulates without bound. Call `context_cycle_review` after each cycle not only to learn what you can improve, but it also completes to allow the GC pass to prune older data. `context_status` shows `pending_cycle_reviews` — the list of cycles awaiting review.
 
 ---
 
@@ -289,34 +285,10 @@ default_trust = "permissive"
 session_capabilities = ["Read", "Write", "Search"]
 
 [inference]
-# Number of threads dedicated to ML inference (ONNX embedding, optional NLI model, GNN).
+# Number of threads dedicated to ML inference (ONNX embedding, GNN).
 # Default: (num_cpus / 2).max(4).min(8) — at least 4 threads, at most 8.
 # Valid range: [1, 64]. Out-of-range value aborts startup with a structured error.
 rayon_pool_size = 4
-
-# Optional NLI model for search re-ranking and contradiction detection.
-# nli_enabled: set to true to enable NLI when the model has been downloaded (default: false).
-nli_enabled = false
-# nli_model_name: "minilm2" (cross-encoder/nli-MiniLM2-L6-H768, ~85MB, default)
-#                 "deberta" (cross-encoder/nli-deberta-v3-small, ~180MB)
-nli_model_name = "minilm2"
-# nli_model_sha256: SHA-256 hash of the downloaded model file. Should be set in
-# production — mismatch causes NliServiceHandle to fail and fall back to cosine.
-# Obtain the hash by running: unimatrix model-download --nli
-nli_model_sha256 = "<hash from model-download --nli>"
-# nli_top_k: HNSW candidate pool size for search re-ranking (default: 20, range [1,100]).
-nli_top_k = 20
-# nli_post_store_k: neighbor count for post-store contradiction detection (default: 10).
-nli_post_store_k = 10
-# nli_entailment_threshold: minimum entailment score to write a Supports edge (default: 0.6).
-nli_entailment_threshold = 0.6
-# nli_contradiction_threshold: minimum contradiction score to write a Contradicts edge (default: 0.6).
-nli_contradiction_threshold = 0.6
-# max_contradicts_per_tick: max edges written per context_store call (default: 10, range [1,100]).
-max_contradicts_per_tick = 10
-# nli_auto_quarantine_threshold: NLI-origin Contradicts edges trigger auto-quarantine only
-# when all edge scores exceed this value. Must be > nli_contradiction_threshold (default: 0.85).
-nli_auto_quarantine_threshold = 0.85
 
 # Session context affinity weights (WA-2).
 # w_phase_histogram: boost weight for implicit category histogram signal. Applied inside
@@ -384,7 +356,7 @@ Unimatrix exposes 12 MCP tools. All tools accept `format: "summary" | "markdown"
 | `context_correct` | Correct an existing entry. Deprecates the original and creates a new entry with a hash-chain link. | When an entry contains wrong or outdated information that should be superseded (not just hidden). Key params: `original_id` (required), `content` (required), `reason`. |
 | `context_deprecate` | Mark an entry as outdated. Entry remains accessible but excluded from default search/lookup. | When knowledge is no longer relevant but should not be deleted (historical record). Key params: `id` (required), `reason`. |
 | `context_quarantine` | Quarantine or restore an entry. Quarantined entries are excluded from search and lookup. **Admin only.** | When an entry is suspicious, invalid, or harmful and should be isolated. Use `action: "restore"` to undo. Key params: `id` (required), `action` ("quarantine" or "restore"), `reason`. |
-| `context_status` | Get knowledge base health metrics. Shows entry counts, distributions, correction chains, coherence score, security metrics, graph cohesion metrics (connectivity rate, isolated entry count, cross-category edge count, Supports edge count, mean entry degree, and NLI-inferred edge count), per-category lifecycle labels (adaptive vs pinned), `pending_cycle_reviews` (cycle IDs that have started within the retention window but have no stored cycle review yet — always computed), and a `curation_health` aggregate block (per-cycle correction rate mean/stddev, source breakdown as agent% and human%, orphan deprecation ratio mean/stddev, and trend direction when at least 6 cycles of snapshot data are available). **Admin only.** | When you need to assess knowledge base health or inspect whether NLI-based edge inference is producing a connected, cross-category graph, identify cycles awaiting retrospective review before signals can be purged, or review curation behavior trends across recent cycles. The `maintain` parameter is accepted but silently ignored — a background tick handles maintenance automatically. Key params: `topic`, `category`, `check_embeddings`. |
+| `context_status` | Get knowledge base health metrics. Shows entry counts, distributions, correction chains, coherence score, security metrics, graph cohesion metrics (connectivity rate, isolated entry count, cross-category edge count, Supports edge count, mean entry degree, and inferred edge count), per-category lifecycle labels (adaptive vs pinned), `pending_cycle_reviews` (cycle IDs that have started within the retention window but have no stored cycle review yet — always computed), and a `curation_health` aggregate block (per-cycle correction rate mean/stddev, source breakdown as agent% and human%, orphan deprecation ratio mean/stddev, and trend direction when at least 6 cycles of snapshot data are available). **Admin only.** | When you need to assess knowledge base health or inspect whether graph edge inference is producing a connected, cross-category graph, identify cycles awaiting retrospective review before signals can be purged, or review curation behavior trends across recent cycles. The `maintain` parameter is accepted but silently ignored — a background tick handles maintenance automatically. Key params: `topic`, `category`, `check_embeddings`. |
 | `context_briefing` | Get a knowledge index for a topic or task. Returns a `CONTEXT_GET_INSTRUCTION` header line followed by up to 20 active entries as a flat indexed table (columns: row, id, topic, category, confidence, snippet). Deprecated entries are suppressed. Query derived from: (1) explicit `task` param, (2) active cycle `goal` when set (stored via `context_cycle(start, goal: ...)`), (3) `topic` param fallback. `role` param accepted for backward compatibility but ignored. `UNIMATRIX_BRIEFING_K` env var is deprecated on this path — default k=20 cannot be reduced via env var. | At the start of a phase or task to get oriented. Call after each `context_cycle(type: "phase-end", ...)` to load the knowledge package for the next phase. Gated on `mcp-briefing` feature flag. Key params: `topic` (required fallback), `task`, `session_id`, `k` (default 20), `max_tokens` (default 3000, range 500-10000). |
 | `context_enroll` | Enroll or update an agent's trust level and capabilities. **Admin only.** | When managing agent permissions. Protected agents (`system`, `human`) cannot be modified. Self-lockout prevention active. Key params: `target_agent_id` (required), `trust_level` (required), `capabilities` (required). |
 | `context_cycle` | Signal feature cycle lifecycle events: start, phase transitions, and stop. Records one append-only event row per call in `CYCLE_EVENTS`; tags subsequent `context_store` entries with the active phase. | At cycle start/stop and at each phase boundary. Key params: `type` (required: `"start"` \| `"phase-end"` \| `"stop"`), `topic` (required), `phase`, `outcome`, `next_phase`, `agent_id`, `goal` (optional, `start` only: 1–2 sentence plain-text statement of feature intent; used as the step-2 query signal by `context_briefing` and hook injection when no explicit `task` is provided; max 1 024 bytes). Phase tokens must be lowercase with no spaces (canonical set: `scope`, `design`, `implementation`, `testing`, `gate-review`). |
@@ -455,7 +427,7 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | `export` | Export the knowledge base to JSONL format. No running server required. | `--output <PATH>` (defaults to stdout) |
 | `import` | Import a knowledge base from a JSONL export file. Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
-| `model-download` | Download ONNX model(s) to cache. Without flags, downloads the embedding model (used by npm postinstall). With `--nli`, downloads the optional NLI model and prints its SHA-256 hash for config pinning. | `--nli` (NLI model), `--nli-model minilm2\|deberta` (model variant, default `minilm2`) |
+| `model-download` | Download the ONNX embedding model to cache. Used by npm postinstall; safe to run manually to pre-warm the model cache. | None |
 | `snapshot` | Create a self-contained SQLite copy of the active database using `VACUUM INTO`. Includes all tables (entries, query_log, graph_edges, co_access, sessions, and all analytics tables). Refuses with a non-zero exit code if `--out` resolves to the same path as the live database. | `--out <PATH>` (required), `--project-dir <PATH>` |
 | `eval scenarios` | Mine the `query_log` table from a snapshot and write eval scenarios in JSONL format. Each scenario includes query text, retrieval context, baseline result set (soft ground truth), and source path (`mcp` or `uds`). | `--db <PATH>` (required), `--out <PATH>` (required), `--retrieval-mode mcp\|uds\|all` (default `all`), `--limit <N>` |
 | `eval run` | Replay eval scenarios through one or more configuration profile TOML files in-process, producing one JSON result file per scenario. Computes P@K, MRR, Kendall tau, rank change list, CC@k (Category Coverage at k), ICD (Intra-query Category Diversity), and latency delta per scenario per profile. Opens snapshot read-only; produces no writes to the snapshot. | `--db <PATH>` (required), `--scenarios <PATH>` (required), `--configs <TOML,...>` (required), `--out <DIR>` (required), `--k <N>` (default 5) |
@@ -561,10 +533,6 @@ Three hard limits apply to all observation events before any processing:
 - **Payload size**: events with a payload exceeding 64 KB are rejected with a `PayloadTooLarge` error.
 - **JSON nesting depth**: payloads nested more than 10 levels deep are rejected with a `NestingTooDeep` error.
 - **Source domain format**: `source_domain` must match `^[a-z0-9_-]{1,64}$` at both domain pack registration and event ingest. Invalid values are rejected with an `InvalidSourceDomain` error — they do not silently coerce or pass through.
-
-### NLI Model Integrity
-
-SHA-256 hash pinning for the optional NLI model file. When `nli_model_sha256` is set in `[inference]` config, the model file is verified before the ONNX session is constructed. A mismatch transitions `NliServiceHandle` to Failed, logs a security warning, and falls back to cosine-only search — the server continues operating. A tampered model file without hash pinning is an undetectable model-poisoning attack. Production deployments that enable NLI must set `nli_model_sha256`; obtain the hash by running `unimatrix model-download --nli`.
 
 ---
 
