@@ -267,7 +267,7 @@ preset = "collaborative"   # default — matches current compiled behavior
 # Replace the built-in 7-category list with domain-appropriate categories.
 # Values: lowercase, [a-z0-9_-], max 64 chars, up to 64 categories total.
 categories = ["lesson-learned", "decision", "convention",
-              "pattern", "procedure", "duties", "reference"]
+              "pattern", "procedure"]
 # Categories surfaced more prominently in search re-ranking (provenance score boost).
 boosted_categories = ["lesson-learned"]
 # Categories eligible for automated lifecycle management (retention, auto-deprecation).
@@ -423,7 +423,7 @@ Skills that interact with the MCP server require the server to be running and co
 
 ## Knowledge Categories
 
-Unimatrix uses 7 built-in knowledge categories. Category discipline matters for retrieval quality — miscategorized entries surface in wrong contexts during semantic search.
+Unimatrix uses 5 built-in knowledge categories. Category discipline matters for retrieval quality — miscategorized entries surface in wrong contexts during semantic search.
 
 | Category | Description | Example |
 |----------|-------------|---------|
@@ -432,12 +432,9 @@ Unimatrix uses 7 built-in knowledge categories. Category discipline matters for 
 | `convention` | Project conventions and rules agents should follow. | "All MCP tool handlers follow the execution order: identity -> capability -> validation -> category -> scanning -> business logic -> format -> audit." |
 | `pattern` | Reusable implementation patterns, gotchas, and solutions. | "Do not hold Store lock across async boundaries — use spawn_blocking for all Store calls." |
 | `procedure` | Step-by-step technical procedures (how-to). | "How to add a new MCP tool: 1. Define params struct, 2. Implement handler, 3. Add validation, 4. Add audit event." |
-| `duties` | Role duties for `context_briefing` orientation. | "Architect duties: read SCOPE.md, decompose into components, define integration surface, produce ADRs." |
-| `reference` | General reference material. | "ONNX Runtime 1.20.x compatibility matrix for supported platforms." |
-
 The `outcome` category has been retired: cycle outcomes are now recorded as structured events in `CYCLE_EVENTS` via `context_cycle`, not as knowledge base entries. Attempting to store an entry with `category = "outcome"` returns an `InvalidCategory` error.
 
-The default category list can be replaced at startup via `[knowledge] categories` in `~/.unimatrix/config.toml`. The 7 built-in categories cover the primary use cases for software delivery; operators targeting other domains can supply a domain-appropriate list.
+The default category list can be replaced at startup via `[knowledge] categories` in `~/.unimatrix/config.toml`. The 5 built-in categories cover the primary use cases for software delivery; operators targeting other domains can supply a domain-appropriate list.
 
 ---
 
