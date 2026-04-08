@@ -4,7 +4,27 @@
 
 ## Vision
 
-Unimatrix is a self-learning knowledge integrity engine. It captures knowledge that emerges from doing work — in any domain — and makes it trustworthy, correctable, and ever-improving. It delivers the right knowledge at the right time.
+Unimatrix is a workflow-aware, self-learning knowledge engine built for agentic
+software delivery. It captures the knowledge that emerges from doing work —
+decisions, patterns, lessons, conventions — and makes it trustworthy, retrievable,
+and continuously improving. As agents move through delivery cycles, Unimatrix learns
+what matters at each phase and delivers the right knowledge dynamically, before
+agents need to ask for it. Knowledge retention becomes a first-class citizen of the
+delivery process, not a side effect.
+
+Unimatrix is not an orchestration engine. It does not coordinate agents, schedule
+work, or manage workflows. It is a knowledge engine that understands workflow context
+— your current phase, what your team has been doing, what comes next — and uses that
+understanding to surface relevant knowledge at exactly the right moment.
+
+The key mental model: workflow definitions, agent definitions, and skill definitions
+are static — they live in your tooling and change infrequently. Architecture
+decisions, patterns, and lessons-learned are dynamic — they evolve with every
+feature, every delivery, every failure. Unimatrix was designed to manage the dynamic
+layer. Every architectural pivot, every hard-won lesson, every reusable pattern is
+captured, attributed, and made available to every future agent that needs it.
+
+Built for agentic software delivery. Configurable for any workflow-centric domain.
 
 ---
 
@@ -33,7 +53,7 @@ Before the roadmap, a clear-eyed list of where Unimatrix has strayed from its do
 | SERVER_INSTRUCTIONS const uses dev-workflow language | High | **Fixed** — W0-3 `[server] instructions` config |
 | Initial category allowlist hardcoded | High | **Fixed** — W0-3 / dsn-001 |
 | `context_cycle_review` tool name is SDLC-specific | Medium | **Fixed** — renamed to `context_cycle_review` |
-| HookType enum tied to Claude Code events | Medium | **In progress** — col-023 / W1-5 |
+| HookType enum tied to Claude Code events | Medium | **Fixed** — col-023 / W1-5 (PR #332) |
 | trust_source vocabulary dev-flavored | Low | Open |
 | Observation metrics schema (bash_for_search, etc.) | Low | **In progress** — W1-5 `domain_metrics_json` |
 
@@ -154,7 +174,7 @@ Graceful degradation: absent or hash-invalid model file → server starts on cos
 
 ---
 
-### W1-5: Observation Pipeline Generalization — IN PROGRESS (`col-023`, GH #331)
+### W1-5: Observation Pipeline Generalization — COMPLETE (`col-023`, PR #332, GH #331)
 **Business outcome**: Any domain can connect its native event stream to the learning layer without code changes.
 
 **What**: Replace `HookType` closed enum with `ObservationEvent { event_type: String, source_domain: String, payload: JsonValue, session_id: String }`. Generalize `UniversalMetrics` so dev-specific metrics become the "claude-code" domain pack's metrics, not hardcoded struct fields. Rewrite all 21 detection rules to operate on the generic event schema. Implement config-file-driven domain pack registration loaded at startup.
@@ -555,7 +575,7 @@ Wave 1 — Intelligence Foundation
   W1-2: Rayon pool (COMPLETE) ────────────────────────────────────────────┐  │
   W1-3: Eval harness ─────────────────────────────────────────────────┐   │  │
   W1-4: NLI re-ranking (COMPLETE) ◄──────────────────────(W1-2+W1-3)─┤   │  │
-  W1-5: Obs generalization (IN PROGRESS) ────────────────────────────┐│   │  │
+  W1-5: Obs generalization (COMPLETE — col-023, PR #332, GH #331) ──┐│   │  │
                                                                       ││   │  │
               ┌───────────────────────────────────────────────────────┘│   │  │
               │     ┌─────────────────────────────────────────────────┘│   │  │
@@ -602,7 +622,7 @@ Key sequencing rules:
 | W1-2 | Rayon pool | **COMPLETE** | — |
 | W1-3 | Eval harness | ~1.5-2 weeks | W0 complete |
 | W1-4 | NLI re-ranking | **COMPLETE** | — |
-| W1-5 | Obs generalization | ~5-7 days | W0 complete |
+| W1-5 | Obs generalization | **COMPLETE** — col-023, PR #332, GH #331 | — |
 | WA-0 | Ranking signal fusion | ~1-2 days | W1-4 complete; GH #329 subsumed |
 | WA-1 | Phase signal (#330) | ~1 day | WA-0 complete |
 | WA-2 | Session context enrichment | ~1 day | WA-1 complete |

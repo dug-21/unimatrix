@@ -1,10 +1,30 @@
 # Unimatrix
 
-A self-learning knowledge engine for multi-agent software development. Unimatrix captures decisions, patterns, conventions, and lessons from real work, then delivers that context automatically via Claude Code's hook system — agents do not need to ask for it. Confidence scoring evolves from usage signals, so knowledge that helps gets boosted and knowledge that misleads gets downranked.
+Unimatrix is a workflow-aware, self-learning knowledge engine built for agentic
+software delivery. It captures the knowledge that emerges from doing work —
+decisions, patterns, lessons, conventions — and makes it trustworthy, retrievable,
+and continuously improving. As agents move through delivery cycles, Unimatrix learns
+what matters at each phase and delivers the right knowledge dynamically, before
+agents need to ask for it. Knowledge retention becomes a first-class citizen of the
+delivery process, not a side effect.
 
-Built in Rust. Zero cloud dependency. Ships as a single binary MCP server.
+Unimatrix is not an orchestration engine. It does not coordinate agents, schedule
+work, or manage workflows. It is a knowledge engine that understands workflow context
+— your current phase, what your team has been doing, what comes next — and uses that
+understanding to surface relevant knowledge at exactly the right moment.
 
-Inspired by and building on patterns from [ruvnet's](https://github.com/ruvnet) work on [claude-flow](https://github.com/ruvnet/claude-flow) and ruvector — particularly the hook-driven delivery architecture and the insight that knowledge engines only matter if knowledge *reaches* agents without their cooperation. Unimatrix pairs that delivery philosophy with an auditable knowledge lifecycle: hash-chained corrections, confidence evolution from real usage signals, and self-maintaining structural coherence.
+The key mental model: workflow definitions, agent definitions, and skill definitions
+are static — they live in your tooling and change infrequently. Architecture
+decisions, patterns, and lessons-learned are dynamic — they evolve with every
+feature, every delivery, every failure. Unimatrix was designed to manage the dynamic
+layer. Every architectural pivot, every hard-won lesson, every reusable pattern is
+captured, attributed, when needed, corrected, and made available to every future agent that needs it.
+
+Built for agentic software delivery. Configurable for any workflow-centric domain.
+
+This workflow-phase-conditioned delivery means knowledge is surfaced at phase
+transitions based on what the engine has learned about each phase — it is not
+unconditional injection into every prompt.
 
 ---
 
@@ -14,9 +34,9 @@ Multi-agent development creates knowledge that lives in context windows and dies
 
 - **Auditable Knowledge Lifecycle** — Every entry has a SHA-256 content hash. Corrections create hash-chained supersession links. An append-only audit log records every operation with agent identity and session context. You can trace how any piece of knowledge evolved.
 
-- **Invisible Delivery** — Agents do not need to ask for context. Hook-driven integration (Cortical Implant) injects relevant expertise into every prompt automatically via Claude Code's lifecycle hooks. Knowledge reaches agents without their cooperation.
+- **Invisible Delivery** — Agents do not need to ask for context. Hook-driven integration injects relevant expertise into every prompt automatically via Claude Code's lifecycle hooks. Knowledge reaches agents without needing to ask.
 
-- **Self-Learning** — Confidence scoring evolves from real usage signals: access frequency, helpfulness votes, correction quality, creator trust, freshness decay, and co-access patterns. Entries that help get boosted; entries that mislead get downranked. Adaptive embeddings (MicroLoRA) tune search to project-specific usage patterns.
+- **Self-Learning** — Confidence scoring evolves from real usage signals: accesses, helpfulness votes, correction quality, creator trust, and co-access patterns. Entries that help get boosted; entries that mislead get downranked. Adaptive embeddings (MicroLoRA) tune search to project-specific usage patterns.
 
 ---
 
@@ -28,27 +48,35 @@ Unimatrix provides these capabilities out of the box.
 
 Captures decisions, patterns, conventions, procedures, and lessons from real feature work. Seven knowledge categories ensure entries surface in the right context. Confidence scoring combines usage signals, correction quality, creator trust, freshness, helpfulness, and co-access patterns into a composite score that evolves automatically. No manual curation required — the system learns what is useful from how knowledge is accessed and rated.
 
+### Graph-Enhanced Retrieval
+
+HNSW vector similarity locates an initial candidate pool from the 384-dimension embedding space. Personalized PageRank (PPR) co-access traversal then expands the pool by walking the knowledge graph — surfacing cross-category entries that pure vector search misses, because they were frequently retrieved together with the initial candidates in past sessions. A confirmed +0.0122 MRR improvement comes from this expansion step alone. Phase-conditioned category affinity stratifies results by the current workflow phase: entries from categories that historically appear during the active phase receive a ranking boost, calibrated from the per-(phase, category) frequency table rebuilt each background tick. Co-access ranking promotes entries retrieved together in prior sessions. The three layers compose in sequence: semantic similarity → PPR graph expansion → phase-conditioned and co-access re-ranking. Filters by topic, category, tags, and status apply throughout. Near-duplicate detection (cosine similarity >= 0.92) prevents redundant entries at write time.
+
 ### Adaptive Embeddings (MicroLoRA)
 
 All-MiniLM-L6-v2 ONNX model runs locally — no API calls, no cloud dependency. A MicroLoRA layer adapts frozen embeddings to project-specific usage patterns. Search relevance improves over time as the system learns which entries are accessed together. 384-dimension vectors with HNSW index for fast approximate nearest-neighbor search.
 
-### Semantic Search with NLI Re-ranking
-
-Natural language queries return entries ranked by NLI (Natural Language Inference) entailment score when an NLI cross-encoder model is present, or by a combination of semantic similarity, confidence score, and co-access affinity when it is not. The NLI re-ranker expands the HNSW candidate pool to `nli_top_k` (default 20), scores each `(query, candidate)` pair on the rayon pool, and sorts by entailment score descending before truncation — measuring whether an entry answers the query rather than merely sharing vocabulary with it. When the NLI model is absent or disabled (`nli_enabled = false`), search falls back to the existing confidence-aware ranking pipeline transparently. Filters by topic, category, tags, and status narrow results without losing semantic ranking. Near-duplicate detection (cosine similarity >= 0.92) prevents redundant entries at write time. Provenance boosting: `lesson-learned` entries get a small ranking boost in search results.
-
 ### Hook-Driven Invisible Delivery (Cortical Implant)
 
-Automatic context injection on every prompt via the `UserPromptSubmit` hook. Six hook events drive the integration: `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Subagent injection: when the SM spawns a subagent, the `SubagentStart` hook fires synchronously and injects relevant knowledge into the subagent context before its first token — the subagent does not need to call `context_briefing` manually. `UserPromptSubmit` injection requires at least 5 words in the prompt; shorter inputs (e.g., "yes", "ok continue") are recorded but produce no injection. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; the compaction payload is a flat indexed table of active entries (up to k=20) plus a session histogram summary. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.
+Automatic context injection on every prompt via the `UserPromptSubmit` hook. Six hook events drive the integration: `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Subagent injection: when the SM spawns a subagent, the `SubagentStart` hook fires synchronously and injects relevant knowledge into the subagent context before its first token — this combined with a `context_briefing` call on the outset, provides agents with an index of the most relevant artifacts to their goal and task. `UserPromptSubmit` injection requires at least 5 words in the prompt; shorter inputs (e.g., "yes", "ok continue") are recorded but produce no injection. **No guidance is better than misdirection**. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; the compaction payload is a flat indexed table of active entries (up to k=20) plus a session histogram summary. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.  Hooks provide the telemetry necessary for Unimatrix to learn.
 
-### Retrospective Analysis
+### Cycle Review Analysis
 
 Analyzes session telemetry for a completed feature cycle and produces the `# Unimatrix Cycle Review —` report. 21 detection rules across 4 categories: agent behavior, friction points, session health, and scope indicators. Rules are domain-aware: each rule guards on `source_domain` as its first filter, so Claude Code rules never fire on events from other domains. A domain pack registry loaded at startup from TOML defines which event types, categories, and detection rules apply to each domain; the "claude-code" pack is always active with no config required. Historical baselines with outlier detection surface anomalies. Evidence synthesis produces actionable findings with supporting data. Lessons and patterns extracted from retrospectives are stored back in the knowledge base with de-duplication via correction chains.
 
 The report header surfaces the feature goal, inferred cycle type (Design, Delivery, Bugfix, Refactor, or Unknown), attribution path used (cycle\_events-first, sessions.feature\_cycle legacy, or content-scan fallback), and an in-progress indicator when no `cycle_stop` event exists. A Phase Timeline table breaks the cycle into per-phase windows showing duration, pass count, agents spawned, records, knowledge throughput, and gate outcome. A "What Went Well" section surfaces non-outlier favorable baseline signals that were previously hidden. Per-finding evidence is rendered as relative-time burst notation (`Timeline: +0m(N) +12m(N▲) …`) rather than raw epoch values. The Knowledge Reuse section splits served entries into cross-feature (from prior cycles) and intra-cycle buckets with a top-entry breakdown. Recommendations appear immediately after the header, before all other sections.
 
-### Contradiction Detection and NLI Edge Classification
+### Behavioral Signal Delivery
 
-After each `context_store`, a fire-and-forget background task runs the NLI cross-encoder on the new entry against its top HNSW neighbors and writes `Contradicts` or `Supports` edges to the knowledge graph (`GRAPH_EDGES`) with `source='nli'`. This replaces the lexical `conflict_heuristic` for new edge creation. A circuit breaker (`max_contradicts_per_tick`, default 10) caps edges written per store call to prevent a single noisy entry from flooding the graph. When NLI is absent, the existing cosine heuristic remains as fallback. Contradictions surface in `context_status` health reports and reduce the coherence health metric (lambda), prompting review.
+Cycle outcomes recorded via `context_cycle` feed as graph edges, reinforcing co-access signals between entries retrieved during successful delivery phases. Each time a phase completes with a positive outcome, the knowledge retrieved during that phase gains stronger co-access links — future agents entering the same phase surface those entries higher. `context_briefing` operates as a targeted handoff at phase transitions: it uses the current phase and the cycle's history to prioritize knowledge relevant to the agent's declared phase, delivering a structured top-k result set without requiring the agent to search. This goal-conditioned briefing, combined with UDS injection, makes knowledge delivery phase-aware and progressive rather than flat. Reference: crt-046, Group 6.
+
+### Contradiction Detection
+
+After each `context_store`, a background scan checks the new entry against its top HNSW neighbors using cosine similarity. Pairs with similarity >= 0.65 are recorded as `Supports` edges in the knowledge graph. Contradiction density — the ratio of unresolved contradictions to active entries — is one dimension of the Lambda structural health metric, computed periodically and surfaced in `context_status` health reports. When contradictions are identified, `context_correct` is the resolution path: it deprecates the conflicting entry and links the replacement through a hash-chained supersession record. No NLI model is required for contradiction management.
+
+### Domain-Agnostic Observation Pipeline
+
+Every detection rule carries a `source_domain` guard — a rule fires only for events from its declared domain, never cross-contaminating signals from unrelated systems. Domain packs are registered via `[[observation.domain_packs]]` entries in `config.toml`, specifying the source domain, event types, and applicable knowledge categories. The built-in "claude-code" domain pack is always active and requires no configuration — it covers all Claude Code lifecycle hook events out of the box. Any domain's event stream connects to the learning layer by registering a domain pack; no code changes are required. `source_domain` is validated at both ingest and registration: values must match `^[a-z0-9_-]{1,64}$`. Reference: W1-5, col-023.
 
 ### Correction Chains with Audit Trails
 
@@ -58,7 +86,7 @@ After each `context_store`, a fire-and-forget background task runs the NLI cross
 
 Lambda is a composite structural integrity metric [0.0, 1.0] computed from three dimensions: graph quality (weight 0.46 — is the vector index structurally sound?), contradiction density (weight 0.31 — how many unresolved contradictions exist?), and embedding consistency (weight 0.23 — do entries have valid, current embeddings?). When lambda drops below 0.8, maintenance is recommended. A background tick handles maintenance automatically — confidence refresh, graph compaction, co-access cleanup.
 
-`context_status` also reports six graph cohesion metrics computed per-call from the `GRAPH_EDGES` table: connectivity rate (fraction of active entries with at least one non-bootstrap edge), isolated entry count, cross-category edge count, Supports edge count, mean entry degree (in+out), and NLI-inferred edge count (`source='nli'`). These metrics are informational — they do not feed into lambda — but let operators verify whether automated NLI edge inference is producing a connected, cross-category graph that PPR can exploit. Summary format includes a single "Graph cohesion:" line; Markdown format includes a `### Graph Cohesion` sub-section within the Coherence block.
+`context_status` also reports six graph cohesion metrics computed per-call from the `GRAPH_EDGES` table: connectivity rate (fraction of active entries with at least one non-bootstrap edge), isolated entry count, cross-category edge count, Supports edge count, mean entry degree (in+out). These metrics are informational — they do not feed into lambda — but let operators verify whether automated platform is driving cross-category graph that PPR can exploit. Summary format includes a single "Graph cohesion:" line; Markdown format includes a `### Graph Cohesion` sub-section within the Coherence block.
 
 ### Content Scanning
 
@@ -66,7 +94,7 @@ Every `context_store` and `context_correct` call scans content for injection pat
 
 ### Agent Trust Hierarchy
 
-Four-tier trust model: System > Privileged > Internal > Restricted. Four capabilities gate tool access: `read`, `write`, `search`, `admin`. Unknown agents auto-enroll as Restricted (read + search only) on first contact. Protected agents: `system` and `human` cannot be modified. Self-lockout prevention: an admin cannot remove their own Admin capability. `context_enroll` (Admin-only) manages agent trust levels and capabilities at runtime.
+Four-tier trust model: System > Privileged > Internal > Restricted. Four capabilities gate tool access: `read`, `write`, `search`, `admin`. Unknown agents auto-enroll as Restricted (read + search only) on first contact. Protected agents: `system` and `human` cannot be modified. Self-lockout prevention: an admin cannot remove their own Admin capability. `context_enroll` (Admin-only) manages agent trust levels and capabilities at runtime.  This is mostly unused in currently supported STDIO mode.  More to come
 
 ### Knowledge Effectiveness Analysis
 
@@ -110,7 +138,7 @@ Build:
 cargo build --release --workspace
 ```
 
-Binary at `target/release/unimatrix-server`.
+Binary at `target/release/unimatrix`.
 
 ### Configure MCP Server
 
@@ -133,7 +161,7 @@ Or for build-from-source:
 {
   "mcpServers": {
     "unimatrix": {
-      "command": "/path/to/unimatrix-server"
+      "command": "/path/to/unimatrix"
     }
   }
 }
@@ -188,25 +216,21 @@ context_briefing(topic: "crt-027", max_tokens: 1000)
 
 1. **Start a new session per feature cycle.** Context window pollution across features reduces knowledge quality. Each feature cycle (e.g., `col-015`) should use a fresh Claude Code session.
 
-2. **Use feature cycle naming.** Phase prefix + number: `col-015`, `nan-005`, `vnc-012`. Used in commits, branches, issue tracking, and as the `feature_cycle` parameter in MCP tool calls.
+2. **Use feature cycle naming.** (not required) Phase prefix + number: `col-015`, `nan-005`, `vnc-012`. Used in commits, branches, issue tracking, and as the `feature_cycle` parameter in MCP tool calls.
 
-3. **Follow commit message format.** `{prefix}: {description} (#{issue})` — see `/uni-git` for the prefix table.
+3. **Category discipline matters.** The right category determines retrieval quality. Decisions (`decision`) are not conventions (`convention`); procedures (`procedure`) are not patterns (`pattern`). Miscategorized entries surface in wrong contexts during semantic search.
 
-4. **Category discipline matters.** The right category determines retrieval quality. Decisions (`decision`) are not conventions (`convention`); procedures (`procedure`) are not patterns (`pattern`). Miscategorized entries surface in wrong contexts during semantic search.
+4. **Hook latency budget.** Hooks have a sub-50ms round-trip budget. Heavy blocking operations in hook handlers degrade the user experience.
 
-5. **Hook latency budget.** Hooks have a sub-50ms round-trip budget. Heavy blocking operations in hook handlers degrade the user experience.
+5. **Cold start: use `/uni-seed`.** A fresh knowledge base returns empty search results. `/uni-seed` populates foundational entries before relying on search.
 
-6. **Cold start: use `/uni-seed`.** A fresh knowledge base returns empty search results. `/uni-seed` populates foundational entries before relying on search.
+6. **Near-duplicate detection.** Entries with cosine similarity >= 0.92 to existing entries are rejected as duplicates. Rephrase if a legitimate distinct entry is rejected.
 
-7. **Near-duplicate detection.** Entries with cosine similarity >= 0.92 to existing entries are rejected as duplicates. Rephrase if a legitimate distinct entry is rejected.
+7. **NLI model must be downloaded separately.** The optional NLI model is not bundled and is not downloaded automatically. Run `unimatrix model-download --nli` once after installation. The command prints the SHA-256 hash of the downloaded file — copy that hash into `nli_model_sha256` in your `[inference]` config. The server degrades gracefully to cosine-only search if the model is absent; no error is returned to callers.
 
-8. **Daemon log file is not rotated.** The daemon writes stdout/stderr to `~/.unimatrix/{hash}/unimatrix.log` in append mode. On long-running projects, monitor this file's size and truncate or archive it manually as needed.
+10. **Pin `nli_model_sha256` in production.** A replaced or tampered NLI model file is an undetectable model-poisoning attack. Setting `nli_model_sha256` in `[inference]` config causes the server to verify the model file at startup; a mismatch aborts NLI loading (falls back to cosine) and logs a security warning. Production deployments should always set this field. (NLI models are currently not used in production)
 
-9. **NLI model must be downloaded separately.** The NLI cross-encoder model is not bundled and is not downloaded automatically. Run `unimatrix model-download --nli` once after installation. The command prints the SHA-256 hash of the downloaded file — copy that hash into `nli_model_sha256` in your `[inference]` config. The server degrades gracefully to cosine-only search if the model is absent; no error is returned to callers.
-
-10. **Pin `nli_model_sha256` in production.** A replaced or tampered NLI model file is an undetectable model-poisoning attack. Setting `nli_model_sha256` in `[inference]` config causes the server to verify the model file at startup; a mismatch aborts NLI loading (falls back to cosine) and logs a security warning. Production deployments should always set this field.
-
-11. **Run retrospectives to advance the retention window.** Activity data (observations, query_log, sessions) is retained indefinitely for any cycle that has not been reviewed with `context_cycle_review`. The retention K-window only advances past cycles that have a stored review. If retrospectives are skipped, the retention window stalls and raw signal data accumulates without bound. Call `context_cycle_review` after each cycle completes to allow the GC pass to prune older data. `context_status` shows `pending_cycle_reviews` — the list of cycles awaiting review.
+11. **Run retrospectives to advance the retention window.** Activity data (observations, query_log, sessions) is retained indefinitely for any cycle that has not been reviewed with `context_cycle_review`. The retention K-window only advances past cycles that have a stored review. If retrospectives are skipped, the retention window stalls and raw signal data accumulates without bound. Call `context_cycle_review` after each cycle not only to learn what you can improve, but it also completes to allow the GC pass to prune older data. `context_status` shows `pending_cycle_reviews` — the list of cycles awaiting review.
 
 ---
 
@@ -230,7 +254,7 @@ preset = "collaborative"   # default — matches current compiled behavior
 
 | Preset | Best for | Freshness half-life |
 |--------|----------|---------------------|
-| `collaborative` | Team-built knowledge, dev/research (default) | 168 h (1 week) |
+| `collaborative` | Team-built knowledge, dev/research (default) | 8760 h (1 year) |
 | `authoritative` | Policy, standards, legal precedents — source trust dominant | 8760 h (1 year) |
 | `operational` | Runbooks, incidents, procedures — freshness dominant | 720 h (1 month) |
 | `empirical` | Sensor feeds, metrics, time-series — recency critical | 24 h |
@@ -243,7 +267,7 @@ preset = "collaborative"   # default — matches current compiled behavior
 # Replace the built-in 7-category list with domain-appropriate categories.
 # Values: lowercase, [a-z0-9_-], max 64 chars, up to 64 categories total.
 categories = ["lesson-learned", "decision", "convention",
-              "pattern", "procedure", "duties", "reference"]
+              "pattern", "procedure"]
 # Categories surfaced more prominently in search re-ranking (provenance score boost).
 boosted_categories = ["lesson-learned"]
 # Categories eligible for automated lifecycle management (retention, auto-deprecation).
@@ -265,14 +289,14 @@ default_trust = "permissive"
 session_capabilities = ["Read", "Write", "Search"]
 
 [inference]
-# Number of threads dedicated to ML inference (ONNX embedding, NLI cross-encoder, GNN).
+# Number of threads dedicated to ML inference (ONNX embedding, optional NLI model, GNN).
 # Default: (num_cpus / 2).max(4).min(8) — at least 4 threads, at most 8.
 # Valid range: [1, 64]. Out-of-range value aborts startup with a structured error.
 rayon_pool_size = 4
 
-# NLI cross-encoder re-ranking and contradiction detection.
-# nli_enabled: set to false to disable NLI and use cosine-only search (default: true).
-nli_enabled = true
+# Optional NLI model for search re-ranking and contradiction detection.
+# nli_enabled: set to true to enable NLI when the model has been downloaded (default: false).
+nli_enabled = false
 # nli_model_name: "minilm2" (cross-encoder/nli-MiniLM2-L6-H768, ~85MB, default)
 #                 "deberta" (cross-encoder/nli-deberta-v3-small, ~180MB)
 nli_model_name = "minilm2"
@@ -374,7 +398,7 @@ Unimatrix exposes 12 MCP tools. All tools accept `format: "summary" | "markdown"
 
 ## Skills Reference
 
-Unimatrix includes 14 Claude Code skills. Skills are platform-native `/command` files installed via the npm package or by copying `.claude/skills/` directories to the target repository.
+Unimatrix includes 12 Claude Code skills. Skills are platform-native `/command` files installed via the npm package or by copying `.claude/skills/` directories to the target repository.
 
 Skills that interact with the MCP server require the server to be running and configured.
 
@@ -390,8 +414,6 @@ Skills that interact with the MCP server require the server to be running and co
 | `/uni-knowledge-lookup` | Interactive deterministic lookup by exact filters. (MCP) | When you know what you want — a specific feature, category, or ID. |
 | `/uni-review-pr` | PR security review and merge readiness check. | After delivery or bugfix opens a PR. Can be invoked standalone. |
 | `/uni-retro` | Post-merge retrospective — extract patterns, procedures, lessons. (MCP) | After a feature PR is merged. |
-| `/uni-git` | Git workflow conventions (branch naming, commit prefixes, PR templates). | For consistent git conventions. Contributor/developer-focused. |
-| `/uni-release` | Version bump, changelog generation, tag, and release pipeline. | When creating a new release. |
 | `/uni-init` | Initialize Unimatrix in a repository — CLAUDE.md setup + agent recommendations. | First-time setup of a repo to use Unimatrix. |
 | `/uni-seed` | Populate foundational knowledge through human-directed exploration. (MCP) | After installation, to seed the knowledge base before relying on search. |
 
@@ -399,7 +421,7 @@ Skills that interact with the MCP server require the server to be running and co
 
 ## Knowledge Categories
 
-Unimatrix uses 7 built-in knowledge categories. Category discipline matters for retrieval quality — miscategorized entries surface in wrong contexts during semantic search.
+Unimatrix uses 5 built-in knowledge categories. Category discipline matters for retrieval quality — miscategorized entries surface in wrong contexts during semantic search.
 
 | Category | Description | Example |
 |----------|-------------|---------|
@@ -408,12 +430,9 @@ Unimatrix uses 7 built-in knowledge categories. Category discipline matters for 
 | `convention` | Project conventions and rules agents should follow. | "All MCP tool handlers follow the execution order: identity -> capability -> validation -> category -> scanning -> business logic -> format -> audit." |
 | `pattern` | Reusable implementation patterns, gotchas, and solutions. | "Do not hold Store lock across async boundaries — use spawn_blocking for all Store calls." |
 | `procedure` | Step-by-step technical procedures (how-to). | "How to add a new MCP tool: 1. Define params struct, 2. Implement handler, 3. Add validation, 4. Add audit event." |
-| `duties` | Role duties for `context_briefing` orientation. | "Architect duties: read SCOPE.md, decompose into components, define integration surface, produce ADRs." |
-| `reference` | General reference material. | "ONNX Runtime 1.20.x compatibility matrix for supported platforms." |
-
 The `outcome` category has been retired: cycle outcomes are now recorded as structured events in `CYCLE_EVENTS` via `context_cycle`, not as knowledge base entries. Attempting to store an entry with `category = "outcome"` returns an `InvalidCategory` error.
 
-The default category list can be replaced at startup via `[knowledge] categories` in `~/.unimatrix/config.toml`. The 7 built-in categories cover the primary use cases for software delivery; operators targeting other domains can supply a domain-appropriate list.
+The default category list can be replaced at startup via `[knowledge] categories` in `~/.unimatrix/config.toml`. The 5 built-in categories cover the primary use cases for software delivery; operators targeting other domains can supply a domain-appropriate list.
 
 ---
 
@@ -436,7 +455,7 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | `export` | Export the knowledge base to JSONL format. No running server required. | `--output <PATH>` (defaults to stdout) |
 | `import` | Import a knowledge base from a JSONL export file. Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
-| `model-download` | Download ONNX model(s) to cache. Without flags, downloads the embedding model (used by npm postinstall). With `--nli`, downloads the configured NLI cross-encoder model and prints its SHA-256 hash for config pinning. | `--nli` (NLI model), `--nli-model minilm2\|deberta` (model variant, default `minilm2`) |
+| `model-download` | Download ONNX model(s) to cache. Without flags, downloads the embedding model (used by npm postinstall). With `--nli`, downloads the optional NLI model and prints its SHA-256 hash for config pinning. | `--nli` (NLI model), `--nli-model minilm2\|deberta` (model variant, default `minilm2`) |
 | `snapshot` | Create a self-contained SQLite copy of the active database using `VACUUM INTO`. Includes all tables (entries, query_log, graph_edges, co_access, sessions, and all analytics tables). Refuses with a non-zero exit code if `--out` resolves to the same path as the live database. | `--out <PATH>` (required), `--project-dir <PATH>` |
 | `eval scenarios` | Mine the `query_log` table from a snapshot and write eval scenarios in JSONL format. Each scenario includes query text, retrieval context, baseline result set (soft ground truth), and source path (`mcp` or `uds`). | `--db <PATH>` (required), `--out <PATH>` (required), `--retrieval-mode mcp\|uds\|all` (default `all`), `--limit <N>` |
 | `eval run` | Replay eval scenarios through one or more configuration profile TOML files in-process, producing one JSON result file per scenario. Computes P@K, MRR, Kendall tau, rank change list, CC@k (Category Coverage at k), ICD (Intra-query Category Diversity), and latency delta per scenario per profile. Opens snapshot read-only; produces no writes to the snapshot. | `--db <PATH>` (required), `--scenarios <PATH>` (required), `--configs <TOML,...>` (required), `--out <DIR>` (required), `--k <N>` (default 5) |
@@ -509,7 +528,7 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
 | `unimatrix-adapt` | Adaptive embedding pipeline — MicroLoRA training, state persistence |
 | `unimatrix-observe` | Observation pipeline — hotspot detection, metric computation, retrospective analysis |
 | `unimatrix-learn` | Shared ML infrastructure — training reservoirs, EWC++ state, neural models, model versioning |
-| `unimatrix-server` | MCP server — tool handlers, hook IPC, agent registry, audit, content scanning |
+| `unimatrix` | MCP server — tool handlers, hook IPC, agent registry, audit, content scanning |
 
 ---
 
@@ -545,7 +564,7 @@ Three hard limits apply to all observation events before any processing:
 
 ### NLI Model Integrity
 
-SHA-256 hash pinning for the NLI cross-encoder model file. When `nli_model_sha256` is set in `[inference]` config, the model file is verified before the ONNX session is constructed. A mismatch transitions `NliServiceHandle` to Failed, logs a security warning, and falls back to cosine-only search — the server continues operating. A tampered model file without hash pinning is an undetectable model-poisoning attack. Production deployments must set `nli_model_sha256`; obtain the hash by running `unimatrix model-download --nli`.
+SHA-256 hash pinning for the optional NLI model file. When `nli_model_sha256` is set in `[inference]` config, the model file is verified before the ONNX session is constructed. A mismatch transitions `NliServiceHandle` to Failed, logs a security warning, and falls back to cosine-only search — the server continues operating. A tampered model file without hash pinning is an undetectable model-poisoning attack. Production deployments that enable NLI must set `nli_model_sha256`; obtain the hash by running `unimatrix model-download --nli`.
 
 ---
 
