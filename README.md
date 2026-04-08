@@ -1,10 +1,30 @@
 # Unimatrix
 
-A self-learning knowledge engine for multi-agent software development. Unimatrix captures decisions, patterns, conventions, and lessons from real work, then delivers that context automatically via Claude Code's hook system — agents do not need to ask for it. Confidence scoring evolves from usage signals, so knowledge that helps gets boosted and knowledge that misleads gets downranked.
+Unimatrix is a workflow-aware, self-learning knowledge engine built for agentic
+software delivery. It captures the knowledge that emerges from doing work —
+decisions, patterns, lessons, conventions — and makes it trustworthy, retrievable,
+and continuously improving. As agents move through delivery cycles, Unimatrix learns
+what matters at each phase and delivers the right knowledge dynamically, before
+agents need to ask for it. Knowledge retention becomes a first-class citizen of the
+delivery process, not a side effect.
 
-Built in Rust. Zero cloud dependency. Ships as a single binary MCP server.
+Unimatrix is not an orchestration engine. It does not coordinate agents, schedule
+work, or manage workflows. It is a knowledge engine that understands workflow context
+— your current phase, what your team has been doing, what comes next — and uses that
+understanding to surface relevant knowledge at exactly the right moment.
 
-Inspired by and building on patterns from [ruvnet's](https://github.com/ruvnet) work on [claude-flow](https://github.com/ruvnet/claude-flow) and ruvector — particularly the hook-driven delivery architecture and the insight that knowledge engines only matter if knowledge *reaches* agents without their cooperation. Unimatrix pairs that delivery philosophy with an auditable knowledge lifecycle: hash-chained corrections, confidence evolution from real usage signals, and self-maintaining structural coherence.
+The key mental model: workflow definitions, agent definitions, and skill definitions
+are static — they live in your tooling and change infrequently. Architecture
+decisions, patterns, and lessons-learned are dynamic — they evolve with every
+feature, every delivery, every failure. Unimatrix was designed to manage the dynamic
+layer. Every architectural pivot, every hard-won lesson, every reusable pattern is
+captured, attributed, and made available to every future agent that needs it.
+
+Built for agentic software delivery. Configurable for any workflow-centric domain.
+
+This workflow-phase-conditioned delivery means knowledge is surfaced at phase
+transitions based on what the engine has learned about each phase — it is not
+unconditional injection into every prompt.
 
 ---
 
@@ -28,13 +48,13 @@ Unimatrix provides these capabilities out of the box.
 
 Captures decisions, patterns, conventions, procedures, and lessons from real feature work. Seven knowledge categories ensure entries surface in the right context. Confidence scoring combines usage signals, correction quality, creator trust, freshness, helpfulness, and co-access patterns into a composite score that evolves automatically. No manual curation required — the system learns what is useful from how knowledge is accessed and rated.
 
+### Graph-Enhanced Retrieval
+
+HNSW vector similarity locates an initial candidate pool from the 384-dimension embedding space. Personalized PageRank (PPR) co-access traversal then expands the pool by walking the knowledge graph — surfacing cross-category entries that pure vector search misses, because they were frequently retrieved together with the initial candidates in past sessions. A confirmed +0.0122 MRR improvement comes from this expansion step alone. Phase-conditioned category affinity stratifies results by the current workflow phase: entries from categories that historically appear during the active phase receive a ranking boost, calibrated from the per-(phase, category) frequency table rebuilt each background tick. Co-access ranking promotes entries retrieved together in prior sessions. The three layers compose in sequence: semantic similarity → PPR graph expansion → phase-conditioned and co-access re-ranking. Filters by topic, category, tags, and status apply throughout. Near-duplicate detection (cosine similarity >= 0.92) prevents redundant entries at write time.
+
 ### Adaptive Embeddings (MicroLoRA)
 
 All-MiniLM-L6-v2 ONNX model runs locally — no API calls, no cloud dependency. A MicroLoRA layer adapts frozen embeddings to project-specific usage patterns. Search relevance improves over time as the system learns which entries are accessed together. 384-dimension vectors with HNSW index for fast approximate nearest-neighbor search.
-
-### Semantic Search with NLI Re-ranking
-
-Natural language queries return entries ranked by NLI (Natural Language Inference) entailment score when an NLI cross-encoder model is present, or by a combination of semantic similarity, confidence score, and co-access affinity when it is not. The NLI re-ranker expands the HNSW candidate pool to `nli_top_k` (default 20), scores each `(query, candidate)` pair on the rayon pool, and sorts by entailment score descending before truncation — measuring whether an entry answers the query rather than merely sharing vocabulary with it. When the NLI model is absent or disabled (`nli_enabled = false`), search falls back to the existing confidence-aware ranking pipeline transparently. Filters by topic, category, tags, and status narrow results without losing semantic ranking. Near-duplicate detection (cosine similarity >= 0.92) prevents redundant entries at write time. Provenance boosting: `lesson-learned` entries get a small ranking boost in search results.
 
 ### Hook-Driven Invisible Delivery (Cortical Implant)
 
@@ -46,9 +66,17 @@ Analyzes session telemetry for a completed feature cycle and produces the `# Uni
 
 The report header surfaces the feature goal, inferred cycle type (Design, Delivery, Bugfix, Refactor, or Unknown), attribution path used (cycle\_events-first, sessions.feature\_cycle legacy, or content-scan fallback), and an in-progress indicator when no `cycle_stop` event exists. A Phase Timeline table breaks the cycle into per-phase windows showing duration, pass count, agents spawned, records, knowledge throughput, and gate outcome. A "What Went Well" section surfaces non-outlier favorable baseline signals that were previously hidden. Per-finding evidence is rendered as relative-time burst notation (`Timeline: +0m(N) +12m(N▲) …`) rather than raw epoch values. The Knowledge Reuse section splits served entries into cross-feature (from prior cycles) and intra-cycle buckets with a top-entry breakdown. Recommendations appear immediately after the header, before all other sections.
 
-### Contradiction Detection and NLI Edge Classification
+### Behavioral Signal Delivery
 
-After each `context_store`, a fire-and-forget background task runs the NLI cross-encoder on the new entry against its top HNSW neighbors and writes `Contradicts` or `Supports` edges to the knowledge graph (`GRAPH_EDGES`) with `source='nli'`. This replaces the lexical `conflict_heuristic` for new edge creation. A circuit breaker (`max_contradicts_per_tick`, default 10) caps edges written per store call to prevent a single noisy entry from flooding the graph. When NLI is absent, the existing cosine heuristic remains as fallback. Contradictions surface in `context_status` health reports and reduce the coherence health metric (lambda), prompting review.
+Cycle outcomes recorded via `context_cycle` feed as graph edges, reinforcing co-access signals between entries retrieved during successful delivery phases. Each time a phase completes with a positive outcome, the knowledge retrieved during that phase gains stronger co-access links — future agents entering the same phase surface those entries higher. `context_briefing` operates as a targeted handoff at phase transitions: it uses the current phase and the cycle's history to prioritize knowledge relevant to the agent's declared phase, delivering a structured top-k result set without requiring the agent to search. This goal-conditioned briefing, combined with UDS injection, makes knowledge delivery phase-aware and progressive rather than flat. Reference: crt-046, Group 6.
+
+### Contradiction Detection
+
+After each `context_store`, a background scan checks the new entry against its top HNSW neighbors using cosine similarity. Pairs with similarity >= 0.65 are recorded as `Supports` edges in the knowledge graph. Contradiction density — the ratio of unresolved contradictions to active entries — is one dimension of the Lambda structural health metric, computed periodically and surfaced in `context_status` health reports. When contradictions are identified, `context_correct` is the resolution path: it deprecates the conflicting entry and links the replacement through a hash-chained supersession record. No NLI model is required for contradiction management.
+
+### Domain-Agnostic Observation Pipeline
+
+Every detection rule carries a `source_domain` guard — a rule fires only for events from its declared domain, never cross-contaminating signals from unrelated systems. Domain packs are registered via `[[observation.domain_packs]]` entries in `config.toml`, specifying the source domain, event types, and applicable knowledge categories. The built-in "claude-code" domain pack is always active and requires no configuration — it covers all Claude Code lifecycle hook events out of the box. Any domain's event stream connects to the learning layer by registering a domain pack; no code changes are required. `source_domain` is validated at both ingest and registration: values must match `^[a-z0-9_-]{1,64}$`. Reference: W1-5, col-023.
 
 ### Correction Chains with Audit Trails
 
@@ -110,7 +138,7 @@ Build:
 cargo build --release --workspace
 ```
 
-Binary at `target/release/unimatrix-server`.
+Binary at `target/release/unimatrix`.
 
 ### Configure MCP Server
 
@@ -133,7 +161,7 @@ Or for build-from-source:
 {
   "mcpServers": {
     "unimatrix": {
-      "command": "/path/to/unimatrix-server"
+      "command": "/path/to/unimatrix"
     }
   }
 }
@@ -202,7 +230,7 @@ context_briefing(topic: "crt-027", max_tokens: 1000)
 
 8. **Daemon log file is not rotated.** The daemon writes stdout/stderr to `~/.unimatrix/{hash}/unimatrix.log` in append mode. On long-running projects, monitor this file's size and truncate or archive it manually as needed.
 
-9. **NLI model must be downloaded separately.** The NLI cross-encoder model is not bundled and is not downloaded automatically. Run `unimatrix model-download --nli` once after installation. The command prints the SHA-256 hash of the downloaded file — copy that hash into `nli_model_sha256` in your `[inference]` config. The server degrades gracefully to cosine-only search if the model is absent; no error is returned to callers.
+9. **NLI model must be downloaded separately.** The optional NLI model is not bundled and is not downloaded automatically. Run `unimatrix model-download --nli` once after installation. The command prints the SHA-256 hash of the downloaded file — copy that hash into `nli_model_sha256` in your `[inference]` config. The server degrades gracefully to cosine-only search if the model is absent; no error is returned to callers.
 
 10. **Pin `nli_model_sha256` in production.** A replaced or tampered NLI model file is an undetectable model-poisoning attack. Setting `nli_model_sha256` in `[inference]` config causes the server to verify the model file at startup; a mismatch aborts NLI loading (falls back to cosine) and logs a security warning. Production deployments should always set this field.
 
@@ -265,14 +293,14 @@ default_trust = "permissive"
 session_capabilities = ["Read", "Write", "Search"]
 
 [inference]
-# Number of threads dedicated to ML inference (ONNX embedding, NLI cross-encoder, GNN).
+# Number of threads dedicated to ML inference (ONNX embedding, optional NLI model, GNN).
 # Default: (num_cpus / 2).max(4).min(8) — at least 4 threads, at most 8.
 # Valid range: [1, 64]. Out-of-range value aborts startup with a structured error.
 rayon_pool_size = 4
 
-# NLI cross-encoder re-ranking and contradiction detection.
-# nli_enabled: set to false to disable NLI and use cosine-only search (default: true).
-nli_enabled = true
+# Optional NLI model for search re-ranking and contradiction detection.
+# nli_enabled: set to true to enable NLI when the model has been downloaded (default: false).
+nli_enabled = false
 # nli_model_name: "minilm2" (cross-encoder/nli-MiniLM2-L6-H768, ~85MB, default)
 #                 "deberta" (cross-encoder/nli-deberta-v3-small, ~180MB)
 nli_model_name = "minilm2"
@@ -436,7 +464,7 @@ Bridge mode. Connects to the running daemon's MCP socket and bridges stdin/stdou
 | `export` | Export the knowledge base to JSONL format. No running server required. | `--output <PATH>` (defaults to stdout) |
 | `import` | Import a knowledge base from a JSONL export file. Re-embeds entries and rebuilds vector index. | `--input <PATH>` (required), `--skip-hash-validation`, `--force` (drop existing data) |
 | `version` | Print version and exit. With `--project-dir`, also initializes the database. | `--project-dir <PATH>` |
-| `model-download` | Download ONNX model(s) to cache. Without flags, downloads the embedding model (used by npm postinstall). With `--nli`, downloads the configured NLI cross-encoder model and prints its SHA-256 hash for config pinning. | `--nli` (NLI model), `--nli-model minilm2\|deberta` (model variant, default `minilm2`) |
+| `model-download` | Download ONNX model(s) to cache. Without flags, downloads the embedding model (used by npm postinstall). With `--nli`, downloads the optional NLI model and prints its SHA-256 hash for config pinning. | `--nli` (NLI model), `--nli-model minilm2\|deberta` (model variant, default `minilm2`) |
 | `snapshot` | Create a self-contained SQLite copy of the active database using `VACUUM INTO`. Includes all tables (entries, query_log, graph_edges, co_access, sessions, and all analytics tables). Refuses with a non-zero exit code if `--out` resolves to the same path as the live database. | `--out <PATH>` (required), `--project-dir <PATH>` |
 | `eval scenarios` | Mine the `query_log` table from a snapshot and write eval scenarios in JSONL format. Each scenario includes query text, retrieval context, baseline result set (soft ground truth), and source path (`mcp` or `uds`). | `--db <PATH>` (required), `--out <PATH>` (required), `--retrieval-mode mcp\|uds\|all` (default `all`), `--limit <N>` |
 | `eval run` | Replay eval scenarios through one or more configuration profile TOML files in-process, producing one JSON result file per scenario. Computes P@K, MRR, Kendall tau, rank change list, CC@k (Category Coverage at k), ICD (Intra-query Category Diversity), and latency delta per scenario per profile. Opens snapshot read-only; produces no writes to the snapshot. | `--db <PATH>` (required), `--scenarios <PATH>` (required), `--configs <TOML,...>` (required), `--out <DIR>` (required), `--k <N>` (default 5) |
@@ -509,7 +537,7 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
 | `unimatrix-adapt` | Adaptive embedding pipeline — MicroLoRA training, state persistence |
 | `unimatrix-observe` | Observation pipeline — hotspot detection, metric computation, retrospective analysis |
 | `unimatrix-learn` | Shared ML infrastructure — training reservoirs, EWC++ state, neural models, model versioning |
-| `unimatrix-server` | MCP server — tool handlers, hook IPC, agent registry, audit, content scanning |
+| `unimatrix` | MCP server — tool handlers, hook IPC, agent registry, audit, content scanning |
 
 ---
 
@@ -545,7 +573,7 @@ Three hard limits apply to all observation events before any processing:
 
 ### NLI Model Integrity
 
-SHA-256 hash pinning for the NLI cross-encoder model file. When `nli_model_sha256` is set in `[inference]` config, the model file is verified before the ONNX session is constructed. A mismatch transitions `NliServiceHandle` to Failed, logs a security warning, and falls back to cosine-only search — the server continues operating. A tampered model file without hash pinning is an undetectable model-poisoning attack. Production deployments must set `nli_model_sha256`; obtain the hash by running `unimatrix model-download --nli`.
+SHA-256 hash pinning for the optional NLI model file. When `nli_model_sha256` is set in `[inference]` config, the model file is verified before the ONNX session is constructed. A mismatch transitions `NliServiceHandle` to Failed, logs a security warning, and falls back to cosine-only search — the server continues operating. A tampered model file without hash pinning is an undetectable model-poisoning attack. Production deployments that enable NLI must set `nli_model_sha256`; obtain the hash by running `unimatrix model-download --nli`.
 
 ---
 
