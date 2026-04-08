@@ -139,8 +139,6 @@ Knowledge engine (MCP server). Makes agent expertise searchable, trustworthy, an
 | `/uni-query-patterns` | Query component patterns before designing or coding |
 | `/uni-retro` | Post-merge retrospective — extract and store what was learned |
 | `/uni-review-pr` | PR security review and merge readiness check |
-| `/uni-release` | Version bump, changelog, tag, and push to release pipeline |
-| `/uni-git` | Git conventions reference for Unimatrix commits and PRs |
 | `/uni-zero` | Strategic advisor for product evolution and vision alignment |
 
 ### Knowledge Categories

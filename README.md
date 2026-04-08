@@ -398,7 +398,7 @@ Unimatrix exposes 12 MCP tools. All tools accept `format: "summary" | "markdown"
 
 ## Skills Reference
 
-Unimatrix includes 14 Claude Code skills. Skills are platform-native `/command` files installed via the npm package or by copying `.claude/skills/` directories to the target repository.
+Unimatrix includes 12 Claude Code skills. Skills are platform-native `/command` files installed via the npm package or by copying `.claude/skills/` directories to the target repository.
 
 Skills that interact with the MCP server require the server to be running and configured.
 
@@ -414,8 +414,6 @@ Skills that interact with the MCP server require the server to be running and co
 | `/uni-knowledge-lookup` | Interactive deterministic lookup by exact filters. (MCP) | When you know what you want — a specific feature, category, or ID. |
 | `/uni-review-pr` | PR security review and merge readiness check. | After delivery or bugfix opens a PR. Can be invoked standalone. |
 | `/uni-retro` | Post-merge retrospective — extract patterns, procedures, lessons. (MCP) | After a feature PR is merged. |
-| `/uni-git` | Git workflow conventions (branch naming, commit prefixes, PR templates). | For consistent git conventions. Contributor/developer-focused. |
-| `/uni-release` | Version bump, changelog generation, tag, and release pipeline. | When creating a new release. |
 | `/uni-init` | Initialize Unimatrix in a repository — CLAUDE.md setup + agent recommendations. | First-time setup of a repo to use Unimatrix. |
 | `/uni-seed` | Populate foundational knowledge through human-directed exploration. (MCP) | After installation, to seed the knowledge base before relying on search. |
 
