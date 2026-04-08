@@ -16,7 +16,8 @@
     "bin/",
     "lib/",
     "skills/",
-    "postinstall.js"
+    "postinstall.js",
+    "protocols/"
   ],
   "license": "MIT OR Apache-2.0",
   "repository": {
