@@ -141,48 +141,66 @@ If this fails, stop with: **"Build check failed after version update. Review cha
 
 ---
 
-## Step 7a: Sync protocols/ Distribution Copy
+## Step 7a: Sync protocols/ Distribution Copies
 
 Copy the four protocol files from the internal `.claude/protocols/uni/` directory
-to the distributable `protocols/` directory at repo root:
+to two locations: the repo-root `protocols/` (for repo users) and
+`packages/unimatrix/protocols/` (for npm — npm resolves `files` relative to the
+package directory, not the repo root):
 
 ```bash
+# Repo-root copy (for users who clone the repo)
 cp .claude/protocols/uni/uni-design-protocol.md protocols/uni-design-protocol.md
 cp .claude/protocols/uni/uni-delivery-protocol.md protocols/uni-delivery-protocol.md
 cp .claude/protocols/uni/uni-bugfix-protocol.md protocols/uni-bugfix-protocol.md
 cp .claude/protocols/uni/uni-agent-routing.md protocols/uni-agent-routing.md
+cp protocols/README.md protocols/README.md  # already exists; update if changed
+
+# npm package copy (what npm pack actually includes)
+cp .claude/protocols/uni/uni-design-protocol.md packages/unimatrix/protocols/uni-design-protocol.md
+cp .claude/protocols/uni/uni-delivery-protocol.md packages/unimatrix/protocols/uni-delivery-protocol.md
+cp .claude/protocols/uni/uni-bugfix-protocol.md packages/unimatrix/protocols/uni-bugfix-protocol.md
+cp .claude/protocols/uni/uni-agent-routing.md packages/unimatrix/protocols/uni-agent-routing.md
+cp protocols/README.md packages/unimatrix/protocols/README.md
 ```
 
-Verify each copy is identical to its source:
+Verify each copy is identical to its source (run for both destinations):
 
 ```bash
 diff .claude/protocols/uni/uni-design-protocol.md protocols/uni-design-protocol.md
 diff .claude/protocols/uni/uni-delivery-protocol.md protocols/uni-delivery-protocol.md
 diff .claude/protocols/uni/uni-bugfix-protocol.md protocols/uni-bugfix-protocol.md
 diff .claude/protocols/uni/uni-agent-routing.md protocols/uni-agent-routing.md
+diff protocols/uni-design-protocol.md packages/unimatrix/protocols/uni-design-protocol.md
+diff protocols/uni-delivery-protocol.md packages/unimatrix/protocols/uni-delivery-protocol.md
+diff protocols/uni-bugfix-protocol.md packages/unimatrix/protocols/uni-bugfix-protocol.md
+diff protocols/uni-agent-routing.md packages/unimatrix/protocols/uni-agent-routing.md
+diff protocols/README.md packages/unimatrix/protocols/README.md
 ```
 
-All four diffs must produce zero output. If any diff shows differences, resolve them
-before proceeding. The `.claude/protocols/uni/` directory is the source of truth —
-apply any needed corrections there first, then re-copy.
+All diffs must produce zero output. The `.claude/protocols/uni/` directory is the
+source of truth — apply any needed corrections there first, then re-copy both.
 
 ---
 
-## Step 7b: Sync uni-retro Distribution Copy
+## Step 7b: Sync uni-retro Distribution Copies
 
-Copy the uni-retro skill to the distributable `skills/` directory at repo root:
+Copy the uni-retro skill to two locations: the repo-root `skills/uni-retro/` (for
+repo users) and `packages/unimatrix/skills/uni-retro/` (for npm):
 
 ```bash
 cp .claude/skills/uni-retro/SKILL.md skills/uni-retro/SKILL.md
+cp .claude/skills/uni-retro/SKILL.md packages/unimatrix/skills/uni-retro/SKILL.md
 ```
 
-Verify the copy is identical to its source:
+Verify both copies are identical to their source:
 
 ```bash
 diff .claude/skills/uni-retro/SKILL.md skills/uni-retro/SKILL.md
+diff .claude/skills/uni-retro/SKILL.md packages/unimatrix/skills/uni-retro/SKILL.md
 ```
 
-The diff must produce zero output.
+Both diffs must produce zero output.
 
 ---
 
@@ -190,7 +208,7 @@ The diff must produce zero output.
 
 Stage only the release-related files:
 ```bash
-git add Cargo.toml packages/unimatrix/package.json packages/unimatrix-linux-x64/package.json packages/unimatrix-linux-arm64/package.json CHANGELOG.md protocols/ skills/uni-retro/
+git add Cargo.toml packages/unimatrix/package.json packages/unimatrix-linux-x64/package.json packages/unimatrix-linux-arm64/package.json CHANGELOG.md protocols/ skills/uni-retro/ packages/unimatrix/protocols/ packages/unimatrix/skills/uni-retro/
 ```
 
 Commit with the release message:
@@ -232,8 +250,10 @@ Files modified:
   - packages/unimatrix-linux-x64/package.json
   - packages/unimatrix-linux-arm64/package.json
   - CHANGELOG.md
-  - protocols/ (synced from .claude/protocols/uni/)
-  - skills/uni-retro/SKILL.md (synced from .claude/skills/uni-retro/)
+  - protocols/ (synced from .claude/protocols/uni/ — repo-root copy)
+  - packages/unimatrix/protocols/ (npm-distributed copy)
+  - skills/uni-retro/SKILL.md (synced from .claude/skills/uni-retro/ — repo-root copy)
+  - packages/unimatrix/skills/uni-retro/SKILL.md (npm-distributed copy)
 
 Git:
   - Commit: release: v{new_version}
