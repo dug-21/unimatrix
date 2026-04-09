@@ -2,8 +2,8 @@
 //!
 //! Restores a Unimatrix knowledge base from a nan-001 JSONL export dump,
 //! preserving all learned signals (confidence, helpful/unhelpful counts,
-//! co-access pairs, correction chains). Creates a local tokio runtime for
-//! async sqlx access (nxs-011).
+//! co-access pairs, correction chains). Creates a local multi-thread tokio
+//! runtime for async sqlx access (nxs-011).
 //!
 //! The import runs in two phases (ADR-004):
 //! 1. Database restore: header validation, pre-flight, JSONL ingestion, hash check
@@ -48,7 +48,8 @@ pub struct ImportCounts {
 ///
 /// Supports being called from both sync and async contexts. When an existing
 /// tokio runtime is detected, uses `block_in_place` to avoid nesting runtimes.
-/// When called from a sync context, creates a new current-thread runtime.
+/// When called from a sync context, creates a new multi-thread runtime
+/// (`block_in_place` requires multi_thread flavor; current_thread panics).
 pub fn run_import(
     project_dir: Option<&Path>,
     input: &Path,
@@ -68,8 +69,9 @@ pub fn run_import(
             })
         }
         Err(_) => {
-            // No existing runtime — create one.
-            let rt = tokio::runtime::Builder::new_current_thread()
+            // No existing runtime — create one. Must be multi_thread so that
+            // block_in_place (used by embed_reconstruct) does not panic.
+            let rt = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()?;
             rt.block_on(run_import_async(
@@ -763,6 +765,54 @@ mod tests {
         assert!(result.is_err());
         let err = result.unwrap_err().to_string();
         assert!(err.contains("line 5"), "should mention line 5: {err}");
+    }
+
+    /// Regression test for GH#554: run_import called from a plain sync context
+    /// (no ambient tokio runtime — exercises the Handle::try_current() Err arm).
+    ///
+    /// Before the fix this panicked with:
+    ///   "can call blocking only when running on the multi-threaded runtime"
+    /// because the Err arm built a new_current_thread runtime, which does not
+    /// support block_in_place used by embed_reconstruct.
+    ///
+    /// This is intentionally a plain #[test] — NOT #[tokio::test] — so that
+    /// Handle::try_current() returns Err and the new runtime path is taken.
+    #[test]
+    fn test_run_import_no_ambient_runtime_does_not_panic() {
+        let project_dir = make_project_dir();
+        let sv = CURRENT_SCHEMA_VERSION;
+
+        let output_dir = TempDir::new().unwrap();
+        let lines = vec![
+            make_header(sv, 1, 1),
+            make_counter_line("schema_version", sv),
+            make_counter_line("next_entry_id", 2),
+            make_entry_line(1, "Regression entry", "GH#554 regression content", ""),
+        ];
+        let input_path = write_jsonl(&output_dir, &lines);
+
+        // Must not panic. The import succeeds (embedding may fail if model is
+        // unavailable, but that is an Err return — not a panic).
+        let result = run_import(Some(project_dir.path()), &input_path, false, false);
+        // The important invariant: no panic occurred. Accept Ok or Err.
+        // If the ONNX model is present this will be Ok; in CI without the model
+        // it returns Err from embed_reconstruct, which is acceptable.
+        match &result {
+            Ok(_) => {}
+            Err(e) => {
+                let msg = e.to_string();
+                // Any error from embed_reconstruct is expected when model is absent;
+                // a panic would have been caught by the test harness before this point.
+                assert!(
+                    msg.contains("ONNX")
+                        || msg.contains("onnx")
+                        || msg.contains("model")
+                        || msg.contains("embed")
+                        || msg.contains("No such file"),
+                    "unexpected error (not a model-missing error): {msg}"
+                );
+            }
+        }
     }
 
     #[test]
