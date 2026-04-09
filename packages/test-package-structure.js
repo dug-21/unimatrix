@@ -53,8 +53,8 @@ assert(
 );
 
 assert(
-  "test_root_package_version_is_0_5_0",
-  rootPkg.version === "0.5.0",
+  "test_root_package_version_is_0_6_2",
+  rootPkg.version === "0.6.2",
   `got "${rootPkg.version}"`
 );
 
@@ -68,14 +68,14 @@ assert(
 assert(
   "test_root_package_has_optional_dependencies_x64",
   rootPkg.optionalDependencies &&
-    rootPkg.optionalDependencies["@dug-21/unimatrix-linux-x64"] === "0.5.0",
+    rootPkg.optionalDependencies["@dug-21/unimatrix-linux-x64"] === "0.6.2",
   `got ${JSON.stringify(rootPkg.optionalDependencies)}`
 );
 
 assert(
   "test_root_package_has_optional_dependencies_arm64",
   rootPkg.optionalDependencies &&
-    rootPkg.optionalDependencies["@dug-21/unimatrix-linux-arm64"] === "0.5.0",
+    rootPkg.optionalDependencies["@dug-21/unimatrix-linux-arm64"] === "0.6.2",
   `got ${JSON.stringify(rootPkg.optionalDependencies)}`
 );
 
@@ -108,6 +108,24 @@ assert(
   rootPkg.engines &&
     rootPkg.engines.node === ">=18",
   `got ${JSON.stringify(rootPkg.engines)}`
+);
+
+assert(
+  "test_root_package_repository_url",
+  rootPkg.repository && rootPkg.repository.url === "https://github.com/dug-21/unimatrix",
+  `got ${JSON.stringify(rootPkg.repository)}`
+);
+
+assert(
+  "test_root_package_has_homepage",
+  typeof rootPkg.homepage === "string" && rootPkg.homepage.length > 0,
+  `got ${JSON.stringify(rootPkg.homepage)}`
+);
+
+assert(
+  "test_root_package_readme_exists",
+  fs.existsSync(path.join(PACKAGES_DIR, "unimatrix", "README.md")),
+  `path: ${path.join(PACKAGES_DIR, "unimatrix", "README.md")}`
 );
 
 // --- Platform package tests ---

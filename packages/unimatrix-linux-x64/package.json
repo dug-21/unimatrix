@@ -12,6 +12,11 @@
     "bin/"
   ],
   "license": "MIT OR Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dug-21/unimatrix"
+  },
+  "homepage": "https://github.com/dug-21/unimatrix#readme",
   "publishConfig": {
     "access": "public"
   }
