@@ -28,91 +28,31 @@ unconditional injection into every prompt.
 
 ---
 
-## Why Unimatrix
-
-Multi-agent development creates knowledge that lives in context windows and dies with sessions. Decisions get re-made, patterns get re-discovered, lessons get re-learned.
-
-- **Auditable Knowledge Lifecycle** — Every entry has a SHA-256 content hash. Corrections create hash-chained supersession links. An append-only audit log records every operation with agent identity and session context. You can trace how any piece of knowledge evolved.
-
-- **Invisible Delivery** — Agents do not need to ask for context. Hook-driven integration injects relevant expertise into every prompt automatically via Claude Code's lifecycle hooks. Knowledge reaches agents without needing to ask.
-
-- **Self-Learning** — Confidence scoring evolves from real usage signals: accesses, helpfulness votes, correction quality, creator trust, and co-access patterns. Entries that help get boosted; entries that mislead get downranked. Adaptive embeddings (MicroLoRA) tune search to project-specific usage patterns.
-
----
-
-## Core Capabilities
-
-Unimatrix provides these capabilities out of the box.
-
-### Self-Learning Knowledge Engine
-
-Captures decisions, patterns, conventions, procedures, and lessons from real feature work. Seven knowledge categories ensure entries surface in the right context. Confidence scoring combines usage signals, correction quality, creator trust, freshness, helpfulness, and co-access patterns into a composite score that evolves automatically. No manual curation required — the system learns what is useful from how knowledge is accessed and rated.
-
-### Graph-Enhanced Retrieval
-
-HNSW vector similarity locates an initial candidate pool from the 384-dimension embedding space. Personalized PageRank (PPR) co-access traversal then expands the pool by walking the knowledge graph — surfacing cross-category entries that pure vector search misses, because they were frequently retrieved together with the initial candidates in past sessions. A confirmed +0.0122 MRR improvement comes from this expansion step alone. Phase-conditioned category affinity stratifies results by the current workflow phase: entries from categories that historically appear during the active phase receive a ranking boost, calibrated from the per-(phase, category) frequency table rebuilt each background tick. Co-access ranking promotes entries retrieved together in prior sessions. The three layers compose in sequence: semantic similarity → PPR graph expansion → phase-conditioned and co-access re-ranking. Filters by topic, category, tags, and status apply throughout. Near-duplicate detection (cosine similarity >= 0.92) prevents redundant entries at write time.
-
-### Adaptive Embeddings (MicroLoRA)
-
-All-MiniLM-L6-v2 ONNX model runs locally — no API calls, no cloud dependency. A MicroLoRA layer adapts frozen embeddings to project-specific usage patterns. Search relevance improves over time as the system learns which entries are accessed together. 384-dimension vectors with HNSW index for fast approximate nearest-neighbor search.
-
-### Hook-Driven Invisible Delivery (Cortical Implant)
-
-Automatic context injection on every prompt via the `UserPromptSubmit` hook. Six hook events drive the integration: `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Subagent injection: when the SM spawns a subagent, the `SubagentStart` hook fires synchronously and injects relevant knowledge into the subagent context before its first token — this combined with a `context_briefing` call on the outset, provides agents with an index of the most relevant artifacts to their goal and task. `UserPromptSubmit` injection requires at least 5 words in the prompt; shorter inputs (e.g., "yes", "ok continue") are recorded but produce no injection. **No guidance is better than misdirection**. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; the compaction payload is a flat indexed table of active entries (up to k=20) plus a session histogram summary. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.  Hooks provide the telemetry necessary for Unimatrix to learn.
-
-### Cycle Review Analysis
-
-Analyzes session telemetry for a completed feature cycle and produces the `# Unimatrix Cycle Review —` report. 21 detection rules across 4 categories: agent behavior, friction points, session health, and scope indicators. Rules are domain-aware: each rule guards on `source_domain` as its first filter, so Claude Code rules never fire on events from other domains. A domain pack registry loaded at startup from TOML defines which event types, categories, and detection rules apply to each domain; the "claude-code" pack is always active with no config required. Historical baselines with outlier detection surface anomalies. Evidence synthesis produces actionable findings with supporting data. Lessons and patterns extracted from retrospectives are stored back in the knowledge base with de-duplication via correction chains.
-
-The report header surfaces the feature goal, inferred cycle type (Design, Delivery, Bugfix, Refactor, or Unknown), attribution path used (cycle\_events-first, sessions.feature\_cycle legacy, or content-scan fallback), and an in-progress indicator when no `cycle_stop` event exists. A Phase Timeline table breaks the cycle into per-phase windows showing duration, pass count, agents spawned, records, knowledge throughput, and gate outcome. A "What Went Well" section surfaces non-outlier favorable baseline signals that were previously hidden. Per-finding evidence is rendered as relative-time burst notation (`Timeline: +0m(N) +12m(N▲) …`) rather than raw epoch values. The Knowledge Reuse section splits served entries into cross-feature (from prior cycles) and intra-cycle buckets with a top-entry breakdown. Recommendations appear immediately after the header, before all other sections.
-
-### Behavioral Signal Delivery
-
-Cycle outcomes recorded via `context_cycle` feed as graph edges, reinforcing co-access signals between entries retrieved during successful delivery phases. Each time a phase completes with a positive outcome, the knowledge retrieved during that phase gains stronger co-access links — future agents entering the same phase surface those entries higher. `context_briefing` operates as a targeted handoff at phase transitions: it uses the current phase and the cycle's history to prioritize knowledge relevant to the agent's declared phase, delivering a structured top-k result set without requiring the agent to search. This goal-conditioned briefing, combined with UDS injection, makes knowledge delivery phase-aware and progressive rather than flat. Reference: crt-046, Group 6.
-
-### Contradiction Detection
-
-After each `context_store`, a background scan checks the new entry against its top HNSW neighbors using cosine similarity. Pairs with similarity >= 0.65 are recorded as `Supports` edges in the knowledge graph. Contradiction density — the ratio of unresolved contradictions to active entries — is one dimension of the Lambda structural health metric, computed periodically and surfaced in `context_status` health reports. When contradictions are identified, `context_correct` is the resolution path: it deprecates the conflicting entry and links the replacement through a hash-chained supersession record. No external model is required for contradiction management.
-
-### Domain-Agnostic Observation Pipeline
-
-Every detection rule carries a `source_domain` guard — a rule fires only for events from its declared domain, never cross-contaminating signals from unrelated systems. Domain packs are registered via `[[observation.domain_packs]]` entries in `config.toml`, specifying the source domain, event types, and applicable knowledge categories. The built-in "claude-code" domain pack is always active and requires no configuration — it covers all Claude Code lifecycle hook events out of the box. Any domain's event stream connects to the learning layer by registering a domain pack; no code changes are required. `source_domain` is validated at both ingest and registration: values must match `^[a-z0-9_-]{1,64}$`. Reference: W1-5, col-023.
-
-### Correction Chains with Audit Trails
-
-`context_correct` creates a new entry and deprecates the original, linking them with SHA-256 content hashes (`previous_hash` chain). The append-only audit log records every operation — store, correct, deprecate, quarantine, enroll — with agent identity, session context, and operation outcome. Correction chains are tamper-evident: any break in the hash chain is detectable.
-
-### Coherence Gate (Lambda Health Metric)
-
-Lambda is a composite structural integrity metric [0.0, 1.0] computed from three dimensions: graph quality (weight 0.46 — is the vector index structurally sound?), contradiction density (weight 0.31 — how many unresolved contradictions exist?), and embedding consistency (weight 0.23 — do entries have valid, current embeddings?). When lambda drops below 0.8, maintenance is recommended. A background tick handles maintenance automatically — confidence refresh, graph compaction, co-access cleanup.
-
-`context_status` also reports six graph cohesion metrics computed per-call from the `GRAPH_EDGES` table: connectivity rate (fraction of active entries with at least one non-bootstrap edge), isolated entry count, cross-category edge count, Supports edge count, mean entry degree (in+out). These metrics are informational — they do not feed into lambda — but let operators verify whether automated platform is driving cross-category graph that PPR can exploit. Summary format includes a single "Graph cohesion:" line; Markdown format includes a `### Graph Cohesion` sub-section within the Coherence block.
-
-### Content Scanning
-
-Every `context_store` and `context_correct` call scans content for injection patterns (~25+ patterns including prompt injection attempts, system prompt overrides, and encoded payloads) and PII patterns (6+ patterns including emails, phone numbers, API keys, and credentials). Flagged content is rejected with a descriptive error before storage.
-
-### Agent Trust Hierarchy
-
-Four-tier trust model: System > Privileged > Internal > Restricted. Four capabilities gate tool access: `read`, `write`, `search`, `admin`. Unknown agents auto-enroll as Restricted (read + search only) on first contact. Protected agents: `system` and `human` cannot be modified. Self-lockout prevention: an admin cannot remove their own Admin capability. `context_enroll` (Admin-only) manages agent trust levels and capabilities at runtime.  This is mostly unused in currently supported STDIO mode.  More to come
-
-### Knowledge Effectiveness Analysis
-
-Per-entry utility scoring from injection logs and session outcomes. Confidence calibration validation — does predicted quality match actual usefulness? Dead knowledge detection — entries that are never accessed after initial storage.
-
----
-
 ## Getting Started
 
 ### Install via npm
+
+> **Platform: Linux x64 and arm64 only.** macOS and Windows are not supported via npm.
+
+**Prerequisites — both required before installing:**
+- Node.js >= 18
+- ONNX Runtime 1.20.x shared library installed on the system
+
+**Install ONNX Runtime (Linux):**
+```bash
+# Download the release for your architecture (x64 or aarch64) from:
+# https://github.com/microsoft/onnxruntime/releases
+# Extract and install the shared library:
+tar xzf onnxruntime-linux-*.tgz
+sudo cp onnxruntime-linux-*/lib/libonnxruntime.so* /usr/lib/
+sudo ldconfig
+```
 
 ```bash
 npm install @dug-21/unimatrix
 ```
 
-Prerequisite: Node.js >= 18.
-
-The npm package includes pre-built binaries for Linux x64. The embedding model downloads automatically on first run (or via `npx unimatrix model-download`).
+The embedding model downloads automatically on first run (or via `npx unimatrix model-download`).
 
 ### Build from Source
 
@@ -209,6 +149,80 @@ context_store(
 ```
 context_briefing(topic: "crt-027", max_tokens: 1000)
 ```
+
+---
+
+## Why Unimatrix
+
+Multi-agent development creates knowledge that lives in context windows and dies with sessions. Decisions get re-made, patterns get re-discovered, lessons get re-learned.
+
+- **Auditable Knowledge Lifecycle** — Every entry has a SHA-256 content hash. Corrections create hash-chained supersession links. An append-only audit log records every operation with agent identity and session context. You can trace how any piece of knowledge evolved.
+
+- **Invisible Delivery** — Agents do not need to ask for context. Hook-driven integration injects relevant expertise into every prompt automatically via Claude Code's lifecycle hooks. Knowledge reaches agents without needing to ask.
+
+- **Self-Learning** — Confidence scoring evolves from real usage signals: accesses, helpfulness votes, correction quality, creator trust, and co-access patterns. Entries that help get boosted; entries that mislead get downranked. Adaptive embeddings (MicroLoRA) tune search to project-specific usage patterns.
+
+---
+
+## Core Capabilities
+
+Unimatrix provides these capabilities out of the box.
+
+### Self-Learning Knowledge Engine
+
+Captures decisions, patterns, conventions, procedures, and lessons from real feature work. Seven knowledge categories ensure entries surface in the right context. Confidence scoring combines usage signals, correction quality, creator trust, freshness, helpfulness, and co-access patterns into a composite score that evolves automatically. No manual curation required — the system learns what is useful from how knowledge is accessed and rated.
+
+### Graph-Enhanced Retrieval
+
+HNSW vector similarity locates an initial candidate pool from the 384-dimension embedding space. Personalized PageRank (PPR) co-access traversal then expands the pool by walking the knowledge graph — surfacing cross-category entries that pure vector search misses, because they were frequently retrieved together with the initial candidates in past sessions. A confirmed +0.0122 MRR improvement comes from this expansion step alone. Phase-conditioned category affinity stratifies results by the current workflow phase: entries from categories that historically appear during the active phase receive a ranking boost, calibrated from the per-(phase, category) frequency table rebuilt each background tick. Co-access ranking promotes entries retrieved together in prior sessions. The three layers compose in sequence: semantic similarity → PPR graph expansion → phase-conditioned and co-access re-ranking. Filters by topic, category, tags, and status apply throughout. Near-duplicate detection (cosine similarity >= 0.92) prevents redundant entries at write time.
+
+### Adaptive Embeddings (MicroLoRA)
+
+All-MiniLM-L6-v2 ONNX model runs locally — no API calls, no cloud dependency. A MicroLoRA layer adapts frozen embeddings to project-specific usage patterns. Search relevance improves over time as the system learns which entries are accessed together. 384-dimension vectors with HNSW index for fast approximate nearest-neighbor search.
+
+### Hook-Driven Invisible Delivery (Cortical Implant)
+
+Automatic context injection on every prompt via the `UserPromptSubmit` hook. Six hook events drive the integration: `UserPromptSubmit`, `SubagentStart`, `PreCompact`, `PreToolUse`, `PostToolUse`, `Stop`. Subagent injection: when the SM spawns a subagent, the `SubagentStart` hook fires synchronously and injects relevant knowledge into the subagent context before its first token — this combined with a `context_briefing` call on the outset, provides agents with an index of the most relevant artifacts to their goal and task. `UserPromptSubmit` injection requires at least 5 words in the prompt; shorter inputs (e.g., "yes", "ok continue") are recorded but produce no injection. **No guidance is better than misdirection**. Compaction resilience: `PreCompact` preserves critical context before Claude Code's context window compaction; the compaction payload is a flat indexed table of active entries (up to k=20) plus a session histogram summary. Closed-loop feedback: the `Stop` hook records session outcomes for confidence evolution. Sub-50ms round-trip budget per hook event. Disk-backed event queue for graceful degradation. Single binary — the `hook` subcommand connects to the running MCP server via Unix domain socket IPC.  Hooks provide the telemetry necessary for Unimatrix to learn.
+
+### Cycle Review Analysis
+
+Analyzes session telemetry for a completed feature cycle and produces the `# Unimatrix Cycle Review —` report. 21 detection rules across 4 categories: agent behavior, friction points, session health, and scope indicators. Rules are domain-aware: each rule guards on `source_domain` as its first filter, so Claude Code rules never fire on events from other domains. A domain pack registry loaded at startup from TOML defines which event types, categories, and detection rules apply to each domain; the "claude-code" pack is always active with no config required. Historical baselines with outlier detection surface anomalies. Evidence synthesis produces actionable findings with supporting data. Lessons and patterns extracted from retrospectives are stored back in the knowledge base with de-duplication via correction chains.
+
+The report header surfaces the feature goal, inferred cycle type (Design, Delivery, Bugfix, Refactor, or Unknown), attribution path used (cycle\_events-first, sessions.feature\_cycle legacy, or content-scan fallback), and an in-progress indicator when no `cycle_stop` event exists. A Phase Timeline table breaks the cycle into per-phase windows showing duration, pass count, agents spawned, records, knowledge throughput, and gate outcome. A "What Went Well" section surfaces non-outlier favorable baseline signals that were previously hidden. Per-finding evidence is rendered as relative-time burst notation (`Timeline: +0m(N) +12m(N▲) …`) rather than raw epoch values. The Knowledge Reuse section splits served entries into cross-feature (from prior cycles) and intra-cycle buckets with a top-entry breakdown. Recommendations appear immediately after the header, before all other sections.
+
+### Behavioral Signal Delivery
+
+Cycle outcomes recorded via `context_cycle` feed as graph edges, reinforcing co-access signals between entries retrieved during successful delivery phases. Each time a phase completes with a positive outcome, the knowledge retrieved during that phase gains stronger co-access links — future agents entering the same phase surface those entries higher. `context_briefing` operates as a targeted handoff at phase transitions: it uses the current phase and the cycle's history to prioritize knowledge relevant to the agent's declared phase, delivering a structured top-k result set without requiring the agent to search. This goal-conditioned briefing, combined with UDS injection, makes knowledge delivery phase-aware and progressive rather than flat. Reference: crt-046, Group 6.
+
+### Contradiction Detection
+
+After each `context_store`, a background scan checks the new entry against its top HNSW neighbors using cosine similarity. Pairs with similarity >= 0.65 are recorded as `Supports` edges in the knowledge graph. Contradiction density — the ratio of unresolved contradictions to active entries — is one dimension of the Lambda structural health metric, computed periodically and surfaced in `context_status` health reports. When contradictions are identified, `context_correct` is the resolution path: it deprecates the conflicting entry and links the replacement through a hash-chained supersession record. No external model is required for contradiction management.
+
+### Domain-Agnostic Observation Pipeline
+
+Every detection rule carries a `source_domain` guard — a rule fires only for events from its declared domain, never cross-contaminating signals from unrelated systems. Domain packs are registered via `[[observation.domain_packs]]` entries in `config.toml`, specifying the source domain, event types, and applicable knowledge categories. The built-in "claude-code" domain pack is always active and requires no configuration — it covers all Claude Code lifecycle hook events out of the box. Any domain's event stream connects to the learning layer by registering a domain pack; no code changes are required. `source_domain` is validated at both ingest and registration: values must match `^[a-z0-9_-]{1,64}$`. Reference: W1-5, col-023.
+
+### Correction Chains with Audit Trails
+
+`context_correct` creates a new entry and deprecates the original, linking them with SHA-256 content hashes (`previous_hash` chain). The append-only audit log records every operation — store, correct, deprecate, quarantine, enroll — with agent identity, session context, and operation outcome. Correction chains are tamper-evident: any break in the hash chain is detectable.
+
+### Coherence Gate (Lambda Health Metric)
+
+Lambda is a composite structural integrity metric [0.0, 1.0] computed from three dimensions: graph quality (weight 0.46 — is the vector index structurally sound?), contradiction density (weight 0.31 — how many unresolved contradictions exist?), and embedding consistency (weight 0.23 — do entries have valid, current embeddings?). When lambda drops below 0.8, maintenance is recommended. A background tick handles maintenance automatically — confidence refresh, graph compaction, co-access cleanup.
+
+`context_status` also reports six graph cohesion metrics computed per-call from the `GRAPH_EDGES` table: connectivity rate (fraction of active entries with at least one non-bootstrap edge), isolated entry count, cross-category edge count, Supports edge count, mean entry degree (in+out). These metrics are informational — they do not feed into lambda — but let operators verify whether automated platform is driving cross-category graph that PPR can exploit. Summary format includes a single "Graph cohesion:" line; Markdown format includes a `### Graph Cohesion` sub-section within the Coherence block.
+
+### Content Scanning
+
+Every `context_store` and `context_correct` call scans content for injection patterns (~25+ patterns including prompt injection attempts, system prompt overrides, and encoded payloads) and PII patterns (6+ patterns including emails, phone numbers, API keys, and credentials). Flagged content is rejected with a descriptive error before storage.
+
+### Agent Trust Hierarchy
+
+Four-tier trust model: System > Privileged > Internal > Restricted. Four capabilities gate tool access: `read`, `write`, `search`, `admin`. Unknown agents auto-enroll as Restricted (read + search only) on first contact. Protected agents: `system` and `human` cannot be modified. Self-lockout prevention: an admin cannot remove their own Admin capability. `context_enroll` (Admin-only) manages agent trust levels and capabilities at runtime.  This is mostly unused in currently supported STDIO mode.  More to come
+
+### Knowledge Effectiveness Analysis
+
+Per-entry utility scoring from injection logs and session outcomes. Confidence calibration validation — does predicted quality match actual usefulness? Dead knowledge detection — entries that are never accessed after initial storage.
 
 ---
 
