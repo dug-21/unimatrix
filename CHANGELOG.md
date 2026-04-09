@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.1] - 2026-04-09
+
+### Fixes
+- release: restore linux-x64 build job (ubuntu-22.04, glibc 2.35) and wire into npm publish (#550)
+
 ## [0.6.0] - 2026-04-08
 
 ### Features
