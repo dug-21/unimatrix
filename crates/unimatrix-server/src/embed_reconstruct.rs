@@ -139,7 +139,11 @@ where
     match tokio::runtime::Handle::try_current() {
         Ok(handle) => tokio::task::block_in_place(|| handle.block_on(fut)),
         Err(_) => {
-            let rt = tokio::runtime::Builder::new_current_thread()
+            // Must be multi_thread: block_in_place (used by callers of this
+            // function in the Ok arm) requires a multi-thread runtime. If
+            // block_sync_raw is ever called standalone without an ambient
+            // runtime, new_current_thread would cause the same panic (GH#554).
+            let rt = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .expect("failed to build tokio runtime");
