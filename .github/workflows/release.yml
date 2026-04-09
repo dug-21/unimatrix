@@ -49,9 +49,17 @@ jobs:
         env:
           ORT_LIB_LOCATION: /usr/local/lib
           ORT_PREFER_DYNAMIC_LINK: "1"
+          RUSTFLAGS: "-C link-arg=-Wl,-rpath,$ORIGIN"
 
       - name: Strip binary
         run: strip target/release/unimatrix
+
+      - name: Verify rpath
+        run: |
+          if ! objdump -x target/release/unimatrix | grep -q 'RUNPATH.*ORIGIN'; then
+            echo "ERROR: Binary missing RUNPATH \$ORIGIN — rpath not baked correctly"
+            exit 1
+          fi
 
       - name: Bundle binary and shared libraries
         run: |
@@ -62,15 +70,15 @@ jobs:
 
       - name: Check shared libraries
         run: |
-          LD_LIBRARY_PATH=artifact/bin ldd artifact/bin/unimatrix
-          if LD_LIBRARY_PATH=artifact/bin ldd artifact/bin/unimatrix 2>&1 | grep -q "not found"; then
+          ldd artifact/bin/unimatrix
+          if ldd artifact/bin/unimatrix 2>&1 | grep -q "not found"; then
             echo "ERROR: Binary has missing shared library dependencies"
             exit 1
           fi
 
       - name: Smoke test
         run: |
-          OUTPUT=$(LD_LIBRARY_PATH=artifact/bin artifact/bin/unimatrix version)
+          OUTPUT=$(artifact/bin/unimatrix version)
           echo "$OUTPUT"
           if ! echo "$OUTPUT" | grep -q "^unimatrix "; then
             echo "ERROR: Unexpected version output: $OUTPUT"
@@ -78,7 +86,7 @@ jobs:
           fi
 
       - name: Download embedding model
-        run: target/release/unimatrix model-download
+        run: LD_LIBRARY_PATH=/usr/local/lib target/release/unimatrix model-download
 
       - name: Test
         run: |
@@ -132,9 +140,17 @@ jobs:
         env:
           ORT_LIB_LOCATION: /usr/local/lib
           ORT_PREFER_DYNAMIC_LINK: "1"
+          RUSTFLAGS: "-C link-arg=-Wl,-rpath,$ORIGIN"
 
       - name: Strip binary
         run: strip target/release/unimatrix
+
+      - name: Verify rpath
+        run: |
+          if ! objdump -x target/release/unimatrix | grep -q 'RUNPATH.*ORIGIN'; then
+            echo "ERROR: Binary missing RUNPATH \$ORIGIN — rpath not baked correctly"
+            exit 1
+          fi
 
       - name: Bundle binary and shared libraries
         run: |
@@ -145,15 +161,15 @@ jobs:
 
       - name: Check shared libraries
         run: |
-          LD_LIBRARY_PATH=artifact/bin ldd artifact/bin/unimatrix
-          if LD_LIBRARY_PATH=artifact/bin ldd artifact/bin/unimatrix 2>&1 | grep -q "not found"; then
+          ldd artifact/bin/unimatrix
+          if ldd artifact/bin/unimatrix 2>&1 | grep -q "not found"; then
             echo "ERROR: Binary has missing shared library dependencies"
             exit 1
           fi
 
       - name: Smoke test
         run: |
-          OUTPUT=$(LD_LIBRARY_PATH=artifact/bin artifact/bin/unimatrix version)
+          OUTPUT=$(artifact/bin/unimatrix version)
           echo "$OUTPUT"
           if ! echo "$OUTPUT" | grep -q "^unimatrix "; then
             echo "ERROR: Unexpected version output: $OUTPUT"
@@ -161,7 +177,7 @@ jobs:
           fi
 
       - name: Download embedding model
-        run: target/release/unimatrix model-download
+        run: LD_LIBRARY_PATH=/usr/local/lib target/release/unimatrix model-download
 
       - name: Test
         run: |

@@ -2337,7 +2337,7 @@ mod tests {
             feature_cycle: String::new(),
             trust_source: "system".to_string(),
         };
-        let embedding: Vec<f32> = vec![0.1; 384];
+        let embedding: Vec<f32> = unimatrix_embed::l2_normalized(&vec![0.1_f32; 384]);
         let audit = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
@@ -2416,7 +2416,7 @@ mod tests {
             feature_cycle: String::new(),
             trust_source: "system".to_string(),
         };
-        let embedding: Vec<f32> = vec![0.1; 384];
+        let embedding: Vec<f32> = unimatrix_embed::l2_normalized(&vec![0.1_f32; 384]);
         let audit = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
@@ -2445,7 +2445,7 @@ mod tests {
             feature_cycle: String::new(),
             trust_source: "system".to_string(),
         };
-        let correction_embedding: Vec<f32> = vec![0.2; 384];
+        let correction_embedding: Vec<f32> = unimatrix_embed::l2_normalized(&vec![0.2_f32; 384]);
         let correction_audit = crate::infra::audit::AuditEvent {
             event_id: 0,
             timestamp: 0,
