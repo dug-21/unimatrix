@@ -389,23 +389,15 @@ Unimatrix exposes 12 MCP tools. All tools accept `format: "summary" | "markdown"
 
 ## Skills Reference
 
-Unimatrix includes 12 Claude Code skills. Skills are platform-native `/command` files installed via the npm package or by copying `.claude/skills/` directories to the target repository.
+Unimatrix ships 3 Claude Code skills via the npm package. Skills are platform-native `/command` files installed automatically when the package is installed.
 
-Skills that interact with the MCP server require the server to be running and configured.  These are provided as templates so you can easily integrate Unimatrix in your current workflow.
+Skills that interact with the MCP server require the server to be running and configured.
 
 | Skill | Purpose | When to Use |
 |-------|---------|-------------|
-| `/uni-query-patterns` | Search for patterns, procedures, and conventions before work. (MCP) | Before designing or implementing any component. |
-| `/uni-store-adr` | Store an architectural decision record in Unimatrix. (MCP) | After each design decision during architecture work. |
-| `/uni-store-pattern` | Store a reusable implementation pattern. (MCP) | When you discover a gotcha, trap, or reusable solution. |
-| `/uni-store-procedure` | Store or update a technical procedure (how-to). (MCP) | During retrospectives when a technique has evolved. |
-| `/uni-store-lesson` | Store a lesson learned from a failure or unexpected issue. (MCP) | After bugfixes, gate failures, or rework cycles. |
-| `/uni-knowledge-search` | Interactive semantic search across knowledge. (MCP) | When exploring a topic or looking for related entries. |
-| `/uni-knowledge-lookup` | Interactive deterministic lookup by exact filters. (MCP) | When you know what you want — a specific feature, category, or ID. |
-| `/uni-review-pr` | PR security review and merge readiness check. | After delivery or bugfix opens a PR. Can be invoked standalone. |
-| `/uni-retro` | Post-merge retrospective — extract patterns, procedures, lessons. (MCP) | After a feature PR is merged. |
-| `/uni-init` | Initialize Unimatrix in a repository — CLAUDE.md setup + agent recommendations. | First-time setup of a repo to use Unimatrix. |
-| `/uni-seed` | Populate foundational knowledge through human-directed exploration. (MCP) | After installation, to seed the knowledge base before relying on search. |
+| `/unimatrix-init` | Initialize Unimatrix in a repository — CLAUDE.md setup + agent orientation recommendations. | First-time setup of a repo to use Unimatrix. |
+| `/unimatrix-seed` | Populate foundational knowledge through human-directed, gated exploration. (MCP) | After installation, to seed the knowledge base before relying on search. |
+| `/uni-retro` | Post-merge retrospective — extracts patterns, procedures, and lessons from shipped features. (MCP) | After a feature PR is merged. |
 
 ---
 
