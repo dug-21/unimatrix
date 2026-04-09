@@ -3,6 +3,11 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.2] - 2026-04-09
+
+### Fixes
+- release: normalize test embeddings and bake ELF rpath=$ORIGIN into release binary for self-contained .so distribution (#552)
+
 ## [0.6.1] - 2026-04-09
 
 ### Fixes
