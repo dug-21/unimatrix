@@ -3,6 +3,13 @@
 All notable changes to Unimatrix are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.6.3] - 2026-04-09
+
+### Fixes
+- correct npm package metadata: repository URL (anthropics → dug-21), homepage field, and README for npmjs.com pages (#549)
+- add agent reports for bugfix-554 gate compliance
+- use new_multi_thread in sync runtime fallback (#554)
+
 ## [0.6.2] - 2026-04-09
 
 ### Fixes
