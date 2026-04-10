@@ -80,53 +80,23 @@ cargo build --release --workspace
 
 Binary at `target/release/unimatrix`.
 
-### Configure MCP Server
+### Wire into your project
 
-Add to `.claude/settings.json`:
+Run this once from your project root:
 
-```json
-{
-  "mcpServers": {
-    "unimatrix": {
-      "command": "npx",
-      "args": ["unimatrix"]
-    }
-  }
-}
+```bash
+npx unimatrix init
 ```
 
-Or for build-from-source:
+This configures everything automatically — MCP server, hooks, skills, and database. It is safe to re-run; existing configuration is preserved.
 
-```json
-{
-  "mcpServers": {
-    "unimatrix": {
-      "command": "/path/to/unimatrix"
-    }
-  }
-}
+Then start a Claude Code session and run:
+
+```
+/unimatrix-init
 ```
 
-### Configure Hooks
-
-Add to `.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [{ "command": "npx unimatrix hook UserPromptSubmit" }],
-    "SubagentStart": [{ "command": "npx unimatrix hook SubagentStart" }],
-    "PreCompact": [{ "command": "npx unimatrix hook PreCompact" }],
-    "PreToolUse": [{ "command": "npx unimatrix hook PreToolUse" }],
-    "PostToolUse": [{ "command": "npx unimatrix hook PostToolUse" }],
-    "Stop": [{ "command": "npx unimatrix hook Stop" }]
-  }
-}
-```
-
-### Cold Start
-
-A fresh knowledge base returns empty results. Use `/uni-seed` to populate foundational knowledge entries. Use `/uni-init` to configure CLAUDE.md awareness and get agent recommendations.
+That's it. Unimatrix is ready to use.
 
 ### First Use Examples
 
