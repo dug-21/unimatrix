@@ -1,22 +1,24 @@
 ---
-name: "unimatrix-seed"
+name: "uni-seed"
 description: "Populate Unimatrix with foundational repository knowledge through human-directed, gated exploration."
 ---
 
-# /unimatrix-seed — Knowledge Base Seeding
+# /uni-seed — Knowledge Base Seeding
 
 ## Prerequisites
 
 Before running this skill:
 
-1. **MCP server running**: The Unimatrix MCP server (`unimatrix-server`) must be running and wired in your Claude Code `settings.json`. This skill calls `context_status`, `context_search`, and `context_store` — all require an operational MCP server.
-2. **Recommended**: Run `/unimatrix-init` first to set up the CLAUDE.md knowledge block. Seeding works without it, but the CLAUDE.md block provides ongoing awareness.
+1. **MCP server running**: The Unimatrix MCP server (`unimatrix`) must be running and wired in your Claude Code `settings.json`. This skill calls `context_status`, `context_search`, and `context_store` — all require an operational MCP server.
+2. **Recommended**: Run `/uni-init` first to set up the CLAUDE.md knowledge block. Seeding works without it, but the CLAUDE.md block provides ongoing awareness.
 
 If `context_status` fails at startup, the MCP server is not available. Consult the installation documentation for wiring setup.
 
 ---
 
 ## What This Skill Does
+
+A fresh Unimatrix install starts with an empty database; this skill provides an initial curated knowledge set.
 
 Guides you through populating Unimatrix with foundational knowledge about your repository. The skill explores your repo structure in bounded levels, proposes knowledge entries, and stores only what you approve.
 
@@ -46,12 +48,16 @@ Follow these steps in strict order. At every gate marked with **STOP**, halt and
 
 **This must be the very first action. Do not read any files before this step.**
 
-Call `context_status()`.
+> **Important:** Run once per new project before the first delivery session.
+> Do not re-run on an established installation — seed entries will duplicate
+> existing knowledge.
+
+Call `mcp__unimatrix__context_status({})`.
 
 - **If the call fails or returns an error**: Print the following and halt immediately. Do not proceed to any further steps.
   ```
   Unimatrix MCP is not available.
-  Ensure unimatrix-server is running and wired in your Claude settings.json.
+  Ensure unimatrix is running and wired in your Claude settings.json.
   See installation documentation for setup instructions.
   ```
 
@@ -64,9 +70,9 @@ Call `context_status()`.
 Check whether seed entries already exist to avoid near-duplicates.
 
 Call `context_search` for each seeding category:
-- `context_search(query: "repository", category: "convention", k: 5)`
-- `context_search(query: "repository", category: "pattern", k: 5)`
-- `context_search(query: "repository", category: "procedure", k: 5)`
+- `mcp__unimatrix__context_search({"query": "repository", "category": "convention", "k": 5})`
+- `mcp__unimatrix__context_search({"query": "repository", "category": "pattern", "k": 5})`
+- `mcp__unimatrix__context_search({"query": "repository", "category": "procedure", "k": 5})`
 
 Count the total results across all three searches.
 
@@ -114,7 +120,7 @@ Apply the quality gate (What/Why/Scope) to each candidate. Silently discard any 
 
 If 0 entries pass the quality gate:
 ```
-Could not generate quality entries from available files. Consider adding a README.md with project context, then re-run /unimatrix-seed.
+Could not generate quality entries from available files. Consider adding a README.md with project context, then re-run /uni-seed.
 ```
 Skip to the Done summary.
 
@@ -146,20 +152,20 @@ Approve all entries? (approve / reject)
 
 - **If approved**: Store each entry via `context_store`:
   ```
-  context_store(
-    title: "{what}",
-    content: "What: {what}\nWhy: {why}\nScope: {scope}",
-    topic: "{repo name or top-level context}",
-    category: "{convention|pattern|procedure}",
-    tags: ["seed", "level-0"],
-    agent_id: "unimatrix-seed"
-  )
+  mcp__unimatrix__context_store({
+    "title": "{what}",
+    "content": "What: {what}\nWhy: {why}\nScope: {scope}",
+    "topic": "{repo name or top-level context}",
+    "category": "{convention|pattern|procedure}",
+    "tags": ["seed", "level-0"],
+    "agent_id": "uni-seed"
+  })
   ```
   Report success or failure for each entry individually. If a `context_store` call fails, report which entry failed and continue storing the remaining entries.
 
   Print: "Stored {count} entries."
 
-- **If rejected**: Print "0 entries stored. Re-invoke /unimatrix-seed with more specific guidance if needed." and skip to the Done summary.
+- **If rejected**: Print "0 entries stored. Re-invoke /uni-seed with more specific guidance if needed." and skip to the Done summary.
 
 After storing (or rejecting), present the Level 1 exploration menu:
 
