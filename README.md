@@ -10,21 +10,17 @@ delivery process, not a side effect.
 
 Unimatrix is not an orchestration engine. It does not coordinate agents, schedule
 work, or manage workflows. It is a knowledge engine that understands workflow context
-— your current phase, what your team has been doing, what comes next — and uses that
+— your current phase, the cycle(feature) goal, the agent task, what comes next — and uses that
 understanding to surface relevant knowledge at exactly the right moment.
 
 The key mental model: workflow definitions, agent definitions, and skill definitions
 are static — they live in your tooling and change infrequently. Architecture
-decisions, patterns, and lessons-learned are dynamic — they evolve with every
+decisions(ADR's), patterns, and lessons-learned are dynamic — they evolve with every
 feature, every delivery, every failure. Unimatrix was designed to manage the dynamic
 layer. Every architectural pivot, every hard-won lesson, every reusable pattern is
-captured, attributed, when needed, corrected, and made available to every future agent that needs it.
+captured, attributed, and when needed, corrected, and only current information is made available to every future agent that needs it.
 
 Built for agentic software delivery. Configurable for any workflow-centric domain.
-
-This workflow-phase-conditioned delivery means knowledge is surfaced at phase
-transitions based on what the engine has learned about each phase — it is not
-unconditional injection into every prompt.
 
 ---
 
@@ -60,10 +56,6 @@ Prerequisites:
 - Rust 1.89+ (edition 2024)
 - ONNX Runtime 1.20.x shared library
 
-**macOS (Homebrew):**
-```bash
-brew install onnxruntime
-```
 
 **Linux (manual):**
 ```bash
@@ -93,10 +85,16 @@ This configures everything automatically — MCP server, hooks, skills, and data
 Then start a Claude Code session and run:
 
 ```
-/unimatrix-init
+/uni-init     # Informs claude Unimatrix exists
 ```
 
 That's it. Unimatrix is ready to use.
+
+### Brownfield Applications
+
+```
+/uni-seed     # Interactive skill to review existing project and seed Unimatrix with decisions(ADR's), patterns, procedures
+```
 
 ### First Use Examples
 
@@ -134,9 +132,11 @@ Read how to use context_cycle commands to gain maximum value in .claude/protocol
 
 Multi-agent development creates knowledge that lives in context windows and dies with sessions. Decisions get re-made, patterns get re-discovered, lessons get re-learned.
 
+- **Project knowledge is *dynamic*** - An architecture decision can change from one feature to the next.  Unimatrix makes that 1 operation and always provides the most up to date info to agents. 
+
 - **Auditable Knowledge Lifecycle** — Every entry has a SHA-256 content hash. Corrections create hash-chained supersession links. An append-only audit log records every operation with agent identity and session context. You can trace how any piece of knowledge evolved.
 
-- **Invisible Delivery** — Agents do not need to ask for context. Hook-driven integration injects relevant expertise into every prompt automatically via Claude Code's lifecycle hooks. Knowledge reaches agents without needing to ask.
+- **Invisible Delivery** — Agents do actively search and use knowledge from Unimatrix.  Hook-driven integration ALSO injects relevant expertise into prompts, subagent spawns and precompaction events automatically, providing a tag team approach focused on ensuring relevant information while ALWAYS being context consumption conscious. Its a tag team approach to provide the best information.
 
 - **Self-Learning** — Confidence scoring evolves from real usage signals: accesses, helpfulness votes, correction quality, creator trust, and co-access patterns. Entries that help get boosted; entries that mislead get downranked. Adaptive embeddings (MicroLoRA) tune search to project-specific usage patterns.
 
