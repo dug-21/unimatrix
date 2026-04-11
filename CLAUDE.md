@@ -6,8 +6,11 @@
    | Design, scope, spec | design | `.claude/protocols/uni/uni-design-protocol.md` |
    | Implement, build, code | delivery | `.claude/protocols/uni/uni-delivery-protocol.md` |
    | Bug fix | bugfix | `.claude/protocols/uni/uni-bugfix-protocol.md` |
+   | Execute research spike(s) | research | `.claude/protocols/uni/uni-research-protocol.md` |
 
    **Session type selection rule**: If `product/features/{feature-id}/IMPLEMENTATION-BRIEF.md` does not exist, use **design** regardless of stated intent — delivery cannot proceed without it.
+
+   **Research session rule**: Phase 1 (scope completion) happens interactively with the human (uni-zero session), not in a research session. A research session begins only when SCOPE.md is complete. Single spike → invoke `uni-spike-researcher` directly. Multiple dependent spikes → invoke `uni-research-sm`.
 
    Read the SM agent definition (`.claude/agents/uni/uni-scrum-master.md`) for role boundaries and behavioral rules. The protocol defines what to do and when; the SM definition defines how you behave.
 
