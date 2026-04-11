@@ -115,9 +115,12 @@ context_store(
 )
 ```
 
-**Get a knowledge briefing for a feature phase:**
+**Get a knowledge briefing before starting implementation:**
 ```
-context_briefing(topic: "crt-027", max_tokens: 1000)
+context_briefing(
+  topic: "col-031",
+  task: "Implement per-agent rate limiting middleware for the MCP request handler — need patterns for token bucket implementation, existing middleware conventions, and any prior decisions on request-level enforcement"
+)
 ```
 
 **Example of structured 'protocols' for delivery**
@@ -203,19 +206,17 @@ Per-entry utility scoring from injection logs and session outcomes. Confidence c
 
 ## Tips for Maximum Value
 
-1. **Start a new session per feature cycle.** Context window pollution across features reduces knowledge quality. Each feature cycle (e.g., `col-015`) should use a fresh Claude Code session.
+1. **Treat Knowledge Curation as 1st class requirement.**  Agents should be encouraged to search AND store important knowledge future agents should know about their decisions, activities, etc.  
 
-2. **Use feature cycle naming.** (not required) Phase prefix + number: `col-015`, `nan-005`, `vnc-012`. Used in commits, branches, issue tracking, and as the `feature_cycle` parameter in MCP tool calls.
+2. **Start a new session per feature cycle.** Context window pollution across features reduces knowledge quality. Each feature cycle (e.g., `col-015`) should use a fresh Claude Code session.
 
-3. **Category discipline matters.** The right category determines retrieval quality. Decisions (`decision`) are not conventions (`convention`); procedures (`procedure`) are not patterns (`pattern`). Miscategorized entries surface in wrong contexts during semantic search.
+3. **Use `context_cycle` to declare start/top and phase transitions for your workflow.** Eg: `Spec`, `Dev`, `Testing`. The system learns the content categories used in each cycle.  **See `.claude/protocols/uni/README.md` for more details
 
-4. **Hook latency budget.** Hooks have a sub-50ms round-trip budget. Heavy blocking operations in hook handlers degrade the user experience.
+4. **Run Retrospectives** Use `context_cycle_review` to learn about what happened on this feature.  Unimatrix looks for 21 potential hotspots that serve to improve your workflows and stores this summary.  Its also a good opportunity to quality check knowledge stored during the feature_cycle.  Storing the summary also enables the proper release of the telemetry data to avoid unwieldly db growth, while retaining the summary.
 
-5. **Cold start: use `/uni-seed`.** A fresh knowledge base returns empty search results. `/uni-seed` populates foundational entries before relying on search.
+5. **Category discipline matters.** The right category determines retrieval quality. Decisions (`decision`) are not conventions (`convention`); procedures (`procedure`) are not patterns (`pattern`). Miscategorized entries surface in wrong contexts during semantic search.
 
-6. **Near-duplicate detection.** Entries with cosine similarity >= 0.92 to existing entries are rejected as duplicates. Rephrase if a legitimate distinct entry is rejected.
-
-7. **Run retrospectives to advance the retention window.** Activity data (observations, query_log, sessions) is retained indefinitely for any cycle that has not been reviewed with `context_cycle_review`. The retention K-window only advances past cycles that have a stored review. If retrospectives are skipped, the retention window stalls and raw signal data accumulates without bound. Call `context_cycle_review` after each cycle not only to learn what you can improve, but it also completes to allow the GC pass to prune older data. `context_status` shows `pending_cycle_reviews` — the list of cycles awaiting review.
+6. **Cold start: use `/uni-seed`.** A fresh knowledge base returns empty search results. `/uni-seed` populates foundational entries before relying on search.
 
 ---
 
@@ -346,10 +347,10 @@ Unimatrix exposes 12 MCP tools. All tools accept `format: "summary" | "markdown"
 | `context_deprecate` | Mark an entry as outdated. Entry remains accessible but excluded from default search/lookup. | When knowledge is no longer relevant but should not be deleted (historical record). Key params: `id` (required), `reason`. |
 | `context_quarantine` | Quarantine or restore an entry. Quarantined entries are excluded from search and lookup. **Admin only.** | When an entry is suspicious, invalid, or harmful and should be isolated. Use `action: "restore"` to undo. Key params: `id` (required), `action` ("quarantine" or "restore"), `reason`. |
 | `context_status` | Get knowledge base health metrics. Shows entry counts, distributions, correction chains, coherence score, security metrics, graph cohesion metrics (connectivity rate, isolated entry count, cross-category edge count, Supports edge count, mean entry degree, and inferred edge count), per-category lifecycle labels (adaptive vs pinned), `pending_cycle_reviews` (cycle IDs that have started within the retention window but have no stored cycle review yet — always computed), and a `curation_health` aggregate block (per-cycle correction rate mean/stddev, source breakdown as agent% and human%, orphan deprecation ratio mean/stddev, and trend direction when at least 6 cycles of snapshot data are available). **Admin only.** | When you need to assess knowledge base health or inspect whether graph edge inference is producing a connected, cross-category graph, identify cycles awaiting retrospective review before signals can be purged, or review curation behavior trends across recent cycles. The `maintain` parameter is accepted but silently ignored — a background tick handles maintenance automatically. Key params: `topic`, `category`, `check_embeddings`. |
-| `context_briefing` | Get a knowledge index for a topic or task. Returns up to 20 active entries as a flat indexed table (columns: row, id, topic, category, confidence, snippet). Query derived from: (1) explicit `task` param. Used at the start of a phase or task to get oriented. Call after each `context_cycle(type: "phase-end", ...)` to load the knowledge package for the next phase. Key params: `topic` (also known as feature_cycle), `task`, `k` (default 20), `max_tokens` (default 3000, range 500-10000). |
+| `context_briefing` | Get a knowledge index for a topic or task. Returns up to 20 active entries as a flat indexed table (columns: row, id, topic, category, confidence, snippet). Query derived from: (1) explicit `task` param. Used at the start of a phase or task to get oriented. Call when starting a new 'task' (often with a new subagent). Key params: `topic` (also known as feature_cycle), `task`, `k` (default 20), `max_tokens` (default 3000, range 500-10000). |
 | `context_enroll` | Future use |
 | `context_cycle` | Signal feature cycle lifecycle events: start, phase transitions, and stop.  | At cycle start/stop and at each phase boundary. Key params: `type` (required: `"start"` \| `"phase-end"` \| `"stop"`), `topic` (required. Topic and feature_cycle are interchangeable), `phase`, `outcome`, `next_phase`, `agent_id`, `goal` (optional, `start` only: 1–2 sentence plain-text statement of feature intent; used as the step-2 query signal by `context_briefing` and hook injection when no explicit `task` is provided; max 1 024 bytes). **Proper use of context_cycle provides unimatrix deep visibility into your workflow**|
-| `context_cycle_review` | Analyze observation data for a work cycle (Retrospective). Parses session telemetry, detects hotspots, computes metrics, and renders the `# Unimatrix Cycle Review —` report. Results are memoized: the first call for a cycle computes and stores the full report; subsequent calls return the stored record without recomputation. Use `force=true` to recompute and overwrite the stored record. When the stored record was computed with an older schema version, a version advisory is included in the response. | After a work cycle completes, to extract patterns and lessons. Key params: `feature_cycle` (required), `evidence_limit`, `force` (bool, default false — when true, forces recomputation even if a stored record exists), `format` ("markdown" default, "json"). Report includes: header with goal, cycle type, attribution path, and in-progress indicator; Recommendations (position 2); Phase Timeline table (per-phase duration, passes, agents, knowledge throughput, gate outcome) when `CYCLE_EVENTS` data exists; "What Went Well" section from favorable baseline signals; per-finding burst-notation evidence; Knowledge Reuse split into cross-feature and intra-cycle buckets; `curation_health` block with this cycle's raw correction counts (total, agent-attributed, human-attributed) and orphan deprecation count — plus σ deviation from the rolling 10-cycle baseline when at least 3 prior cycles have snapshot data (annotated with history length, e.g., `"2.1σ (4 cycles of history)"`; raw counts only on cold start). JSON format exposes `goal`, `cycle_type`, `attribution_path`, `is_in_progress`, and `phase_stats` fields. |
+| `context_cycle_review` | Analyze observation data for a work cycle (Retrospective). Parses session telemetry, detects hotspots, computes metrics, and renders and stores the `# Unimatrix Cycle Review —` report. Use `force=true` to recompute and overwrite the stored record. | After a work cycle completes, to better understand what worked and what didn't during the cycle. Key params: `feature_cycle` (required), `evidence_limit`, `force` (bool, default false — when true, forces recomputation even if a stored record exists), `format` ("markdown" default, "json"). |
 
 **`context_search` vs `context_lookup`**: `context_search` uses semantic similarity (natural language). `context_lookup` uses exact filters (topic, category, tags, status). Use search when exploring; use lookup when you know what you want.
 
@@ -359,15 +360,22 @@ Unimatrix exposes 12 MCP tools. All tools accept `format: "summary" | "markdown"
 
 ## Skills Reference
 
-Unimatrix ships 3 Claude Code skills via the npm package. Skills are platform-native `/command` files installed automatically when the package is installed.
+Unimatrix ships 10 Claude Code skills via the npm package. Skills are platform-native `/command` files installed automatically by `npx unimatrix init`.
 
-Skills that interact with the MCP server require the server to be running and configured.
+Skills marked (MCP) require the server to be running and configured.
 
 | Skill | Purpose | When to Use |
 |-------|---------|-------------|
-| `/unimatrix-init` | Initialize Unimatrix in a repository — CLAUDE.md setup + agent orientation recommendations. | First-time setup of a repo to use Unimatrix. |
-| `/unimatrix-seed` | Populate foundational knowledge through human-directed, gated exploration. (MCP) | After installation, to seed the knowledge base before relying on search. |
+| `/uni-init` | Initialize Unimatrix in a repository — CLAUDE.md setup + agent orientation recommendations. | First-time setup of a repo. |
+| `/uni-seed` | Populate foundational knowledge through human-directed, gated exploration. (MCP) | After installation, before relying on search. |
 | `/uni-retro` | Post-merge retrospective — extracts patterns, procedures, and lessons from shipped features. (MCP) | After a feature PR is merged. |
+| `/uni-knowledge-search` | Semantic search across Unimatrix knowledge. (MCP) | Exploring a topic, finding related decisions or patterns. |
+| `/uni-knowledge-lookup` | Deterministic lookup by feature, category, or entry ID. (MCP) | When you know what you want. |
+| `/uni-query-patterns` | Query component patterns and conventions before designing or implementing. (MCP) | Before writing pseudocode or code. |
+| `/uni-store-adr` | Store an architectural decision record. (MCP) | After each design decision. |
+| `/uni-store-lesson` | Store a lesson learned from a failure or gate rejection. (MCP) | After bugfixes and unexpected issues. |
+| `/uni-store-pattern` | Store a reusable implementation pattern. (MCP) | When a gotcha or reusable solution emerges. |
+| `/uni-store-procedure` | Store or update a technical how-to procedure. (MCP) | When a technique evolves or is discovered. |
 
 ---
 
@@ -484,7 +492,7 @@ The hook IPC socket (`unimatrix.sock`) and the MCP socket (`unimatrix-mcp.sock`)
 
 ---
 
-## Security Model
+## Security Model (Mostly Future Use)
 
 ### Trust Hierarchy
 
