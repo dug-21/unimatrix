@@ -84,7 +84,7 @@ pub struct LookupParams {
     )]
     #[schemars(with = "Option<i64>")]
     pub id: Option<i64>,
-    /// Filter by status (active, deprecated, proposed).
+    /// Filter by status (active, deprecated, proposed, quarantined). Defaults to active when omitted.
     pub status: Option<String>,
     /// Max results to return (default: 10).
     #[serde(
@@ -229,7 +229,7 @@ pub struct StatusParams {
 pub struct BriefingParams {
     /// Your role (e.g., "architect", "developer"). Optional — used as a last-resort query fallback only when `task` is empty and `feature` is absent. Prefer a descriptive `task`.
     pub role: Option<String>,
-    /// What you are about to do, as a focused 1-2 sentence natural language description. This is the primary search query — be specific. Example: "design the query derivation pipeline for context_briefing". Avoid vague phrases like "start task" or bare keyword lists; the ranking uses NLI entailment scoring which works best with coherent sentences.
+    /// Your current task — what you are about to design or build. This is the primary search query. Be specific: "design the query derivation pipeline for context_briefing" not "start crt-027". Specific task descriptions yield better results than cycle names or bare keyword lists.
     pub task: String,
     /// Feature cycle identifier (e.g., "crt-027"). Used as query fallback when `task` is empty; does not apply a scoring boost.
     pub feature: Option<String>,
@@ -780,7 +780,7 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_correct",
-        description = "Correct an existing knowledge entry. Deprecates the original and creates a new corrected entry with a chain link. Use when an entry contains wrong information."
+        description = "Update or correct an existing knowledge entry. Deprecates the original and creates a replacement with a chain link. Required method for all updates — do not call context_deprecate then context_store separately."
     )]
     async fn context_correct(
         &self,
@@ -996,7 +996,7 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_briefing",
-        description = "Get a ranked index of knowledge entries relevant to your current task. Returns up to 20 active entries scored by semantic similarity and NLI entailment. Use at the start of any task to orient yourself before designing or implementing."
+        description = "Get a ranked index of knowledge entries relevant to your current task. Returns up to 20 active entries scored by semantic similarity, goal-cluster alignment, and co-access affinity. Use at the start of any task to orient yourself before designing or implementing."
     )]
     async fn context_briefing(
         &self,
@@ -1505,7 +1505,7 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_cycle_review",
-        description = "Analyze observation data for a work cycle. Parses session telemetry, attributes to cycle, detects hotspots, computes metrics, and returns a self-contained report."
+        description = "Analyze observation data for a work cycle. First call computes and caches the report; subsequent calls return the cached result. Use force=true to recompute fresh telemetry."
     )]
     async fn context_cycle_review(
         &self,
@@ -2546,10 +2546,9 @@ impl UnimatrixServer {
 
     #[tool(
         name = "context_cycle",
-        description = "Declare the start or end of a feature cycle for this session. \
-            Call with type='start' at session beginning to set feature attribution. \
-            Call with type='stop' when feature work is complete. \
-            Attribution is best-effort via the hook path; confirm via context_cycle_review."
+        description = "Declare the start or end of a feature cycle. \
+            Call with type='start' at session beginning — always include a goal sentence to improve briefing results for this cycle. \
+            Call with type='stop' when work is complete."
     )]
     async fn context_cycle(
         &self,
