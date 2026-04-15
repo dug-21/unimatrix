@@ -26,6 +26,7 @@ From your spawn prompt:
 - Spike ID (e.g., `ass-046`)
 - SCOPE.md path
 - *(Optional)* Prior findings paths from upstream dependency spikes
+- *(Optional)* `Your questions:` — explicit list of Goal questions assigned to you in a dual-track run. If present, answer **only those questions**. Do not answer questions assigned to the internal track.
 
 ---
 
@@ -89,9 +90,13 @@ These apply regardless of approach type:
 
 ---
 
-## Step 4 — Write FINDINGS.md
+## Step 4 — Write Findings
 
-Write to `product/research/{ass-NNN}/FINDINGS.md`. Same format as `uni-spike-researcher`:
+**In dual-track mode** (when `Your questions:` was specified): write to `product/research/{ass-NNN}/FINDINGS-EXTERNAL.md`. Do not write to `FINDINGS.md` — synthesis happens separately after both tracks complete.
+
+**In single-track mode**: write to `product/research/{ass-NNN}/FINDINGS.md`.
+
+Same format in both cases:
 
 ```markdown
 # FINDINGS: {Spike Title}
@@ -168,4 +173,4 @@ You evaluate the external world. Project context is in SCOPE.md.
 - [ ] Confidence level matches what was required in SCOPE.md
 - [ ] Out-of-Scope Discoveries listed but not pursued
 - [ ] No Unimatrix access was made
-- [ ] FINDINGS.md written to `product/research/{ass-NNN}/FINDINGS.md`
+- [ ] Written to correct output file: `FINDINGS-EXTERNAL.md` (dual-track) or `FINDINGS.md` (single-track)

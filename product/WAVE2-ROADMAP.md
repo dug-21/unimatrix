@@ -1,11 +1,11 @@
-# Wave 2 — Enterprise Deployment Roadmap
+# Wave 2 — Personal Cloud Delivery
 
-**Date**: 2026-04-09 (updated 2026-04-10)
+**Date**: 2026-04-09 (updated 2026-04-14)
 **Prior roadmap**: ASS-040 (self-learning knowledge engine) — COMPLETE
 **Schema version**: v22
 **Eval baseline**: MRR=0.2558, 2,096 scenarios, snapshot a03bdd8f1fcb (2026-04-08)
 
-**Strategic intent**: Wave 2 is the SOC 2 Type I readiness phase and the ISO/IEC 42001 enabler. It establishes the architectural and audit foundations — three-role RBAC, structured audit log with full attribution, OAuth 2.1, HTTPS — that make both certifications achievable in subsequent phases. The compliance controls are a commercial asset, not just a technical requirement.
+**Wave 2 outcome**: Complete, deployable personal Unimatrix cloud. Containerized, HTTPS-accessible, multi-LLM compatible, with a clean security model that an individual developer can operate without friction. Enterprise delivery follows in a separate private repository after Wave 2 ships.
 
 ---
 
@@ -24,189 +24,157 @@ Intelligence-pipeline carry-forwards that do not block Wave 2: #477 (quarantine 
 
 ---
 
-## Working Hypotheses
+## Wave 2 — Delivery Items
 
-These are strong, reasoned positions — not immovable objects. Every item below is in pencil until research validates or contradicts it. Researchers are expected to challenge these, not work around them. The goal is the best possible product, not consistency with prior assumptions.
+### W2-0: OSS Licensing Clarity (🔬 ASS-045 — COMPLETE)
+**Goal**: Clean OSS boundary. Core crates (`unimatrix-store`, `unimatrix-vector`, `unimatrix-embed`, `unimatrix-core`, `unimatrix-engine`, `unimatrix-server`) published under MIT/Apache 2.0. No license instrument applied to the OSS personal cloud tier.
 
-Hard constraints (genuinely fixed — changing these requires rewriting shipped code):
-- Rust codebase
-- SQLite per-repo isolation for data plane (schema v22, live in production)
-- sqlx abstraction layer (already in place)
-- Existing MCP tool API surface
-
-Everything else below is a hypothesis.
-
-### 1. OSS / Enterprise Product Bifurcation
-- **OSS tier (MIT/Apache)**: STDIO transport, single-project, local daemon. Everything shipped through Wave 1A. No network exposure.
-- **Enterprise tier (BSL-1.1)**: HTTPS-only, OAuth, multi-project, multi-agent, container deployment. Wave 2.
-- **Rationale**: STDIO is the community on-ramp. Enterprise features require the security model that mandates the licensing boundary. HTTPS implies OAuth. There is no secure halfway point.  BSL still allows individual/personal projects to utilize for free, but not commercial use.
-
-### 2. Admin XOR Operator Identity Model
-- Credentials are mutually exclusive: Admin or Operator, never both.
-- Enforced at credential issuance, not at runtime capability check.
-- Identity unit: one credential set = one role. Multiple terminals in one IDE share credentials. A separate machine gets its own credentials and may hold a different role.
-- **Rationale**: Separation of duties at the architectural level. A Claude instance doing development work cannot self-elevate to admin. The architecture enforces this — not convention.
-
-### 3. Control Plane / Data Plane Separation
-- **Control plane DB** (one per deployment): agent registry, role bindings, project registrations, org record(s), audit log.
-- **Data plane DBs** (one per repo, unchanged): knowledge + analytics. Same per-repo SQLite isolation as today.
-- TenantRouter mediates all data plane access. Control plane validates access before routing.
-
-### 4. SaaS Optionality via org_id
-- `org_id` field in the control plane schema from day one.
-- Wave 2 writes exactly one org value. SaaS adds rows.
-- No multi-org logic built in Wave 2 — the hook is the schema field, not an implementation.
-- **Rationale**: Retrofitting org-level isolation after the fact is expensive. Adding a column costs nothing now.
-
-### 5. HTTPS-Only Enterprise Transport
-- No plain HTTP. No `--insecure` flag. Refuse HTTP connections entirely — no redirect.
-- Unimatrix terminates TLS directly OR binds `127.0.0.1` behind a reverse proxy. Both supported; startup config determines which.
-- Admin port (8444) separate from content port (8443). Admin port never load-balancer-exposed.
-
-### 6. Per-Repo DB Isolation — Unchanged
-- Enterprise extends today's model: each repo has its own `knowledge.db` + `analytics.db`.
-- Repo identity: git hash of repository name (unchanged from OSS).
-- Cross-repo leakage is prevented architecturally, not by policy.
-
-### 7. Admin Console as Primary Management Surface
-- All admin operations are available via the admin API (OAuth-scoped `unimatrix:admin`).
-- The admin console is the human-facing surface on top of that API.
-- Programmatic admin requires explicit scope configuration — not default.
-- Wave 2 admin console scope: agent enrollment/management, project/repo registration, role binding management, audit log viewer, system health. Full knowledge explorer is Matrix phase (deferred).
-
----
-
-## Wave 2 Projected Path
-
-*Goal statements are provisional — subject to refinement by research spikes ASS-041 through ASS-047.
-Items marked (🔬) have direct research dependencies.*
-
-### W2-0: Product Bifurcation + Licensing (🔬 ASS-045)
-**Goal**: Clean OSS/Enterprise boundary in the codebase. BSL-1.1 applied to enterprise features with finalized Change Date, conversion license, and Additional Use Grant. CLA decision made. Build pipeline produces separate OSS and enterprise artifacts.
-
-**Resolved by ASS-045**: Codebase split strategy. BSL specifics. CLA requirement. Distribution artifact plan.
+**Resolved by ASS-045**: MIT/Apache 2.0 on all core crates (no BSL). DCO on MIT crates (no CLA required). Enterprise commercial features ship from a separate private repository — not from this codebase.
 
 ---
 
 ### W2-1: Container Packaging (🔬 ASS-043)
-**Goal**: BSL-licensed enterprise container. Single-image deployment containing the Unimatrix daemon with enterprise features, ONNX runtime, and control plane DB initialization.
+**Goal**: Single-image personal cloud deployment. Containerized daemon with ONNX runtime. Air-gap deployable — no runtime internet dependencies.
 
 Named volumes:
-- `unimatrix-control` — control plane DB (integrity-critical)
 - `unimatrix-knowledge` — per-repo knowledge DBs (integrity-critical, back up frequently)
 - `unimatrix-analytics` — per-repo analytics DBs (self-healing)
 - `unimatrix-shared` — ONNX models + `config.toml` as read-only bind
 
-Non-root container user. HEALTHCHECK on daemon liveness + schema version. Air-gap deployable (no runtime internet dependencies).
+Non-root container user. HEALTHCHECK on daemon liveness + schema version.
 
 **Resolved by ASS-043**: ONNX Runtime packaging approach. Base image selection. Multi-arch strategy. Secrets injection pattern.
 
 ---
 
-### W2-2: HTTPS Transport (🔬 ASS-041)
-**Goal**: HTTPS-only enterprise transport alongside existing UDS/stdio. Two listeners: content port (8443) and admin port (8444). Bearer token validation at transport layer; capability checks enforced at service layer (unchanged). TLS non-negotiable — no `--insecure` flag; no HTTP mode.
+### W2-2: HTTPS Transport + Static Token Auth + Observability (🔬 ASS-041 — COMPLETE)
+**Goal**: HTTPS personal cloud transport. Static 256-bit bearer token authenticates all clients — the token IS the authorization credential, not an agent identity mechanism. No per-call `agent_id` required for access. Zero enrollment friction for individual developers.
 
-Max request body ≤1MB. Connection timeout 30s. Max concurrent connections enforced.
+**Transport**: rmcp 0.16's `transport-streamable-http-server` feature. Tower middleware for auth. No Axum required.
 
-**Resolved by ASS-041**: rmcp 0.16 HTTP transport readiness. Library selections for TLS, request handling, bearer token validation.
+**Auth**: 32-byte OsRng hex token (64 lowercase hex chars). Stored at `{data_volume}/token` with mode 0600. Generated and printed once on first run; loaded silently thereafter. Validated by `subtle::ConstantTimeEq`. Presented as `Authorization: Bearer <token>`.
+
+**Two listeners** (personal cloud uses content port only; admin port reserved for enterprise extension):
+- Content port: 8443 (personal cloud)
+- Admin port: 8444 (reserved — enterprise extension point)
+
+**TLS**: `rustls 0.23` via `tokio-rustls`. Support `tls.enabled = false` for proxy-terminated deployments.
+
+**Observability** (required for production operation):
+- Prometheus metrics endpoint: request count per tool, write queue depth, `shed_events_total`, pool acquire latency, tick completion time, audit log write latency. Without this, operators cannot observe `shed_events_total` except as a WARN log.
+- Structured logging: `tracing` spans with `project_id` for log routing.
+
+**Client note**: Active Claude Code bug anthropics/claude-code#28293 (headers in `.mcp.json` not forwarded on tool call POSTs). Workaround: `claude mcp add -H`. Client setup documentation must specify this path.
+
+**Resolved by ASS-041**: rmcp HTTP transport readiness confirmed. rustls, jsonwebtoken, tower middleware selections confirmed. `Authorization: Bearer` header support confirmed for Claude Code HTTP transport.
 
 ---
 
-### W2-3: Enterprise Identity Model (🔬 ASS-042, ASS-047)
-**Goal**: OAuth 2.0 client credentials flow. Admin XOR Operator mutual exclusivity enforced at credential issuance. Control plane DB (agents, role bindings, project registrations, `org_id`). JWT `sub` → `agent_id` attribution. `unimatrix_project` claim → data plane routing validated against registered project allowlist. Per-repo operator scope binding. Bootstrap flow for first admin credential on fresh deployment.
+### W2-3: Security Model — OSS Foundation (🔬 ASS-050 — IN PROGRESS)
+**Goal**: Correct the security model for the personal cloud tier. Revise the current `agent_id`-per-call model (designed around a now-invalid assumption about subagent session isolation) to match the actual personal cloud identity model. Lay the extension surface that the enterprise private repository will build OAuth 2.1 + three-role RBAC on top of.
 
-JWT algorithm allowlist: RS256/ES256 only. `exp`/`iss`/`aud` enforced. `sub` claim validated `^[a-zA-Z0-9_-]{1,64}$`. OAuth client secrets never stored.
+**Personal cloud identity model**:
+- Bearer token = authorization. Any client presenting the valid token has full access.
+- `agent_id` for observation/audit attribution comes from MCP `clientInfo.name`. Not a security mechanism — metadata only.
+- `AgentRegistry` and `context_enroll` behavior at this tier: TBD by ASS-050 (hypothesis: permissive default mode, no mandatory enrollment).
 
-**Resolved by ASS-042**: Identity enforcement mechanism. Role binding data model location (JWT vs. server-side). Control plane schema with SaaS `org_id`. Bootstrap flow design. Multi-agent content integrity augmentations.
+**Content size enforcement** (from #561 reframing):
+- `context_store` enforces a configurable max byte cap (`[store] max_content_bytes` in `config.toml`, default 8,000).
+- Error message includes the configured limit and received size.
+- Tool description states a limit exists; does not publish the specific value (revealed only at runtime via error).
+- `context_get` naturally bounded by store cap — no separate enforcement.
+- `context_status format:json` — documented as corpus-size dependent; risk accepted.
 
-**Resolved by ASS-047**: Control plane DB technology (SQLite-for-Wave-2 with PostgreSQL-ready abstraction). Concurrent write ceiling at target agent count.
+**Extension surface for enterprise** (specified by ASS-050):
+- `BearerValidator` trait: OSS ships `StaticTokenAuth`. Enterprise private repo ships `JwtBearerAuth`.
+- Startup plugin registration pattern for enterprise auth injection.
+- Audit log schema designed now to carry `session_id`, `credential_type`, `capability_used`, `agent_attribution`, and extensible `metadata` JSON for future AI governance attributes — immutable decision, get it right in Wave 2.
+
+**Resolved by ASS-050**: Full implementation audit, interface signatures, audit log schema recommendation, don't-foreclose constraints for future session-pinned identity and behavioral provenance analysis.
 
 ---
 
-### W2-4: Admin Console (🔬 ASS-044)
-**Goal**: Minimum viable enterprise admin UI serving as the primary human management surface. Authenticates via the same OAuth flow as other clients.
+### W2-4: Multi-LLM Compatibility (🔬 ASS-049 — COMPLETE)
+**Goal**: Unimatrix works correctly out-of-the-box with Codex (OpenAI) and Gemini (Google) MCP clients. Same HTTPS transport, same tool API, same behavioral contract. "Works with Claude, Codex, and Gemini" as an empirical claim, not a theoretical one.
 
-Wave 2 scope: agent enrollment + promotion/revocation, project/repo registration, role binding management (operator→project assignment), audit log viewer (paginated), system health (schema version, daemon uptime, entry counts per project).
+**Delivery items** (researched, ready for implementation):
 
-Deferred to Matrix phase: knowledge explorer, entry browser, graph visualization, feature drilldown, prompt debugger.
+| Issue | Type | Description |
+|-------|------|-------------|
+| [#558](https://github.com/dug-21/unimatrix/issues/558) | Bug | Tool description fixes — NLI language in `context_briefing`, hook-path framing in `context_cycle` | ✅ COMPLETE |
+| [#559](https://github.com/dug-21/unimatrix/issues/559) | Feature | vnc-013: Canonical event normalization — Gemini `BeforeTool`/`AfterTool`/`SessionEnd` → canonical names |
+| [#560](https://github.com/dug-21/unimatrix/issues/560) | Feature | Server-side session attribution via `clientInfo.name` + `Mcp-Session-Id` |
+| [#561](https://github.com/dug-21/unimatrix/issues/561) | Feature | Byte-based content size enforcement (`context_store` cap, `context_status format:json` documentation) |
 
-**Resolved by ASS-044**: Technology choice (single binary compatibility is a hard constraint). Framework selection. API surface (MCP tools vs. separate admin REST). Build pipeline integration.
+**Deferred** (post-Wave 2):
+- Provider-neutral eval corpus (20–40 hand-authored scenarios, no harness code changes)
+- Gemini MRR baseline (after schema fixes land)
+- Zed (revisit when zed-industries/zed#34719 resolves — no native HTTP transport today)
+
+**Critical open issue**: Codex #5619 — Codex sends `protocolVersion: "2025-06-18"` but may expect `2024-11-05` response semantics. Verify rmcp `protocolVersion` declaration before any Codex Wave 2 testing.
+
+**Resolved by ASS-049**: Client capability matrix, tool description risk, `clientInfo.name` attribution, injection size analysis, HTTP auth confirmation per client.
 
 ---
 
 ### W2-5: GGUF Module — Conditional (🔬 ASS-046)
-**Goal**: Optional `unimatrix-infer` capability behind Cargo feature flag. Local GGUF inference on a dedicated rayon pool (separate from ONNX pool). When present: upgrades `context_cycle_review` recommendations, `context_status` explanations, contradiction explanation, background synthesis.
+**Goal**: Optional local GGUF inference behind Cargo feature flag (`features = ["infer"]`). When present: upgrades `context_cycle_review` recommendations, `context_status` explanations, contradiction explanation, background synthesis. SHA-256 hash-pinned model required in config.
 
-SHA-256 hash-pinned model file required in config. LLM input length-limited (~4,000 tokens). LLM output passes content scanner before storage or return.
+**Gate**: ASS-046 must return a go recommendation with proof-of-concept validation. If unfavorable, W2-5 defers to post-Wave 2.
 
-**Gate**: ASS-046 must return a go recommendation with proof-of-concept validation before this item is scoped for delivery. If ASS-046 returns unfavorable, W2-5 defers to a post-Wave-2 wave.
+---
+
+## Enterprise Tier
+
+Enterprise delivery — OAuth 2.1, three-role RBAC (Admin/Operator/Auditor), structured compliance audit log, control plane DB, admin console, SOC 2 Type I readiness — is **scoped for a separate private repository** after Wave 2 ships.
+
+Wave 2 delivers the OSS extension surface (W2-3 / ASS-050) that the enterprise private repo builds on. No enterprise features ship from this repository.
 
 ---
 
 ## Research Prerequisites
 
-Eight research spikes are required before Wave 2 can be formally scoped for delivery. ASS-048 is Tier 0 — it produces the enterprise security requirements that drive ASS-041 and ASS-042. ASS-042 is the integrating architecture document.
+| Spike | Title | Status | Feeds |
+|-------|-------|--------|-------|
+| ASS-041 | Transport + Auth Stack | **COMPLETE** | W2-2 |
+| ASS-043 | Container + Packaging Strategy | In progress | W2-1 |
+| ASS-045 | Licensing Strategy | **COMPLETE** | W2-0 |
+| ASS-046 | GGUF Feasibility | Not started | W2-5 go/no-go |
+| ASS-047 | Core Scalability Strategy | **COMPLETE** | W2-2 (connection limits) |
+| ASS-049 | Multi-LLM MCP Client Compatibility | **COMPLETE** | W2-4 |
+| ASS-050 | Security Model Review — OSS + Enterprise Foundation | **IN PROGRESS** | W2-3 |
 
-### ASS-048 Findings Summary (2026-04-10) — `product/research/ass-048/FINDINGS.md`
+### ASS-041 Findings Summary — Transport + Auth Stack
+rmcp 0.16 `transport-streamable-http-server` is production-ready. Tower middleware for auth. `rustls 0.23` for TLS. `subtle::ConstantTimeEq` for token validation. `Authorization: Bearer` header confirmed for Claude Code HTTP transport. `claude mcp add -H` workaround required for anthropics/claude-code#28293.
 
-**Q1 — Auth model**: OAuth 2.1 client credentials is the correct M2M choice and aligns with the MCP spec's June 2025 mandate. The hypothesis is confirmed but incomplete — must also enforce token expiry, audience claims, and scope validation. Proxy-terminated TLS is standard enterprise practice and must be a documented deployment option. Do not implement mTLS in Wave 2.
+### ASS-045 Findings Summary — Licensing
+MIT/Apache 2.0 on all core crates. No BSL (creates OSPO procurement friction). DCO on MIT crates; no CLA. Enterprise commercial features in separate private repository under a named commercial license — not in this codebase.
 
-**Q2 — RBAC**: The Admin/Operator two-role model is **contradicted** — it fails SOC 2 CC6.3 duty segregation requirements at the first enterprise security review. Three roles are required: Admin, Operator, and **Auditor** (read-only). Auditor is the blocking gap for enterprise deployment approval.
+### ASS-047 Findings Summary — Scalability
+Write ceiling: ~200 integrity writes/sec (single `write_pool` connection, SQLite WAL). Defensible at 20 concurrent agents at normal usage. Per-repo in-memory envelope: 3–5 MB (small), 30–50 MB (medium). Personal cloud (single-user) operates well within these limits. PostgreSQL upgrade trigger: >50 agents or >300 audit writes/sec sustained.
 
-**Q3 — Compliance**: SOC 2 Type II is confirmed as the correct primary target. Wave 2 should be designed for SOC 2 Type I readiness: three-role RBAC, structured audit log, OAuth 2.1, HTTPS. Type II requires 12 months of operation post-controls. ISO 27001, FedRAMP, and ISO/IEC 42001 are post-Wave 2.
-
-**Q4 — AI-specific risks**: Unimatrix's RAG/vector architecture faces four high-severity AI-native risks per OWASP LLM Top 10 2025 and MITRE ATLAS v5.4.0: RAG poisoning via write access (LLM08), indirect prompt injection via stored entries (LLM01), excessive agency from over-permissioned agents (LLM06), and credential harvesting from stored context (ATLAS). Wave 2 mitigations: per-tool write authorization in RBAC, audit log with agent attribution, sensitive content ingestion policy, rate limiting per token. The existing crt-003 contradiction detection is a defensible MITRE ATLAS mitigation asset.
-
-**Q5 — BSL procurement risk**: BSL-1.1 creates moderate procurement friction due to the Terraform/HashiCorp 2023 precedent and non-OSI recognition. Risk is manageable if the Additional Use Grant explicitly permits internal developer tool use. Feed to ASS-045: grant must include "internal software development, AI agent pipelines, CI/CD use is permitted regardless of commercial relationship" language; consider a dual-licensing path (BSL + commercial) for enterprise contracts.
-
-| Spike | Title | Tier | Feeds |
-|-------|-------|------|-------|
-| ASS-048 | Enterprise Security Requirements | 0 — **COMPLETE** | ASS-041 (auth model), ASS-042 (role model), ASS-045 (licensing risk) |
-| ASS-041 | Transport + Auth Stack Evaluation | 1 | W2-2, W2-3 |
-| ASS-042 | Enterprise Security Model Architecture | 1 (integrator) | W2-3, W2-0 |
-| ASS-043 | Container + Packaging Strategy | 2 | W2-1 |
-| ASS-044 | Admin UI Architecture | 2 | W2-4 |
-| ASS-045 | Licensing + Codebase Structure | 1 | W2-0, all items |
-| ASS-046 | GGUF Feasibility | 3 | W2-5 go/no-go |
-| ASS-047 | Core Scalability Strategy | 1 | W2-3 (control plane tech), W2-2 (connection limits) |
+### ASS-049 Findings Summary — Multi-LLM Compatibility
+Codex CLI and Gemini CLI confirmed as primary Wave 2 targets. `Authorization: Bearer` static token forwarding confirmed for both. Gemini JSON Schema blockers identified (inline `$defs`, union types). Codex #5619 (protocolVersion) requires verification before Codex testing. `clientInfo.name` available as agent attribution source across providers.
 
 ---
 
 ## Dependency Map
 
 ```
-Tier 0 (run first — no dependencies, unblocks Tier 1):
-  ASS-048: Enterprise Security Requirements ─────────────┐
-                                                          │ feeds auth model + role model + licensing risk
-                                                          ▼
-Tier 1 (run in parallel after ASS-048):
-  ASS-041: Transport + Auth Stack ──────────────────────┐
-  ASS-045: Licensing + Codebase ────────────────────────┤──► ASS-042: Security Architecture
-  ASS-047: Core Scalability ────────────────────────────┘    (integrates all Tier 0 + 1 findings)
+ASS-050: Security Model Review ─────────────────────────────► W2-3 (extension surface spec)
+ASS-041: Transport ─── COMPLETE ────────────────────────────► W2-2 (HTTPS + static token)
+ASS-045: Licensing ─── COMPLETE ────────────────────────────► W2-0 (MIT/Apache confirmed)
+ASS-047: Scalability ─ COMPLETE ────────────────────────────► W2-2 (connection limits)
+ASS-049: Multi-LLM ─── COMPLETE ────────────────────────────► W2-4 (delivery scope confirmed)
 
-ASS-042 output unblocks:
-  ├── W2-3 delivery scoping (identity model, control plane schema, bootstrap)
-  └── W2-0 delivery scoping (codebase boundary confirmed by ASS-045 input)
+ASS-043 ──────────────────────────────────────────────────── ► W2-1 (packaging decisions)
+ASS-046 ──────────────────────────────────────────────────── ► W2-5 go/no-go
 
-Tier 2 (independent — can run in parallel with Tier 0 + 1):
-  ASS-043 ──► W2-1 delivery scoping (packaging decisions)
-  ASS-044 ──► W2-4 delivery scoping (UI technology + scope)
-
-Tier 3 (deferred — does not block other Wave 2 items):
-  ASS-046 ──► W2-5 go/no-go
+W2-3 unblocks: W2-2 delivery (auth middleware placement confirmed)
+W2-2 + W2-4 can ship concurrently (shared HTTPS transport layer)
+W2-1 wraps W2-2 + W2-3 (container packaging after server complete)
+W2-5 independent (feature-flagged, does not block other items)
 ```
-
----
-
-## What These Spikes Will Determine
-
-After all Tier 1 + 2 spikes complete, the real Wave 2 delivery roadmap will specify:
-
-1. **Delivery sequence** — whether W2-0 → W2-2 → W2-3 → W2-1 → W2-4 is right, or whether container and licensing must ship first as an outer shell
-2. **Effort estimates** — currently unestimatable without transport library selection, RBAC design, and scalability ceiling confirmed
-3. **W2-3 scope refinement** — per-repo RBAC binding location, control plane schema detail, bootstrap flow
-4. **W2-5 disposition** — in-wave or deferred, based on ASS-046 finding
-5. **SaaS optionality completeness** — `org_id` is confirmed; ASS-047 may surface additional low-cost SaaS hooks worth including in Wave 2
 
 ---
 

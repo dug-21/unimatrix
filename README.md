@@ -29,6 +29,7 @@ Built for agentic software delivery. Configurable for any workflow-centric domai
 ### Install via npm
 
 > **Platform: Linux x64 and arm64 only.** macOS and Windows are not supported via npm.
+> **Currently ONLY supports Claude-code** 
 
 **Prerequisites — both required before installing:**
 - Node.js >= 18
