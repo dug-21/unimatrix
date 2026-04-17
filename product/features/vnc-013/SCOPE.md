@@ -5,8 +5,12 @@
 Unimatrix currently hardcodes two assumptions at the hook ingest boundary that make
 multi-LLM participation impossible without cascading changes:
 
-1. `source_domain = "claude-code"` is hardcoded in two places (`background.rs:1330`
-   and `listener.rs:1894`) regardless of which LLM client actually fired the hook.
+1. `source_domain = "claude-code"` is hardcoded in three places:
+   - `background.rs:1330` in `fetch_observation_batch()` (embeddings/metrics tick)
+   - `listener.rs:1894` in the session-feature query path
+   - `services/observation.rs:585` in `parse_observation_rows()` (feeds
+     `context_cycle_review`, `load_feature_observations`, session parsing)
+   All three hardcode `"claude-code"` regardless of which LLM client fired the hook.
 2. `build_request()` in `hook.rs` only handles Claude Code event names (`PreToolUse`,
    `PostToolUse`, `PostToolUseFailure`, `SubagentStart`, `SubagentStop`, `SessionStart`,
    `Stop`, `PreCompact`). Gemini CLI events (`BeforeTool`, `AfterTool`, `SessionEnd`)
@@ -47,20 +51,27 @@ be correct for any Codex records that do arrive via other paths.
    `extract_observation_fields()`, `background.rs`, `context_cycle_review`,
    `knowledge_reuse.rs`, `DomainPackRegistry`, `query_log.rs` SQL, `cycle_events`
    table — branches on provider-specific event names.
+9. Add a guard assertion in `listener.rs` `extract_observation_fields()` that prevents
+   the internal `"post_tool_use_rework_candidate"` string from reaching
+   `observations.hook` if the normalization match arm ever regresses. The existing
+   explicit match arm `"PostToolUse" | "post_tool_use_rework_candidate"` already
+   normalizes this string — the guard makes that contract enforceable and visible.
+   Discovered as an out-of-scope finding in ASS-051.
 
 ## Non-Goals
 
-- Codex CLI client-side hook support. Codex bug #16732 (MCP tool calls do not fire
-  hooks) is upstream. This feature does NOT wait for it. Server-side session attribution
-  via `clientInfo.name` + `Mcp-Session-Id` (recommended in ASS-049) is a separate
-  feature.
+- Live end-to-end Codex CLI testing. Codex bug #16732 (MCP tool calls do not fire
+  hooks) is upstream. Codex reference config and code paths ARE in scope — when Codex
+  fixes #16732, Unimatrix should work without further changes. Unit tests use synthetic
+  Codex events. Live integration testing is out of scope until #16732 is resolved.
+  Server-side session attribution via `clientInfo.name` + `Mcp-Session-Id` (recommended
+  in ASS-049) is a separate feature.
 - Adding `source_domain` as a new column to the `observations` table. The `hook`
   column (stored canonical event name) is the correct filter key; `source_domain` is
   a runtime-derived attribute (from `DomainPackRegistry.resolve_source_domain()`) not
   a persistence concern. A schema migration is explicitly out of scope.
-- Continue, Cursor, or Zed hook provider support. Primary targets are Claude Code
-  and Gemini CLI. Codex is conditionally in scope (reference config only, blocked on
-  #16732).
+- Continue, Cursor, or Zed hook provider support. Primary targets are Claude Code,
+  Gemini CLI, and Codex CLI (reference config + code paths).
 - SubagentStart/SubagentStop equivalents for Gemini or Codex. Neither client has a
   subagent hook concept that maps to Unimatrix's. Out of scope.
 - Gemini `BeforeModel` hook support for context injection at LLM request level.
@@ -78,14 +89,48 @@ be correct for any Codex records that do arrive via other paths.
 
 ## Background Research
 
-### Canonical Event Names Already Exist
+### Event Taxonomy: Two Distinct Categories
 
-The cycle event names `cycle_start`, `cycle_phase_end`, and `cycle_stop` (constants in
-`crates/unimatrix-server/src/infra/validation.rs`) are already provider-neutral —
-they are synthetic events produced by `build_cycle_event_or_fallthrough()` regardless
-of whether the trigger was Claude Code `PreToolUse` or Gemini `BeforeTool`. The cycle
-pipeline is already normalized at this level. The observation event names (`PreToolUse`,
-`PostToolUse`, etc.) are not yet normalized.
+vnc-013 touches two fundamentally different event categories that must NOT be conflated:
+
+**Category 1 — LLM Provider Hook Events** (the normalization target):
+These are lifecycle events emitted by the LLM client's hook system — fired when the
+client executes a tool call, starts a session, etc. They are provider-specific strings
+that differ across clients:
+- Claude Code: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `SessionStart`, `Stop`,
+  `TaskCompleted`, `SubagentStart`, `SubagentStop`, `PreCompact`, `UserPromptSubmit`, `Ping`
+- Gemini CLI: `BeforeTool`, `AfterTool`, `SessionStart`, `SessionEnd`
+- Codex CLI: `PreToolUse`, `PostToolUse`, `SessionStart`, `Stop` (identical names to Claude
+  Code; provider identity is established via `--provider codex-cli` flag, not event name
+  inference; live MCP hook firing is blocked by Codex bug #16732 but code paths and
+  reference config are built)
+
+Shared event names (`PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`) appear in both
+Claude Code and Codex CLI. The `--provider` flag on the `unimatrix hook` subcommand is
+the canonical disambiguation mechanism. When the flag is absent, `"claude-code"` is the
+backward-compatible default. Gemini events have unique names (`BeforeTool`, `AfterTool`,
+`SessionEnd`) so inference is unambiguous for Gemini.
+
+The normalization layer in `hook.rs` translates Category 1 events to canonical names.
+
+**Category 2 — Unimatrix MCP Events** (already provider-neutral, NOT normalized):
+These are synthetic events produced when any agent calls the `context_cycle` MCP tool.
+They are MCP protocol events — not LLM client lifecycle events. They carry the same
+meaning and structure regardless of which provider submits them, because `context_cycle`
+is an MCP tool call with a defined schema, not a provider-specific hook:
+- `cycle_start` — produced when `context_cycle(type: "start")` is called
+- `cycle_stop` — produced when `context_cycle(type: "stop")` is called
+- `cycle_phase_end` — produced when `context_cycle(type: "phase-end")` is called
+
+When Gemini CLI fires `BeforeTool` for a `context_cycle` tool call, that is a Category 1
+event (hook) that intercepts a Category 2 intent (MCP tool call). The normalization layer
+translates `BeforeTool` → `PreToolUse` (Category 1), then `build_cycle_event_or_fallthrough()`
+intercepts the canonical name and produces the Category 2 synthetic event. The Category 2
+event produced is identical regardless of provider — `cycle_start` from Gemini looks the
+same as `cycle_start` from Claude Code.
+
+The normalization layer's scope is **Category 1 only**. Category 2 events are already
+provider-neutral by construction and require no normalization.
 
 ### hook_type Constants Are Already Strings (col-023 ADR-001)
 
@@ -123,8 +168,17 @@ constitute the blast radius that normalization must eliminate or correctly absor
 **listener.rs source_domain hardcode (line 1894):**
 - `source_domain: "claude-code".to_string()` — must become dynamic.
 
-**background.rs `parse_observation_rows()` source_domain hardcode (line 1330):**
+**background.rs `fetch_observation_batch()` source_domain hardcode (line 1330):**
 - `let source_domain = "claude-code".to_string();` — must become dynamic.
+
+**services/observation.rs `parse_observation_rows()` source_domain hardcode (line 585):**
+- `let source_domain: String = "claude-code".to_string();` — must become dynamic.
+- This function already receives `_registry: &DomainPackRegistry` (currently unused,
+  prefixed with `_`). The fix removes the underscore and calls
+  `registry.resolve_source_domain(&event_type)` — no new parameter needed.
+- Called from three paths: `load_feature_observations()` (used by `context_cycle_review`),
+  `load_session_observations()`, and `load_windowed_observations()`. All three will
+  benefit from the fix once `parse_observation_rows()` is corrected.
 
 **background.rs test fixture (line 3521, 3537):**
 - `event_type: "PreToolUse".to_string()` and `"PostToolUse".to_string()` in test data —
@@ -152,28 +206,46 @@ constitute the blast radius that normalization must eliminate or correctly absor
   these strings, no change needed.
 
 **DomainPackRegistry.resolve_source_domain():**
-- Used only for non-hook-path records (comment in source). After this feature,
-  hook-path records will derive `source_domain` dynamically from the provider field
-  rather than using `resolve_source_domain()`. This method remains correct as-is for
-  external domain pack records.
+- The builtin `"claude-code"` pack only lists 4 event types:
+  `["PreToolUse", "PostToolUse", "SubagentStart", "SubagentStop"]`. Events not in
+  this list (`"Stop"`, `"SessionStart"`, `"cycle_start"`, `"cycle_stop"`, etc.)
+  return `"unknown"` from `resolve_source_domain()`.
+- Used only for non-hook-path records (comment in source, `domain/mod.rs:176`).
+- After this feature, `listener.rs:1894` derives `source_domain` from
+  `ImplantEvent.provider` (live write path — correctly labels provider).
+- DB-read-path fixes (`background.rs:1330`, `services/observation.rs:585`) cannot
+  use `resolve_source_domain()` directly without a fallback — doing so would change
+  `source_domain` from `"claude-code"` to `"unknown"` for non-listed event types.
+  The spec writer must choose between a registry-with-`"claude-code"`-fallback pattern
+  or a named constant `DEFAULT_HOOK_SOURCE_DOMAIN`.
+- The registry itself requires no changes.
 
-### Provider Event Mapping (From ASS-049 FINDINGS-HOOKS.md)
+### Category 1 Provider Event Mapping (From ASS-049 FINDINGS-HOOKS.md)
 
-| Gemini CLI Event | Claude Code Analog | Canonical Name |
-|---|---|---|
-| `BeforeTool` | `PreToolUse` | `PreToolUse` |
-| `AfterTool` | `PostToolUse` | `PostToolUse` |
-| `SessionStart` | `SessionStart` | `SessionStart` |
-| `SessionEnd` | `Stop` | `Stop` (or new canonical `SessionEnd`) |
-| (none) | `SubagentStart` | `SubagentStart` |
-| (none) | `SubagentStop` | `SubagentStop` |
-| (none) | `PreCompact` | `PreCompact` |
-| (none) | `UserPromptSubmit` | `UserPromptSubmit` |
-| (none) | `PostToolUseFailure` | `PostToolUseFailure` |
+These are LLM provider hook events (Category 1) only. Category 2 Unimatrix MCP events
+(`cycle_start`, `cycle_stop`, `cycle_phase_end`) are not listed here — they are
+provider-neutral by construction and are not subject to normalization.
 
-Codex CLI events: identical names to Claude Code for `SessionStart`, `PreToolUse`,
-`PostToolUse`, `Stop` — but Codex does not fire hooks for MCP tool calls (#16732).
-No normalization needed for Codex events; they pass through unchanged.
+| Gemini CLI Event | Claude Code Event | Codex CLI Event | Canonical Name |
+|---|---|---|---|
+| `BeforeTool` | `PreToolUse` | `PreToolUse` | `PreToolUse` |
+| `AfterTool` | `PostToolUse` | `PostToolUse` | `PostToolUse` |
+| `SessionStart` | `SessionStart` | `SessionStart` | `SessionStart` |
+| `SessionEnd` | `Stop` | `Stop` | `Stop` |
+| (none) | `SubagentStart` | (none) | `SubagentStart` |
+| (none) | `SubagentStop` | (none) | `SubagentStop` |
+| (none) | `PreCompact` | (none) | `PreCompact` |
+| (none) | `UserPromptSubmit` | (none) | `UserPromptSubmit` |
+| (none) | `PostToolUseFailure` | (none) | `PostToolUseFailure` |
+
+Codex CLI Category 1 events share exact names with Claude Code for `PreToolUse`,
+`PostToolUse`, `SessionStart`, and `Stop`. Provider identity for Codex events is
+established via the `--provider codex-cli` flag on the `unimatrix hook` subcommand,
+not by inference from the event name alone.
+
+Note: Unimatrix agents running under Gemini or Codex submit `context_cycle` MCP tool
+calls identically to Claude Code agents — these produce Category 2 events that are
+already canonical. vnc-013 does not normalize Category 2 events.
 
 ### Gemini MCP Context Field
 
@@ -237,9 +309,15 @@ NOT need a new column.
 
 ## Proposed Approach
 
-### Layer 1: Wire Protocol Extension (`unimatrix-engine/src/wire.rs`)
+### Layer 1: Wire Protocol Extension (`crates/unimatrix-engine/src/wire.rs`)
 
-Add `provider: Option<String>` to both `HookInput` and `ImplantEvent`:
+Add `provider: Option<String>` to both `HookInput` and `ImplantEvent`. For `mcp_context`,
+note that `HookInput` already has `pub extra: serde_json::Value` with `#[serde(flatten)]`
+which captures all unknown fields including Gemini's `mcp_context`. A named `mcp_context`
+field is not strictly required — `hook.rs` can read it via `input.extra.get("mcp_context")`.
+However, adding it as an explicit named field with `#[serde(default)]` improves
+readability and avoids stringly-typed access. Either approach is acceptable; the spec
+writer should decide based on the team's convention for `HookInput` extension:
 
 ```rust
 // HookInput — what the hook binary reads from stdin
@@ -250,6 +328,7 @@ pub struct HookInput {
     #[serde(default)]
     pub provider: Option<String>,
     /// Gemini CLI mcp_context field (BeforeTool/AfterTool only).
+    /// Also captured by `extra` flatten — explicit field for type clarity.
     #[serde(default)]
     pub mcp_context: Option<serde_json::Value>,
 }
@@ -265,44 +344,101 @@ pub struct ImplantEvent {
 
 ### Layer 2: Normalization (`unimatrix-server/src/uds/hook.rs`)
 
-Add a `normalize_event_name(event: &str) -> (&str, &str)` function that returns
-`(canonical_event_name, provider)`:
+The `unimatrix hook` subcommand accepts an optional `--provider <name>` argument. When
+provided, the value is stored directly into `HookInput.provider` before normalization,
+threading provider identity explicitly without inference. Example invocations:
 
 ```
+unimatrix hook PreToolUse --provider codex-cli
+unimatrix hook PreToolUse --provider claude-code
+unimatrix hook BeforeTool --provider gemini-cli  # provider also inferable from event name
+```
+
+Add a `normalize_event_name(event: &str, provider_hint: Option<&str>) -> (&str, &str)`
+function that returns `(canonical_event_name, provider)`:
+
+- When `provider_hint` is `Some(p)`: use `p` as the provider and map the event name to
+  its canonical form. Shared names (`PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`)
+  map to themselves canonically regardless of provider.
+- When `provider_hint` is `None`: infer provider from event name. Gemini events have
+  unique names (`BeforeTool`, `AfterTool`, `SessionEnd`) so inference is unambiguous.
+  Shared names without a hint default to `"claude-code"` (backward-compatible with
+  existing deployments) — this is documented as the fallback, not the expected path for
+  Codex.
+
+```
+// provider_hint = None (inference mode)
 "BeforeTool"  → ("PreToolUse",  "gemini-cli")
 "AfterTool"   → ("PostToolUse", "gemini-cli")
 "SessionEnd"  → ("Stop",        "gemini-cli")
-"SessionStart"→ ("SessionStart","claude-code")  // or provider-agnostic
-"PreToolUse"  → ("PreToolUse",  "claude-code")
-"PostToolUse" → ("PostToolUse", "claude-code")
-"Stop"        → ("Stop",        "claude-code")
-// ... all remaining Claude Code events map to themselves
+"SessionStart"→ ("SessionStart","claude-code")  // fallback default; use --provider for Codex
+"PreToolUse"  → ("PreToolUse",  "claude-code")  // fallback default; use --provider for Codex
+"PostToolUse" → ("PostToolUse", "claude-code")  // fallback default; use --provider for Codex
+"Stop"        → ("Stop",        "claude-code")  // fallback default; use --provider for Codex
+// ... all remaining Claude Code events map to themselves with "claude-code"
 _ (unknown)   → (event,         "unknown")
+
+// provider_hint = Some("codex-cli") (explicit flag)
+"PreToolUse"  → ("PreToolUse",  "codex-cli")
+"PostToolUse" → ("PostToolUse", "codex-cli")
+"SessionStart"→ ("SessionStart","codex-cli")
+"Stop"        → ("Stop",        "codex-cli")
 ```
 
-`run()` calls `normalize_event_name(event)` before `build_request()`. The canonical
-name is passed to `build_request()`; the provider is propagated into each
+`run()` reads `--provider` from CLI args, populates `HookInput.provider`, then calls
+`normalize_event_name(event, input.provider.as_deref())` before `build_request()`. The
+canonical name is passed to `build_request()`; the provider is propagated into each
 `ImplantEvent.provider`.
 
 Gemini `BeforeTool` Arm: After normalization to `"PreToolUse"`, the existing
 `build_cycle_event_or_fallthrough()` handles `context_cycle` interception. However,
-Gemini's payload structure differs: `tool_name` is in `mcp_context.tool_name` (bare
-name) instead of `input.extra["tool_name"]` (prefixed name). An adapter step reads
-`mcp_context.tool_name` and normalizes the payload structure before dispatching to
-the shared `build_cycle_event_or_fallthrough()` function.
+Gemini's payload structure differs from Claude Code's:
+- `tool_name` is in `mcp_context.tool_name` (bare name, e.g., `"context_cycle"`)
+  instead of `input.extra["tool_name"]` (prefixed, e.g., `"mcp__unimatrix__context_cycle"`).
+- `tool_input` is at the top level of the payload (same as Claude Code — no adaptation
+  needed for this field per ASS-049 FINDINGS-HOOKS.md).
+`build_cycle_event_or_fallthrough()` reads `input.extra["tool_name"]` at its first
+step (line 563-566 of hook.rs). For Gemini, this field is absent from `extra` — it is
+in `extra["mcp_context"]["tool_name"]` instead. The adapter step must read from
+`mcp_context.tool_name` (if present) and synthesize a compatible `tool_name` value,
+or the function signature must be extended to accept an optional override.
+The `contains("context_cycle")` + `contains("unimatrix")` OR `== "context_cycle"`
+matching logic already handles bare names (`"context_cycle"` matches the second
+condition). No change to the matching logic is needed — only the `tool_name` read site.
 
-### Layer 3: Listener source_domain Derivation (`unimatrix-server/src/uds/listener.rs`)
+### Layer 3: source_domain Derivation — Three Sites
 
-Replace the two hardcoded `source_domain: "claude-code".to_string()` lines with:
-
+**`listener.rs:1894`** — reads `ImplantEvent` directly, so `provider` is available:
 ```rust
 source_domain: event.provider.clone().unwrap_or_else(|| "claude-code".to_string()),
 ```
 
-`background.rs:1330` cannot read `ImplantEvent.provider` because it reads from the DB
-(which has no `provider` column). Use `DomainPackRegistry::resolve_source_domain(event_type)`
-instead of hardcoding. This is already implemented — the hardcode just needs to be
-replaced with a call to the existing method.
+**`background.rs:1330`** and **`services/observation.rs:585`** — DB-read paths.
+These cannot use `resolve_source_domain()` as-is: the builtin claude-code pack only
+lists `["PreToolUse", "PostToolUse", "SubagentStart", "SubagentStop"]` in its
+`event_types`. Events like `"Stop"`, `"SessionStart"`, `"cycle_start"`, `"cycle_stop"`,
+`"UserPromptSubmit"` are not in the list — `resolve_source_domain()` returns `"unknown"`
+for them. Using this method on DB-read paths would change existing behavior: all
+non-listed events currently get `"claude-code"` but would get `"unknown"` after the fix,
+breaking downstream consumers of `source_domain`.
+
+Two valid approaches:
+- **Approach A** (recommended): Keep `"claude-code"` as the fallback for hook-path
+  DB reads. Use `resolve_source_domain()` only if it returns non-`"unknown"`, otherwise
+  fall back to `"claude-code"`. This preserves the current behavior for all event types
+  the registry does not claim.
+- **Approach B**: Accept `"unknown"` for non-listed event types in DB reads. Simple, but
+  changes existing behavior and may break any consumer that checks `source_domain ==
+  "claude-code"` on session or cycle events.
+
+Approach A is recommended — it is the least disruptive change and preserves the
+invariant that hook-path records are labeled with a meaningful domain. The spec writer
+must choose and implement one approach.
+
+**Note on semantics**: Both DB-read-path sites cannot distinguish Claude Code from
+Gemini records after normalization (Gemini `"BeforeTool"` is stored as `"PreToolUse"`).
+This is the known limitation from resolved Open Question 4. Only `listener.rs:1894`
+(write path) correctly labels `"gemini-cli"` events.
 
 ### Layer 4: Reference Configurations
 
@@ -335,11 +471,11 @@ only intercepts `context_cycle`; others fall through to generic `RecordEvent`.
 
 ## Acceptance Criteria
 
-- AC-01: `normalize_event_name("BeforeTool")` returns `("PreToolUse", "gemini-cli")`.
-  `normalize_event_name("AfterTool")` returns `("PostToolUse", "gemini-cli")`.
-  `normalize_event_name("SessionEnd")` returns `("Stop", "gemini-cli")`.
-  All Claude Code event names map to themselves with provider `"claude-code"`.
-  Unknown event names map to themselves with provider `"unknown"`.
+- AC-01: `normalize_event_name("BeforeTool", None)` returns `("PreToolUse", "gemini-cli")`.
+  `normalize_event_name("AfterTool", None)` returns `("PostToolUse", "gemini-cli")`.
+  `normalize_event_name("SessionEnd", None)` returns `("Stop", "gemini-cli")`.
+  All Claude Code event names called with `None` hint map to themselves with provider
+  `"claude-code"`. Unknown event names map to themselves with provider `"unknown"`.
 
 - AC-02: When Gemini fires `BeforeTool` for `context_cycle` with `type="start"`,
   `build_request()` produces `HookRequest::RecordEvent { event_type: "cycle_start" }`.
@@ -362,10 +498,20 @@ only intercepts `context_cycle`; others fall through to generic `RecordEvent`.
   `"gemini-cli"` for Gemini-originated events and `"claude-code"` for Claude
   Code-originated events.
 
-- AC-07: In `background.rs` `parse_observation_rows()`, `source_domain` is derived
-  via `DomainPackRegistry::resolve_source_domain(event_type)` rather than hardcoded.
-  Unit test: a synthetic observation with `hook = "PreToolUse"` resolves to
-  `source_domain = "claude-code"`.
+- AC-07: All three `source_domain` hardcodes are replaced:
+  (a) `listener.rs:1894`: uses `event.provider.clone().unwrap_or("claude-code")` —
+      correctly labels live events with their originating provider.
+  (b) `background.rs:1330` in `fetch_observation_batch()`: replaces the hardcode with
+      a derivation that preserves `"claude-code"` for all hook-path events. Approach A
+      (registry-with-fallback) or a documented constant `DEFAULT_HOOK_DOMAIN = "claude-code"`
+      — spec writer decides. The hardcode string literal must not remain.
+  (c) `services/observation.rs:585` in `parse_observation_rows()`: same approach as
+      (b). The `_registry` parameter is already present; use it or document why not.
+  The existing tests `test_parse_rows_hook_path_always_claude_code` and
+  `test_parse_rows_unknown_event_type_passthrough` must be reviewed: after the fix,
+  the second test's expectation of `source_domain == "claude-code"` for an unknown
+  event type is no longer guaranteed if registry-based derivation is used without
+  a fallback. Spec writer must decide the contract and update the test.
 
 - AC-08: All existing unit and integration tests pass without modification. The
   normalization layer is additive — no existing behavior changes for Claude Code events.
@@ -401,6 +547,36 @@ only intercepts `context_cycle`; others fall through to generic `RecordEvent`.
   error. `run("BeforeTool", ...)` completes normally (exit 0) regardless of whether
   the server is running.
 
+- AC-16: `extract_observation_fields()` contains a guard (debug assertion or exhaustive
+  match arm) that fires if `"post_tool_use_rework_candidate"` would reach the `hook`
+  column as a raw string. The normalization to `"PostToolUse"` is structurally
+  enforced, not just incidentally present.
+
+- AC-17: `unimatrix hook PreToolUse --provider codex-cli` processes the event with
+  `provider: "codex-cli"`. `normalize_event_name("PreToolUse", Some("codex-cli"))`
+  returns `("PreToolUse", "codex-cli")`.
+
+- AC-18: `unimatrix hook PreToolUse` (no `--provider` flag) processes the event with
+  `provider: "claude-code"` as the backward-compatible default.
+  `normalize_event_name("PreToolUse", None)` returns `("PreToolUse", "claude-code")`.
+
+- AC-19: The Codex reference config (`~/.codex/hooks.json` or `<repo>/.codex/hooks.json`)
+  is written. Config location and schema are identical to Claude Code (confirmed by
+  ASS-049 FINDINGS-HOOKS.md, which read `codex-rs/core/src/hook_runtime.rs` directly).
+  Each supported event invokes `unimatrix hook <event> --provider codex-cli`. The
+  `--provider codex-cli` flag is **mandatory** — without it, Codex events share event
+  names with Claude Code (`PreToolUse`, `PostToolUse`, `SessionStart`, `Stop`) and fall
+  through to the `"claude-code"` default, producing incorrect `source_domain` attribution
+  on the write path. Normalization correctness is unaffected; only provider labeling is
+  wrong without the flag. The config carries a caveat that live MCP hook support is
+  blocked by Codex #16732 and the config is non-functional until the upstream bug is
+  resolved. Unit tests use synthetic Codex events.
+
+- AC-20: `normalize_event_name("SessionStart", Some("claude-code"))` returns
+  `("SessionStart", "claude-code")`. `normalize_event_name("SessionStart", Some("codex-cli"))`
+  returns `("SessionStart", "codex-cli")`. The provider hint takes precedence over
+  inference for all shared event names.
+
 ## Constraints
 
 1. **No DB schema changes.** The `observations` table `hook TEXT` column is sufficient.
@@ -433,58 +609,81 @@ only intercepts `context_cycle`; others fall through to generic `RecordEvent`.
    use `#[serde(default)]`. Existing Claude Code hook JSON will not contain these
    fields; missing fields must deserialize to `None` without error.
 
-8. **Codex reference config is documentation-only.** Since Codex #16732 is open,
-   the `.codex/hooks.json` reference (if included) must carry a caveat that MCP tool
-   call hook support is pending upstream. No code path is added specifically for Codex.
+8. **Codex support is built but not live-tested.** Reference config (`.codex/hooks.json`
+   or equivalent) ships as a real deliverable. Code paths handle Codex events with
+   `--provider codex-cli`. Live end-to-end testing is blocked by Codex #16732. Unit
+   tests use synthetic Codex events. The reference config must carry a caveat that live
+   MCP hook support is pending upstream resolution of #16732.
+
+9. **`services/observation.rs` tests must be reviewed and updated.**
+   `test_parse_rows_hook_path_always_claude_code` asserts `source_domain == "claude-code"`
+   for a `"PreToolUse"` event — this remains correct under either approach (registry
+   resolves `"PreToolUse"` to `"claude-code"`, fallback also returns `"claude-code"`).
+   `test_parse_rows_unknown_event_type_passthrough` asserts `source_domain == "claude-code"`
+   for an `"UnknownEventType"` event — if registry-based derivation without fallback is
+   used, this would return `"unknown"` (registry returns `"unknown"` for unrecognized
+   types). The spec writer must decide the contract for unknown event types and update
+   this test accordingly. The test comment `"FR-03.3"` must be updated to remove the
+   "always claude-code" framing.
 
 ## Open Questions
 
-1. **Rework detection gate**: Should the Gemini `AfterTool` arm be gated by
-   `provider == "gemini-cli"` (positively identified) or by the absence of
-   rework-eligible tool names in Gemini's payload? The provider-based gate is cleaner
-   but requires the `provider` field to be populated before `build_request()` branches.
-   The tool-name gate would work incidentally (Gemini does not send `"Bash"` or `"Edit"`)
-   but is fragile if Gemini ever wraps shell commands under similar names.
-   **Proposed resolution**: Use provider-based gate. Spec writer should confirm.
+1. ~~**Rework detection gate**~~ **RESOLVED**: Provider-based gate (`provider != "claude-code"`).
+   The tool-name gate works today only by accident — Gemini doesn't happen to use `"Bash"`
+   or `"Edit"`. That's not a contract. The `provider` field is threaded through the entire
+   normalization architecture precisely to enable this discrimination. Using it here is
+   consistent with the design; not using it would be an unexplained inconsistency.
 
 2. ~~**Canonical name for `SessionEnd` → `Stop`**~~ **RESOLVED (ASS-051)**: Canonical
    name is `"Stop"`. `SessionEnd` (Gemini) normalizes to `"Stop"` at ingest. No new
    canonical name introduced. Existing DB content and `extract_observation_fields()`
    wildcard arm are correct as-is.
 
-3. **UserPromptSubmit and PreCompact Gemini equivalents**: Gemini has `BeforeModel`
-   which fires before each LLM inference (different semantics from UserPromptSubmit).
-   No direct Gemini analog exists for `PreCompact`. Confirm these are out of scope for
-   vnc-013 or explicitly defer to a future feature.
+3. ~~**UserPromptSubmit and PreCompact Gemini equivalents**~~ **RESOLVED**: Gemini's
+   `BeforeModel` fires before each LLM inference — different semantics from
+   `UserPromptSubmit` (which is a user input event). No direct Gemini analog exists
+   for `PreCompact`. Both are confirmed out of scope for vnc-013 per the Non-Goals
+   section. The normalization table need not include entries for these — Gemini simply
+   has no hooks that map to them, and the wildcard arm handles any unmapped event
+   gracefully as `RecordEvent`.
 
-4. **`source_domain` in `background.rs` read path**: `parse_observation_rows()` reads
-   from the DB which has no `provider` column. The proposed fix is to call
-   `DomainPackRegistry::resolve_source_domain(event_type)`. But the registry resolves
-   by matching event_type against each pack's `event_types` list. Since both
-   `"PreToolUse"` (Claude Code) and normalized `"PreToolUse"` (Gemini) will resolve to
-   `"claude-code"` via the builtin pack — this is semantically incorrect for Gemini
-   records. The DB read path cannot distinguish Claude Code from Gemini records without
-   a `source_domain` column. Two options: (a) accept the limitation (Gemini records
-   read back as `source_domain = "claude-code"` from DB); (b) add `source_domain`
-   column to `observations` table. **Recommendation**: Accept option (a) for now —
-   the DB read path is used only for retrospective analysis where provider identity
-   is less critical than event semantics. Document as a known limitation.
+4. ~~**`source_domain` in DB read path**~~ **RESOLVED**: Accept known limitation.
+   All three hardcodes are replaced (see AC-07 and Layer 3 above). For the DB-read-path
+   sites (`background.rs:1330`, `services/observation.rs:585`), after normalization
+   Gemini records are stored as canonical Claude Code names, so
+   `resolve_source_domain("PreToolUse")` still returns `"claude-code"`. This is a
+   semantic imprecision on the read path only; `listener.rs:1894` (the write path)
+   will correctly record `"gemini-cli"` for live events. The DB-read-path sites
+   (`context_cycle_review`, metrics tick) use provider identity only for logging and
+   retrospective analysis — the behavioral correctness of cycle interception and
+   observation storage is unaffected. Document as a known limitation in the
+   implementation brief.
 
-5. **Gemini `AfterTool` and rework detection interactions**: Gemini fires `AfterTool`
-   for ALL tool calls including non-MCP tools (built-in Gemini tools). Does Unimatrix
-   need to filter to `mcp_context IS NOT NULL` for `AfterTool` to avoid spurious
-   observations from non-MCP tools? The `.gemini/settings.json` matcher regex already
-   filters to `mcp_unimatrix_.*` patterns, so only Unimatrix tool calls fire the hook.
-   Confirm this understanding is correct.
+5. ~~**Gemini `AfterTool` and rework detection interactions**~~ **RESOLVED**: The
+   `.gemini/settings.json` matcher regex `mcp_unimatrix_.*` restricts `AfterTool`
+   hooks to Unimatrix MCP tool calls only. Gemini built-in tool calls (file operations,
+   shell, etc.) do not match the regex and do not fire the hook. No additional
+   `mcp_context IS NOT NULL` guard is needed — the matcher is the filter.
 
-6. **Gemini `AfterTool` payload: response in which field?** Claude Code's `PostToolUse`
-   payload has `tool_response` (object). Gemini's `AfterTool` payload structure for
-   MCP tools is not fully specified in ASS-049. If Gemini uses a different field name
-   for the tool response, `extract_response_fields()` will silently return
-   `(None, None)` — `response_size` and `response_snippet` will be null. This is
-   acceptable as a degraded mode but the spec writer should check Gemini CLI source
-   for the actual payload shape.
+6. ~~**Gemini `AfterTool` payload: response field name**~~ **RESOLVED (non-blocking)**:
+   Degrade gracefully. If the field name differs from Claude Code's `tool_response`,
+   `response_size` and `response_snippet` will be null — the observation is still recorded.
+   The implementer should make one attempt to confirm from Gemini CLI source or a live
+   capture during implementation. If confirmed, use it; if not, the degraded mode is
+   acceptable and documented. Does not block design sign-off.
+
+7. ~~**Codex hook config format (OQ-A)**~~ **RESOLVED (ASS-049)**: Config location is
+   `~/.codex/hooks.json` or `<repo>/.codex/hooks.json`. ASS-049 FINDINGS-HOOKS.md
+   explicitly states hook event names and JSON format are identical to Claude Code.
+   Schema is the same structure as `.claude/settings.json`. No open question remains.
+
+8. ~~**Codex CLI arg passthrough (OQ-B)**~~ **RESOLVED (ASS-049)**: ASS-049
+   FINDINGS-HOOKS.md read `codex-rs/core/src/hook_runtime.rs` directly and confirmed
+   Codex executes hook commands the same way Claude Code does — command strings are
+   shelled out verbatim. `unimatrix hook PreToolUse --provider codex-cli` in a Codex
+   config works identically to Claude Code. The env var fallback is unnecessary — the
+   flag approach is confirmed viable.
 
 ## Tracking
 
-TBD — will be updated with GH Issue link after Session 1.
+https://github.com/dug-21/unimatrix/issues/567
