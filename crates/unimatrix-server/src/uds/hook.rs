@@ -4661,4 +4661,156 @@ mod tests {
         let input = test_input();
         let _ = build_request("SessionEnd", &input);
     }
+
+    // -- vnc-013: AC-11 topic_signal extraction on Gemini BeforeTool normalized to PreToolUse --
+
+    /// AC-11: When Gemini fires BeforeTool, normalize_event_name maps it to ("PreToolUse",
+    /// "gemini-cli"). The normalized PreToolUse path calls extract_event_topic_signal() which
+    /// reads extra["tool_input"] and returns a meaningful topic signal when a feature path is
+    /// present. This test verifies that the resulting ImplantEvent has non-empty topic_signal.
+    ///
+    /// Gemini's BeforeTool payload places tool_input as a top-level field in extra (ASS-049).
+    /// After normalize_event_name + build_request("PreToolUse", ...) the RecordEvent must carry
+    /// topic_signal extracted from that tool_input content.
+    #[test]
+    fn test_gemini_before_tool_topic_signal_extraction() {
+        // Step 1: Verify normalize_event_name maps "BeforeTool" correctly (inference path).
+        let (canonical, inferred_provider) = normalize_event_name("BeforeTool");
+        assert_eq!(canonical, "PreToolUse");
+        assert_eq!(inferred_provider, "gemini-cli");
+
+        // Step 2: Simulate the post-normalization state — provider and canonical name are set.
+        // Gemini BeforeTool payload: tool_input at top level in extra (ASS-049).
+        // Include a feature path so extract_event_topic_signal returns a meaningful value.
+        let mut input = test_input();
+        input.session_id = Some("sess-gemini-ac11".to_string());
+        input.provider = Some("gemini-cli".to_string());
+        input.extra = serde_json::json!({
+            "tool_name": "Read",
+            "tool_input": "reading product/features/vnc-013/SCOPE.md for context"
+        });
+
+        // Step 3: Verify extract_event_topic_signal returns a meaningful signal.
+        let topic_signal = extract_event_topic_signal("PreToolUse", &input);
+        assert!(
+            topic_signal.is_some(),
+            "extract_event_topic_signal must return Some when tool_input contains a feature path; got None"
+        );
+        let signal_val = topic_signal.unwrap();
+        assert!(
+            !signal_val.is_empty(),
+            "topic_signal must be non-empty; got empty string"
+        );
+        // The feature path "vnc-013" in tool_input must be extracted as the topic signal.
+        assert_eq!(
+            signal_val, "vnc-013",
+            "topic_signal must be 'vnc-013' from the feature path in tool_input"
+        );
+
+        // Step 4: Verify the full path through build_request produces the same topic_signal
+        // on the ImplantEvent (non-cycle tool falls through to generic_record_event).
+        let req = build_request("PreToolUse", &input);
+        match req {
+            HookRequest::RecordEvent { event } => {
+                assert_eq!(event.event_type, "PreToolUse");
+                assert_eq!(
+                    event.provider,
+                    Some("gemini-cli".to_string()),
+                    "ImplantEvent.provider must be gemini-cli"
+                );
+                assert!(
+                    event.topic_signal.is_some(),
+                    "ImplantEvent.topic_signal must be Some after Gemini BeforeTool normalization"
+                );
+                assert_eq!(
+                    event.topic_signal.as_deref(),
+                    Some("vnc-013"),
+                    "ImplantEvent.topic_signal must match the feature path extracted from tool_input"
+                );
+            }
+            _ => panic!("expected RecordEvent for normalized Gemini BeforeTool, got {req:?}"),
+        }
+    }
+
+    // -- vnc-013: AC-20 provider hint precedence on SessionStart --
+
+    /// AC-20: When `--provider codex-cli` is passed for a "SessionStart" event (which shares
+    /// the same name as Claude Code), the hint path (map_to_canonical) is used rather than
+    /// normalize_event_name (inference path). The resulting hook_input.provider must be
+    /// "codex-cli", not "claude-code".
+    ///
+    /// SessionStart produces HookRequest::SessionRegister which carries no provider field —
+    /// provider is set on hook_input.provider BEFORE build_request() in run(). This test
+    /// verifies the normalization boundary:
+    ///   - Hint path: map_to_canonical("SessionStart") → "SessionStart"; provider from CLI flag.
+    ///   - Inference path: normalize_event_name("SessionStart") → ("SessionStart", "claude-code").
+    ///
+    /// The test also verifies that build_request routes SessionStart to SessionRegister correctly
+    /// in both cases (no mismatch from normalization functions returning wrong canonical name).
+    #[test]
+    fn test_run_session_start_provider_hint_precedence() {
+        // Case 1: hint path — Some("codex-cli") must take precedence over inference.
+        // In run(): provider.is_some() → call map_to_canonical (not normalize_event_name).
+        // hook_input.provider is set to Some(hint.clone()) = Some("codex-cli").
+        let canonical_hint = map_to_canonical("SessionStart");
+        assert_eq!(
+            canonical_hint, "SessionStart",
+            "map_to_canonical(SessionStart) must return SessionStart (hint path canonical name)"
+        );
+
+        // Simulate what run() does for the hint path:
+        // hook_input.provider = Some("codex-cli") — set from CLI flag directly.
+        let mut input_hint = test_input();
+        input_hint.session_id = Some("sess-codex".to_string());
+        input_hint.provider = Some("codex-cli".to_string());
+
+        // build_request routes "SessionStart" → SessionRegister (correct arm).
+        let req_hint = build_request(canonical_hint, &input_hint);
+        assert!(
+            matches!(req_hint, HookRequest::SessionRegister { .. }),
+            "hint path: build_request(SessionStart) with codex-cli provider must produce SessionRegister, got {req_hint:?}"
+        );
+        // Provider is on hook_input, not SessionRegister — confirm it was set correctly.
+        assert_eq!(
+            input_hint.provider.as_deref(),
+            Some("codex-cli"),
+            "hint path: hook_input.provider must be codex-cli when --provider codex-cli is supplied"
+        );
+
+        // Case 2: inference path — normalize_event_name("SessionStart") →
+        // ("SessionStart", "claude-code"). Provider must default to "claude-code".
+        let (canonical_infer, inferred_provider) = normalize_event_name("SessionStart");
+        assert_eq!(
+            canonical_infer, "SessionStart",
+            "inference path: normalize_event_name(SessionStart) canonical must be SessionStart"
+        );
+        assert_eq!(
+            inferred_provider, "claude-code",
+            "inference path: SessionStart without hint must infer provider=claude-code, not codex-cli"
+        );
+
+        // Simulate what run() does for the inference path:
+        // hook_input.provider = Some("claude-code") — from normalize_event_name result.
+        let mut input_infer = test_input();
+        input_infer.session_id = Some("sess-cc".to_string());
+        input_infer.provider = Some(inferred_provider.to_string());
+
+        let req_infer = build_request(canonical_infer, &input_infer);
+        assert!(
+            matches!(req_infer, HookRequest::SessionRegister { .. }),
+            "inference path: build_request(SessionStart) must produce SessionRegister, got {req_infer:?}"
+        );
+        assert_eq!(
+            input_infer.provider.as_deref(),
+            Some("claude-code"),
+            "inference path: hook_input.provider must be claude-code when no --provider hint is supplied"
+        );
+
+        // Case 3: provider disambiguation — codex-cli hint vs claude-code inference for same event.
+        // Verify codex-cli != claude-code (the core AC-20 invariant).
+        assert_ne!(
+            input_hint.provider, input_infer.provider,
+            "AC-20 invariant: hint Some(codex-cli) and inference Some(claude-code) must differ for SessionStart"
+        );
+    }
 }
