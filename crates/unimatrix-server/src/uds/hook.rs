@@ -139,10 +139,27 @@ pub fn run(
     //
     //   Hint path  (provider.is_some()): caller already knows the provider.
     //              Call map_to_canonical() for the event name only.
-    //              Use the CLI flag value directly for hook_input.provider.
+    //              Use the CLI flag value directly for hook_input.provider,
+    //              but only if it is a recognized provider name.
     //
     //   Inference path (provider.is_none()): call normalize_event_name() which
     //              infers both the canonical name and the provider from the event string.
+
+    // Allowlist validation: unknown --provider values are logged and treated as None
+    // so the inference path runs instead (security gate F-01).
+    const KNOWN_PROVIDERS: &[&str] = &["claude-code", "gemini-cli", "codex-cli"];
+    let provider = match &provider {
+        Some(p) if KNOWN_PROVIDERS.contains(&p.as_str()) => provider,
+        Some(p) => {
+            eprintln!(
+                "[unimatrix] warning: unknown --provider value {:?}; ignoring",
+                p
+            );
+            None
+        }
+        None => None,
+    };
+
     let (canonical_name, provider_str): (&'static str, &'static str) = if provider.is_some() {
         (map_to_canonical(&event), "")
     } else {
@@ -151,7 +168,7 @@ pub fn run(
 
     // Set provider on hook_input BEFORE build_request():
     hook_input.provider = if let Some(ref hint) = provider {
-        // Hint path: use the CLI --provider value verbatim (e.g. "codex-cli").
+        // Hint path: use the CLI --provider value (already validated above).
         Some(hint.clone())
     } else {
         // Inference path: use what normalize_event_name returned.
@@ -738,18 +755,13 @@ fn build_cycle_event_or_fallthrough(
         .and_then(|v| v.as_str())
         .unwrap_or("");
 
-    // Match by "context_cycle" substring in tool_name.
-    // Claude Code sends tool_name as "mcp__unimatrix__context_cycle"
-    // (server prefix + tool name). Use .contains("context_cycle") to match
-    // regardless of prefix format.
-    if !tool_name.contains("context_cycle") {
-        return generic_record_event(event, session_id, input);
-    }
-
-    // R-09 mitigation: verify the prefix contains "unimatrix" to avoid
-    // matching a tool from a different MCP server named "context_cycle".
-    // If tool_name is exactly "context_cycle" (no prefix), allow it (direct MCP call).
-    if tool_name != "context_cycle" && !tool_name.contains("unimatrix") {
+    // Match exactly against the two known forms of the context_cycle tool name
+    // (security gate F-02: closes injection surface opened by mcp_context promotion):
+    //   - "context_cycle"                     bare name (Gemini after mcp_context promotion)
+    //   - "mcp__unimatrix__context_cycle"     prefixed name (Claude Code)
+    // Substring matching (.contains) was replaced with equality to prevent a crafted
+    // tool name such as "evil_context_cycle_bypass" from passing this guard.
+    if tool_name != "context_cycle" && tool_name != "mcp__unimatrix__context_cycle" {
         return generic_record_event(event, session_id, input);
     }
 
