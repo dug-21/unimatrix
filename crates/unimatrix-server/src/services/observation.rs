@@ -561,11 +561,18 @@ fn json_depth(v: &serde_json::Value, current: usize, max: usize) -> bool {
 /// Rejected records are skipped (FM-02) with a WARN log; remaining records
 /// in the batch are processed normally.
 ///
-/// All hook-path records receive source_domain = "claude-code" (FR-03.3).
-/// The registry is available for future non-hook ingress paths (IR-01 contract).
+/// Fallback source_domain for DB read paths (Approach A, ADR-004, FR-06.3).
+///
+/// Used when `DomainPackRegistry::resolve_source_domain()` returns `"unknown"` for
+/// event types not in the builtin claude-code pack (e.g., Stop, SessionStart,
+/// cycle_start, cycle_stop). Preserves the existing hook-path invariant.
+pub(crate) const DEFAULT_HOOK_SOURCE_DOMAIN: &str = "claude-code";
+
+/// DB read path source_domain derivation uses Approach A: resolve via registry,
+/// fall back to DEFAULT_HOOK_SOURCE_DOMAIN when the result is "unknown" (FR-06.3).
 fn parse_observation_rows(
     rows: Vec<sqlx::sqlite::SqliteRow>,
-    _registry: &DomainPackRegistry,
+    registry: &DomainPackRegistry,
 ) -> Result<Vec<ObservationRecord>> {
     let mut records = Vec::new();
     for row in rows {
@@ -580,9 +587,18 @@ fn parse_observation_rows(
         // Set event_type from the raw hook string (no filtering — FR-03.1, AC-11).
         let event_type: String = hook_str;
 
-        // All hook-path records get source_domain = "claude-code" (FR-03.3).
-        // Domain is inferred from the ingress path, not from event_type.
-        let source_domain: String = "claude-code".to_string();
+        // Approach A: derive source_domain from DomainPackRegistry (ADR-004, FR-06.3).
+        // Events in the builtin pack (PreToolUse, PostToolUse, PostToolUseFailure,
+        // SubagentStart) resolve directly; all others (Stop, SessionStart, cycle_start,
+        // cycle_stop, etc.) return "unknown" and fall back to DEFAULT_HOOK_SOURCE_DOMAIN.
+        let source_domain: String = {
+            let resolved = registry.resolve_source_domain(&event_type);
+            if resolved != "unknown" {
+                resolved
+            } else {
+                DEFAULT_HOOK_SOURCE_DOMAIN.to_string()
+            }
+        };
 
         // SECURITY BOUND 1: payload size check (NFR-02, FR-03.4, ADR-007).
         // Check raw bytes of input_str BEFORE any JSON parsing.
@@ -1326,7 +1342,14 @@ mod tests {
         assert!(!json_depth(&v, 0, 10));
     }
 
-    /// T-SEC-12: Unknown event_type passes through with source_domain = "claude-code" (AC-11).
+    /// T-SEC-12: Unknown event_type passes through with source_domain = "claude-code" (AC-11, AC-07c).
+    ///
+    /// Approach A fallback contract (FR-06.4, ADR-004):
+    /// registry returns "unknown" for unregistered types; Approach A fallback to
+    /// DEFAULT_HOOK_SOURCE_DOMAIN restores "claude-code" to preserve hook-path invariant.
+    ///
+    /// This test is the primary regression canary for Approach A fallback correctness (R-04).
+    /// If this test fails, Approach A fallback was removed or inverted.
     #[tokio::test(flavor = "multi_thread")]
     async fn test_parse_rows_unknown_event_type_passthrough() {
         let store = setup_test_store().await;
@@ -1349,6 +1372,11 @@ mod tests {
         assert_eq!(records.len(), 1, "unknown event_type must not be dropped");
         assert_eq!(records[0].event_type, "UnknownEventType");
         assert_eq!(records[0].source_domain, "claude-code");
+        // Verify the constant value is stable — regression sentinel for Approach A contract.
+        assert_eq!(
+            DEFAULT_HOOK_SOURCE_DOMAIN, "claude-code",
+            "DEFAULT_HOOK_SOURCE_DOMAIN must be 'claude-code' (Approach A contract)"
+        );
     }
 
     /// T-SEC-13: Hook-path records always get source_domain = "claude-code" (FR-03.3).
@@ -1374,6 +1402,103 @@ mod tests {
         assert_eq!(records.len(), 1);
         assert_eq!(records[0].source_domain, "claude-code");
         assert_eq!(records[0].event_type, "PreToolUse");
+    }
+
+    /// AC-07c, R-04: Stop event — not in builtin pack, Approach A fallback returns "claude-code".
+    ///
+    /// "Stop" is NOT in the builtin claude-code pack's 4-event list (PreToolUse, PostToolUse,
+    /// PostToolUseFailure, SubagentStart). resolve_source_domain("Stop") returns "unknown",
+    /// and DEFAULT_HOOK_SOURCE_DOMAIN restores "claude-code".
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_approach_a_fallback_for_stop_event() {
+        let store = setup_test_store().await;
+        insert_session(&store, "sess-1", Some("col-023")).await;
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "Stop",
+            None,
+            None,
+            None,
+            None,
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_feature_observations("col-023").unwrap();
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].event_type, "Stop");
+        assert_eq!(
+            records[0].source_domain, "claude-code",
+            "Stop is not in builtin pack; Approach A fallback must restore claude-code"
+        );
+    }
+
+    /// AC-07c, R-04: SessionStart event — not in builtin pack, Approach A fallback returns "claude-code".
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_approach_a_fallback_for_session_start() {
+        let store = setup_test_store().await;
+        insert_session(&store, "sess-1", Some("col-023")).await;
+        insert_observation(
+            &store,
+            "sess-1",
+            1700000000000,
+            "SessionStart",
+            None,
+            None,
+            None,
+            None,
+        )
+        .await;
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_feature_observations("col-023").unwrap();
+
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].event_type, "SessionStart");
+        assert_eq!(records[0].source_domain, "claude-code");
+    }
+
+    /// AC-07c, R-04 scenario 3: Category 2 events (cycle_start, cycle_stop, cycle_phase_end)
+    /// are not in the registry's claude-code pack. Approach A must return "claude-code".
+    ///
+    /// Critical for context_cycle_review correctness — wrong source_domain on the DB read
+    /// path would produce incorrect retrospective attribution.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_approach_a_fallback_for_cycle_events() {
+        let store = setup_test_store().await;
+        insert_session(&store, "sess-1", Some("col-023")).await;
+
+        for (i, event) in ["cycle_start", "cycle_stop", "cycle_phase_end"]
+            .iter()
+            .enumerate()
+        {
+            insert_observation(
+                &store,
+                "sess-1",
+                1700000000000 + i as i64,
+                event,
+                None,
+                None,
+                None,
+                None,
+            )
+            .await;
+        }
+
+        let source = SqlObservationSource::new_default(Arc::clone(&store));
+        let records = source.load_feature_observations("col-023").unwrap();
+
+        assert_eq!(records.len(), 3);
+        for record in &records {
+            assert_eq!(
+                record.source_domain, "claude-code",
+                "cycle event '{}' must fall back to claude-code via Approach A",
+                record.event_type
+            );
+        }
     }
 
     /// T-SEC-14: Mixed batch — oversized record skipped, valid records pass (FM-02).

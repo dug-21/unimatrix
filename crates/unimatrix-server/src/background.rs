@@ -48,6 +48,7 @@ use crate::services::contradiction_cache::{
 use crate::services::effectiveness::EffectivenessStateHandle;
 use crate::services::graph_enrichment_tick::run_graph_enrichment_tick;
 use crate::services::nli_detection_tick::run_graph_inference_tick;
+use crate::services::observation::DEFAULT_HOOK_SOURCE_DOMAIN;
 use crate::services::phase_freq_table::{PhaseFreqTable, PhaseFreqTableHandle};
 use crate::services::status::{MaintenanceDataSnapshot, StatusService};
 use crate::services::typed_graph::{TypedGraphState, TypedGraphStateHandle};
@@ -1309,6 +1310,13 @@ async fn fetch_observation_batch(
         )))
     })?;
 
+    // Approach A: registry-with-fallback for source_domain derivation (ADR-004, FR-06.2).
+    // Built-in claude-code pack knows 4 event types (PreToolUse, PostToolUse,
+    // PostToolUseFailure, SubagentStart). All others return "unknown" and fall back
+    // to DEFAULT_HOOK_SOURCE_DOMAIN. This preserves existing behavior for Stop,
+    // SessionStart, cycle_start, cycle_stop, UserPromptSubmit, PreCompact, etc.
+    let registry = unimatrix_observe::domain::DomainPackRegistry::with_builtin_claude_code();
+
     let mut records = Vec::new();
     let mut max_id = watermark;
 
@@ -1326,8 +1334,15 @@ async fn fetch_observation_batch(
             max_id = id as u64;
         }
         let event_type = parse_event_type(&hook_str);
-        // All hook-path records get source_domain = "claude-code" (FR-03.3).
-        let source_domain = "claude-code".to_string();
+        // Approach A: derive source_domain from DomainPackRegistry (ADR-004, FR-06.2).
+        let source_domain = {
+            let resolved = registry.resolve_source_domain(&event_type);
+            if resolved != "unknown" {
+                resolved
+            } else {
+                DEFAULT_HOOK_SOURCE_DOMAIN.to_string()
+            }
+        };
         let input = match (event_type.as_str(), input_str) {
             ("SubagentStart", Some(s)) => Some(serde_json::Value::String(s)),
             (_, Some(s)) => serde_json::from_str(&s).ok(),
