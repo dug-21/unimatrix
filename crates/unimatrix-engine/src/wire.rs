@@ -63,6 +63,23 @@ pub struct HookInput {
     #[serde(default)]
     pub prompt: Option<String>,
 
+    /// Originating LLM provider. Populated by hook::run() after normalize_event_name(),
+    /// NOT from stdin JSON. `#[serde(default)]` ensures existing Claude Code hook JSON
+    /// (which omits this field) deserializes to None without error (NFR-05, ADR-002).
+    ///
+    /// Valid values: "claude-code" | "gemini-cli" | "codex-cli" | None
+    #[serde(default)]
+    pub provider: Option<String>,
+
+    /// Gemini CLI structured MCP context field. Present in BeforeTool and AfterTool
+    /// payloads. Structure: { "server_name": str, "tool_name": str, "url": str }.
+    /// Also captured by the `extra` flatten, but the named field enables typed access
+    /// in build_cycle_event_or_fallthrough() without stringly-typed extra access (ADR-003).
+    ///
+    /// Claude Code and Codex payloads omit this field; serde(default) → None.
+    #[serde(default)]
+    pub mcp_context: Option<serde_json::Value>,
+
     /// Catch-all for unknown fields (forward compatibility).
     #[serde(flatten)]
     pub extra: serde_json::Value,
@@ -192,6 +209,15 @@ pub struct ImplantEvent {
     /// Used for session-level feature attribution via majority vote.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub topic_signal: Option<String>,
+
+    /// Provider identity propagated from HookInput.provider through normalization.
+    /// Non-None for all events processed through the normalization layer.
+    /// None for events deserialized from wire frames that predate vnc-013 (backward compat).
+    ///
+    /// `skip_serializing_if = "Option::is_none"`: Claude Code events without --provider
+    /// produce wire frames without this field; the listener handles missing field as None.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
 }
 
 // -- EntryPayload (stub for future search results) --
@@ -416,6 +442,7 @@ mod tests {
             timestamp: 1700000000,
             payload: serde_json::json!({"tool": "Read"}),
             topic_signal: None,
+            provider: None,
         };
         let req = HookRequest::RecordEvent { event };
         let bytes = serialize_request(&req).unwrap();
@@ -439,6 +466,7 @@ mod tests {
                 timestamp: 1700000000,
                 payload: serde_json::json!({}),
                 topic_signal: None,
+                provider: None,
             },
             ImplantEvent {
                 event_type: "context_read".to_string(),
@@ -446,6 +474,7 @@ mod tests {
                 timestamp: 1700000001,
                 payload: serde_json::json!({"entry_id": 42}),
                 topic_signal: None,
+                provider: None,
             },
         ];
         let req = HookRequest::RecordEvents { events };
@@ -856,6 +885,7 @@ mod tests {
             timestamp: 1700000000,
             payload: serde_json::json!({"tool": "Bash", "duration_ms": 150}),
             topic_signal: None,
+            provider: None,
         };
         let bytes = serde_json::to_vec(&event).unwrap();
         let decoded: ImplantEvent = serde_json::from_slice(&bytes).unwrap();
@@ -1139,6 +1169,7 @@ mod tests {
             timestamp: 100,
             payload: serde_json::json!({}),
             topic_signal: None,
+            provider: None,
         };
         let json = serde_json::to_string(&event).unwrap();
         assert!(
@@ -1155,6 +1186,7 @@ mod tests {
             timestamp: 100,
             payload: serde_json::json!({}),
             topic_signal: Some("col-017".to_string()),
+            provider: None,
         };
         let json = serde_json::to_string(&event).unwrap();
         assert!(
@@ -1279,6 +1311,174 @@ mod tests {
         assert!(
             matches!(req, HookRequest::Briefing { .. }),
             "HookRequest::Briefing variant must still be present"
+        );
+    }
+
+    // -- vnc-013: wire-protocol new field tests --
+
+    #[test]
+    fn test_hook_input_deserializes_without_new_fields() {
+        // NFR-05, AC-08: minimal Claude Code hook JSON omits provider and mcp_context.
+        // serde(default) must produce None for both, with no deserialization error.
+        let json = r#"{"hook_event_name":"PreToolUse","session_id":"sess-1"}"#;
+        let input: HookInput = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(input.provider, None);
+        assert_eq!(input.mcp_context, None);
+        assert_eq!(input.hook_event_name, "PreToolUse");
+    }
+
+    #[test]
+    fn test_hook_input_deserializes_with_provider_field() {
+        // AC-17: Codex-style payload with explicit provider field.
+        let json = r#"{
+            "hook_event_name": "PreToolUse",
+            "provider": "codex-cli"
+        }"#;
+        let input: HookInput = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(input.provider, Some("codex-cli".to_string()));
+        assert_eq!(input.mcp_context, None);
+    }
+
+    #[test]
+    fn test_hook_input_deserializes_gemini_payload_with_mcp_context() {
+        // AC-14: Gemini BeforeTool payload with mcp_context structured field.
+        // This is the serde foundation for R-01 (mcp_context.tool_name promotion).
+        let json = r#"{
+            "hook_event_name": "BeforeTool",
+            "mcp_context": {
+                "server_name": "unimatrix",
+                "tool_name": "context_cycle",
+                "url": "http://localhost:3000"
+            }
+        }"#;
+        let input: HookInput = serde_json::from_str(json).expect("deserialize");
+        assert!(input.mcp_context.is_some());
+        let mcp = input.mcp_context.as_ref().unwrap();
+        assert_eq!(
+            mcp.get("tool_name").and_then(|v| v.as_str()),
+            Some("context_cycle")
+        );
+        assert_eq!(input.provider, None); // not in payload — inference applies
+    }
+
+    #[test]
+    fn test_hook_input_mcp_context_non_object_deserializes() {
+        // NFR-04 edge case: mcp_context present but is a string, not an object.
+        // Must deserialize without error; promotion adapter handles gracefully via as_object().
+        let json = r#"{
+            "hook_event_name": "BeforeTool",
+            "mcp_context": "unexpected-string"
+        }"#;
+        let input: HookInput = serde_json::from_str(json).expect("deserialize — must not error");
+        assert!(input.mcp_context.is_some());
+        // as_object() on a string Value returns None — no panic
+        assert!(input.mcp_context.as_ref().unwrap().as_object().is_none());
+    }
+
+    #[test]
+    fn test_mcp_context_not_duplicated_in_extra() {
+        // ADR-003 correctness: named field mcp_context takes priority over flatten.
+        // After deserialization, extra must NOT also contain an mcp_context key.
+        let json = r#"{
+            "hook_event_name": "BeforeTool",
+            "mcp_context": {
+                "server_name": "unimatrix",
+                "tool_name": "context_cycle",
+                "url": "http://localhost:3000"
+            }
+        }"#;
+        let input: HookInput = serde_json::from_str(json).expect("deserialize");
+        assert!(
+            input.extra.get("mcp_context").is_none(),
+            "mcp_context must not appear in extra flatten when named field captures it; extra={:?}",
+            input.extra
+        );
+    }
+
+    #[test]
+    fn test_implant_event_deserializes_without_provider() {
+        // R-13 secondary, R-02 degraded path: legacy ImplantEvent JSON without provider field.
+        // serde(default) must produce None without error.
+        let json = r#"{
+            "event_type": "PreToolUse",
+            "session_id": "sess-1",
+            "timestamp": 1700000000,
+            "payload": {}
+        }"#;
+        let event: ImplantEvent = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(event.provider, None);
+        assert_eq!(event.event_type, "PreToolUse");
+    }
+
+    #[test]
+    fn test_implant_event_provider_present_serializes() {
+        // AC-05: provider field IS present in JSON when Some.
+        let event = ImplantEvent {
+            event_type: "PreToolUse".to_string(),
+            session_id: "sess-1".to_string(),
+            timestamp: 1700000000,
+            payload: serde_json::json!({}),
+            topic_signal: None,
+            provider: Some("gemini-cli".to_string()),
+        };
+        let json = serde_json::to_string(&event).expect("serialize");
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(
+            parsed.get("provider").and_then(|v| v.as_str()),
+            Some("gemini-cli")
+        );
+        // Round-trip
+        let decoded: ImplantEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.provider, Some("gemini-cli".to_string()));
+    }
+
+    #[test]
+    fn test_implant_event_provider_none_not_serialized() {
+        // NFR-05: skip_serializing_if = "Option::is_none" — provider key must be absent
+        // from JSON when None, preserving backward compat for Claude Code consumers.
+        let event = ImplantEvent {
+            event_type: "PreToolUse".to_string(),
+            session_id: "sess-1".to_string(),
+            timestamp: 1700000000,
+            payload: serde_json::json!({}),
+            topic_signal: None,
+            provider: None,
+        };
+        let json = serde_json::to_string(&event).expect("serialize");
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(
+            parsed.get("provider").is_none(),
+            "provider: None must not be serialized (skip_serializing_if); json={json}"
+        );
+    }
+
+    #[test]
+    fn test_hook_input_provider_none_when_absent() {
+        // NFR-05: JSON without provider field → provider == None.
+        let json = r#"{"hook_event_name":"SessionStart"}"#;
+        let input: HookInput = serde_json::from_str(json).expect("deserialize");
+        assert_eq!(input.provider, None);
+    }
+
+    #[test]
+    fn test_hook_input_clone_includes_new_fields() {
+        // Wave 2 requirement: HookInput must be Clone (already derived) and carry
+        // provider + mcp_context through the clone for the mcp_context promotion adapter.
+        let json = r#"{
+            "hook_event_name": "BeforeTool",
+            "provider": "gemini-cli",
+            "mcp_context": {"tool_name": "context_cycle"}
+        }"#;
+        let input: HookInput = serde_json::from_str(json).expect("deserialize");
+        let cloned = input.clone();
+        assert_eq!(cloned.provider, Some("gemini-cli".to_string()));
+        assert_eq!(
+            cloned
+                .mcp_context
+                .as_ref()
+                .and_then(|v| v.get("tool_name"))
+                .and_then(|v| v.as_str()),
+            Some("context_cycle")
         );
     }
 }

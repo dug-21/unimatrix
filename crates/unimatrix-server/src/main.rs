@@ -83,6 +83,12 @@ enum Command {
     Hook {
         /// The hook event name (e.g., SessionStart, Stop, Ping).
         event: String,
+
+        /// Originating LLM provider. Use "gemini-cli" for Gemini CLI hooks,
+        /// "codex-cli" for Codex CLI hooks. Omit for Claude Code (default).
+        /// When absent, provider is inferred from the event name (vnc-013, ADR-002).
+        #[arg(long)]
+        provider: Option<String>,
     },
 
     /// Export the knowledge base to JSONL format.
@@ -236,10 +242,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // C-10: Sync subcommands MUST be dispatched before any Tokio runtime init.
     // The match below runs in declaration order; all sync paths return here.
     match cli.command {
-        Some(Command::Hook { event }) => {
+        Some(Command::Hook { event, provider }) => {
             // Sync path: NO tokio, NO tracing init, NO database open
             // Minimal startup for <50ms budget
-            return unimatrix_server::uds::hook::run(event, cli.project_dir);
+            return unimatrix_server::uds::hook::run(event, provider, cli.project_dir);
         }
         Some(Command::Export { output }) => {
             // Sync path: NO tokio, like Hook

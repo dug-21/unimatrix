@@ -60,7 +60,15 @@ const TOOL_KEY_PARAM_BYTES: usize = 120;
 /// This is the entry point from `main()` for the `hook` subcommand.
 /// No tokio runtime is initialized. Returns `Ok(())` for all expected
 /// conditions -- exit code is always 0 per FR-03.7.
-pub fn run(event: String, project_dir: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(
+    event: String,
+    provider: Option<String>,
+    project_dir: Option<PathBuf>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // provider is threaded into hook_input by the normalization layer (Wave 2).
+    // For Wave 1, the field exists on HookInput but normalization is not yet implemented.
+    // Suppress unused variable warning until Wave 2 wires this up.
+    let _ = &provider;
     // Step 1: Read stdin
     let stdin_content = read_stdin();
 
@@ -234,6 +242,8 @@ fn parse_hook_input(raw: &str) -> HookInput {
                 cwd: None,
                 transcript_path: None,
                 prompt: None,
+                provider: None,
+                mcp_context: None,
                 extra: serde_json::Value::Null,
             }
         }
@@ -423,6 +433,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         timestamp: now_secs(),
                         payload: input.extra.clone(),
                         topic_signal,
+                        provider: None,
                     },
                 };
             }
@@ -438,6 +449,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                             timestamp: now_secs(),
                             payload: input.extra.clone(),
                             topic_signal,
+                            provider: None,
                         },
                     };
                 }
@@ -455,6 +467,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                             "tool_response": input.extra.get("tool_response"),
                         }),
                         topic_signal: topic_signal.clone(),
+                        provider: None,
                     })
                     .collect();
                 return HookRequest::RecordEvents { events };
@@ -481,6 +494,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                         "tool_response": input.extra.get("tool_response"),
                     }),
                     topic_signal,
+                    provider: None,
                 },
             }
         }
@@ -507,6 +521,7 @@ fn build_request(event: &str, input: &HookInput) -> HookRequest {
                     timestamp: now_secs(),
                     payload: input.extra.clone(),
                     topic_signal,
+                    provider: None,
                 },
             }
         }
@@ -683,6 +698,7 @@ fn build_cycle_event_or_fallthrough(
             timestamp: now_secs(),
             payload,
             topic_signal,
+            provider: None,
         },
     }
 }
@@ -699,6 +715,7 @@ fn generic_record_event(event: &str, session_id: String, input: &HookInput) -> H
             timestamp: now_secs(),
             payload: input.extra.clone(),
             topic_signal,
+            provider: None,
         },
     }
 }
@@ -1282,6 +1299,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra: serde_json::Value::Null,
         }
     }
@@ -1551,6 +1570,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra,
         }
     }
@@ -1721,6 +1742,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra: serde_json::Value::Null,
         };
         let req = build_request("PostToolUse", &input);
@@ -1737,6 +1760,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra,
         }
     }
@@ -1843,6 +1868,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra: serde_json::Value::Null,
         };
         let req = build_request("PostToolUseFailure", &input);
@@ -2633,6 +2660,8 @@ mod tests {
             cwd: Some("/workspace".to_string()),
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra,
         }
     }
@@ -2739,6 +2768,8 @@ mod tests {
             cwd: None,
             transcript_path: None,
             prompt: None,
+            provider: None,
+            mcp_context: None,
             extra,
         }
     }
