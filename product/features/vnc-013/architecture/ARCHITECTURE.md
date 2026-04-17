@@ -155,11 +155,34 @@ is needed — only the promotion adapter before calling it.
 **Responsibility**: Replace the three `"claude-code"` hardcodes with dynamic
 derivation. Each site uses a different mechanism appropriate to its access pattern.
 
-**Site A: `listener.rs:1894`** — live write path. Has `ImplantEvent.provider` directly:
+**Critical constraint: `source_domain` is never persisted.** The `observations` table
+has no `source_domain` column (columns: `id`, `session_id`, `ts_millis`, `hook`,
+`tool`, `input`, `response_size`, `response_snippet`, `topic_signal`, `phase`).
+`source_domain` is a runtime-derived attribute computed at each read site from the
+stored `hook` (canonical event name). This has a fundamental consequence: Gemini events
+stored as canonical `"PreToolUse"` are indistinguishable from Claude Code events at the
+storage layer. No write path ever records a Gemini event as `"gemini-cli"` in persistent
+state — not Site A, not anywhere.
+
+**Site A: `listener.rs` (target: live write path in `dispatch_request()`)** — the
+`RecordEvent` arm builds an `ObservationRow` via `extract_observation_fields()`. The
+current `ObservationRow` struct has no `source_domain` field, so no provider information
+reaches the INSERT. The proposed change is to use `event.provider` at the call site:
 ```rust
+// PROPOSED — not yet implemented in listener.rs
 source_domain: event.provider.clone().unwrap_or_else(|| "claude-code".to_string()),
 ```
-This is the only site that correctly labels Gemini events as `"gemini-cli"`.
+However, because `source_domain` is not persisted (see constraint above), this
+derivation applies only to `ObservationRecord` objects built in-memory during the live
+dispatch path — not to any stored state. Gemini events ARE labeled `"gemini-cli"` on
+this in-memory path, but that label does not survive to the DB. Once stored as canonical
+`"PreToolUse"`, the Gemini origin is lost.
+
+**Confirmed current state of listener.rs line 1897**: This line is inside
+`content_based_attribution_fallback()` — a DB read path, not a write path — and assigns
+`DEFAULT_HOOK_SOURCE_DOMAIN.to_string()` (the constant `"claude-code"`). It does not
+use `event.provider`. The write path (`extract_observation_fields()` → `ObservationRow`)
+has no `source_domain` field at all.
 
 **Site B: `background.rs:1330`** — DB read path (`fetch_observation_batch()`). Has
 event_type from DB but no provider. Apply registry-with-fallback (Approach A, SR-03):
@@ -183,12 +206,15 @@ let source_domain = {
 };
 ```
 
-**Known limitation** (OQ-4, accepted): After normalization, Gemini `"BeforeTool"`
-records are stored as `"PreToolUse"` in the DB. DB read paths cannot distinguish
-Claude Code from Gemini origins without a `source_domain` column — that would require
-a schema migration, which is explicitly out of scope. Only Site A (write path) labels
-live events correctly with `"gemini-cli"`. Sites B and C return `"claude-code"` for
-stored canonical event types, which is the correct backward-compatible behavior.
+**Accepted known limitation (OQ-4 — prominent)**: Gemini events stored as canonical
+`"PreToolUse"` / `"PostToolUse"` / `"Stop"` in the DB are permanently indistinguishable
+from Claude Code events at the storage layer. `resolve_source_domain("PreToolUse")`
+returns `"claude-code"` for both. There is no write path that labels stored Gemini
+events as `"gemini-cli"` — this would require a `source_domain` column on the
+`observations` table (schema migration), which is explicitly out of scope. All three
+sites return `"claude-code"` for stored canonical event types regardless of which client
+originally fired them. This is correct backward-compatible behavior but means
+per-provider analytics on historical data are not possible in this feature version.
 
 ### Layer 4: Reference Configurations
 
@@ -234,15 +260,19 @@ Gemini CLI / Codex CLI / Claude Code
           ▼
 [listener.rs dispatch_request()]
   RecordEvent arm → write ObservationRecord
-    source_domain = event.provider.unwrap_or("claude-code")   ← Site A
+    source_domain derived from event.provider (in-memory only) ← Site A
           │
           │ DB write: observations table, hook = canonical_name
+          │ NOTE: source_domain is NOT persisted — no column in observations table.
+          │ Gemini "PreToolUse" is stored identically to Claude Code "PreToolUse".
           ▼
-[DB read paths]
+[DB read paths — source_domain re-derived from hook column; Gemini origin is lost]
   background.rs fetch_observation_batch()
     source_domain = registry_with_fallback(event_type)         ← Site B
   services/observation.rs parse_observation_rows()
     source_domain = registry_with_fallback(event_type)         ← Site C
+  listener.rs content_based_attribution_fallback()
+    source_domain = DEFAULT_HOOK_SOURCE_DOMAIN ("claude-code") ← existing DB read path
 ```
 
 ### Rework Detection Gate
@@ -341,7 +371,7 @@ or `None` (defaults to inference). Unknown values are logged and treated as `Non
 |------|-------|--------|-------------|
 | `unimatrix-engine/src/wire.rs` | unimatrix-engine | Add `provider` to `HookInput` and `ImplantEvent`; add `mcp_context` to `HookInput` | AC-05, AC-14 |
 | `unimatrix-server/src/uds/hook.rs` | unimatrix-server | `normalize_event_name()`, `run()` provider flag, Gemini arms, rework gate, mcp_context promotion | AC-01 through AC-05, AC-11, AC-12, AC-15, AC-17, AC-18 |
-| `unimatrix-server/src/uds/listener.rs` | unimatrix-server | Site A source_domain (line 1894), rework candidate debug_assert | AC-06, AC-07a, AC-16 |
+| `unimatrix-server/src/uds/listener.rs` | unimatrix-server | Site A source_domain derivation in `dispatch_request()` RecordEvent arm (not persisted — `ObservationRow` has no `source_domain` field); rework candidate debug_assert | AC-06, AC-07a, AC-16 |
 | `unimatrix-server/src/background.rs` | unimatrix-server | Site B source_domain (line 1330) | AC-07b |
 | `unimatrix-server/src/services/observation.rs` | unimatrix-server | Site C source_domain (line 585), remove `_registry` prefix, update tests | AC-07c, AC-08 |
 | `unimatrix-server/src/main.rs` | unimatrix-server | Add `--provider` to `Hook` command variant | AC-15, AC-17, AC-18 |
