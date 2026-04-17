@@ -24,14 +24,12 @@
 | source-domain-derivation | pseudocode/source-domain-derivation.md | test-plan/source-domain-derivation.md |
 | reference-configs | pseudocode/reference-configs.md | test-plan/reference-configs.md |
 
-### Cross-Cutting Artifacts (populated during Stage 3a)
+### Cross-Cutting Artifacts
 
 | Artifact | Path | Consumed By |
 |----------|------|-------------|
-| Pseudocode Overview | pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
-| Test Strategy + Integration Plan | test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
-
-Note: pseudocode and test-plan files are produced in Session 2 Stage 3a. The Component Map lists expected components from the architecture — actual file paths are filled during delivery. The Cross-Cutting Artifacts section tracks files that don't belong to a single component but are consumed by specific stages.
+| Pseudocode Overview | product/features/vnc-013/pseudocode/OVERVIEW.md | Stage 3b (all agents), Gate 3a |
+| Test Strategy + Integration Plan | product/features/vnc-013/test-plan/OVERVIEW.md | Stage 3c (tester), Gate 3a, Gate 3c |
 
 ---
 
